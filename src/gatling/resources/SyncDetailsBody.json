@@ -1,0 +1,380 @@
+[
+  {
+    "uuid": "12e362fe-91cd-4145-ac93-c50c5976a3df",
+    "entityName": "GroupDashboard",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "1490162c-3ee6-45d0-b866-868dd35c7300",
+    "entityName": "ApprovalStatus",
+    "loadedSince": "2023-02-09T12:49:28.726Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "6d1454d6-581e-4310-870c-2a037e996b34",
+    "entityName": "DashboardSectionCardMapping",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "8e70d32c-8a6b-4356-b6e8-525c81f0f80f",
+    "entityName": "DashboardSection",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "2c913e74-da94-46e1-ab9e-5c757b44cbc8",
+    "entityName": "Dashboard",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "c29a82cb-930d-4cd6-8043-cecf8508b484",
+    "entityName": "ReportCard",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "bb489de2-d142-4c37-adcf-351328260cdb",
+    "entityName": "StandardReportCardType",
+    "loadedSince": "2023-02-09T12:49:29.402Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "714984a0-074d-4324-8efb-d2dc081a67c0",
+    "entityName": "MenuItem",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "dcf483fc-2b35-442b-83a4-587c10d2c5ad",
+    "entityName": "LocationHierarchy",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "5ee99db1-679b-4206-8960-1916abde6fc9",
+    "entityName": "Video",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "75128f24-26e1-4f1b-ac9d-1a2f6da4b10b",
+    "entityName": "ChecklistItemDetail",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "9708bb88-dab1-43d3-af14-d81b91bde91b",
+    "entityName": "ChecklistDetail",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "dff17b85-54f0-4958-9d38-1b3c06c52c14",
+    "entityName": "Rule",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "e8625ac0-688f-4be6-b397-8787c61b6836",
+    "entityName": "RuleDependency",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "ffd1bb9d-fd94-4a47-8df6-83ccc0b48024",
+    "entityName": "IndividualRelationshipType",
+    "loadedSince": "2023-02-15T06:44:23.450Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "1b24689a-008d-4fe8-b88c-e85f2ac6a050",
+    "entityName": "IndividualRelationGenderMapping",
+    "loadedSince": "2023-02-15T06:44:23.433Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "fba79bca-5892-454d-93dc-4d20454a05bd",
+    "entityName": "IndividualRelation",
+    "loadedSince": "2023-02-15T06:44:23.430Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "bb4765f5-f98e-43f3-aec1-1df1ceb8e43c",
+    "entityName": "ProgramConfig",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "26d0ce5a-57fe-4133-9fa3-ee3817600979",
+    "entityName": "FormMapping",
+    "loadedSince": "2023-02-15T06:44:23.385Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "903bc5cc-4f1b-4fc8-b6bd-51f3cd3f86a9",
+    "entityName": "FormElement",
+    "loadedSince": "2023-02-15T06:46:00.089Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "ff67f7e5-0b54-4c9b-a2e6-65610128b5cf",
+    "entityName": "FormElementGroup",
+    "loadedSince": "2023-02-15T06:44:23.198Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "c2dd8d20-b247-4ece-b648-01ecf0281962",
+    "entityName": "Form",
+    "loadedSince": "2023-02-15T06:46:00.092Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "21fa56f3-c296-4d62-bb0b-ba77053dd6b0",
+    "entityName": "DocumentationItem",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "79100c2b-8532-4323-9abf-4f0c3ba2af85",
+    "entityName": "Documentation",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "3119b095-c664-4fe1-b438-517d69ecd7a9",
+    "entityName": "IdentifierSource",
+    "loadedSince": "2023-02-15T07:20:17.932Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "153cbe0b-29f0-4a8c-96ff-bf1c18e4ce6e",
+    "entityName": "OrganisationConfig",
+    "loadedSince": "2023-02-15T06:44:23.400Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "207d6863-197d-4ee2-817a-d831e5065d0b",
+    "entityName": "PlatformTranslation",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "a6341d00-b558-4363-99c4-44257ef77e58",
+    "entityName": "Translation",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "fb0af938-11d6-4261-9c23-5bdb8296a4ab",
+    "entityName": "LocationMapping",
+    "loadedSince": "2023-02-15T06:44:22.687Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "d410a0cd-ac8f-49d8-addb-f1674596cd7b",
+    "entityName": "AddressLevel",
+    "loadedSince": "2023-02-15T06:44:22.689Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "31fdc394-b7f5-450c-a3b5-9f3d02e2625b",
+    "entityName": "TaskStatus",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "31d96a99-80e8-401a-a52c-977a68e84f9c",
+    "entityName": "TaskType",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "8f5733f8-54e0-468e-bd6e-b26f5aa82a79",
+    "entityName": "EncounterType",
+    "loadedSince": "2023-02-15T06:44:22.829Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "a8763b59-efb8-4bfd-b4c4-c2b9f0932fd1",
+    "entityName": "Program",
+    "loadedSince": "2023-02-15T06:44:22.855Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "a6f2553c-e808-4926-8d6d-0a3d819969fe",
+    "entityName": "ProgramOutcome",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "fc6830f4-976d-46cd-9ff5-3d6b24632906",
+    "entityName": "Gender",
+    "loadedSince": "2023-02-15T06:42:32.054Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "6da8e501-8b67-4722-be40-3627c0d0c2e1",
+    "entityName": "GroupRole",
+    "loadedSince": "2023-02-15T06:44:23.487Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "4954425a-c53e-4c29-8bf7-ffe0e779f2ad",
+    "entityName": "SubjectType",
+    "loadedSince": "2023-02-15T06:44:22.778Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "f919500d-031a-4ce9-835d-83841fb686cf",
+    "entityName": "ConceptAnswer",
+    "loadedSince": "2023-02-15T06:44:22.976Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "ca604848-0f40-4f0c-a265-4ef8df8eda8f",
+    "entityName": "Concept",
+    "loadedSince": "2023-02-15T06:45:45.929Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "a1d3bd9c-415d-4a21-b0ae-da23dd7bbdbf",
+    "entityName": "MyGroups",
+    "loadedSince": "2023-02-21T04:51:09.916Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "bb1dd5eb-55ab-4ceb-a460-ef898d4424d8",
+    "entityName": "GroupPrivileges",
+    "loadedSince": "2023-02-15T06:44:23.679Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "6d48ba51-40d1-4fe0-8b70-9f4ec8d7183a",
+    "entityName": "Groups",
+    "loadedSince": "2023-02-15T06:44:23.455Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "8a409aa1-3288-44d8-8f0a-440e18e7a1de",
+    "entityName": "Privilege",
+    "loadedSince": "2023-02-15T06:52:24.511Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "3ae90300-d22d-46a7-9faf-f1c8f930fbfb",
+    "entityName": "ResetSync",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "097ab42d-0a60-4476-b66a-6ab42fed0f7e",
+    "entityName": "UserSubjectAssignment",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "2326f69d-a5b2-4b0b-9702-2f1be67b2bc9",
+    "entityName": "Task",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "60e23a99-e8f5-42e3-8ab4-fa2c12dd7548",
+    "entityName": "TaskUnAssignment",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "94a21eaf-7ab9-4b01-a43d-ab1c7a3b2c73",
+    "entityName": "News",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "ffb14afb-2f41-429c-a704-5edb4b6c3d4a",
+    "entityName": "VideoTelemetric",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "7f73edae-b879-4a17-b806-b96d86e9c2a3",
+    "entityName": "EntityApprovalStatus",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "8801a35c-1bfd-43b7-83ea-9556e3aa1c23",
+    "entityName": "IdentifierAssignment",
+    "loadedSince": "2023-02-28T10:26:00.406Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "2f6c5fbd-2368-4056-b14d-ffdf6487de68",
+    "entityName": "Extension",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "65ba309e-b582-4e84-a7da-68c518c62270",
+    "entityName": "UserInfo",
+    "loadedSince": "2023-02-28T14:38:05.971Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "13e13804-11b0-4405-99de-2b2c8d6f469f",
+    "entityName": "SyncTelemetry",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "442f3414-7020-47d9-b097-446139486e1f",
+    "entityName": "RuleFailureTelemetry",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": ""
+  },
+  {
+    "uuid": "42f41dc8-092c-4744-9535-e4e3e952b84b",
+    "entityName": "ProgramEncounter",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": "5bbc2389-6109-44ea-ac3f-883803ae830a"
+  },
+  {
+    "uuid": "b4eba353-2411-4df1-af2b-90d234dbee55",
+    "entityName": "Individual",
+    "loadedSince": "2023-02-21T05:30:07.554Z",
+    "entityTypeUuid": "acb42ed7-003c-4364-b131-b39827c33a58"
+  },
+  {
+    "uuid": "a16339bc-1392-45bc-9aee-fc1386dc21c7",
+    "entityName": "ProgramEnrolment",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": "b940a8a0-9e18-45e1-8c8a-be18b2f80b2e"
+  },
+  {
+    "uuid": "4d806fa5-5bc4-4ba2-ab9b-5bd543e19afe",
+    "entityName": "Encounter",
+    "loadedSince": "2023-02-15T07:10:08.291Z",
+    "entityTypeUuid": "c30f3839-b8d9-40b9-b508-4888086aaf9f"
+  },
+  {
+    "uuid": "87761039-2da1-41dc-aada-68bb26159f44",
+    "entityName": "Encounter",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": "901177ae-9874-49ed-a113-d2687ed780e5"
+  },
+  {
+    "uuid": "020273a4-2cbd-4f52-a7d9-b41c44c853a6",
+    "entityName": "Encounter",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": "b8131e6d-1418-4351-adf3-4f7ca129a561"
+  },
+  {
+    "uuid": "913f8fc0-18c0-4388-a23e-4d02d9d62a09",
+    "entityName": "Encounter",
+    "loadedSince": "1900-01-01T00:00:00.000Z",
+    "entityTypeUuid": "5ca9821c-56d6-4d58-8fa1-26f7415b9dcf"
+  }
+]
