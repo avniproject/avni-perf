@@ -16,12 +16,13 @@ import java.util.*;
 
 
 public class AvniSyncSimulation extends Simulation {
-    private static final String baseUrl = System.getProperty("BASE_URL", "http://localhost:8021");
+    private static final String baseUrl = System.getProperty("BASE_URL", "https://perf.avniproject.org");
     private static final Integer users = Integer.getInteger("USER_COUNT", csv("users.csv").recordsCount());
 //    private static final Integer users = Integer.getInteger("USER_COUNT", 1);
     private static final Integer rampPeriod = Integer.getInteger("RAMP_PERIOD", csv("users.csv").recordsCount() * 3);
 //    private static final Integer rampPeriod = Integer.getInteger("RAMP_PERIOD", 1);
     private static final Integer pageSize = Integer.getInteger("PAGE_SIZE", 100);
+    private static final String now = System.getProperty("NOW", "2023-02-28T14:37:59.686Z");
 
     FeederBuilder<String> feeder = csv("users.csv").random();
     static ObjectMapper om = new ObjectMapper();
@@ -29,7 +30,7 @@ public class AvniSyncSimulation extends Simulation {
     public static final List<Map<String, Object>> allSyncableEntities = jsonFile("AvniEntities.json").readRecords();
 
     HttpProtocolBuilder httpProtocol = http.baseUrl(baseUrl).acceptHeader("application/json").contentTypeHeader("application/json").acceptEncodingHeader("gzip").header("USER-NAME", "#{userName}").header("AUTH-TOKEN", "#{token}").connectionHeader("Keep-Alive").userAgentHeader("okhttp/5.0.0-alpha.11");
-    ChainBuilder refDataSync =
+    ChainBuilder syncChainBuilder =
 //        exec(
 //        http("resetSyncs")
 //            .get("/resetSyncs?lastModifiedDateTime=#{lastModifiedDateTime}&now=2023-02-28T10:25:58.819Z&size=100&page=0")
@@ -51,8 +52,7 @@ public class AvniSyncSimulation extends Simulation {
             }).saveAs("syncDetails")
         ))
             .exec(sync());
-    //    ScenarioBuilder syncScenario = scenario("Sync").feed(feeder).exec(refDataSync, txDataSync);
-    ScenarioBuilder syncScenario = scenario("Sync").feed(feeder).exec(refDataSync);
+    ScenarioBuilder syncScenario = scenario("Sync").feed(feeder).exec(syncChainBuilder);
 
     {
         setUp(syncScenario.injectOpen(rampUsers(users).during(rampPeriod))).protocols(httpProtocol)
@@ -112,8 +112,8 @@ public class AvniSyncSimulation extends Simulation {
         AvniEntity ae49 = new AvniEntity("ProgramEncounter", "/programEncounter?programEncounterTypeUuid=", "tx");
         AvniEntity ae50 = new AvniEntity("IdentifierAssignment", "/identifierAssignment?", "tx");
         AvniEntity ae51 = new AvniEntity("Encounter", "/encounter?encounterTypeUuid=", "tx");
-        AvniEntity ae52 = new AvniEntity("Checklist", "/checklist?", "tx");
-        AvniEntity ae53 = new AvniEntity("ChecklistItem", "/checklistItem?", "tx");
+        AvniEntity ae52 = new AvniEntity("Checklist", "/checklistDetail/search/lastModified?", "tx");
+        AvniEntity ae53 = new AvniEntity("ChecklistItem", "/checklistItemDetail/search/lastModified?", "tx");
         AvniEntity ae54 = new AvniEntity("IndividualRelationship", "/individualRelationship?subjectTypeUuid=", "tx");
         AvniEntity ae55 = new AvniEntity("EntityApprovalStatus", "/entityApprovalStatus?", "tx");
         AvniEntity ae56 = new AvniEntity("CommentThread", "/commentThread?", "tx");
@@ -151,7 +151,7 @@ public class AvniSyncSimulation extends Simulation {
             .asLongAs("#{allPagesNotFetched}", "index")
             .on(
                 exec(http(String.format("Getting %s pages", entityName))
-                    .get(String.format("%slastModifiedDateTime=#{lastModifiedDateTime}&now=2023-02-28T14:37:59.686Z&size=%d&page=#{index}", endpointWithParam, pageSize))
+                    .get(String.format("%slastModifiedDateTime=#{lastModifiedDateTime}&now=%s&size=%d&page=#{index}", endpointWithParam, now, pageSize))
                     .check(status().is(200))
 //                    .asJson()
                     .check(jmesPath("page.totalPages").ofInt()
