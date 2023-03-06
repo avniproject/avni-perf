@@ -1,0 +1,386 @@
+[
+  {
+    "entityName": "Extension",
+    "resourcePath": "/extension",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "Privilege",
+    "resourcePath": "/privilege",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "Groups",
+    "resourcePath": "/groups",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "GroupPrivileges",
+    "resourcePath": "/groupPrivileges",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "MyGroups",
+    "resourcePath": "/myGroups",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "Concept",
+    "resourcePath": "/concept",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "ConceptAnswer",
+    "resourcePath": "/conceptAnswer",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "SubjectType",
+    "resourcePath": "/subjectType",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "GroupRole",
+    "resourcePath": "/groupRole",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "Gender",
+    "resourcePath": "/gender",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "ProgramOutcome",
+    "resourcePath": "/programOutcome",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "Program",
+    "resourcePath": "/program",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "EncounterType",
+    "resourcePath": "/operationalEncounterType",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "TaskType",
+    "resourcePath": "/taskType",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "TaskStatus",
+    "resourcePath": "/taskStatus",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "AddressLevel",
+    "resourcePath": "/addressLevel",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "LocationMapping",
+    "resourcePath": "/locationMapping",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "Translation",
+    "resourcePath": "/translation",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "PlatformTranslation",
+    "resourcePath": "/platformTranslation",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "OrganisationConfig",
+    "resourcePath": "/organisationConfig",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "IdentifierSource",
+    "resourcePath": "/identifierSource",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "Documentation",
+    "resourcePath": "/documentation",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "DocumentationItem",
+    "resourcePath": "/documentationItem",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "Form",
+    "resourcePath": "/form",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "FormElementGroup",
+    "resourcePath": "/formElementGroup",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "FormElement",
+    "resourcePath": "/formElement",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "FormMapping",
+    "resourcePath": "/formMapping",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "ProgramConfig",
+    "resourcePath": "/programConfig",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "IndividualRelation",
+    "resourcePath": "/individualRelation",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "IndividualRelationGenderMapping",
+    "resourcePath": "/individualRelationGenderMapping",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "IndividualRelationshipType",
+    "resourcePath": "/individualRelationshipType",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "RuleDependency",
+    "resourcePath": "/ruleDependency",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "Rule",
+    "resourcePath": "/rule",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "ChecklistDetail",
+    "resourcePath": "/checklistDetail",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "ChecklistItemDetail",
+    "resourcePath": "/checklistItemDetail",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "Video",
+    "resourcePath": "/video",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "LocationHierarchy",
+    "resourcePath": "/locationHierarchy",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "MenuItem",
+    "resourcePath": "/menuItem",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "StandardReportCardType",
+    "resourcePath": "/standardReportCardType",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "ReportCard",
+    "resourcePath": "/reportCard",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "Dashboard",
+    "resourcePath": "/dashboard",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "DashboardSection",
+    "resourcePath": "/dashboardSection",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "DashboardSectionCardMapping",
+    "resourcePath": "/dashboardSectionCardMapping",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "ApprovalStatus",
+    "resourcePath": "/approvalStatus",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "GroupDashboard",
+    "resourcePath": "/groupDashboard",
+    "type": "reference"
+
+  },
+  {
+    "entityName": "UserInfo",
+    "resourcePath": "/v2/me",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "Individual",
+    "resourcePath": "/individual",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "ProgramEnrolment",
+    "resourcePath": "/programEnrolment",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "ProgramEncounter",
+    "resourcePath": "/programEncounter",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "IdentifierAssignment",
+    "resourcePath": "/identifierAssignment",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "Encounter",
+    "resourcePath": "/encounter",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "Checklist",
+    "resourcePath": "/checklist",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "ChecklistItem",
+    "resourcePath": "/checklistItem",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "IndividualRelationship",
+    "resourcePath": "/individualRelationship",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "EntityApprovalStatus",
+    "resourcePath": "/entityApprovalStatus",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "CommentThread",
+    "resourcePath": "/commentThread",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "Comment",
+    "resourcePath": "/comment",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "GroupSubject",
+    "resourcePath": "/groupSubject",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "VideoTelemetric",
+    "resourcePath": "/videoTelemetric",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "News",
+    "resourcePath": "/news",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "SubjectProgramEligibility",
+    "resourcePath": "/subjectProgramEligibility",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "TaskUnAssigment",
+    "resourcePath": "/taskUnAssigments",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "Task",
+    "resourcePath": "/task",
+    "type": "tx"
+
+  },
+  {
+    "entityName": "UserSubjectAssignment",
+    "resourcePath": "/userSubjectAssignment",
+    "type": "tx"
+
+  }
+]
