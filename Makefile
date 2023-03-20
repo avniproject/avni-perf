@@ -1,4 +1,4 @@
-build:
+build_perf:
 	./gradlew build
 
 run_perf:
