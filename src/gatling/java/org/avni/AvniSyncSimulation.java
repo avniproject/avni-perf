@@ -39,7 +39,7 @@ public class AvniSyncSimulation extends Simulation {
 //        .pause(1)
 //    .
 
-        exec(http("Getting SyncDetails").post("/syncDetails").body(RawFileBody("EmptyBody.json"))
+        exec(http("Getting SyncDetails").post("/v2/syncDetails").body(RawFileBody("EmptyBody.json"))
             .check(jsonPath("$.syncDetails")
             .transform(listElements -> {
                 try {
@@ -106,25 +106,26 @@ public class AvniSyncSimulation extends Simulation {
         AvniEntity ae43 = new AvniEntity("DashboardSectionCardMapping", "/dashboardSectionCardMapping/search/lastModified?", "reference");
         AvniEntity ae44 = new AvniEntity("ApprovalStatus", "/approvalStatus/search/lastModified?", "reference");
         AvniEntity ae45 = new AvniEntity("GroupDashboard", "/groupDashboard/search/lastModified?", "reference");
-        AvniEntity ae46 = new AvniEntity("UserInfo", "/v2/me?", "tx");
-        AvniEntity ae47 = new AvniEntity("Individual", "/individual/search/lastModified?subjectTypeUuid=", "tx");
-        AvniEntity ae48 = new AvniEntity("ProgramEnrolment", "/programEnrolment?programUuid=", "tx");
-        AvniEntity ae49 = new AvniEntity("ProgramEncounter", "/programEncounter?programEncounterTypeUuid=", "tx");
-        AvniEntity ae50 = new AvniEntity("IdentifierAssignment", "/identifierAssignment?", "tx");
-        AvniEntity ae51 = new AvniEntity("Encounter", "/encounter?encounterTypeUuid=", "tx");
-        AvniEntity ae52 = new AvniEntity("Checklist", "/checklistDetail/search/lastModified?", "tx");
-        AvniEntity ae53 = new AvniEntity("ChecklistItem", "/checklistItemDetail/search/lastModified?", "tx");
-        AvniEntity ae54 = new AvniEntity("IndividualRelationship", "/individualRelationship?subjectTypeUuid=", "tx");
-        AvniEntity ae55 = new AvniEntity("EntityApprovalStatus", "/entityApprovalStatus?", "tx");
-        AvniEntity ae56 = new AvniEntity("CommentThread", "/commentThread?", "tx");
-        AvniEntity ae57 = new AvniEntity("Comment", "/comment?", "tx");
-        AvniEntity ae58 = new AvniEntity("GroupSubject", "/groupSubject?", "tx");
-        AvniEntity ae59 = new AvniEntity("VideoTelemetric", "/videoTelemetric?", "tx");
-        AvniEntity ae60 = new AvniEntity("News", "/news?", "tx");
-        AvniEntity ae61 = new AvniEntity("SubjectProgramEligibility", "/subjectProgramEligibility?", "tx");
-        AvniEntity ae62 = new AvniEntity("TaskUnAssigment", "/taskUnAssigments?", "tx");
-        AvniEntity ae63 = new AvniEntity("Task", "/task?", "tx");
-        AvniEntity ae64 = new AvniEntity("UserSubjectAssignment", "/userSubjectAssignment?", "tx");
+        AvniEntity ae46 = new AvniEntity("UserInfo", "/me/v3?", "tx");
+        AvniEntity ae47 = new AvniEntity("Individual", "/individual/search/lastModified/v2?subjectTypeUuid=", "tx");
+
+        AvniEntity ae48 = new AvniEntity("ProgramEnrolment", "/programEnrolment/v2?programUuid=", "tx");
+        AvniEntity ae49 = new AvniEntity("ProgramEncounter", "/programEncounter/v2?programEncounterTypeUuid=", "tx");
+        AvniEntity ae50 = new AvniEntity("IdentifierAssignment", "/identifierAssignment/v2?", "tx");
+        AvniEntity ae51 = new AvniEntity("Encounter", "/encounter/v2?encounterTypeUuid=", "tx");
+        AvniEntity ae52 = new AvniEntity("Checklist", "/txNewChecklistEntity/v2?checklistDetailUuid=", "tx");
+        AvniEntity ae53 = new AvniEntity("ChecklistItem", "/txNewChecklistItemEntity/v2?checklistDetailUuid=", "tx");
+        AvniEntity ae54 = new AvniEntity("IndividualRelationship", "/individualRelationship/v2?subjectTypeUuid=", "tx");
+        AvniEntity ae55 = new AvniEntity("EntityApprovalStatus", "/entityApprovalStatus/v2?", "tx");
+        AvniEntity ae56 = new AvniEntity("CommentThread", "/commentThread/v2?", "tx");
+        AvniEntity ae57 = new AvniEntity("Comment", "/comment/v2?", "tx");
+        AvniEntity ae58 = new AvniEntity("GroupSubject", "/groupSubject/v2?", "tx");
+        AvniEntity ae59 = new AvniEntity("News", "/news/v2?", "tx");
+        AvniEntity ae60 = new AvniEntity("SubjectProgramEligibility", "/subjectProgramEligibility/v2?", "tx");
+        AvniEntity ae61 = new AvniEntity("TaskUnAssigment", "/taskUnAssigments/v2?", "tx");
+        AvniEntity ae62 = new AvniEntity("Task", "/task/v2?", "tx");
+        AvniEntity ae63 = new AvniEntity("UserSubjectAssignment", "/userSubjectAssignment/v2?", "tx");
+        AvniEntity ae64 = new AvniEntity("SubjectMigration", "/subjectMigration/v2?subjectTypeUuid=", "tx");
 
         return foreach(Arrays.asList(
             ae01, ae02, ae03, ae04, ae05, ae06, ae07, ae08, ae09, ae10,
@@ -154,10 +155,23 @@ public class AvniSyncSimulation extends Simulation {
                     .get(String.format("%slastModifiedDateTime=#{lastModifiedDateTime}&now=%s&size=%d&page=#{index}", endpointWithParam, now, pageSize))
                     .check(status().is(200))
 //                    .asJson()
-                    .check(jmesPath("page.totalPages").ofInt()
+                    .checkIf((response, session) -> response.body().string().contains("totalPages")).then(
+                        jmesPath("page.totalPages").ofInt()
                         .transformWithSession((totalPages, session) -> totalPages > session.getInt("index") + 1)
-                        .saveAs("allPagesNotFetched")))
-                    .pause(0, 2) //to simulate the time between requests while client stores the data in realm
-            );
+                        .saveAs("allPagesNotFetched"))
+                    .checkIf((response, session) -> response.body().string().contains("hasNext")).then(
+                        jmesPath("slice.hasNext").ofBoolean()
+                        .transformWithSession((hasNext, session) -> hasNext)
+                                .saveAs("allPagesNotFetched"))
+
+                )
+//                        .exec(session -> { // for debugging
+//                            System.out.println("allPagesNotFetched::" + session.getString("allPagesNotFetched"));
+//                            System.out.println("name:" + entityName);
+//                            return session;
+//                        })
+)
+                    .pause(0, 2); //to simulate the time between requests while client stores the data in realm
+
     }
 }
