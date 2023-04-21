@@ -18,11 +18,10 @@ import java.util.*;
 public class AvniSyncSimulation extends Simulation {
     private static final String baseUrl = System.getProperty("BASE_URL", "https://perf.avniproject.org");
     private static final Integer users = Integer.getInteger("USER_COUNT", csv("users.csv").recordsCount());
-    private static final Integer rampPeriod = Integer.getInteger("RAMP_PERIOD", csv("users.csv").recordsCount() * 3);
+    private static final Integer rampPeriod = Integer.getInteger("RAMP_PERIOD", csv("users.csv").recordsCount() * 20);
     private static final Integer pageSize = Integer.getInteger("PAGE_SIZE", 100);
     private static final Integer maxPauseToSimulateRealmStorage = Integer.getInteger("MAX_REALM_STORAGE_PAUSE", 2);
     private static final String now = System.getProperty("NOW", java.time.Instant.now().toString());
-    private static final Boolean reportByEntityTypeUuid = Boolean.getBoolean("REPORT_BY_ENTITY_TYPE_UUID");
 
     FeederBuilder<String> feeder = csv("users.csv").random();
     static ObjectMapper om = new ObjectMapper();
@@ -38,7 +37,6 @@ public class AvniSyncSimulation extends Simulation {
 //        )
 //        .pause(1)
 //    .
-
         exec(http("Getting SyncDetails").post("/v2/syncDetails").body(RawFileBody("EmptyBody.json"))
             .check(jsonPath("$.syncDetails")
                 .transform(listElements -> {
@@ -140,13 +138,10 @@ public class AvniSyncSimulation extends Simulation {
 
     private static ChainBuilder getAndPaginate(String entityName, String endpoint, String entityTypeUuid) {
         String endpointWithParam = String.format("%s%s&", endpoint, entityTypeUuid);
-        String reportItemString = reportByEntityTypeUuid && entityTypeUuid != null
-            ? String.format("Getting %s pages for entityTypeUuid %s", entityName, entityTypeUuid)
-            : String.format("Getting %s pages", entityName);
         return exec(session -> session.set("allPagesNotFetched", true))
             .asLongAs("#{allPagesNotFetched}", "index")
-            .on(
-                exec(http(reportItemString)
+            .on(group(entityName).on(
+                exec(http(entityTypeUuid)
                         .get(String.format("%slastModifiedDateTime=#{lastModifiedDateTime}&now=%s&size=%d&page=#{index}", endpointWithParam, now, pageSize))
                         .check(status().is(200))
 //                    .asJson()
@@ -159,14 +154,13 @@ public class AvniSyncSimulation extends Simulation {
                                 .transformWithSession((hasNext, session) -> hasNext)
                                 .saveAs("allPagesNotFetched"))
 
-                )
-                    .pause(0, maxPauseToSimulateRealmStorage) //to simulate the time between requests while client stores the data in realm
+                )))
+            .pause(0, maxPauseToSimulateRealmStorage); //to simulate the time between requests while client stores the data in realm
 //                        .exec(session -> { // for debugging
 //                            System.out.println("allPagesNotFetched::" + session.getString("allPagesNotFetched"));
 //                            System.out.println("name:" + entityName);
 //                            return session;
 //                        })
-            );
 
     }
 }
