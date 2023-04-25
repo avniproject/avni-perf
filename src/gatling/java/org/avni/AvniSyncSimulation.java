@@ -112,8 +112,8 @@ public class AvniSyncSimulation extends Simulation {
         AvniEntity ae49 = new AvniEntity("ProgramEncounter", "/programEncounter?programEncounterTypeUuid=", "tx");
         AvniEntity ae50 = new AvniEntity("IdentifierAssignment", "/identifierAssignment?", "tx");
         AvniEntity ae51 = new AvniEntity("Encounter", "/encounter?encounterTypeUuid=", "tx");
-        AvniEntity ae52 = new AvniEntity("Checklist", "/checklistDetail/search/lastModified?", "tx");
-        AvniEntity ae53 = new AvniEntity("ChecklistItem", "/checklistItemDetail/search/lastModified?", "tx");
+        AvniEntity ae52 = new AvniEntity("Checklist", "/txNewChecklistEntity?checklistDetailUuid=", "tx");
+        AvniEntity ae53 = new AvniEntity("ChecklistItem", "/txNewChecklistItemEntity?checklistDetailUuid=", "tx");
         AvniEntity ae54 = new AvniEntity("IndividualRelationship", "/individualRelationship?subjectTypeUuid=", "tx");
         AvniEntity ae55 = new AvniEntity("EntityApprovalStatus", "/entityApprovalStatus?", "tx");
         AvniEntity ae56 = new AvniEntity("CommentThread", "/commentThread?", "tx");
@@ -125,6 +125,8 @@ public class AvniSyncSimulation extends Simulation {
         AvniEntity ae62 = new AvniEntity("TaskUnAssigment", "/taskUnAssigments?", "tx");
         AvniEntity ae63 = new AvniEntity("Task", "/task?", "tx");
         AvniEntity ae64 = new AvniEntity("UserSubjectAssignment", "/userSubjectAssignment?", "tx");
+        AvniEntity ae65 = new AvniEntity("SubjectMigration", "/subjectMigration?subjectTypeUuid=", "tx");
+
 
         return foreach(Arrays.asList(
             ae01, ae02, ae03, ae04, ae05, ae06, ae07, ae08, ae09, ae10,
@@ -133,7 +135,7 @@ public class AvniSyncSimulation extends Simulation {
             ae31, ae32, ae33, ae34, ae35, ae36, ae37, ae38, ae39, ae40,
             ae41, ae42, ae43, ae44, ae45, ae46, ae47, ae48, ae49, ae50,
             ae51, ae52, ae53, ae54, ae55, ae56, ae57, ae58, ae59, ae60,
-            ae61, ae62, ae63, ae64
+            ae61, ae62, ae63, ae64, ae65
         ), "entity").on(
             foreach(session -> session.getList("syncDetails"), "syncDetail").on(
 //                    doIfEqualsOrElse("#{syncDetail.entityName}", "#{entity.entityName}")
