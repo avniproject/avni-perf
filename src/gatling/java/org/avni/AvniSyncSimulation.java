@@ -154,8 +154,9 @@ public class AvniSyncSimulation extends Simulation {
                                 .transformWithSession((hasNext, session) -> hasNext)
                                 .saveAs("allPagesNotFetched"))
 
-                )))
-            .pause(0, maxPauseToSimulateRealmStorage); //to simulate the time between requests while client stores the data in realm
+                )
+                    .pause(0, maxPauseToSimulateRealmStorage) //to simulate the time between requests while client stores the data in realm
+            ));
 //                        .exec(session -> { // for debugging
 //                            System.out.println("allPagesNotFetched::" + session.getString("allPagesNotFetched"));
 //                            System.out.println("name:" + entityName);
