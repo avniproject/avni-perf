@@ -17,3 +17,11 @@ gatling {
 repositories {
   mavenCentral()
 }
+
+
+dependencies {
+    gatling platform('software.amazon.awssdk:bom:2.20.26')
+    gatling 'software.amazon.awssdk:regions'
+    gatling 'software.amazon.awssdk:cognitoidentity'
+    gatling 'software.amazon.awssdk:cognitoidentityprovider'
+}

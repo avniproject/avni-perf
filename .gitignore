@@ -26,5 +26,5 @@ hs_err_pid*
 build
 
 /.idea/
-/src/gatling/resources/users.*.csv
+/src/gatling/resources/sync-users.*.csv
 !/gradle/wrapper/gradle-wrapper.jar

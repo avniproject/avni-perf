@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import io.gatling.javaapi.core.*;
 import io.gatling.javaapi.http.*;
+import org.avni.helper.CognitoHelper;
 import org.avni.models.AvniEntity;
 import org.avni.models.SyncDetail;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,19 +18,40 @@ import java.util.*;
 
 public class AvniSyncSimulation extends Simulation {
     private static final String baseUrl = System.getProperty("BASE_URL", "https://perf.avniproject.org");
-    private static final Integer users = Integer.getInteger("USER_COUNT", csv("users.csv").recordsCount());
-    private static final Integer rampPeriod = Integer.getInteger("RAMP_PERIOD", csv("users.csv").recordsCount() * 20);
+    private static final Integer userCount = Integer.getInteger("USER_COUNT", csv("sync-users.csv").recordsCount());
+    private static final Integer rampPeriod = Integer.getInteger("RAMP_PERIOD", csv("sync-users.csv").recordsCount() * 20);
     private static final Integer pageSize = Integer.getInteger("PAGE_SIZE", 100);
     private static final Integer maxPauseToSimulateRealmStorage = Integer.getInteger("MAX_REALM_STORAGE_PAUSE", 2);
     private static final String now = System.getProperty("NOW", java.time.Instant.now().toString());
+    private static final Map<String, String> userTokens = new HashMap<>();
 
-    FeederBuilder<String> feeder = csv("users.csv").random();
+    FeederBuilder<String> feeder = csv("sync-users.csv").random();
     static ObjectMapper om = new ObjectMapper();
 
 //    public static final List<Map<String, Object>> allSyncableEntities = jsonFile("AvniEntities.json").readRecords();
 
-    HttpProtocolBuilder httpProtocol = http.baseUrl(baseUrl).acceptHeader("application/json").contentTypeHeader("application/json").acceptEncodingHeader("gzip").header("USER-NAME", "#{userName}").header("AUTH-TOKEN", "#{token}").connectionHeader("Keep-Alive").userAgentHeader("okhttp/5.0.0-alpha.11");
+    HttpProtocolBuilder httpProtocol = http.baseUrl(baseUrl)
+        .acceptHeader("application/json")
+        .contentTypeHeader("application/json")
+        .acceptEncodingHeader("gzip")
+        .header("USER-NAME", "#{userName}")
+        .header("AUTH-TOKEN", "#{token}")
+        .connectionHeader("Keep-Alive")
+        .userAgentHeader("okhttp/5.0.0-alpha.11");
     ChainBuilder syncChainBuilder =
+        exec((session -> {
+            if (!baseUrl.contains("localhost") && !session.contains("token")) {
+                String userName = session.get("userName");
+                String token = userTokens.get(userName);
+                if (token == null) {
+                    token = CognitoHelper.getTokenForUser(userName, session.get("password"));
+                    userTokens.put(userName, token);
+                }
+                Session newSession = session.set("token", token);
+                return newSession;
+            }
+            return session;
+        })).
 //        exec(
 //        http("resetSyncs")
 //            .get("/resetSyncs?lastModifiedDateTime=#{lastModifiedDateTime}&now=2023-02-28T10:25:58.819Z&size=100&page=0")
@@ -53,7 +75,7 @@ public class AvniSyncSimulation extends Simulation {
     ScenarioBuilder syncScenario = scenario("Sync").feed(feeder).exec(syncChainBuilder);
 
     {
-        setUp(syncScenario.injectOpen(rampUsers(users).during(rampPeriod))).protocols(httpProtocol)
+        setUp(syncScenario.injectOpen(rampUsers(userCount).during(rampPeriod))).protocols(httpProtocol)
 //            .assertions(forAll().failedRequests().percent().lte(1.0));
         ;
     }
