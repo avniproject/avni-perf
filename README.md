@@ -9,7 +9,7 @@ The csv expects the following columns:
 - `password`
 - `token`
 
-Either one of `password` or `token` can be provided. If `password` is provided, the token is generated during the simulation. Token generation during simulation requires AWS CLI to be installed with credentials setup on the machine executing the simulation. 
+Either one of `password` or `token` can be provided. If `password` is provided, the token is generated during the simulation. Token generation during simulation requires AWS developer credentials to be available on the machine executing the simulation. 
 
 ### Environment variables
 Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
