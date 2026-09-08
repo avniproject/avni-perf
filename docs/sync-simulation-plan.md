@@ -289,9 +289,93 @@ Derive realistic per-entity push volumes from production `sync_telemetry.entity_
 **D4 — Post sync telemetry at end of sync.** Every real client ends every sync with
 `POST /syncTelemetry`. It is a write on the hot path, currently unmodelled.
 
-**D5 — Decide on media sync.** The client downloads media serially
-(`PARALLEL_DOWNLOAD_COUNT = 1`). In or out of scope is a decision, not an oversight; if in, it needs a
-perf-environment bucket.
+**D5 — Model the presigned-URL calls, not the media transfers.**
+
+Observation media is **not** bulk-synced — it is fetched on demand when a user views a subject or
+encounter. And in every media path, **the bytes go client ↔ S3 directly; avni-server only issues
+presigned URLs, one request per file**:
+
+| Path | Server call | When |
+|---|---|---|
+| Media **upload** | `GET /media/uploadUrl/{fileName}`, then PUT direct to S3 (`MediaQueueService:241-248`) | Inside `mediaSync`, which runs on **every sync**, before `dataServerSync` |
+| Media **view** | `GET /media/signedUrl?url=…` (`MediaService:126`), then fetch direct from S3 | On demand, when a user opens a record |
+| Downloadable content | `/media/modelBlobUrl`, then `downloadWithoutAuth` | In the sync chain |
+
+Three consequences.
+
+**D5.1 — Media upload is unmodelled sync-path load.** A user with N queued media files makes N
+`GET /media/uploadUrl/{fileName}` calls before the data sync even begins, each going through the full
+authentication filter and organisation interceptor. This is genuine per-sync server load and the
+simulation does not touch it at all. It is the part of media that most clearly belongs in scope.
+
+**D5.2 — Do not transfer the bytes.** Since S3 serves the objects directly, having the injector PUT
+and GET real files measures S3 and consumes bandwidth without exercising avni-server. Model the
+presigned-URL requests; skip the transfers. This makes media cheap to include rather than a reason to
+exclude it.
+
+**D5.3 — On-demand viewing: out of scope.** *Decided.* `/media/signedUrl` traffic is driven by users
+browsing records rather than syncing, and this exercise is sync-focused. It is not modelled.
+
+Note that it shares an endpoint family with upload, so whatever D5.1 learns about signing cost — and
+about the `@Transactional` overhead below — applies to viewing too, should it ever be picked up.
+
+**D5.4 — A real S3 bucket is probably not required.** Worth stating carefully, because both the
+simulation's own comment and earlier drafts of this plan got the reason wrong.
+
+`generatePresignedUrl` is a **purely local computation** — the SDK signs a canonical request from the
+credentials, bucket name, key, method and expiry, and makes no call to S3. A presign for a
+non-existent bucket succeeds and returns a well-formed URL; it would only fail when something
+actually fetched it, which D5.2 says the simulation never does. There is also **no bucket validation
+anywhere** — no `doesBucketExist`, no `headBucket`, no `@PostConstruct` check in `StorageService`,
+`AWSS3Service` or `S3Service` — so the server will not fail at startup either.
+
+**Why `News` actually fails today is a configuration mismatch, not S3 connectivity.**
+`AWSS3Service.generateMediaDownloadUrl` authorises *before* signing:
+
+```java
+if (!mediaDirectory.equals(mediaDirectoryFromUrl) || !(bucketName.equals(amazonS3URI.getBucket()))) {
+    throw new AccessDeniedException(...);
+}
+```
+
+It parses the **stored** URL and compares its bucket against the server's configured `bucketName`,
+and its media directory against the organisation's. News rows carrying production `heroImage` URLs on
+a server configured with a different bucket therefore throw `AccessDeniedException` — entirely
+server-side, with S3 never contacted. The simulation's comment that this "connects to prod s3 which
+fails" is a misdiagnosis.
+
+What is actually required:
+
+| | |
+|---|---|
+| A configured `bucketName` | Must be **set**; need not exist |
+| The organisation's `mediaDirectory` populated | `getOrgDirectoryName()` throws `IllegalStateException` if null |
+| Generated media URLs consistent with both | Under our control, since the dataset is generated (H) — emit `heroImage` and observation media URLs matching the configured bucket and media directory, and `News` works uncommented |
+
+**One thing left to verify:** `/media/modelBlobUrl` calls `getURLForExtensions(key, organisation)`,
+and it sits on the sync chain via `downloadContent` / `DownloadableContentService`. It returns a URL
+and is very likely presigning like the rest, but `StorageService` does contain genuine server-side S3
+calls (`getObject`, `listObjects`, `doesObjectExist`), so confirm this one before concluding the sync
+path never touches S3 for real.
+
+Creating an empty bucket is cheap and removes the question entirely — but it should be a deliberate
+choice, not an assumed requirement.
+
+> **Confirmed: presigning itself is pure CPU.** `AWSS3Service.generateMediaDownloadUrl` parses the
+> URI, regex-matches the media directory, compares strings, and calls
+> `s3Client.generatePresignedUrl` — which signs locally with no S3 round trip. `authorizeUser()` and
+> `getOrgDirectoryName()` both read `UserContextHolder`, a ThreadLocal the authentication filter has
+> already populated. No database query.
+>
+> **But the wrapper is not free.** `generateUploadUrl` and `generateDownloadUrl` are both annotated
+> `@Transactional(readOnly = true)`, so each call borrows a pooled connection and pays the
+> interceptor cost in F2.1 — three Postgres round trips — while issuing no SQL of its own. Note the
+> batch `POST /media/signedUrls` has no `@Transactional` at all, which suggests the annotation is
+> incidental rather than deliberate. Removing it from the two presign endpoints is a plausible cheap
+> win; confirm nothing downstream depends on the transaction first.
+
+**Still to confirm:** whether concept media URLs (`concept.media[].url`, downloaded during reference
+sync at `PARALLEL_DOWNLOAD_COUNT = 1`) are signed or direct.
 
 **D6 — Interim weighted storage pause.** Replace the uniform constant with a per-entity weight table
 scaled by page record count. Concrete task, detailed below.
@@ -592,12 +676,31 @@ Two things worth knowing before instrumenting, both verified in `avni-server`:
   anything else saturates. Worth testing early — it is cheap to confirm and, if true, the first
   choke point is a one-line configuration change.
 
-**F2.1 — Watch the per-connection organisation interceptor.** `application.properties:17` registers
-`SetOrganisationJdbcInterceptor` as a Tomcat JDBC interceptor, so organisation context is set on
-every connection borrow — and the schema uses row-level security (`enable_rls_on_tx_table`, seen on
-`sync_telemetry`). Multi-tenancy therefore costs something on every borrow and every query. Whether
-it is significant is unknown; it is a plausible contributor and it is on the path of literally every
-request.
+**F2.1 — The per-connection organisation interceptor costs three round trips per borrow.**
+*Verified in code, not speculation.* `application.properties:17` registers
+`SetOrganisationJdbcInterceptor` on the Tomcat JDBC pool. Reading
+`framework/tomcat/SetOrganisationJdbcInterceptor.java`:
+
+- **On borrow** (`reset`), two separate statements execute:
+  `set role "<dbUser>";` then `set application_name to "<dbUser>";`
+- **On release** (`invoke`, when the method is `close`), a third: `RESET ROLE`
+
+That is **three Postgres round trips wrapped around every pooled connection use**, before any
+application query runs. It is how multi-tenancy is enforced — the role drives row-level security
+(`enable_rls_on_tx_table`) — so it is doing necessary work, but the cost lands on the path of every
+single request that touches the database.
+
+There is a second, subtler cost in the same class. `invoke` builds a TRACE log line for every proxied
+connection method other than `getMetaData` and `toString`, and its argument is
+`connection.getMetaData().getConnection().hashCode()`. Parameterised logging defers *formatting* but
+not *argument evaluation*, so `getMetaData()` is called on every `prepareStatement`, `createStatement`,
+`commit` and `setAutoCommit` regardless of whether TRACE is enabled.
+
+**Why this is high on the suspect list:** it is per-connection-borrow rather than per-query, it is
+unconditional, it interacts directly with the unconfigured pool size in F1, and requests that need no
+database at all still pay it whenever they are wrapped in `@Transactional` — `/media/uploadUrl` being
+a concrete example (D5). Quantify it early: it is cheap to measure and, if significant, the fixes
+range from a one-line log change to batching the two `SET` statements into one round trip.
 
 **F2 — Check request logging isn't itself the choke point.** `AuthenticationFilter` logs at INFO twice
 per request — on receipt, and on completion with timing — including the full query string. Under load
@@ -1049,7 +1152,7 @@ means the harness does not require it, not that it is unnecessary.
 |---|---|
 | Outbound side effects impossible — notifications, SMS, external integrations. Enforce at the infrastructure boundary rather than in application config alone, so a configuration mistake cannot cause an incident | F5.3 |
 | A decision, recorded, on whether ETL and reporting background jobs run during tests — they compete for the same database and are arguably part of realistic load | F5.3 |
-| An S3 bucket belonging to this environment. Needed for the `News` entity regardless of scope — it currently reaches production S3, which is why the simulation has it commented out — and for media if D5 puts media in scope | C2, D5 |
+| A configured `bucketName` and a populated organisation `mediaDirectory`. **An actual S3 bucket is probably not needed** — presigning is local and nothing validates the bucket's existence; see D5.4. Create one only as a deliberate choice | D5.4, C2 |
 | An outbound path for run artefacts: `simulation.log`, generated reports and run metadata | A11 |
 
 ### I5 — Observability
@@ -1092,8 +1195,14 @@ calendar.
   config available locally — ~250 concepts, 4 forms — and it represents the typical-to-small case. Is
   there a bigger one that can be checked in? If not, the large-org shape has to be synthesised by
   scaling it, and that becomes a task rather than a question.
-- **Media sync in scope?** (D5.) Affects whether the perf environment needs its own S3 bucket. **D5
-  is scheduled in Phase 3 contingent on this answer** — if the answer is no, drop it.
+- **How many media files does a typical sync upload?** (D5.1.) Each one is a
+  `GET /media/uploadUrl/{fileName}` call on the sync path, so the distribution sets how much server
+  load media contributes. `sync_telemetry` does not record media counts, so this needs another source
+  — S3 object creation rate per org over a period is the most likely proxy. **This is the only media
+  question that blocks anything**; D5.2 already settles that the transfers themselves are not
+  simulated, and the S3 bucket is required regardless of the answer.
+- **~~Is on-demand media viewing in scope?~~** *Decided: no.* Browsing workload, not a sync one. See
+  D5.3.
 - **Reset sync scope.** (D9.) Modelling the post-reset stampede is potentially the highest-load
   scenario in the system. Worth including, but confirm how often resets actually happen in production
   before investing in it. Needs H6.1 access to answer.
