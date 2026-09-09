@@ -25,7 +25,7 @@ That is a real, working download-sync probe and a good foundation.
 | Java toolchain | not declared — runs inherit ambient JDK |
 | Entities in sim | 60, hardcoded in `sync()` |
 | Push path coverage | none |
-| Server APM | none |
+| Server APM | New Relic, attached by javaagent — **not** provisioned for a load-test env |
 | Assertions | commented out |
 
 The work below is of two kinds: making the simulation **faithful** to what the client actually does,
@@ -656,8 +656,14 @@ volumes and push volumes from that table rather than inventing them.
 The gating workstream. Without it, every run yields "it got slow" and no cause — and the simulation
 work above produces findings nobody can act on.
 
-**F1 — Instrument the server.** `avni-server`'s build declares no Micrometer, Actuator,
-OpenTelemetry, New Relic or Datadog — there is nothing beneath the Gatling report. Minimum viable set:
+**F1 — Attach the existing instrumentation to the load-test environment.** Smaller than it first
+appears. `avni-server`'s *build* declares no Micrometer, Actuator or OpenTelemetry — but that is
+because **New Relic is already the APM, attached at runtime as a javaagent** rather than compiled in.
+Every non-local environment carries it in `avni_server_opts`
+(`-javaagent:/opt/newrelic/newrelic.jar -Dnewrelic.environment=…` in prod, staging, prerelease,
+rwb_prod and rwb_staging), and `avni-infra` has a `configure/roles/newrelic/` role that provisions it.
+
+So F1 is mostly *configuration of a new environment*, not *building instrumentation*. Target set:
 
 - `pg_stat_statements` and the slow query log
 - JVM and GC metrics
@@ -675,6 +681,32 @@ Two things worth knowing before instrumenting, both verified in `avni-server`:
   falsifiable prediction: concurrency beyond that default should produce borrow waits before
   anything else saturates. Worth testing early — it is cheap to confirm and, if true, the first
   choke point is a one-line configuration change.
+
+#### Almost none of this needs an avni-server code change
+
+`avni_server_opts` is a universal escape hatch: it is templated into `OPENCHS_SERVER_OPTS` by
+`configure/roles/avni_appserver/templates/appserver.conf.j2` and already carries both `-D` Spring
+properties and a `-javaagent`. So each item is set from `avni-infra` group_vars:
+
+| Item | How |
+|---|---|
+| Per-endpoint p95/p99, JVM and GC metrics, pool gauges | Attach the existing `newrelic` role to the load-test environment |
+| Pool size | `-Dspring.datasource.tomcat.max-active=…` — no need to edit `application.properties` |
+| F2 log level | `-Dlogging.level.org.avni.server.framework.security.AuthenticationFilter=WARN` |
+| GC logging, if not relying on the agent | `-Xlog:gc*` |
+| `pg_stat_statements`, slow query log | RDS parameter group plus `CREATE EXTENSION` — infrastructure, but the RDS side rather than Ansible |
+
+`AVNI_IDP_TYPE` is likewise already templated, so B1 needs no code change either.
+
+**What does need avni-server code**, and neither is an investigation:
+
+- The **F2.1 remediation** below — collapsing the two `SET` statements and removing the unconditional
+  `getMetaData()` evaluation. Measuring the cost is configuration; fixing it is code.
+- **F3** — deleting `avni-server/perf/gatling/`.
+
+**The gap:** `configure/group_vars/` has no perf or loadtest environment file at all — the
+environments are prod, staging, prerelease, rwb_*, onpremise, snapshot and vagrant. All of the above
+lands in a file that does not exist yet, which belongs with the environment work in F4/F5.
 
 **F2.1 — The per-connection organisation interceptor costs three round trips per borrow.**
 *Verified in code, not speculation.* `application.properties:17` registers
@@ -1162,6 +1194,10 @@ metrics, Tomcat JDBC pool gauges including waiting borrows, and per-endpoint p95
 must be able to explain *why* it slowed down, not only report that it did — without this the entire
 plan produces unactionable findings.
 
+Mostly satisfied by attaching the existing `newrelic` Ansible role and setting a few `-D` properties
+in `avni_server_opts`; see F1. The blocker is that **no perf or loadtest group_vars file exists**, so
+there is nowhere for that configuration to live yet.
+
 ---
 
 ## Sequencing
@@ -1170,7 +1206,7 @@ Ordering reflects dependencies, not estimates.
 
 | Phase | Tasks | Why here |
 |---|---|---|
-| **0 · Foundation** | **Q1–Q7** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · B2 → **F4** → B1 · F1 | **Run the appendix queries first** — they are a day's work with no dependencies, and they populate the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings. **Order matters within auth: B2 must be measured while Cognito still works, then F4 opens the deploy path, then B1 closes the environment.** B1 deletes A2, A3, A8 and collapses most of G5. |
+| **0 · Foundation** | **Q1–Q7** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · B2 → **F4** → B1 · F1 | **Run the appendix queries first** — they are a day's work with no dependencies, and they populate the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Order matters within auth: B2 must be measured while Cognito still works, then F4 opens the deploy path, then B1 closes the environment.** B1 deletes A2, A3, A8 and collapses most of G5. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **G4's restore mechanism lands with D3** — until the simulation writes, runs are read-only and need no teardown at all, so this apparatus can be deferred to here rather than built up front. |
 | **3 · Workload** | **D7** · E3, E5 · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
