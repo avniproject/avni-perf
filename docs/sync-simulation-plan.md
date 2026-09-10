@@ -1003,53 +1003,31 @@ Neither is obviously better. **Decide by timing both once, not by argument.**
 | Where the artefact lives | A second database in the instance | S3, outside RDS storage |
 | Index state | Whatever the template holds | Always pristine |
 
-The storage difference has a specific cause worth understanding: **`TEMPLATE` copies alongside the
-original, so source and target coexist and you must provision for that peak.** With a dump you
-`DROP DATABASE` *first* and restore into the space freed, so peak allocated storage is roughly 1×.
+The storage difference has one cause: **`TEMPLATE` copies alongside the original, so source and
+target coexist.** With a dump you `DROP DATABASE` *first* and restore into the space freed.
 
-That matters more than it appears, for two reasons.
+Whether that peak is affordable is a provisioning question for the infrastructure plan, not this one.
+Flag the requirement — a template reset needs roughly twice the dataset in headroom — and let the
+sizing decision sit where it belongs.
 
-**RDS allocated storage can only be increased, never decreased.** Provisioning 2× is a permanent
-commitment for the life of that instance.
+#### Sizing the dataset
 
-**The 400 GiB striping threshold.** On gp3, RDS PostgreSQL uses one volume below 400 GiB and **four**
-at or above it. Baseline performance jumps from 3,000 IOPS / 125 MiB/s to 12,000 IOPS / 500 MiB/s, and
-only above the threshold can additional IOPS be provisioned at all ([AWS: RDS DB instance
-storage](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Storage.html)). So if production
-sits below 400 GiB and the perf environment is provisioned to match, **doubling storage for a template
-can silently give the perf environment four times production's baseline IOPS** — making it faster than
-prod and every result optimistic, in a way a parity check comparing "storage type: gp3" would not
-catch. Crossing the threshold later is also not cheap: RDS moves the data to new volumes rather than
-using Elastic Volumes, consuming significant IOPS and leaving the instance `Modifying` for hours.
+Measured on the production read replica:
 
-> **Storage autoscaling must be off.** Otherwise the environment can cross 400 GiB on its own,
-> mid-project, and silently change its own IO characteristics. Tracked on the infrastructure side.
+| Bucket | Size | Relations |
+|---|---|---|
+| `public` (transactional) | 70 GB | 143 |
+| Org schemas (ETL) | 62 GB | 10,367 |
+| System | 1.5 GB | 68 |
 
-#### Production: 300 GiB allocated, 134 GB used
+**The transactional dataset to reproduce is ~70 GB.** That is the number section H generates against.
 
-Measured on the read replica:
+Storage *provisioning* — allocation size, IOPS and throughput settings, autoscaling — is an
+infrastructure concern and is not specified here. This plan states one requirement, in section J:
+**IO parity with production.** How that is achieved belongs to the infrastructure plan.
 
-| Bucket | Size | Share | Relations |
-|---|---|---|---|
-| `public` (transactional) | 70 GB | 52.5% | 143 |
-| Org schemas (ETL) | 62 GB | 46.3% | 10,367 |
-| System | 1.5 GB | 1.1% | 68 |
-
-**300 GiB allocated, ~134 GB used — roughly 45% full.** On gp3 below 400 GiB that is one volume at a
-fixed **3,000 IOPS / 125 MiB/s**, with additional IOPS not provisionable at all.
-
-**The distinction that matters: striping keys off *allocated* storage, which is a provisioning
-decision — not off how much data you put in it.** Provision the perf environment at 300 GiB to match
-production and it gets one volume and the same 3,000 IOPS, regardless of dataset size.
-
-That defuses the earlier concern. The transactional dataset to reproduce is **~70 GB**, not 300 GiB.
-A template copy doubles it to ~140 GB, which sits inside a 300 GiB allocation with room to spare and
-never approaches the threshold. **`CREATE DATABASE … TEMPLATE` is viable**, and the choice between it
-and `pg_restore`/regenerate returns to its original terms — reset speed against storage headroom,
-both fitting within production-matching allocation. Decide by timing.
-
-The two standing constraints are unchanged and now easy to satisfy: **allocate 300 GiB to match
-production**, and **keep storage autoscaling off** so nothing crosses 400 GiB unobserved.
+Both reset options fit comfortably within a production-matching allocation, so **the choice between
+them is decided by timing, not by storage**.
 
 #### Storage IO is a prime suspect before any test runs
 
@@ -1061,9 +1039,10 @@ Checkable on production today, with no load test: CloudWatch `ReadIOPS` + `Write
 `ReadThroughput` + `WriteThroughput` against 125 MiB/s, at peak. Add `DiskQueueDepth` — sustained
 non-zero queue depth is the signal that IO is binding.
 
-It constrains remediation too, which is worth knowing before a finding lands: raising IO means either
-growing past 400 GiB — an hours-long volume migration with the instance in `Modifying` — or moving to
-io1/io2. Both forfeit parity with today's production, differently.
+It constrains remediation too, which is worth knowing before a finding lands: production's IO ceiling
+cannot simply be raised in place. The options available, and their cost, are an infrastructure
+question — but any of them forfeits parity with today's production, so a finding here changes what
+subsequent runs are measuring against.
 
 #### ETL shares that ceiling, on a 90-minute cycle
 
@@ -1132,8 +1111,7 @@ CREATE DATABASE avni_perf TEMPLATE avni_perf_template STRATEGY = FILE_COPY;
 
 **Parameter group parity is part of this.** `shared_buffers`, `work_mem`, `max_connections`,
 `effective_cache_size` and the autovacuum settings all come from the RDS parameter group, and a
-restored instance inherits the snapshot's. Match production's parameter group and storage class —
-IOPS and throughput included, per the threshold above — or record the deviation under F5.2.
+restored instance inherits the snapshot's. Match production's, or record the deviation under F5.2.
 
 **None of this is needed yet.** Download sync is read-only, so runs do not modify application data
 until D3 lands. The decision belongs in Phase 2, informed by measurement, not now.
@@ -1294,9 +1272,9 @@ impact:
 - **Tenant count and size skew**, and **organisation hierarchy depth** — the first two set total table
   size and planner statistics, the third sets how far reference-table RLS walks ancestors. See
   section I.
-- **Total size: target ~70 GB of transactional data.** Production allocates 300 GiB but uses ~134 GB,
-  of which `public` is 70 GB and per-organisation ETL schemas are 62 GB (G4). Generating against the
-  300 GiB allocation figure would overshoot production's transactional volume more than fourfold.
+- **Total size: target ~70 GB of transactional data.** That is production's `public` schema; the
+  per-organisation ETL schemas are a further 62 GB (G4). Size against the transactional figure, not
+  against the instance's allocated storage — those differ by several times.
 - **The ETL-enabled fraction is a generator parameter.** ETL is not enabled for every organisation,
   so its storage and IO contribution depends on how many generated orgs have it. Enable it on none
   and the ETL-contention scenario disappears; enable it on all and both storage and IO contention
@@ -1494,10 +1472,10 @@ means the harness does not require it, not that it is unnecessary.
 | PostgreSQL 16.8 | G4 |
 | Dedicated — must not share a database with anything real | B1 |
 | Parameter group matching production's, autovacuum settings included | G4 |
-| Storage class, IOPS and throughput matching production | G4 |
+| **IO parity with production** — storage class, IOPS and throughput. The plan requires the parity; the infrastructure plan owns how it is achieved and what the numbers are | G4 |
 | `pg_stat_statements` and slow query logging enabled | F1 |
-| **Storage autoscaling disabled** — otherwise the environment can cross the 400 GiB striping threshold on its own and silently change its own IO characteristics mid-project | G4 |
-| Storage headroom **only if the chosen reset method needs it** — `TEMPLATE` needs ~2× the dataset, `pg_restore` ~1×. Undecided; check the 400 GiB interaction in G4 before provisioning double | G4 |
+| **Storage IO characteristics stable for the life of the environment** — they must not change between runs, whether by autoscaling, resizing or any other means, or runs stop being comparable | G4 |
+| Headroom for the chosen reset method — `TEMPLATE` needs roughly 2× the dataset, `pg_restore` ~1×. The dataset is ~70 GB (G4) | G4 |
 | Snapshot and restore available for **baseline creation and dataset portability** — explicitly not as the per-run reset, for the lazy-loading reason in G4 | G4 |
 
 ### I4 — Data and side effects
