@@ -904,10 +904,14 @@ configuration, connection pool sizing, JVM flags, whether the database is shared
 deviation from production must be written down — every result carries an asterisk otherwise, and the
 asterisk needs to be legible when someone reads the findings months later.
 
-**F5.3 — Suppress outbound side effects.** Notifications, SMS, external integrations, ETL and
-reporting jobs. Also decide whether background jobs *should* run during a test: they compete for the
-same database and are arguably part of realistic load, so this is a choice to make explicitly rather
-than discover.
+**F5.3 — Suppress outbound side effects, but run ETL deliberately.** Notifications, SMS and external
+integrations must be dead.
+
+ETL is a different question and no longer a housekeeping one. It runs on a **90-minute Quartz cycle**,
+reads the public schema in competition with sync, and shares production's fixed 3,000 IOPS (G4). An
+ETL cycle landing on the start-of-day sync herd is a scheduled, recurring production event. **Run both
+scenarios — sync alone and sync with a concurrent ETL cycle — and treat the delta as a finding.**
+Suppressing ETL entirely would hide one of the more plausible real-world contention sources.
 
 ### F6 — Run-to-run data lifecycle
 
@@ -1020,6 +1024,59 @@ using Elastic Volumes, consuming significant IOPS and leaving the instance `Modi
 
 > **Storage autoscaling must be off.** Otherwise the environment can cross 400 GiB on its own,
 > mid-project, and silently change its own IO characteristics. Tracked on the infrastructure side.
+
+#### Production is 300 GiB on gp3 — which decides it
+
+Production sits **below the threshold**: one volume, baseline **3,000 IOPS / 125 MiB/s**, and on gp3
+below 400 GiB additional IOPS **cannot be provisioned at all** (the AWS table reads "Not applicable").
+Production's IO ceiling is fixed unless the volume grows past 400 GiB.
+
+That resolves the choice above. A 300 GiB dataset doubled for a template is ~600 GiB, which crosses
+into striping and hands the perf environment **12,000 IOPS baseline — 4× production**. So
+`CREATE DATABASE … TEMPLATE` is not merely expensive here, it **breaks IO parity as a side effect**.
+
+**Use `pg_dump`/`pg_restore` or regenerate.** Both keep allocated storage near 1×, stay under
+400 GiB, and preserve parity. The decision is made on parity, not on reset time — time the options
+only to know what run turnaround will be.
+
+#### Storage IO is a prime suspect before any test runs
+
+A 300 GiB database with GIN indexes on `observations`, serving sync reads at page size 1000, capped at
+**3,000 IOPS and 125 MiB/s**. Once the working set exceeds `shared_buffers`, that ceiling is plausibly
+*the* constraint rather than CPU, the connection pool, or any of the query-level suspects.
+
+This is checkable on production today, with no load test: compare CloudWatch `ReadIOPS` + `WriteIOPS`
+against 3,000, and `ReadThroughput` + `WriteThroughput` against 125 MiB/s, at peak. Add
+`DiskQueueDepth` — sustained non-zero queue depth is the signal that IO is the binding constraint.
+
+It also constrains remediation, which is worth knowing before a finding lands: raising IO means either
+growing past 400 GiB — an hours-long volume migration with the instance in `Modifying` — or moving to
+io1/io2.
+
+#### ETL shares that ceiling, on a 90-minute cycle
+
+`avni-etl` maintains a **flat analytical schema per organisation**, converting every JSONB key to a
+column, plus passthrough tables (all rows including voided) and materialised views that are **dropped
+and recreated at the end of every run**. A Quartz job runs it **every 90 minutes**.
+
+Two consequences.
+
+**Storage.** ETL schemas plausibly account for more than half of the 300 GiB, so production's
+*transactional* data is considerably smaller than the allocated figure. Section H must size the
+generated dataset against the transactional portion, not against 300 GiB, or it will overshoot
+production by a wide margin.
+
+**IO contention, which matters more.** ETL reads the public schema — competing directly with sync
+reads — writes the org schema, and rebuilds materialised views, all against the same fixed 3,000 IOPS.
+An ETL cycle coinciding with the start-of-day sync herd is a *recurring, scheduled* production event,
+not a hypothetical. **Sync load with and without a concurrent ETL cycle should be a scenario, not a
+tidiness decision** — this promotes the background-jobs question in F5.3 from housekeeping to a
+first-class comparison, and the delta between the two is itself a finding.
+
+> **A tempting shortcut, stated so it is rejected deliberately.** Excluding ETL schemas from the
+> generated dataset would keep it near ~150 GiB, making even a doubled template fit under 400 GiB. It
+> also discards storage parity, IO-contention realism, and the ETL-concurrent scenario above. Not
+> worth it — but if it is ever done, record it as a deviation in F5.2.
 
 #### A third option, specific to this project
 
@@ -1225,6 +1282,11 @@ impact:
 - **Tenant count and size skew**, and **organisation hierarchy depth** — the first two set total table
   size and planner statistics, the third sets how far reference-table RLS walks ancestors. See
   section I.
+- **Size against the *transactional* portion, not total allocated storage.** Production's 300 GiB
+  includes per-organisation ETL schemas, which flatten every JSONB key into a column and plausibly
+  account for more than half of it. Generating against the headline figure would overshoot
+  production's transactional volume substantially. Q7 gives the split — compare row counts and table
+  sizes in `public` against the org schemas.
 
 > **The GIN indexes make observation cardinality a first-class concern.**
 > `V1_03__AddGinIndexForObservations.sql` creates `GIN (observations jsonb_path_ops)` on `individual`,
