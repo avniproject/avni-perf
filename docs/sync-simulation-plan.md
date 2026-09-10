@@ -226,17 +226,29 @@ query-parameter name per entity. Emit the sim's table from it with a small scrip
 and add a CI check that fails when regenerating produces a diff. This converts a recurring manual fix
 into a build-time guarantee.
 
-**C2 — Add the entities the sim is missing.** Present in `EntityMetaData`, absent from the simulation:
+**C2 — Reconcile the entity list.** The simulation has **64 entries; `EntityMetaData` has 74**, and
+the drift runs in both directions.
 
-- `DownloadableContent`
-- `CustomCardConfig`
-- `Session`
-- `AttendanceRecord`
-- `RuleFailureTelemetry`
-- `VideoTelemetric`
-- `ResetSyncs`
-- `News` — currently commented out because it reaches prod S3. Fix by pointing the perf environment at
-  its own bucket rather than skipping the entity.
+*Missing from the simulation (13):* `AttendanceRecord`, `AttendanceType`, `Calendar`,
+`CalendarDateMarker`, `CustomCardConfig`, `DashboardFilter`, `DownloadableContent`, `ResetSync`,
+`RuleFailureTelemetry`, `Session`, `SyncTelemetry`, `TaskUnAssignment`, `VideoTelemetric`.
+
+*Present in the simulation but not canonical (3):*
+
+- `ProgramConfig` and `ProgramOutcome` — removed upstream; the simulation still asks for them
+- **`TaskUnAssigment`** — a typo, missing an `n`. The real entity is `TaskUnAssignment`
+
+> **The typo is a live bug, not cosmetic.** `sync()` matches with
+> `doIfEquals("#{syncDetail.entityName}", "#{entity.entityName}")`, so `TaskUnAssigment` never matches
+> the server's `TaskUnAssignment` and **that entity is silently skipped on every run** — no error, no
+> warning, just an entity that is never synced. `SyncDetailsBody.json` has the correct spelling, which
+> is why this was invisible.
+>
+> This is the strongest possible argument for C1: a generated list cannot contain a typo, and a CI
+> drift check would have caught all sixteen discrepancies.
+
+Also: `News` is commented out in the simulation. It can be re-enabled once the environment has a
+configured `bucketName` and consistent stored URLs — see D5.4; it does not require a real bucket.
 
 **C3 — Split `EntityApprovalStatus` by entity type.** The client issues five separate paginated pulls
 — Subject, Encounter, ProgramEncounter, ProgramEnrolment, ChecklistItem — each with its own
@@ -499,8 +511,27 @@ tier work can be written and reviewed before the number arrives.
 > D7's device instrumentation and use Q1 only as a sanity ceiling. Either way, **do not use Q1's
 > output as `baseMsPerRecord` unmodified.**
 
-**D6.2 — Classify entities into weight tiers.** Three tiers, expressed as multipliers of
-`baseMsPerRecord` rather than absolute milliseconds:
+**D6.2 — Start from the client's own `syncWeight`, not from invented tiers.**
+
+`EntityMetaData` already carries a **`syncWeight` on every one of its 74 entries** (values 0–4), used
+by `ProgressbarStatus.js` to size progress-bar increments:
+
+```js
+this.progress += (syncWeight / ((totalNumberOfPages === 0 ? 1 : totalNumberOfPages) * 100));
+```
+
+Be precise about what that is. It is the client team's own estimate of **how much of a whole sync each
+entity accounts for** — a per-entity total, spread across that entity's pages. It is **not** a
+per-record cost, and it conflates typical row count with per-row expense. It is also tuned for a
+progress bar that moves smoothly rather than measured against a clock.
+
+Even so it beats the tiers below on every axis that matters: it is per-entity rather than
+per-tier, it is maintained by the people who change the entity list, and it arrives **free with the
+C1 generator** since it lives in the same file. Use it as the starting weight, and let D6.1's
+`baseMsPerRecord` set the scale.
+
+The three tiers below are the fallback if `syncWeight` turns out not to correlate with observed cost
+when checked against Q1 — keep them only as a sanity check on the shape:
 
 | Tier | × base | Entities |
 |---|---|---|
