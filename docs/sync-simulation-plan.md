@@ -716,11 +716,12 @@ production case and has a completely different profile. Add upload-only backgrou
 - *Spike* — the start-of-day thundering herd; realistic worst case for a field app
 - *Soak* — multi-hour; the case that raised the auth question
 
-**E4 — Multi-org / noisy neighbour scenario.** *Finding-triggered, not baseline.* Drive one large
-organisation alongside several small ones and watch whether the small orgs' latency degrades. A
-tenancy bottleneck cannot surface in a single-org run — but build this when something points at
-tenancy (shared connection pool saturation, row-level-security overhead, lock contention across
-orgs), not before.
+**E4 — Multi-tenant load.** *First-class, not finding-triggered — see section I.* The feeder and
+user provisioning must be able to span organisations with a controllable mix. Two shapes worth
+running: a realistic spread of tenants syncing concurrently, and one large organisation alongside
+several small ones to expose noisy-neighbour effects. Neither can surface in a single-org run, and the
+shared connection pool plus per-borrow `set role` churn make cross-tenant contention a distinct
+failure mode from anything a single tenant produces.
 
 **E5 — Size everything from `sync_telemetry`.** Production already records per-sync duration,
 per-entity push/pull counts, local data volumes, device and connection type. Take user counts, data
@@ -1113,6 +1114,11 @@ source as input; it must not hard-code one implementation. Different runs will w
 configurations, and the one used should be recorded in the run metadata (A11) alongside its revision,
 because org shape materially changes what is being measured.
 
+**So is tenant count.** The generator must be able to produce **N organisations with a realistic size
+distribution**, not one — and that is required even when load is driven against a single org, because
+RLS selects one tenant's rows out of a table holding every tenant's. See section I2; it is the easiest
+thing in this plan to get quietly wrong.
+
 **Covering organisation size.** Org complexity is itself a load variable — it drives the syncDetails
 row count and therefore the per-row queries in `filterChangedEntities` (D1.1). A configuration
 representing a small or typical implementation will not exercise that; a large one will. Cover the
@@ -1154,6 +1160,9 @@ impact:
   nothing, and no incremental scenario means anything. The spread must look like real editing
   activity over time.
 - **Address level hierarchy shape.** Drives the scope-resolution queries behind catchment filtering.
+- **Tenant count and size skew**, and **organisation hierarchy depth** — the first two set total table
+  size and planner statistics, the third sets how far reference-table RLS walks ancestors. See
+  section I.
 
 > **The GIN indexes make observation cardinality a first-class concern.**
 > `V1_03__AddGinIndexForObservations.sql` creates `GIN (observations jsonb_path_ops)` on `individual`,
@@ -1222,7 +1231,95 @@ whenever the generator changes.
 
 ---
 
-## I. What the harness requires of the environment
+## I. Multi-tenancy as a test dimension
+
+Avni is multi-tenant, and both deployment models exist in the estate — a shared installation hosting
+many organisations, and dedicated installations. **They perform differently, and a test built against
+one says little about the other.** Which model is being tested has to be a deliberate choice.
+
+### I1 — How tenancy is implemented
+
+Three mechanisms, all on the hot path:
+
+- **Row-level security.** Every org-scoped table carries a policy
+  `USING (organisation_id = ANY (public.rls_visible_org_ids()))`. The function is `STABLE`, so it is
+  evaluated once per query rather than per row, but it does query `organisation` and
+  `organisation_group_organisation` each time.
+- **Reference tables use a wider predicate** — `rls_visible_org_ids_with_ancestors()`, which reads
+  `public.org_ids` to include ancestor organisations. So **reference-data visibility walks an org
+  hierarchy**, and hierarchy depth is itself a variable.
+- **`current_user` is the organisation's `db_user`**, set by `SetOrganisationJdbcInterceptor`'s
+  `set role` on every connection borrow (F2.1). RLS and the interceptor are one mechanism, not two.
+
+> `V1_398__IndexableRLSOrgPolicies.sql` exists because the earlier policy referenced
+> `organisation.db_user` directly and was not index-friendly. **Multi-tenant RLS cost has already been
+> a real problem in this codebase once.** That is reason enough to treat it as a first-class dimension
+> rather than a footnote.
+
+### I2 — Why this changes the dataset, even for single-tenant load
+
+The most important consequence, and the easiest to miss:
+
+**`organisation_id = ANY (…)` selects your rows out of a table containing every tenant's rows.** Index
+depth, buffer cache hit ratio, planner statistics and the cost of the index scan are all driven by
+**total table size**, not by one tenant's slice.
+
+So a dataset containing one organisation with 1M observations behaves quite differently from one
+containing fifty organisations totalling 50M, even when the load is driven against a single org in
+both cases. **A single-tenant dataset systematically understates production cost on a shared
+installation.**
+
+Two further effects in the same family:
+
+- **Planner statistics are computed across all tenants.** With skewed tenant sizes — the realistic
+  case — selectivity estimates for `organisation_id` reflect the aggregate distribution. Plans chosen
+  for the average tenant may be wrong for the largest one, which is precisely the tenant most likely
+  to have a performance problem.
+- **Buffer cache holds the union of active tenants' working sets**, not one tenant's.
+
+**Consequence for H:** the generator must be able to produce **N organisations with a realistic size
+distribution**, not one. Treat tenant count and size skew as generator parameters alongside the config
+source (H1). This is required even if the first runs drive load against a single org.
+
+### I3 — Why this changes the load model
+
+Driving multiple tenants concurrently exercises things a single-tenant run cannot:
+
+- **The connection pool is shared across all tenants**, so pool exhaustion is a cross-tenant
+  phenomenon.
+- **`set role` churns on every borrow.** Under multi-tenant load, consecutive borrows of the same
+  connection switch roles constantly. Whether that defeats prepared-statement or plan caching is an
+  open question worth measuring — if it does, the cost is invisible in any single-tenant test.
+- **Noisy neighbour** — one large organisation's sync degrading everyone else's, which E4 covers.
+
+**Consequence for E and G5:** the feeder and user provisioning must be able to span organisations, with
+a controllable mix. E4 is promoted from finding-triggered to a first-class scenario.
+
+### I4 — Deployment model is a run parameter
+
+| Model | What it tests |
+|---|---|
+| **Shared** — many organisations in one installation | RLS selectivity against a large aggregate table, cross-tenant pool contention, role churn, noisy neighbour, planner statistics skew |
+| **Dedicated** — one organisation per installation | The per-tenant path with none of the above. Cheaper to set up, and a legitimate target if that is the model being sold |
+
+Neither is "the" configuration. Record which model a run used in its metadata (A11) alongside tenant
+count and size distribution — results are not comparable across models, and a number quoted without
+that context is misleading.
+
+### I5 — What to measure
+
+- [ ] Cost of the RLS predicate — compare an org-scoped query with RLS active against the same query
+      as a superadmin role where the policy does not apply
+- [ ] How that cost scales with **tenant count** and with **total table size**, which are separable
+- [ ] Reference-table RLS versus transactional-table RLS, given the ancestor walk
+- [ ] Whether `set role` churn under multi-tenant load affects plan or prepared-statement caching
+- [ ] Whether planner statistics skew produces different plans for the largest tenant
+
+Tracked with the other measurement work in the avni-server card, not fixed pre-emptively.
+
+---
+
+## J. What the harness requires of the environment
 
 Every infrastructure obligation this plan creates, gathered in one place so provisioning work can read
 it off directly instead of reconstructing it from the sections above. Each item traces to the task
