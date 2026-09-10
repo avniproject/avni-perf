@@ -511,27 +511,28 @@ tier work can be written and reviewed before the number arrives.
 > D7's device instrumentation and use Q1 only as a sanity ceiling. Either way, **do not use Q1's
 > output as `baseMsPerRecord` unmodified.**
 
-**D6.2 — Start from the client's own `syncWeight`, not from invented tiers.**
+**D6.2 — Invent a weighting, then measure and validate it.** In that order, and do not skip the last
+step. The initial model is a guess whose only job is to be better than one uniform constant; what
+makes it trustworthy is validation against real syncs (F7), not the plausibility of its construction.
 
-`EntityMetaData` already carries a **`syncWeight` on every one of its 74 entries** (values 0–4), used
-by `ProgressbarStatus.js` to size progress-bar increments:
+**A candidate input worth testing.** `EntityMetaData` carries a `syncWeight` on every one of its 74
+entries (values 0–4), used by `ProgressbarStatus.js` to size progress-bar increments:
 
 ```js
 this.progress += (syncWeight / ((totalNumberOfPages === 0 ? 1 : totalNumberOfPages) * 100));
 ```
 
-Be precise about what that is. It is the client team's own estimate of **how much of a whole sync each
-entity accounts for** — a per-entity total, spread across that entity's pages. It is **not** a
-per-record cost, and it conflates typical row count with per-row expense. It is also tuned for a
-progress bar that moves smoothly rather than measured against a clock.
+It is tempting to adopt this wholesale — it is per-entity, maintained by the people who change the
+entity list, and arrives free with the C1 generator. **Do not.** It is a per-entity *total* spread
+across pages, not a per-record cost; it conflates typical row count with per-row expense; and it is
+tuned so a progress bar moves smoothly rather than measured against a clock. It is a reasonable prior
+and a useful cross-check, nothing more.
 
-Even so it beats the tiers below on every axis that matters: it is per-entity rather than
-per-tier, it is maintained by the people who change the entity list, and it arrives **free with the
-C1 generator** since it lives in the same file. Use it as the starting weight, and let D6.1's
-`baseMsPerRecord` set the scale.
+So: build the tiers below, compute the `syncWeight`-derived alternative alongside, and let measurement
+choose between them. If the two disagree sharply for an entity, that disagreement is itself
+informative about which assumption is wrong.
 
-The three tiers below are the fallback if `syncWeight` turns out not to correlate with observed cost
-when checked against Q1 — keep them only as a sanity check on the shape:
+Starting tiers, as multipliers of `baseMsPerRecord`:
 
 | Tier | × base | Entities |
 |---|---|---|
@@ -1098,20 +1099,25 @@ This split is what makes the problem tractable, because the PII is entirely on o
 | **Metadata** — forms, form element groups, form elements, concepts, concept answers, subject types, programs, encounter types, address level hierarchy | **Checked-in implementation config** | Real configuration from a real implementation, already in version control. No governance question, reproducible, diffable. |
 | **Transactional** — individuals, enrolments, encounters, and their observations | **Generate synthetically** | This is where the PII lives. Generating sidesteps anonymisation entirely. |
 
-**Use an existing implementation config repo rather than cloning production metadata.**
-`jss-sickle-cell-screening` is a complete org definition already on disk — `concepts.json` (256
-concepts), `forms/` (4 forms), `formMappings.json` (11 mappings), `encounterTypes.json`,
-`catchments.json`, real `address-level/` data down to village, and `create_organisation.sql` to
-bootstrap it. `avni-health-modules` supplies the shared reference concept and rule library on top.
+**Use an existing implementation config repo rather than cloning production metadata.** Avni
+implementations keep their configuration in version control — typically `concepts.json`, a `forms/`
+directory, `formMappings.json`, `encounterTypes.json`, `catchments.json`, address-level data, and a
+`create_organisation.sql` to bootstrap it. `avni-health-modules` supplies the shared reference concept
+and rule library on top.
 
-This is strictly better than cloning production metadata: it carries no governance question at all,
-it is versioned alongside the plan, and a run can state exactly which config revision it used.
+This is strictly better than cloning production metadata: no governance question, versioned, and a run
+can state exactly which config revision it used.
 
-**Covering organisation size.** The JSS config is realistic but modest — it represents the typical-to-
-small end. Large organisations have many more programs, forms and concepts, and org complexity is
-itself a load variable (it drives the syncDetails row count, and therefore the per-row queries in
-`filterChangedEntities`). If no larger config is available to check in, synthesise one by scaling this
-one — duplicate concept trees and form mappings to reach a realistic large-org shape — rather than
+**Which configuration is a parameter of the run, not a fixed choice.** The generator takes the config
+source as input; it must not hard-code one implementation. Different runs will want different
+configurations, and the one used should be recorded in the run metadata (A11) alongside its revision,
+because org shape materially changes what is being measured.
+
+**Covering organisation size.** Org complexity is itself a load variable — it drives the syncDetails
+row count and therefore the per-row queries in `filterChangedEntities` (D1.1). A configuration
+representing a small or typical implementation will not exercise that; a large one will. Cover the
+range deliberately, either by selecting configurations of different sizes or by scaling one — 
+duplicating concept trees and form mappings to reach a realistic large-org shape — rather than
 assuming the small case generalises.
 
 ### H2 — The generator
@@ -1307,10 +1313,10 @@ calendar.
 - **~~Production statistics access.~~** *Granted.* Queries Q1–Q9 in the appendix are ready to run;
   their outputs feed the Success criteria table, D6.1, D1, E5, F7 and H3/H5. **Running them is now the
   first task in Phase 0** — most other open questions resolve from their output.
-- **A larger org config.** (H1.) `jss-sickle-cell-screening` is the *only* complete implementation
-  config available locally — ~250 concepts, 4 forms — and it represents the typical-to-small case. Is
-  there a bigger one that can be checked in? If not, the large-org shape has to be synthesised by
-  scaling it, and that becomes a task rather than a question.
+- **Which org configuration(s) to run against.** (H1.) The generator treats this as a parameter, so
+  the question is which implementations to cover and whether any available configuration is large
+  enough to exercise org complexity. If none is, the large-org shape has to be synthesised by scaling
+  a smaller one, and that becomes a task rather than a question.
 - **How many media files does a typical sync upload?** (D5.1.) Each one is a
   `GET /media/uploadUrl/{fileName}` call on the sync path, so the distribution sets how much server
   load media contributes. `sync_telemetry` does not record media counts, so this needs another source
