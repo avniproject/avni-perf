@@ -62,6 +62,21 @@ recognise a knee, without requiring anyone to invent an SLO first.
 **Definition of done.** The exercise ends when the top bottlenecks have been named, attributed to a
 specific resource, and either fixed or explicitly accepted with a reason. Not when a run passes.
 
+### Measure before fixing
+
+Reading the code has already produced several plausible suspects, listed throughout this plan. **They
+are hypotheses, not findings.** Every one of them gets a cost attached before anyone changes it —
+including the ones that look obviously wasteful, and including the ones where the fix is a one-line
+change.
+
+Two reasons this matters more than usual here. A cheap-looking fix applied to a suspect that turns
+out to cost 0.3% burns review and deploy cycles on noise while the real bottleneck stays hidden. And
+several suspects are doing **necessary work** — the organisation interceptor enforces row-level
+security, `syncDetails` exists to reduce the client's request count — so the question is never "is
+this expensive?" but "**is it expensive relative to what it buys?**"
+
+That second framing is the one to carry into every measurement below.
+
 ---
 
 ## A. Upgrade and harness hygiene
@@ -270,11 +285,41 @@ cosmetic — `filterChangedEntities` routes some entities through
 `isSyncRequiredForDevice(loadedSince, deviceId)`, so sending none takes a different branch. Add a
 stable per-user device ID to the feeder.
 
-> **Suspect found while reading this code.** `getChangedEntities` does a nested linear scan
-> (`serverSyncableItems.forEach` × `clientSyncStatuses.stream().noneMatch`), and `filterChangedEntities`
-> issues one query per row. For an organisation with many subject types, programs and encounter types
-> that is potentially hundreds of queries on the most-called endpoint in the protocol. Worth an
-> `EXPLAIN` pass under F1 independent of the simulation work.
+### D1.1 — Measure what `syncDetails` costs *and* what it saves
+
+`getChangedEntities` does a nested linear scan (`serverSyncableItems.forEach` ×
+`clientSyncStatuses.stream().noneMatch`), and `filterChangedEntities` issues **one database query per
+row**. For an organisation with many subject types, programs and encounter types that is potentially
+hundreds of queries on the endpoint every sync calls first.
+
+**But that cost is the point of the endpoint.** `syncDetails` exists to tell the client which entities
+actually changed, so the client requests only those instead of blindly polling all ~60. Framing it as
+a bottleneck to remove is wrong; the real question is the trade:
+
+| | |
+|---|---|
+| **Cost** | One `filterChangedEntities` query per entity + type row, plus the nested scan. Scales with organisation complexity, not with data volume. |
+| **Saves** | One paginated entity request per entity that has *not* changed — each of which would otherwise be an HTTP round trip, an auth filter pass, a connection borrow with its three `SET` statements (F2.1), and a query returning zero rows. |
+
+So the trade swings on **how many entities actually change between syncs**:
+
+- **Incremental sync, few changes** — strongly positive. N cheap existence checks replace N full
+  paginated queries plus their round trips.
+- **Full or first sync, everything changed** — pure overhead. It runs N queries to conclude
+  "everything changed", and the client then fetches everything regardless.
+
+**This is answerable from production today, before any load test** — appendix query **Q9** gives the
+distribution of how many entities actually return rows per sync. If the typical sync sees 3 of 60
+entities change, `syncDetails` is earning its cost many times over and effort belongs elsewhere. If
+it is 50 of 60, the endpoint is mostly ceremony.
+
+Note the outcome is unlikely to be "remove it" either way. If the cost proves significant, the fixes
+are to make it cheaper — batch the per-row checks into a single query, or maintain a per-organisation
+last-modified summary the endpoint can consult — not to send the client back to polling every entity.
+
+**Under load this also interacts with D8:** at page size 1000 the per-request overhead `syncDetails`
+saves is amortised over ten times fewer requests, which weakens the benefit side of the trade
+compared with when this endpoint was designed.
 
 **D2 — Take `now` from the server response.** The client uses `now` / `nowMinus10Seconds` returned by
 `syncDetails` as the window end. The sim substitutes its own `NOW` property, which changes the window
@@ -731,8 +776,12 @@ not *argument evaluation*, so `getMetaData()` is called on every `prepareStateme
 **Why this is high on the suspect list:** it is per-connection-borrow rather than per-query, it is
 unconditional, it interacts directly with the unconfigured pool size in F1, and requests that need no
 database at all still pay it whenever they are wrapped in `@Transactional` — `/media/uploadUrl` being
-a concrete example (D5). Quantify it early: it is cheap to measure and, if significant, the fixes
-range from a one-line log change to batching the two `SET` statements into one round trip.
+a concrete example (D5).
+
+**Measure it; do not fix it yet.** Plausible fixes exist — collapsing the two `SET` statements into
+one round trip, removing the unconditional `getMetaData()` evaluation — but applying them before the
+cost is known is the pre-emptive optimisation this plan's method exists to avoid. A suspect found by
+reading is a hypothesis, not a finding.
 
 **F2 — Check request logging isn't itself the choke point.** `AuthenticationFilter` logs at INFO twice
 per request — on receipt, and on completion with timing — including the full query string. Under load
@@ -1206,7 +1255,7 @@ Ordering reflects dependencies, not estimates.
 
 | Phase | Tasks | Why here |
 |---|---|---|
-| **0 · Foundation** | **Q1–Q7** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · B2 → **F4** → B1 · F1 | **Run the appendix queries first** — they are a day's work with no dependencies, and they populate the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Order matters within auth: B2 must be measured while Cognito still works, then F4 opens the deploy path, then B1 closes the environment.** B1 deletes A2, A3, A8 and collapses most of G5. |
+| **0 · Foundation** | **Q1–Q9** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · B2 → **F4** → B1 · F1 | **Run the appendix queries first** — they are a day's work with no dependencies, and they populate the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Order matters within auth: B2 must be measured while Cognito still works, then F4 opens the deploy path, then B1 closes the environment.** B1 deletes A2, A3, A8 and collapses most of G5. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **G4's restore mechanism lands with D3** — until the simulation writes, runs are read-only and need no teardown at all, so this apparatus can be deferred to here rather than built up front. |
 | **3 · Workload** | **D7** · E3, E5 · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
@@ -1224,7 +1273,7 @@ calendar.
   finding. The "no worse than current production" default is a legitimate answer.
 - **Perf environment isolation.** Can it be locked down enough to run `AVNI_IDP_TYPE=none`? Gates B1
   and therefore three other tasks.
-- **~~Production statistics access.~~** *Granted.* Queries Q1–Q7 in the appendix are ready to run;
+- **~~Production statistics access.~~** *Granted.* Queries Q1–Q9 in the appendix are ready to run;
   their outputs feed the Success criteria table, D6.1, D1, E5, F7 and H3/H5. **Running them is now the
   first task in Phase 0** — most other open questions resolve from their output.
 - **A larger org config.** (H1.) `jss-sickle-cell-screening` is the *only* complete implementation
@@ -1395,7 +1444,35 @@ where relname in ('individual', 'program_enrolment', 'program_encounter')
 order by pg_relation_size(indexrelid) desc;
 ```
 
-**Q8 — Fleet page size split (D8.3).** *Not yet answerable* — `pageSize` is not recorded in
+**Q9 — How many entities actually change per sync (D1.1).** The benefit side of the `syncDetails`
+trade. `entity_status->'pull'` carries an entry per entity with `todo`/`done` counts; entries with
+`todo > 0` are the entities `syncDetails` flagged as changed and the client then fetched.
+
+```sql
+with s as (
+  select
+    jsonb_array_length(entity_status->'pull') as entities_tracked,
+    (select count(*) from jsonb_array_elements(entity_status->'pull') e
+       where coalesce((e->>'todo')::int, 0) > 0) as entities_changed
+  from sync_telemetry
+  where sync_status = 'complete'
+    and sync_source is distinct from 'ONLY_UPLOAD_BACKGROUND_JOB'
+    and entity_status ? 'pull'
+    and sync_end_time > now() - interval '30 days'
+)
+select count(*) as syncs,
+       percentile_cont(array[0.5, 0.9]) within group (order by entities_tracked) as tracked_p50_p90,
+       percentile_cont(array[0.5, 0.9]) within group (order by entities_changed) as changed_p50_p90,
+       avg(entities_changed::numeric / nullif(entities_tracked, 0)) as avg_fraction_changed
+from s;
+```
+
+Read it as: **`avg_fraction_changed` near 0 means `syncDetails` is earning its cost many times over;
+near 1 means it is mostly ceremony.** Validate the `todo`/`done` semantics against a sample row before
+trusting the numbers — the client pre-populates the array from entity metadata, so entries exist for
+entities that were never fetched.
+
+**Q10 — Fleet page size split (D8.3).** *Not yet answerable* — `pageSize` is not recorded in
 `app_info`. Rides the same client release as D7's per-entity durations. Until then the production
 split between page size 100 and 1000 is unknown and both must be tested.
 
