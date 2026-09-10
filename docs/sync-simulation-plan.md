@@ -985,14 +985,59 @@ mode to avoid.
 **The answer is to never delete.** Let the run dirty the database however it likes, then discard the
 whole thing and restore. Teardown is a restore, not a set of `DELETE` statements.
 
-**The environment is RDS PostgreSQL 16.8**, which rules out the usual answer. Options in order:
+**The environment is RDS PostgreSQL 16.8**, which rules out the usual answers — no filesystem access,
+no EBS or ZFS snapshots, no `pg_basebackup`.
 
-| Method | Verdict |
+#### Two viable candidates
+
+Neither is obviously better. **Decide by timing both once, not by argument.**
+
+| | `CREATE DATABASE … TEMPLATE` | `pg_dump` / `pg_restore --jobs` |
+|---|---|---|
+| Peak storage | **2× dataset** | **~1× dataset** |
+| Reset time | Fast — file-level page copy | Slow — full index rebuild, GIN worst |
+| Where the artefact lives | A second database in the instance | S3, outside RDS storage |
+| Index state | Whatever the template holds | Always pristine |
+
+The storage difference has a specific cause worth understanding: **`TEMPLATE` copies alongside the
+original, so source and target coexist and you must provision for that peak.** With a dump you
+`DROP DATABASE` *first* and restore into the space freed, so peak allocated storage is roughly 1×.
+
+That matters more than it appears, for two reasons.
+
+**RDS allocated storage can only be increased, never decreased.** Provisioning 2× is a permanent
+commitment for the life of that instance.
+
+**The 400 GiB striping threshold.** On gp3, RDS PostgreSQL uses one volume below 400 GiB and **four**
+at or above it. Baseline performance jumps from 3,000 IOPS / 125 MiB/s to 12,000 IOPS / 500 MiB/s, and
+only above the threshold can additional IOPS be provisioned at all ([AWS: RDS DB instance
+storage](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Storage.html)). So if production
+sits below 400 GiB and the perf environment is provisioned to match, **doubling storage for a template
+can silently give the perf environment four times production's baseline IOPS** — making it faster than
+prod and every result optimistic, in a way a parity check comparing "storage type: gp3" would not
+catch. Crossing the threshold later is also not cheap: RDS moves the data to new volumes rather than
+using Elastic Volumes, consuming significant IOPS and leaving the instance `Modifying` for hours.
+
+> **Storage autoscaling must be off.** Otherwise the environment can cross 400 GiB on its own,
+> mid-project, and silently change its own IO characteristics. Tracked on the infrastructure side.
+
+#### A third option, specific to this project
+
+**Regenerate rather than restore.** The dataset is generated (section H), so the generator's bulk
+`COPY` is essentially `pg_restore`'s data phase without a stored artefact — same index-rebuild cost,
+nothing to manage, no storage doubling. Likely lands close to `pg_restore` on time. Include it when
+timing the other two.
+
+#### Ruled out, and why
+
+| Method | Why not |
 |---|---|
-| **`CREATE DATABASE … TEMPLATE`** | **Best for per-run reset.** File-level copy inside the existing instance: no new instance, no endpoint change, and — critically — the storage blocks are already hydrated, so none of the penalty below. Needs ~2× storage and no active connections to the template during the copy. |
-| **RDS snapshot restore** | **Use for the baseline, not per run.** See the two problems below. Right tool for rebuilding the environment from scratch and for moving the dataset between environments. |
-| **`pg_restore` from dump** | Logically identical but physically pristine — indexes rebuilt with zero bloat. Deterministic, slow at scale. Reasonable fallback. |
-| **`DELETE` + `VACUUM` / `REINDEX`** | **Avoid.** Progressively worse each cycle; `REINDEX` takes as long as a restore and yields a less realistic index than production has. |
+| **`pg_transport`** (transportable databases) | The fastest-sounding option, and genuinely a physical streaming transport — but **access privileges and ownership are not carried over; all objects arrive owned by the destination user** ([AWS docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/PostgreSQL.TransportableDB.html)). Avni's multi-tenancy *is* per-org database roles, RLS policies and `openchs` ownership, so transport would flatten the mechanism the system runs on. It also moves only *between* instances, requiring a second RDS instance to hold the pristine copy. Recorded here because it is the obvious suggestion. |
+| **Aurora fast cloning** | Copy-on-write, seconds, no storage doubling — **the right tool for exactly this problem.** Not available: this is RDS PostgreSQL, not Aurora. Only relevant if Aurora is on the table for production anyway; switching engines to make a load test convenient is backwards. |
+| **`pg_basebackup`, EBS/ZFS snapshots, Database Lab Engine** | All need filesystem access or self-managed Postgres. Using them means the perf database is no longer RDS — trading away production parity, which is a worse loss than a slow reset. |
+| **AWS DMS, Blue/Green deployments** | Continuous sync and deployment tooling. Not reset mechanisms. |
+| **RDS snapshot restore** | Right for baseline creation and portability, wrong per-run — see below. |
+| **`DELETE` + `VACUUM` / `REINDEX`** | Progressively worse each cycle; `REINDEX` takes as long as a restore and yields a less realistic index than production has. |
 
 > **Two RDS-specific problems with snapshot restore as a per-run mechanism.**
 >
@@ -1007,7 +1052,7 @@ whole thing and restore. Teardown is a restore, not a set of `DELETE` statements
 > table and index) before measuring, and that pre-warm can take as long as the restore did. This is
 > more severe than the buffer-cache warming noted in G2, because it is at the storage layer.
 
-**PostgreSQL 16 detail for the template copy.** Since PG15 the default `CREATE DATABASE` strategy is
+**PostgreSQL 16 detail, if `TEMPLATE` wins.** Since PG15 the default `CREATE DATABASE` strategy is
 `WAL_LOG`, which writes the entire copy through WAL and is slow for a large template. Specify
 `STRATEGY = FILE_COPY` explicitly:
 
@@ -1018,9 +1063,11 @@ CREATE DATABASE avni_perf TEMPLATE avni_perf_template STRATEGY = FILE_COPY;
 
 **Parameter group parity is part of this.** `shared_buffers`, `work_mem`, `max_connections`,
 `effective_cache_size` and the autovacuum settings all come from the RDS parameter group, and a
-restored instance inherits the snapshot's. Match production's parameter group and storage class
-(gp3 throughput and IOPS included) or record the deviation under F5.2 — this is an easy one to get
-wrong silently.
+restored instance inherits the snapshot's. Match production's parameter group and storage class —
+IOPS and throughput included, per the threshold above — or record the deviation under F5.2.
+
+**None of this is needed yet.** Download sync is read-only, so runs do not modify application data
+until D3 lands. The decision belongs in Phase 2, informed by measurement, not now.
 
 #### Which snapshot
 
@@ -1373,7 +1420,8 @@ means the harness does not require it, not that it is unnecessary.
 | Parameter group matching production's, autovacuum settings included | G4 |
 | Storage class, IOPS and throughput matching production | G4 |
 | `pg_stat_statements` and slow query logging enabled | F1 |
-| Storage headroom for a **second copy of the dataset** — the per-run reset is `CREATE DATABASE … TEMPLATE` against a pristine template database held on the same instance | G4 |
+| **Storage autoscaling disabled** — otherwise the environment can cross the 400 GiB striping threshold on its own and silently change its own IO characteristics mid-project | G4 |
+| Storage headroom **only if the chosen reset method needs it** — `TEMPLATE` needs ~2× the dataset, `pg_restore` ~1×. Undecided; check the 400 GiB interaction in G4 before provisioning double | G4 |
 | Snapshot and restore available for **baseline creation and dataset portability** — explicitly not as the per-run reset, for the lazy-loading reason in G4 | G4 |
 
 ### I4 — Data and side effects
