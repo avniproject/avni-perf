@@ -515,22 +515,37 @@ tier work can be written and reviewed before the number arrives.
 step. The initial model is a guess whose only job is to be better than one uniform constant; what
 makes it trustworthy is validation against real syncs (F7), not the plausibility of its construction.
 
-**A candidate input worth testing.** `EntityMetaData` carries a `syncWeight` on every one of its 74
-entries (values 0–4), used by `ProgressbarStatus.js` to size progress-bar increments:
+**`baseMsPerRecord` is the input that matters.** It comes from D6.1's measurement against real
+production syncs, and it is the only number here with any claim to reflecting reality. Everything
+else in this model is a shape applied to it, and every one of those shapes is provisional until F7
+validates it.
+
+Build the tiers below as that shape. They are a guess, and they are meant to be replaced by D7's
+per-entity measurements as soon as those exist.
+
+<details>
+<summary><strong>A note on <code>EntityMetaData.syncWeight</code> — do not build on it</strong></summary>
+
+`EntityMetaData` carries a `syncWeight` on each of its 74 entries (values 0–4), used by
+`ProgressbarStatus.js` to size progress-bar increments:
 
 ```js
 this.progress += (syncWeight / ((totalNumberOfPages === 0 ? 1 : totalNumberOfPages) * 100));
 ```
 
-It is tempting to adopt this wholesale — it is per-entity, maintained by the people who change the
-entity list, and arrives free with the C1 generator. **Do not.** It is a per-entity *total* spread
-across pages, not a per-record cost; it conflates typical row count with per-row expense; and it is
-tuned so a progress bar moves smoothly rather than measured against a clock. It is a reasonable prior
-and a useful cross-check, nothing more.
+It looks appealing — per-entity, maintained alongside the entity list, free with the C1 generator —
+and it is recorded here mainly so nobody rediscovers it and assumes it is more than it is.
 
-So: build the tiers below, compute the `syncWeight`-derived alternative alongside, and let measurement
-choose between them. If the two disagree sharply for an entity, that disagreement is itself
-informative about which assumption is wrong.
+**Its correlation with actual parse-and-persist cost is unestablished and probably weak.** It is a
+per-entity *total* spread across pages rather than a per-record cost; it conflates typical row count
+with per-row expense; and it exists to make a progress bar advance smoothly, which is a UX goal, not
+a measurement. Nobody has ever checked it against a clock.
+
+Treat it as trivia unless and until something measures it. Do not weight the model with it, do not
+average it against the tiers, and do not let a disagreement between it and a measured value cast
+doubt on the measurement — `baseMsPerRecord` wins by default, every time.
+
+</details>
 
 Starting tiers, as multipliers of `baseMsPerRecord`:
 
