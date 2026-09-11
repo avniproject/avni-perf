@@ -320,7 +320,7 @@ So the trade swings on **how many entities actually change between syncs**:
 - **Full or first sync, everything changed** — pure overhead. It runs N queries to conclude
   "everything changed", and the client then fetches everything regardless.
 
-**This is answerable from production today, before any load test** — appendix query **Q9** gives the
+**This is answerable from production today, before any load test** — appendix query **Q8** gives the
 distribution of how many entities actually return rows per sync. If the typical sync sees 3 of 60
 entities change, `syncDetails` is earning its cost many times over and effort belongs elsewhere. If
 it is 50 of 60, the endpoint is mostly ceremony.
@@ -1506,7 +1506,7 @@ Ordering reflects dependencies, not estimates.
 
 | Phase | Tasks | Why here |
 |---|---|---|
-| **0 · Foundation** | **Q1–Q9** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · B2 → **F4** → B1 · F1 | **Run the appendix queries first** — they are a day's work with no dependencies, and they populate the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Order matters within auth: B2 must be measured while Cognito still works, then F4 opens the deploy path, then B1 closes the environment.** B1 deletes A2, A3, A8 and collapses most of G5. |
+| **0 · Foundation** | **Q1–Q11** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · B2 → **F4** → B1 · F1 | **Run the appendix queries first** — they are a day's work with no dependencies, and they populate the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Order matters within auth: B2 must be measured while Cognito still works, then F4 opens the deploy path, then B1 closes the environment.** B1 deletes A2, A3, A8 and collapses most of G5. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **G4's restore mechanism lands with D3** — until the simulation writes, runs are read-only and need no teardown at all, so this apparatus can be deferred to here rather than built up front. |
 | **3 · Workload** | **D7** · E3, E5 · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
@@ -1522,34 +1522,33 @@ calendar.
 
 - **Success criteria.** The table at the top of this document. Blocks A6, and shapes what counts as a
   finding. The "no worse than current production" default is a legitimate answer.
-- **Perf environment isolation.** Can it be locked down enough to run `AVNI_IDP_TYPE=none`? Gates B1
-  and therefore three other tasks.
-- **~~Production statistics access.~~** *Granted.* Queries Q1–Q9 in the appendix are ready to run;
+- **~~Production statistics access.~~** *Granted.* Queries Q1–Q11 in the appendix are ready to run;
   their outputs feed the Success criteria table, D6.1, D1, E5, F7 and H3/H5. **Running them is now the
   first task in Phase 0** — most other open questions resolve from their output.
 - **Which org configuration(s) to run against.** (H1.) The generator treats this as a parameter, so
   the question is which implementations to cover and whether any available configuration is large
   enough to exercise org complexity. If none is, the large-org shape has to be synthesised by scaling
   a smaller one, and that becomes a task rather than a question.
-- **How many media files does a typical sync upload?** (D5.1.) Each one is a
-  `GET /media/uploadUrl/{fileName}` call on the sync path, so the distribution sets how much server
-  load media contributes. `sync_telemetry` does not record media counts, so this needs another source
-  — S3 object creation rate per org over a period is the most likely proxy. **This is the only media
-  question that blocks anything**; D5.2 already settles that the transfers themselves are not
-  simulated, and the S3 bucket is required regardless of the answer.
 - **~~Is on-demand media viewing in scope?~~** *Decided: no.* Browsing workload, not a sync one. See
   D5.3.
-- **Reset sync scope.** (D9.) Modelling the post-reset stampede is potentially the highest-load
-  scenario in the system. Worth including, but confirm how often resets actually happen in production
-  before investing in it. Needs H6.1 access to answer.
 - **Distributed injectors.** Gatling OSS has no orchestration; multiple injectors mean merging
   `simulation.log` files by hand (`gatling.sh -ro`). Cannot be answered until the concurrent-user
   target in Success criteria exists — one large injector goes a long way.
-- **Who does this, and over what period?** Sequencing here reflects dependencies only. Someone will
-  need to attach effort and ownership before it becomes a schedule.
+- **Over what period?** Ownership is settled — the dedicated Avni team for Tanuh. Sequencing here
+  reflects dependencies only, so effort still needs attaching before it becomes a schedule.
 
 ### Closed
 
+- **~~Perf environment isolation.~~** *No limitation.* The isolated deploy path is designed — an EC2
+  Instance Connect Endpoint tunnels SSH through the AWS API to an instance with no public IP and no
+  inbound rule, using the IAM model CI already relies on (F4.1). Nothing blocks `AVNI_IDP_TYPE=none`;
+  it is build work in the infrastructure plan, not an unknown.
+- **~~Who does this?~~** *The dedicated Avni team for Tanuh.*
+- **~~How many media files does a typical sync upload?~~** *Answerable in SQL* — appendix query **Q9**.
+  `sync_telemetry` does not record media counts, but media observations do: they are keyed by concepts
+  whose `data_type` is a media type, so their creation rate per user is derivable directly.
+- **~~How often do resets happen?~~** *Answerable in SQL* — appendix query **Q10** against the
+  `reset_sync` table, which records every reset with user, subject type, organisation and timestamp.
 - **~~Sync only, or webapp and API consumers too?~~** *Answered: they are separate query paths.* The
   webapp uses `/web/*` endpoints (≈150 call sites in `avni-webapp/src`) and touches only two
   sync-style endpoints, both reference data (`rule`, `ruleDependency`). So mobile sync and the webapp
@@ -1695,7 +1694,7 @@ where relname in ('individual', 'program_enrolment', 'program_encounter')
 order by pg_relation_size(indexrelid) desc;
 ```
 
-**Q9 — How many entities actually change per sync (D1.1).** The benefit side of the `syncDetails`
+**Q8 — How many entities actually change per sync (D1.1).** The benefit side of the `syncDetails`
 trade. `entity_status->'pull'` carries an entry per entity with `todo`/`done` counts; entries with
 `todo > 0` are the entities `syncDetails` flagged as changed and the client then fetched.
 
@@ -1723,7 +1722,52 @@ near 1 means it is mostly ceremony.** Validate the `todo`/`done` semantics again
 trusting the numbers — the client pre-populates the array from entity metadata, so entries exist for
 entities that were never fetched.
 
-**Q10 — Fleet page size split (D8.3).** *Not yet answerable* — `pageSize` is not recorded in
+**Q9 — Media uploads per sync (D5.1).** Each media file costs a `GET /media/uploadUrl/{fileName}`
+call on the sync path, so the rate sets how much server load media contributes. `sync_telemetry` does
+not record media counts, but media observations are keyed by concepts whose `data_type` is a media
+type, so the creation rate is derivable.
+
+```sql
+-- media-bearing concepts for this organisation set
+WITH media_concepts AS (
+  SELECT uuid FROM concept
+  WHERE data_type IN ('Image', 'ImageV2', 'Video', 'Audio', 'File')
+    AND is_voided = false
+)
+SELECT date_trunc('day', pe.last_modified_date_time) AS day,
+       count(*) FILTER (
+         WHERE EXISTS (SELECT 1 FROM media_concepts mc
+                       WHERE pe.observations ? mc.uuid)
+       ) AS media_bearing_rows
+FROM program_encounter pe
+WHERE pe.last_modified_date_time > now() - interval '30 days'
+GROUP BY 1 ORDER BY 1;
+```
+
+Repeat per entity table, then divide by syncs per user per day (Q2) for a per-sync figure. Validate
+the `?` containment against a sample row first — media observations may store a URL string or an
+array depending on whether the concept is multi-select.
+
+**Q10 — Reset sync frequency (D9).** A reset forces affected users into a full re-download, so it is
+potentially the highest-load event in the system. `reset_sync` records every one.
+
+```sql
+SELECT date_trunc('week', created_date_time) AS week,
+       count(*)                              AS resets,
+       count(DISTINCT organisation_id)       AS orgs_affected,
+       count(DISTINCT user_id)               AS users_affected,
+       count(*) FILTER (WHERE subject_type_id IS NULL) AS org_wide_resets
+FROM reset_sync
+WHERE is_voided = false
+  AND created_date_time > now() - interval '6 months'
+GROUP BY 1 ORDER BY 1;
+```
+
+Read it as: frequent resets affecting many users at once justify modelling the post-reset stampede
+(D9); rare, narrow ones do not. `users_affected` against `orgs_affected` says whether a reset is
+typically one user or a whole organisation — which is the difference between a non-event and a herd.
+
+**Q11 — Fleet page size split (D8.3).** *Not yet answerable* — `pageSize` is not recorded in
 `app_info`. Rides the same client release as D7's per-entity durations. Until then the production
 split between page size 100 and 1000 is unknown and both must be tested.
 
