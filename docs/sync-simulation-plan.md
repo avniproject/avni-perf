@@ -730,6 +730,8 @@ production case and has a completely different profile. Add upload-only backgrou
 - *Stress* — ramp to the knee
 - *Spike* — the start-of-day thundering herd; realistic worst case for a field app
 - *Soak* — multi-hour; the case that raised the auth question
+- *Contended* — sync against a concurrent ETL cycle, export, or bulk import (F5.4). The delta against
+  the equivalent uncontended profile is the finding
 
 **E4 — Multi-tenant load.** *First-class, not finding-triggered — see section I.* The feeder and
 user provisioning must be able to span organisations with a controllable mix. Two shapes worth
@@ -904,14 +906,33 @@ configuration, connection pool sizing, JVM flags, whether the database is shared
 deviation from production must be written down — every result carries an asterisk otherwise, and the
 asterisk needs to be legible when someone reads the findings months later.
 
-**F5.3 — Suppress outbound side effects, but run ETL deliberately.** Notifications, SMS and external
-integrations must be dead.
+**F5.3 — Suppress outbound side effects.** Anything that reaches a third party must be dead: SMS,
+notifications, and the Glific/flow integrations behind `MessageSenderJob`. Enforce at the
+infrastructure boundary, not in application config alone, so a configuration mistake cannot cause an
+incident.
 
-ETL is a different question and no longer a housekeeping one. It runs on a **90-minute Quartz cycle**,
-reads the public schema in competition with sync, and shares production's fixed 3,000 IOPS (G4). An
-ETL cycle landing on the start-of-day sync herd is a scheduled, recurring production event. **Run both
-scenarios — sync alone and sync with a concurrent ETL cycle — and treat the delta as a finding.**
-Suppressing ETL entirely would hide one of the more plausible real-world contention sources.
+**F5.4 — Run the co-tenant workloads deliberately.** Sync does not have the server to itself. Every
+load below shares the same instance, the same connection pool and the same fixed 3,000 IOPS (G4), so
+suppressing them produces a server that is quieter than any real one. **Model the significant ones as
+scenarios and treat the delta against sync-alone as a finding**, rather than deciding case by case at
+run time.
+
+| Load | Trigger | Shape | Verdict |
+|---|---|---|---|
+| **ETL** | Quartz, every 90 min | Reads `public` in competition with sync, writes org schemas, drops and recreates materialised views | **Scenario.** Scheduled and recurring, so an ETL cycle landing on the start-of-day herd is an ordinary production event |
+| **Longitudinal export** | User-triggered, Spring Batch (`ExportBatchConfiguration`) | Bursty heavy analytical scans. `AVNI_LEGACY_LONGITUDINAL_EXPORT_LIMIT` exists because these got out of hand | **Scenario.** Same contention shape as ETL, potentially larger |
+| **Bulk import** | User-triggered (`/concepts/bulk`, `/api/subjectMigration/bulk`, `/extension/upload`) | Bursty heavy writes, paying the same GIN-index maintenance as D3's push path | **Scenario**, once D3 exists to compare against |
+| **Webapp** | Concurrent human users, `/web/*` | Separate query paths, same tables | **Background load.** A constant concurrent trickle, not a burst |
+| **HR and aggregate reporting** | Admin-triggered, `/report/hr/*`, `/report/aggregate/*` | Analytical queries over the same tables | **Background load** |
+| **Messaging** | `MessageSenderJob`, fixed-delay poll | Continuous, low volume | **Leave running**, outbound suppressed per F5.3 |
+| **Storage management** | `StorageManagementJob`, cron | Periodic | **Leave running** |
+| **Metabase** | BI users | Points at the **read replica** (`avni.read.database.server`), not the primary | **Out of scope** |
+
+**Before modelling any of this, find out which ones actually coincide with peak sync.** Export and
+import runs are recorded — `AvniJobRepository`, `ExportJobParametersRepository`, `JobStatus` — so
+their timestamps can be correlated against observed load peaks the same way `sync_telemetry` can. A
+co-tenant workload that never overlaps the sync herd is not worth a scenario; one that routinely does
+is arguably more important than anything in the sync path itself.
 
 ### F6 — Run-to-run data lifecycle
 
@@ -1483,7 +1504,7 @@ means the harness does not require it, not that it is unnecessary.
 | Requirement | From |
 |---|---|
 | Outbound side effects impossible — notifications, SMS, external integrations. Enforce at the infrastructure boundary rather than in application config alone, so a configuration mistake cannot cause an incident | F5.3 |
-| A decision, recorded, on whether ETL and reporting background jobs run during tests — they compete for the same database and are arguably part of realistic load | F5.3 |
+| The co-tenant workloads present and runnable — ETL host, export and import jobs, webapp. They share the instance and the IOPS budget, so an environment without them is quieter than any real one | F5.4 |
 | A configured `bucketName` and a populated organisation `mediaDirectory`. **An actual S3 bucket is probably not needed** — presigning is local and nothing validates the bucket's existence; see D5.4. Create one only as a deliberate choice | D5.4, C2 |
 | An outbound path for run artefacts: `simulation.log`, generated reports and run metadata | A11 |
 
