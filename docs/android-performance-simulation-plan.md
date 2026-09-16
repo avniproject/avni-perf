@@ -16,12 +16,12 @@ exercises with different designs.
 
 | Component | Technology | Notes |
 |---|---|---|
-| Local storage | Realm (legacy) → SQLite via `SqliteProxy` | **Migration in flight.** Not Room — a native binding with Drizzle schema export |
-| Rule engine | `eval()` in the app's JS runtime (Hermes) | `RuleService.js:47`, `RuleEvaluationService.js:76,169,246,288`. **Not Rhino** — rules run on the same JS thread as everything else |
+| Local storage | Realm (legacy) → SQLite via `SqliteProxy` | **Migration in flight.** A native binding with Drizzle schema export |
+| Rule engine | `eval()` in the app's JS runtime (Hermes) | `RuleService.js:47`, `RuleEvaluationService.js:76,169,246,288`. Rules run on the same JS thread as the UI |
 | UI framework | React Native 0.77.3 | |
-| Sync engine | `SyncService`, `react-native-background-worker`, `react-native-background-timer` | Not androidx WorkManager directly |
-| JSON handling | `JSON.parse` in the JS runtime | **No Jackson or Gson.** GC pressure here is Hermes GC, not JVM GC |
-| Production telemetry | `sync_telemetry` (sync only) | **No client performance telemetry exists** — see A1 |
+| Sync engine | `SyncService`, `react-native-background-worker`, `react-native-background-timer` | |
+| JSON handling | `JSON.parse` in the JS runtime | GC pressure here is Hermes GC — profile with heap snapshots, not the Android Profiler's Java heap |
+| Production telemetry | `sync_telemetry` — sync only | Client performance telemetry is still to be added; see A1 |
 | Dev benchmarking | `PerformanceBenchmarkService` | Console-logging, reachable from `DevSettingsView`, hardcoded targets |
 | Error reporting | Bugsnag (`@bugsnag/react-native`) | Present, and unexploited as a data source |
 
@@ -65,11 +65,11 @@ profiling run completes.
 ## A. Production measurement — do this first
 
 The server plan's highest-leverage move was querying production before building anything. The same
-applies here, with one difference: **the client telemetry needed does not exist yet**, so step one is
-adding it.
+applies here, with one difference: **the client telemetry this needs has yet to be built**, so step
+one is adding it.
 
-**A1 — Add client performance telemetry.** `performance_telemetry` is referenced in draft thinking but
-does not exist; `PerformanceBenchmarkService` is dev-only. Capture and upload:
+**A1 — Add client performance telemetry.** The only client-side timing today is
+`PerformanceBenchmarkService`, which is dev-only. Capture and upload:
 
 | Field | Why |
 |---|---|
@@ -135,8 +135,8 @@ Each needs a cost attached before any remediation. None is a finding yet.
 ### C1 — Rule execution blocking the JS thread
 
 Rules are `eval()`'d in the app's JS runtime, so **rule execution and UI rendering share one thread**.
-There is no separate engine and no bridge boundary — which means rule cost and UI jank are not two
-problems but one.
+Rule cost and UI jank are therefore one problem rather than two, and a fix to either is a fix to
+both.
 
 - **Hypothesis:** complex skip-logic and decision rules block the JS thread long enough to drop frames
   during field entry and form-group transitions.
@@ -223,8 +223,8 @@ Screens in scope, verified against the source:
 | Subject profile | `SubjectDashboardView` and its tabs (`SubjectDashboardProfileTab`, `SubjectDashboardGeneralTab`, `SubjectDashboardProgramsTab`), `IndividualProfile` |
 | Form entry | `SubjectRegisterView` / `SubjectRegisterFormView`, `RegisterView`, `TaskFormView` |
 
-Note `IndividualDetailsCard` is a card component, not a screen — the profile screen is
-`SubjectDashboardView`. There is no `EncounterFormView`.
+Resolve view names against the source when scripting — several similarly named components exist
+alongside these screens.
 
 ---
 
