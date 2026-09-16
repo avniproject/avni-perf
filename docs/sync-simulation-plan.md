@@ -94,14 +94,9 @@ logs from separate injectors can be merged), report generation, and the check/EL
 > pages did not render through automated fetch. Treat the list above as the areas to check, not as a
 > complete migration list.
 
-**A2 — Fix the token cache data race.** `userTokens` is a static `HashMap` written concurrently from
-Gatling's Netty threads. Unsynchronised `HashMap` under concurrent writes can corrupt its internal
-structure. *Moot if B1 is adopted.*
+**~~A2 — Fix the token cache data race.~~** *Dropped — B1 removes the token cache entirely.*
 
-**A3 — Stop blocking the injector event loop.** `CognitoHelper.getTokenForUser` is a synchronous
-network call made inside `exec(session -> …)`. Blocking inside a session function stalls the
-event-loop thread and every virtual user scheduled on it — worst exactly during ramp, when many users
-authenticate at once. *Moot if B1 is adopted.*
+**~~A3 — Stop blocking the injector event loop.~~** *Dropped — B1 removes the blocking call.*
 
 **A4 — Materialise each response body once.** The two `checkIf` predicates each call
 `response.body().string()`, so every page of every entity is turned into a String twice purely to test
@@ -125,9 +120,7 @@ can pass or fail today. Add failed-request and per-group p95 assertions.
 **A7 — Name requests meaningfully.** `http(entityTypeUuid)` names every reference-entity request with
 the empty string, since those entities have no type UUID. Name by entity plus UUID.
 
-**A8 — Remove `System.exit(1)` from the auth path.** One user's Cognito failure currently terminates
-the entire run, discarding all results collected so far. Fail the virtual user instead. *Moot if B1 is
-adopted.*
+**~~A8 — Remove `System.exit(1)` from the auth path.~~** *Dropped — B1 removes `CognitoHelper`.*
 
 **A9 — Credentials and config hygiene.** `sync-users.csv` is tracked in git — `.gitignore` only covers
 `sync-users.*.csv`, which does not match it. `CognitoHelper` also carries a hardcoded client ID and
@@ -136,6 +129,13 @@ user-pool ID as defaults. Untrack the CSV, widen the ignore rule, move IdP ident
 **A10 — Delete dead weight.** `AvniEntities.json` is unused and already inconsistent with the
 hardcoded list. `SyncDetailsBody.json` is unused — the sim posts `EmptyBody.json`. `Recorder.java` and
 the commented `resetSyncs` block can go too.
+
+**A10.1 — Strip Cognito.** B1 is decided, so the whole auth apparatus goes: `CognitoHelper.java`, the
+token cache and its `exec(session -> …)` block, the `password` / `token` CSV columns, and the
+`COGNITO_CLIENT_ID` / `COGNITO_USER_POOL_ID` properties. Note this **empties `build.gradle`'s
+dependency block** — all four entries are the AWS SDK for Cognito and nothing else uses them, which
+also removes a class of friction from the A1 upgrade. The simulation then sends a `USER-NAME` header
+and nothing more.
 
 **A11 — Archive runs with their metadata.** Keep each run's `simulation.log` alongside the sim's git
 SHA, the server build, `BASE_URL`, injection profile and dataset identity. Without this, runs cannot
@@ -181,15 +181,15 @@ collapses into 401s.
 
 | Option | How it works | Cost | Verdict |
 |---|---|---|---|
-| **User-ID auth** (`AVNI_IDP_TYPE=none`) | Server authenticates from the `USER-NAME` header; no token involved. The sim sends a header and nothing else. | Loses per-request JWT verification and user lookup from measurements. Requires a network-isolated environment. | **Recommended** |
+| **User-ID auth** (`AVNI_IDP_TYPE=none`) | Server authenticates from the `USER-NAME` header; no token involved. The sim sends a header and nothing else. | Loses per-request JWT verification and user lookup from measurements. Requires a network-isolated environment. | **Decided** |
 | **Extend token TTL** | A perf-only Cognito app client with ID-token validity raised well beyond an hour. | Still needs AWS credentials on the runner; still hits Cognito rate limits during ramp; has a ceiling; a config change someone must remember exists. | Reserve |
 | **Refresh in-simulation** | Background scheduler refreshes via `REFRESH_TOKEN_AUTH`; tokens resolved per request through the protocol `sign` hook so refresh is transparent to running users. | Most work, and the component most likely to fail in a way that looks like a server problem. | Only if a finding implicates auth |
 
-**B1 — Run the perf server with `AVNI_IDP_TYPE=none`.** Confirmed in `AuthenticationFilter:68`: when
+**B1 — Run the perf server with `AVNI_IDP_TYPE=none`.** *Decided.* Confirmed in `AuthenticationFilter:68`: when
 the IdP type is `none`, the filter calls `authenticateByUserName` using the `USER-NAME` and
 `ORGANISATION-UUID` headers and skips token verification entirely. The simulation drops Cognito
 completely — no minting, no expiry, no refresh, no AWS credentials on the runner, no Cognito rate
-limits during ramp. It also deletes A2, A3 and A8 outright.
+limits during ramp. It also deletes A2, A3 and A8 outright, and empties `build.gradle`'s dependency block (A10.1).
 
 > **Hard constraint.** With `IdpType.none`, anyone who can reach the server is authenticated as
 > whatever username they put in a header. The perf environment must be network-isolated — security
