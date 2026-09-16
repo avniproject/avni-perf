@@ -198,14 +198,23 @@ limits during ramp. It also deletes A2, A3 and A8 outright, and empties `build.g
 > This breaks the existing CI deploy path, which reaches `perf.avniproject.org` over the public
 > internet. **F4 is a prerequisite for B1, not a follow-up.**
 
-**B2 — Measure and record the auth-cost offset.** The one thing B1 gives up is the per-request cost of
-`authenticateByToken` — JWT verification plus a user lookup. Run a short profile both ways once, write
-down the delta, and treat it as a known constant offset rather than pretending it is zero.
+**B2 — Measure the auth-cost offset.** *Deferred — not being done now.* The one thing B1 gives up is
+the per-request cost of `authenticateByToken`: JWT verification plus a user lookup. Profiling both
+ways once would turn that into a known constant offset rather than an unknown.
 
-> **Must run before the environment closes.** B2 needs a working Cognito path to measure against, so
-> it has to happen while the environment is still reachable — before F4/B1 cut over, not after.
-> Otherwise it requires reopening the environment to collect a number nobody is blocked on. If that
-> window is missed, drop B2 rather than reopening.
+It is deferred rather than dropped because the cost of taking the measurement rose once B1 was
+decided. B2 needs a working Cognito path, and A10.1 strips Cognito from the simulation entirely — so
+by the time the environment exists, measuring it means restoring code that was deliberately deleted,
+on an environment deliberately closed.
+
+**Revisit if, and only if, a finding points at authentication.** Two things would make it worth the
+trouble: a measured cost concentrated in the request path outside the queries themselves, or an
+externally-asked question about what the load test omits. Until then the honest position is that the
+simulation under-counts per-request work by an unmeasured constant, and that this is recorded rather
+than hidden.
+
+If it is ever taken, it does not need the perf environment — a short profile against any deployment
+running Cognito, comparing an endpoint with and without token verification, gives the same number.
 
 **B3 — Fallback: refresh tokens off the hot path.** Only if a finding implicates auth.
 `AdminInitiateAuth` already returns a refresh token; refresh via `REFRESH_TOKEN_AUTH` on a background
@@ -1527,7 +1536,7 @@ Ordering reflects dependencies, not estimates.
 
 | Phase | Tasks | Why here |
 |---|---|---|
-| **0 · Foundation** | **Q1–Q11** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · B2 → **F4** → B1 · F1 | **Run the appendix queries first** — they are a day's work with no dependencies, and they populate the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Order matters within auth: B2 must be measured while Cognito still works, then F4 opens the deploy path, then B1 closes the environment.** B1 deletes A2, A3, A8 and collapses most of G5. |
+| **0 · Foundation** | **Q1–Q11** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **Run the appendix queries first** — they are a day's work with no dependencies, and they populate the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 deletes A2, A3, A8 and collapses most of G5. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **G4's restore mechanism lands with D3** — until the simulation writes, runs are read-only and need no teardown at all, so this apparatus can be deferred to here rather than built up front. |
 | **3 · Workload** | **D7** · E3, E5 · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
