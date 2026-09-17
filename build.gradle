@@ -27,6 +27,16 @@ repositories {
 }
 
 
+configurations.gatling {
+    // The AWS SDK drags in netty-nio-client, whose netty-codec 4.1.x has no 4.2 counterpart for
+    // Gradle to upgrade - Netty 4.2 split that module into netty-codec-base and
+    // netty-codec-compression. The stale jar then shadows ZlibCodecFactory, Gatling 3.15's gzip
+    // decoder fails to construct, and every request hangs with the connection open and nothing sent.
+    // Only the synchronous Cognito client is used here, so the async transport can go entirely.
+    exclude group: 'software.amazon.awssdk', module: 'netty-nio-client'
+    exclude group: 'io.netty', module: 'netty-codec'
+}
+
 dependencies {
     gatling platform('software.amazon.awssdk:bom:2.20.26')
     gatling 'software.amazon.awssdk:regions'
