@@ -94,9 +94,9 @@ logs from separate injectors can be merged), report generation, and the check/EL
 > pages did not render through automated fetch. Treat the list above as the areas to check, not as a
 > complete migration list.
 
-**~~A2 — Fix the token cache data race.~~** *Dropped — B1 removes the token cache entirely.*
+**~~A2 — Fix the token cache data race.~~** *Done in A10.1 — now a `ConcurrentHashMap`.*
 
-**~~A3 — Stop blocking the injector event loop.~~** *Dropped — B1 removes the blocking call.*
+**~~A3 — Stop blocking the injector event loop.~~** *Not doing — the blocking call survives only on the opt-in `AUTH_MODE=cognito` path. Acknowledged in A10.1.*
 
 **A4 — Materialise each response body once.** The two `checkIf` predicates each call
 `response.body().string()`, so every page of every entity is turned into a String twice purely to test
@@ -120,7 +120,7 @@ can pass or fail today. Add failed-request and per-group p95 assertions.
 **A7 — Name requests meaningfully.** `http(entityTypeUuid)` names every reference-entity request with
 the empty string, since those entities have no type UUID. Name by entity plus UUID.
 
-**~~A8 — Remove `System.exit(1)` from the auth path.~~** *Dropped — B1 removes `CognitoHelper`.*
+**~~A8 — Remove `System.exit(1)` from the auth path.~~** *Done in A10.1 — throws instead.*
 
 **A9 — Credentials and config hygiene.** `sync-users.csv` is tracked in git — `.gitignore` only covers
 `sync-users.*.csv`, which does not match it. `CognitoHelper` also carries a hardcoded client ID and
@@ -130,12 +130,28 @@ user-pool ID as defaults. Untrack the CSV, widen the ignore rule, move IdP ident
 hardcoded list. `SyncDetailsBody.json` is unused — the sim posts `EmptyBody.json`. `Recorder.java` and
 the commented `resetSyncs` block can go too.
 
-**A10.1 — Strip Cognito.** B1 is decided, so the whole auth apparatus goes: `CognitoHelper.java`, the
-token cache and its `exec(session -> …)` block, the `password` / `token` CSV columns, and the
-`COGNITO_CLIENT_ID` / `COGNITO_USER_POOL_ID` properties. Note this **empties `build.gradle`'s
-dependency block** — all four entries are the AWS SDK for Cognito and nothing else uses them, which
-also removes a class of friction from the A1 upgrade. The simulation then sends a `USER-NAME` header
-and nothing more.
+**A10.1 — Put authentication behind `AUTH_MODE`.** *Done.* Rather than deleting the Cognito path, it
+sits behind a system property defaulting to `none`.
+
+Under `none` the simulation sends only the `USER-NAME` header and the auth chain does no work —
+`AUTH-TOKEN` is not added to the protocol at all. This is the mode every soak, stress and spike run
+uses, and the only one viable past the token lifetime.
+
+Under `cognito` the token path runs. Keeping it costs one conditional and four dependencies, and buys
+two things deleting would have forfeited: short runs against Cognito environments such as staging and
+prerelease — the only way to exercise that path once B1 closes the perf environment — and B2 as a flag
+flip rather than a code restoration.
+
+**It has to be exercised or it rots**, which is the failure mode already seen three times in this
+repo: `AvniEntities.json`, the duplicate `avni-server/perf/gatling` harness, and the `legacy` storage
+mode dropped from D6.3. An occasional smoke run under `AUTH_MODE=cognito` against staging is what
+keeps it honest.
+
+A2 and A8 were folded in while the code was open — the token cache is now a `ConcurrentHashMap`, and
+`CognitoHelper` throws rather than calling `System.exit(1)`. **A3 is acknowledged, not fixed:** the
+Cognito call still blocks inside a session function and stalls the injector's event loop, which is
+why it is confined to the opt-in path. Fixing it properly means pre-minting off the virtual-user
+path — disproportionate for a second-class mode, and recorded here rather than hidden.
 
 **A11 — Archive runs with their metadata.** Keep each run's `simulation.log` alongside the sim's git
 SHA, the server build, `BASE_URL`, injection profile and dataset identity. Without this, runs cannot
@@ -185,11 +201,13 @@ collapses into 401s.
 | **Extend token TTL** | A perf-only Cognito app client with ID-token validity raised well beyond an hour. | Still needs AWS credentials on the runner; still hits Cognito rate limits during ramp; has a ceiling; a config change someone must remember exists. | Reserve |
 | **Refresh in-simulation** | Background scheduler refreshes via `REFRESH_TOKEN_AUTH`; tokens resolved per request through the protocol `sign` hook so refresh is transparent to running users. | Most work, and the component most likely to fail in a way that looks like a server problem. | Only if a finding implicates auth |
 
+**A10.1 keeps both of the first two available** behind `AUTH_MODE`, defaulting to `none`. The Cognito path has no refresh, so it stays limited to runs shorter than the token lifetime — but it survives for short runs against Cognito environments, and it makes B2 a flag flip rather than a project.
+
 **B1 — Run the perf server with `AVNI_IDP_TYPE=none`.** *Decided.* Confirmed in `AuthenticationFilter:68`: when
 the IdP type is `none`, the filter calls `authenticateByUserName` using the `USER-NAME` and
 `ORGANISATION-UUID` headers and skips token verification entirely. The simulation drops Cognito
 completely — no minting, no expiry, no refresh, no AWS credentials on the runner, no Cognito rate
-limits during ramp. It also deletes A2, A3 and A8 outright, and empties `build.gradle`'s dependency block (A10.1).
+limits during ramp. A10.1 resolves A2 and A8 and makes A3 moot for the default path.
 
 > **Hard constraint.** With `IdpType.none`, anyone who can reach the server is authenticated as
 > whatever username they put in a header. The perf environment must be network-isolated — security
@@ -198,23 +216,16 @@ limits during ramp. It also deletes A2, A3 and A8 outright, and empties `build.g
 > This breaks the existing CI deploy path, which reaches `perf.avniproject.org` over the public
 > internet. **F4 is a prerequisite for B1, not a follow-up.**
 
-**B2 — Measure the auth-cost offset.** *Deferred — not being done now.* The one thing B1 gives up is
-the per-request cost of `authenticateByToken`: JWT verification plus a user lookup. Profiling both
-ways once would turn that into a known constant offset rather than an unknown.
+**B2 — Measure the auth-cost offset.** *Available, not yet run.* The one thing B1 gives up is the
+per-request cost of `authenticateByToken`: JWT verification plus a user lookup.
 
-It is deferred rather than dropped because the cost of taking the measurement rose once B1 was
-decided. B2 needs a working Cognito path, and A10.1 strips Cognito from the simulation entirely — so
-by the time the environment exists, measuring it means restoring code that was deliberately deleted,
-on an environment deliberately closed.
+Cheap now that A10.1 kept the Cognito path behind `AUTH_MODE`. Run the same simulation twice against
+one Cognito environment — `AUTH_MODE=none` and `AUTH_MODE=cognito` — and the delta is the number. No
+code to restore, no separate rig, and it does **not** need the perf environment: staging or
+prerelease serves, since both run Cognito.
 
-**Revisit if, and only if, a finding points at authentication.** Two things would make it worth the
-trouble: a measured cost concentrated in the request path outside the queries themselves, or an
-externally-asked question about what the load test omits. Until then the honest position is that the
-simulation under-counts per-request work by an unmeasured constant, and that this is recorded rather
-than hidden.
-
-If it is ever taken, it does not need the perf environment — a short profile against any deployment
-running Cognito, comparing an endpoint with and without token verification, gives the same number.
+Worth taking once, early, while a Cognito environment is convenient. Until it is, the recorded
+position is that the simulation under-counts per-request work by an unmeasured constant.
 
 **B3 — Fallback: refresh tokens off the hot path.** Only if a finding implicates auth.
 `AdminInitiateAuth` already returns a refresh token; refresh via `REFRESH_TOKEN_AUTH` on a background
@@ -1536,7 +1547,7 @@ Ordering reflects dependencies, not estimates.
 
 | Phase | Tasks | Why here |
 |---|---|---|
-| **0 · Foundation** | **Q1–Q11** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **Run the appendix queries first** — they are a day's work with no dependencies, and they populate the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 deletes A2, A3, A8 and collapses most of G5. |
+| **0 · Foundation** | **Q1–Q11** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **Run the appendix queries first** — they are a day's work with no dependencies, and they populate the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **G4's restore mechanism lands with D3** — until the simulation writes, runs are read-only and need no teardown at all, so this apparatus can be deferred to here rather than built up front. |
 | **3 · Workload** | **D7** · E3, E5 · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
