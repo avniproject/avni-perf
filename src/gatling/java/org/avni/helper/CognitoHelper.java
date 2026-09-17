@@ -12,8 +12,20 @@ import java.util.Map;
 
 public class CognitoHelper {
 
-    public static String clientId = System.getProperty("COGNITO_CLIENT_ID", "6c3qo1sple00feq8mbpum1duit");
-    public static String userPoolId = System.getProperty("COGNITO_USER_POOL_ID","ap-south-1_UdXEEi1qP");
+    // No defaults. These pin which environment you authenticate against, and a default here means a
+    // run silently targets whatever environment was hardcoded rather than the one under test.
+    // Only read under AUTH_MODE=cognito.
+    public static String clientId = required("COGNITO_CLIENT_ID");
+    public static String userPoolId = required("COGNITO_USER_POOL_ID");
+
+    private static String required(String property) {
+        String value = System.getProperty(property);
+        if (value == null || value.isEmpty()) {
+            throw new IllegalStateException(
+                property + " must be set when running with AUTH_MODE=cognito, e.g. -D" + property + "=...");
+        }
+        return value;
+    }
 
     public static String getTokenForUser(String userName, String password) {
 //        System.out.println("Getting token for: " + userName + "/" + password);

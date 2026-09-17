@@ -2,7 +2,16 @@
 `./gradlew gatlingRun`
 
 ## Configurations
-Users for the simulation can be setup in resources/sync-users.csv
+
+### Users
+
+`src/gatling/resources/sync-users.csv` holds the users the simulation drives. It is **not tracked** —
+copy the example and edit:
+
+```
+cp src/gatling/resources/sync-users-example.csv src/gatling/resources/sync-users.csv
+```
+
 The csv expects the following columns:
 - `userName`
 - `lastModifiedDateTime`
@@ -16,7 +25,15 @@ The csv expects the following columns:
 | Mode | How | Use it for |
 |---|---|---|
 | `none` *(default)* | Sends only the `USER-NAME` header. No credentials, no AWS access, no expiry. Requires the target server to run with `AVNI_IDP_TYPE=none` | Everything, and the only option for runs longer than an hour |
-| `cognito` | Mints a token per user via `AdminInitiateAuth` and sends `AUTH-TOKEN`. Needs AWS developer credentials on the machine running the simulation | Short runs against a Cognito environment — staging, prerelease — and measuring what the `none` path omits |
+| `cognito` | Mints a token per user via `AdminInitiateAuth` and sends `AUTH-TOKEN`. Needs AWS developer credentials on the machine running the simulation, plus `COGNITO_CLIENT_ID` and `COGNITO_USER_POOL_ID` | Short runs against a Cognito environment — staging, prerelease — and measuring what the `none` path omits |
+
+```
+./gradlew gatlingRun -DAUTH_MODE=cognito \
+  -DCOGNITO_CLIENT_ID=... -DCOGNITO_USER_POOL_ID=...
+```
+
+Both identifiers are required under `cognito` and have no defaults — a default would silently point
+a run at whichever environment was hardcoded rather than the one under test.
 
 > **`cognito` has no token refresh.** Tokens expire after an hour by default, so runs longer than that
 > will fail partway. Use `none` for soak testing.

@@ -35,8 +35,6 @@ public class AvniSyncSimulation extends Simulation {
     FeederBuilder<String> feeder = csv("sync-users.csv").random();
     static ObjectMapper om = new ObjectMapper();
 
-//    public static final List<Map<String, Object>> allSyncableEntities = jsonFile("AvniEntities.json").readRecords();
-
     HttpProtocolBuilder baseProtocol = http.baseUrl(baseUrl)
         .acceptHeader("application/json")
         .contentTypeHeader("application/json")
@@ -65,13 +63,6 @@ public class AvniSyncSimulation extends Simulation {
 
     ChainBuilder syncChainBuilder =
         exec(authChainBuilder).
-//        exec(
-//        http("resetSyncs")
-//            .get("/resetSyncs?lastModifiedDateTime=#{lastModifiedDateTime}&now=2023-02-28T10:25:58.819Z&size=100&page=0")
-//
-//        )
-//        .pause(1)
-//    .
         exec(http("Getting SyncDetails").post("/v2/syncDetails").body(RawFileBody("EmptyBody.json"))
             .check(jsonPath("$.syncDetails")
                 .transform(listElements -> {
