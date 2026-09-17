@@ -330,6 +330,14 @@ same 1900 timestamp — so their selectivity and query plans are unrepresentativ
    type, program and encounter type — with the same field shape as the request
    (`EntitySyncStatusContract` is `{uuid, entityName, loadedSince, entityTypeUuid}`, which the sim's
    `SyncDetail` already parses). It round-trips; no need to derive org structure independently.
+
+   > **Still outstanding.** The simulation now posts a real status array rather than an empty body,
+   > built from the generated entity table with `loadedSince` from the feeder — but with an empty
+   > `entityTypeUuid`, because the per-user type list is only knowable by asking the server.
+   > `matchesEntity` compares name *and* type uuid, so entities split by type still fall through to
+   > the server's 1900 default and still full-sync. **Incremental sync is not yet exercised for
+   > `Individual`, `Encounter`, `ProgramEncounter`, `ProgramEnrolment` or any other typed entity** —
+   > which is most of the sync volume. The bootstrap step in G1 is what closes this.
 2. *Cache it* in a `ConcurrentHashMap` keyed by username, and build the request body with
    `StringBody(session -> …)` rather than trying to carry a 60-row array in the CSV.
 3. *Rewrite `loadedSince` per scenario* — all rows at 1900 for full sync, all at `now − 1 day` for
@@ -380,9 +388,18 @@ last-modified summary the endpoint can consult — not to send the client back t
 saves is amortised over ten times fewer requests, which weakens the benefit side of the trade
 compared with when this endpoint was designed.
 
-**D2 — Take `now` from the server response.** The client uses `now` / `nowMinus10Seconds` returned by
-`syncDetails` as the window end. The sim substitutes its own `NOW` property, which changes the window
-every entity is queried against.
+**D2 — Take the window end from the server response.** *Done.* The client reads it from the
+`syncDetails` response rather than its own clock — and uses **two different values**:
+
+| Entity type | Window end | Why |
+|---|---|---|
+| Reference | `now` | `getRefData`'s signature takes three arguments and is called with four, so the `endDateTime` passed to it falls on the floor |
+| Transactional | `nowMinus10Seconds` | `getTxData` does take it |
+
+The ten-second offset presumably avoids missing records written while the sync is in flight. Whether
+the reference-side discrepancy is intentional is unclear — it looks like an argument-count slip — but
+it is what runs, so it is what the simulation reproduces. `NOW` survives as an override for runs that
+need a pinned window.
 
 **D3 — Model the push/upload path.** Everything behind `postAllEntities` — `POST /individuals`,
 `POST /programEncounters` and the rest — is untested. These handlers are

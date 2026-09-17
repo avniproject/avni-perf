@@ -35,7 +35,9 @@ public class AvniSyncSimulation extends Simulation {
     // 100; see the plan, D8.3.
     private static final Integer pageSize = Integer.getInteger("PAGE_SIZE", 1000);
     private static final Integer maxPauseToSimulateRealmStorage = Integer.getInteger("MAX_REALM_STORAGE_PAUSE", 2);
-    private static final String now = System.getProperty("NOW", java.time.Instant.now().toString());
+    // An override, not the default. Left unset, the window end comes from the syncDetails response
+    // as the client does. Set it to pin the window across runs.
+    private static final String nowOverride = System.getProperty("NOW");
     // The client sends its Android id; filterChangedEntities branches on it for device-aware entities.
     private static final String deviceId = System.getProperty("DEVICE_ID", "avni-perf-simulation");
 
@@ -77,19 +79,24 @@ public class AvniSyncSimulation extends Simulation {
         : exec(session -> session);
 
     ChainBuilder syncChainBuilder =
-        exec(authChainBuilder).
-        exec(http("Getting SyncDetails").post("/v2/syncDetails").body(RawFileBody("EmptyBody.json"))
-            .check(jsonPath("$.syncDetails")
-                .transform(listElements -> {
-                    try {
-                        return om.readValue(listElements, new TypeReference<List<SyncDetail>>() {
-                        });
-                    } catch (JsonProcessingException e) {
-                        out.println("Exception" + e);
-                        throw new RuntimeException(e);
-                    }
-                }).saveAs("syncDetails")
-            ))
+        exec(authChainBuilder)
+            .exec(http("Getting SyncDetails")
+                .post(session -> "/v2/syncDetails?includeUserSubjectType=true&deviceId=" + deviceId)
+                .body(StringBody(AvniSyncSimulation::syncStatusBody)).asJson()
+                .check(status().is(200))
+                .check(jsonPath("$.syncDetails")
+                    .transform(listElements -> {
+                        try {
+                            return om.readValue(listElements, new TypeReference<List<SyncDetail>>() {
+                            });
+                        } catch (JsonProcessingException e) {
+                            throw new UncheckedIOException("Could not parse syncDetails", e);
+                        }
+                    }).saveAs("syncDetails"))
+                // The client takes the sync window end from this response rather than from its own
+                // clock, and uses two different values - see windowEndFor.
+                .check(jsonPath("$.now").saveAs("serverNow"))
+                .check(jsonPath("$.nowMinus10Seconds").saveAs("serverNowMinus10Seconds")))
             .exec(sync());
     ScenarioBuilder syncScenario = scenario("Sync").feed(feeder).exec(syncChainBuilder);
 
@@ -97,6 +104,61 @@ public class AvniSyncSimulation extends Simulation {
         setUp(syncScenario.injectOpen(rampUsers(userCount).during(rampPeriod))).protocols(httpProtocol)
 //            .assertions(forAll().failedRequests().percent().lte(1.0));
         ;
+    }
+
+    /**
+     * The sync window end, taken from the syncDetails response as the client does.
+     *
+     * The client uses two different values, and the difference is not cosmetic. getRefData's
+     * signature takes three arguments and is called with four, so the endDateTime it is passed falls
+     * on the floor and reference entities use `now`. getTxData does take it, so transactional
+     * entities use `nowMinus10Seconds`. The ten-second offset presumably avoids missing records
+     * written while the sync is in flight.
+     *
+     * This may well be unintentional on the client's side, but it is what runs, so it is what the
+     * simulation reproduces. NOW overrides both, for runs that need a fixed window.
+     */
+    private static String windowEndFor(AvniEntity entity, Session session) {
+        if (nowOverride != null) {
+            return nowOverride;
+        }
+        String key = "reference".equals(entity.type) ? "serverNow" : "serverNowMinus10Seconds";
+        String value = session.getString(key);
+        if (value == null) {
+            throw new IllegalStateException(
+                "No " + key + " in session - the syncDetails response did not carry it");
+        }
+        return value;
+    }
+
+    /**
+     * The body of the syncDetails request: the client posts every row of its EntitySyncStatus table,
+     * which is what the server diffs against to decide what has changed.
+     *
+     * Posting an empty array is not neutral. getChangedEntities adds any syncable item the client did
+     * not mention at REALLY_OLD_DATE, so an empty body asks for a full sync of everything and the
+     * incremental path is never exercised. See the plan, D1.
+     */
+    private static String syncStatusBody(Session session) {
+        List<Map<String, Object>> statuses = new ArrayList<>();
+        String loadedSince = session.getString("lastModifiedDateTime");
+        for (AvniEntity entity : entities) {
+            if (!entity.pullRequired) {
+                continue;
+            }
+            Map<String, Object> status = new LinkedHashMap<>();
+            status.put("uuid", UUID.randomUUID().toString());
+            status.put("entityName", entity.entityName);
+            status.put("loadedSince", loadedSince);
+            status.put("entityTypeUuid", "");
+            status.put("voided", false);
+            statuses.add(status);
+        }
+        try {
+            return om.writeValueAsString(statuses);
+        } catch (JsonProcessingException e) {
+            throw new UncheckedIOException("Could not serialise sync statuses", e);
+        }
     }
 
     /**
@@ -200,7 +262,7 @@ public class AvniSyncSimulation extends Simulation {
             }
         }
         sb.append("lastModifiedDateTime=").append(session.getString("lastModifiedDateTime"))
-          .append("&now=").append(now)
+          .append("&now=").append(windowEndFor(entity, session))
           .append("&size=").append(pageSize)
           .append("&page=").append(session.getInt("index"));
         return sb.toString();
