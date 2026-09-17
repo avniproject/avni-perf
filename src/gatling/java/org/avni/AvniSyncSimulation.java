@@ -14,6 +14,7 @@ import org.avni.models.SyncDetail;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class AvniSyncSimulation extends Simulation {
@@ -23,35 +24,47 @@ public class AvniSyncSimulation extends Simulation {
     private static final Integer pageSize = Integer.getInteger("PAGE_SIZE", 100);
     private static final Integer maxPauseToSimulateRealmStorage = Integer.getInteger("MAX_REALM_STORAGE_PAUSE", 2);
     private static final String now = System.getProperty("NOW", java.time.Instant.now().toString());
-    private static final Map<String, String> userTokens = new HashMap<>();
+
+    // Authentication mode. "none" (default) sends only the USER-NAME header and requires the target
+    // server to run with AVNI_IDP_TYPE=none. "cognito" mints a token per user and is limited to runs
+    // shorter than the token lifetime - there is no refresh. See docs/sync-simulation-plan.md, B.
+    private static final String authMode = System.getProperty("AUTH_MODE", "none");
+    private static final boolean useCognito = "cognito".equalsIgnoreCase(authMode);
+    private static final Map<String, String> userTokens = new ConcurrentHashMap<>();
 
     FeederBuilder<String> feeder = csv("sync-users.csv").random();
     static ObjectMapper om = new ObjectMapper();
 
 //    public static final List<Map<String, Object>> allSyncableEntities = jsonFile("AvniEntities.json").readRecords();
 
-    HttpProtocolBuilder httpProtocol = http.baseUrl(baseUrl)
+    HttpProtocolBuilder baseProtocol = http.baseUrl(baseUrl)
         .acceptHeader("application/json")
         .contentTypeHeader("application/json")
         .acceptEncodingHeader("gzip")
         .header("USER-NAME", "#{userName}")
-        .header("AUTH-TOKEN", "#{token}")
         .connectionHeader("Keep-Alive")
         .userAgentHeader("okhttp/5.0.0-alpha.11");
+
+    HttpProtocolBuilder httpProtocol = useCognito
+        ? baseProtocol.header("AUTH-TOKEN", "#{token}")
+        : baseProtocol;
+    // Under AUTH_MODE=cognito, mint a token per user once and cache it. Blocking work inside a
+    // session function stalls the injector's event loop, so this is deliberately confined to the
+    // opt-in path; the default mode does no work here at all.
+    ChainBuilder authChainBuilder = useCognito
+        ? exec(session -> {
+              if (session.contains("token") && !session.getString("token").isEmpty()) {
+                  return session;
+              }
+              String userName = session.getString("userName");
+              String token = userTokens.computeIfAbsent(userName,
+                  u -> CognitoHelper.getTokenForUser(u, session.getString("password")));
+              return session.set("token", token);
+          })
+        : exec(session -> session);
+
     ChainBuilder syncChainBuilder =
-        exec((session -> {
-            if (!baseUrl.contains("localhost") && !session.contains("token")) {
-                String userName = session.get("userName");
-                String token = userTokens.get(userName);
-                if (token == null) {
-                    token = CognitoHelper.getTokenForUser(userName, session.get("password"));
-                    userTokens.put(userName, token);
-                }
-                Session newSession = session.set("token", token);
-                return newSession;
-            }
-            return session;
-        })).
+        exec(authChainBuilder).
 //        exec(
 //        http("resetSyncs")
 //            .get("/resetSyncs?lastModifiedDateTime=#{lastModifiedDateTime}&now=2023-02-28T10:25:58.819Z&size=100&page=0")

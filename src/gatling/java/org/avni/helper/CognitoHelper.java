@@ -38,11 +38,11 @@ public class CognitoHelper {
 
             return identityProviderClient.adminInitiateAuth(authRequest);
 
-        } catch(CognitoIdentityProviderException e) {
-            System.err.println(e.awsErrorDetails().errorMessage());
-            System.exit(1);
+        } catch (CognitoIdentityProviderException e) {
+            // Fail this user, not the whole run. System.exit here would discard every result
+            // collected so far because one user could not authenticate.
+            throw new IllegalStateException(
+                "Cognito authentication failed for a user: " + e.awsErrorDetails().errorMessage(), e);
         }
-
-        return null;
     }
 }
