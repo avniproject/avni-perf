@@ -297,10 +297,15 @@ is C1's job.
 Also: `News` is commented out in the simulation. It can be re-enabled once the environment has a
 configured `bucketName` and consistent stored URLs — see D5.4; it does not require a real bucket.
 
-**C3 — Split `EntityApprovalStatus` by entity type.** The client issues five separate paginated pulls
-— Subject, Encounter, ProgramEncounter, ProgramEnrolment, ChecklistItem — each with its own
-`entityTypeUuid`. The sim makes one unparameterised call, so it under-counts both request volume and
-server work for this entity.
+**C3 — Split `EntityApprovalStatus` by entity type.** *Done.* The five per-type entries came free with
+C1's generator, but the generator initially dropped the parameter that matters.
+
+`ConventionalRestClient` sets **both** `privilegeParam` and `apiQueryParamKey`, each to the same
+`entityTypeUuid` — they are alternatives in appearance only. Exactly the five EntityApprovalStatus
+entities declare both, and `EntityApprovalStatusController` reads `entityType` and **`entityTypeUuid`**
+— not `subjectTypeUuid`. Emitting one parameter therefore sent the type discriminator the server
+ignores and dropped the one it uses, returning approvals for every type rather than one. The
+generator now emits both, in the order the client merges them.
 
 ---
 
@@ -407,8 +412,16 @@ need a pinned window.
 cost are a different class of bottleneck from the read path and cannot appear in any run as it stands.
 Derive realistic per-entity push volumes from production `sync_telemetry.entity_status->'push'`.
 
-**D4 — Post sync telemetry at end of sync.** Every real client ends every sync with
-`POST /syncTelemetry`. It is a write on the hot path, currently unmodelled.
+**D4 — Post sync telemetry at end of sync.** *Done.* A write on the hot path, and the one that
+populates the table this plan's whole measurement strategy leans on — so omitting it both under-counted
+write load and produced runs that generated no telemetry of their own.
+
+Rows are tagged `syncSource: avni-perf-simulation` so simulated syncs are separable from real ones in
+`sync_telemetry`. **Q1–Q11 should filter them out**, or simulation runs will pollute the very
+distributions they are meant to be calibrated against.
+
+`entityStatus` carries real per-entity counts but no phase durations: the simulation neither parses
+nor persists, so it has no honest value to report for the fields avni-client#2121 adds.
 
 **D5 — Model the presigned-URL calls, not the media transfers.**
 
@@ -508,9 +521,17 @@ Detailed below.
 (`packages/openchs-android/config/initialSettings.json`); the simulation defaults `PAGE_SIZE` to 100.
 Detailed below — it changes the shape of the load, not just a constant.
 
-**D9 — Reset sync is unmodelled.** `SyncService` calls `getResetSyncData` and
-`confirmUserAndResetSync` *before* the main pull, and the simulation's `resetSyncs` call is commented
-out. A reset forces affected users into a full re-download, so it is potentially the single largest
+**D9 — Reset sync.** *Request modelled; scenario outstanding.* The `ResetSync` pull now runs where
+the client runs it — **before `syncDetails` is even requested**. `dataServerSync` calls
+`getResetSyncData` first and `getSyncDetails` only afterwards, which the simulation had inverted.
+
+Two further quirks reproduced: `getResetSyncData` does not reverse the metadata list, and it passes
+the client's own clock as `now` rather than the server's — which it could not use anyway, not having
+called `syncDetails` yet.
+
+**Still outstanding: the stampede.** A reset forces every affected user into a full re-download, and
+that is a scenario rather than a request — it belongs with E3's spike profile. Whether it is worth
+building depends on how often resets actually happen, which appendix query **Q10** answers. A reset forces affected users into a full re-download, so it is potentially the single largest
 load event the server sees — and it is triggered by configuration changes, meaning it can hit many
 users of an organisation at once. Two things needed: add `ResetSyncs` to the entity list (C2 already
 covers this), and model the post-reset full-sync stampede as a scenario (E3's spike profile is the

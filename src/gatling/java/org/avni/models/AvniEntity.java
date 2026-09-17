@@ -2,6 +2,7 @@ package org.avni.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -16,8 +17,12 @@ public class AvniEntity {
     /** Path relative to the server root, exactly as the client builds it. No leading slash. */
     public String path;
 
-    /** Query parameter carrying the sync detail's entityTypeUuid, or null if this entity is not split by type. */
-    public String entityTypeUuidParam;
+    /**
+     * Query parameters carrying the sync detail's entityTypeUuid. The client sets privilegeParam and
+     * apiQueryParamKey to the same value where both are declared, so this can hold more than one.
+     * Empty when the entity is not split by type.
+     */
+    public List<String> entityTypeUuidParams;
 
     /** Query params the client always sends for this entity. A null value means the simulation supplies it. */
     public Map<String, String> staticParams;

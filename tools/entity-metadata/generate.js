@@ -26,10 +26,12 @@ function resourcePath(e) {
     .join("/");
 }
 
-// The client passes the sync detail's entityTypeUuid under whichever of these an entity declares.
-// Entities with neither are not split by type.
-function entityTypeUuidParam(e) {
-  return e.privilegeParam || e.apiQueryParamKey || null;
+// ConventionalRestClient sets privilegeParam AND apiQueryParamKey, each to the same entityTypeUuid -
+// they are not alternatives. The five EntityApprovalStatus entities declare both, and the server's
+// endpoint reads entityTypeUuid (the apiQueryParamKey), so emitting only one drops the parameter
+// that decides the result. Both are emitted, in the order the client merges them.
+function entityTypeUuidParams(e) {
+  return [e.privilegeParam, e.apiQueryParamKey].filter(Boolean);
 }
 
 // Static query params the client always sends for this entity, e.g. {"deviceId": null}.
@@ -47,7 +49,7 @@ const entities = EntityMetaData.model()
     entityName: e.entityName,
     type: e.type,
     path: resourcePath(e),
-    entityTypeUuidParam: entityTypeUuidParam(e),
+    entityTypeUuidParams: entityTypeUuidParams(e),
     staticParams: staticParams(e),
     syncWeight: e.syncWeight === undefined ? null : e.syncWeight,
     pullRequired: e.syncPullRequired !== false,

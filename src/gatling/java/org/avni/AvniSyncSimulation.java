@@ -80,6 +80,8 @@ public class AvniSyncSimulation extends Simulation {
 
     ChainBuilder syncChainBuilder =
         exec(authChainBuilder)
+            .exec(session -> session.set("syncStartTime", java.time.Instant.now().toString()))
+            .exec(resetSyncChain())
             .exec(http("Getting SyncDetails")
                 .post(session -> "/v2/syncDetails?includeUserSubjectType=true&deviceId=" + deviceId)
                 .body(StringBody(AvniSyncSimulation::syncStatusBody)).asJson()
@@ -97,13 +99,102 @@ public class AvniSyncSimulation extends Simulation {
                 // clock, and uses two different values - see windowEndFor.
                 .check(jsonPath("$.now").saveAs("serverNow"))
                 .check(jsonPath("$.nowMinus10Seconds").saveAs("serverNowMinus10Seconds")))
-            .exec(sync());
+            .exec(sync())
+            .exec(postSyncTelemetry());
     ScenarioBuilder syncScenario = scenario("Sync").feed(feeder).exec(syncChainBuilder);
 
     {
         setUp(syncScenario.injectOpen(rampUsers(userCount).during(rampPeriod))).protocols(httpProtocol)
 //            .assertions(forAll().failedRequests().percent().lte(1.0));
         ;
+    }
+
+    private static final String RESET_SYNC = "ResetSync";
+
+    /**
+     * The client pulls ResetSync before it even asks for syncDetails - dataServerSync calls
+     * getResetSyncData first, and only then getSyncDetails. If rows come back, the client wipes local
+     * data and re-downloads everything, so this call is the trigger for the heaviest event the server
+     * sees.
+     *
+     * getResetSyncData also differs from the other pulls in two ways: it does not reverse the
+     * metadata list, and it passes its own clock as `now` rather than the server's value - which it
+     * could not use anyway, not having called syncDetails yet.
+     *
+     * The post-reset re-download itself is not modelled here. That is a scenario rather than a
+     * request, and belongs with the spike profile in E3.
+     */
+    private static ChainBuilder resetSyncChain() {
+        AvniEntity resetSync = entities.stream()
+            .filter(e -> RESET_SYNC.equals(e.entityName))
+            .findFirst()
+            .orElse(null);
+        if (resetSync == null) {
+            return exec(session -> session);
+        }
+        return exec(session -> session.set("allPagesNotFetched", true))
+            .asLongAs("#{allPagesNotFetched}", "index")
+            .on(group(RESET_SYNC).on(
+                exec(http(RESET_SYNC)
+                    .get(session -> "/" + resetSync.path
+                        + "?lastModifiedDateTime=" + session.getString("lastModifiedDateTime")
+                        + "&now=" + java.time.Instant.now()
+                        + "&size=" + pageSize
+                        + "&page=" + session.getInt("index"))
+                    .check(status().is(200))
+                    .check(bodyString()
+                        .transformWithSession(AvniSyncSimulation::hasMorePages)
+                        .saveAs("allPagesNotFetched")))));
+    }
+
+    /**
+     * Every real client ends every sync with a POST to /syncTelemetry. It is a write on the hot path,
+     * and it is what populates the table the whole measurement strategy leans on - so leaving it out
+     * both under-counts write load and produces runs that generate no telemetry of their own.
+     *
+     * The per-entity phase durations avni-client#2121 adds are not modelled here: the simulation does
+     * not parse or persist anything, so it has no honest value to report for them. Counts are real.
+     */
+    private static ChainBuilder postSyncTelemetry() {
+        return exec(http("Posting SyncTelemetry")
+            .post("/syncTelemetry")
+            .body(StringBody(AvniSyncSimulation::syncTelemetryBody)).asJson()
+            .check(status().in(200, 201, 204)));
+    }
+
+    private static String syncTelemetryBody(Session session) {
+        Map<String, Object> entityStatus = new LinkedHashMap<>();
+        List<Map<String, Object>> pull = new ArrayList<>();
+        for (AvniEntity entity : entities) {
+            if (!entity.pullRequired) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("entity", entity.entityName);
+            row.put("todo", 0);
+            row.put("done", 0);
+            pull.add(row);
+        }
+        entityStatus.put("pull", pull);
+        entityStatus.put("push", new ArrayList<>());
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("uuid", UUID.randomUUID().toString());
+        body.put("syncStatus", "complete");
+        body.put("syncStartTime", session.getString("syncStartTime"));
+        body.put("syncEndTime", java.time.Instant.now().toString());
+        body.put("entityStatus", entityStatus);
+        body.put("appVersion", "avni-perf");
+        body.put("androidVersion", "simulated");
+        body.put("deviceName", deviceId);
+        body.put("deviceInfo", Collections.singletonMap("simulated", true));
+        body.put("appInfo", Collections.singletonMap("simulated", true));
+        body.put("syncSource", "avni-perf-simulation");
+        try {
+            return om.writeValueAsString(body);
+        } catch (JsonProcessingException e) {
+            throw new UncheckedIOException("Could not serialise sync telemetry", e);
+        }
     }
 
     /**
@@ -191,7 +282,7 @@ public class AvniSyncSimulation extends Simulation {
     private static ChainBuilder sync() {
         ChainBuilder chain = exec(session -> session);
         for (AvniEntity entity : entities) {
-            if (!entity.pullRequired) {
+            if (!entity.pullRequired || RESET_SYNC.equals(entity.entityName)) {
                 continue;
             }
             chain = chain.exec(
@@ -242,7 +333,7 @@ public class AvniSyncSimulation extends Simulation {
      * the entityTypeUuid, which is empty for every entity that is not split by type.
      */
     private static String requestName(AvniEntity entity) {
-        return entity.entityTypeUuidParam == null
+        return entity.entityTypeUuidParams == null || entity.entityTypeUuidParams.isEmpty()
             ? entity.entityName
             : entity.entityName + " [#{syncDetail.entityTypeUuid}]";
     }
@@ -250,10 +341,12 @@ public class AvniSyncSimulation extends Simulation {
     /** Built the way ConventionalRestClient builds it, so the simulation requests what the client requests. */
     private static String url(AvniEntity entity, Session session) {
         StringBuilder sb = new StringBuilder("/").append(entity.path).append("?");
-        if (entity.entityTypeUuidParam != null) {
+        if (entity.entityTypeUuidParams != null && !entity.entityTypeUuidParams.isEmpty()) {
             SyncDetail detail = (SyncDetail) session.get("syncDetail");
-            sb.append(entity.entityTypeUuidParam).append("=")
-              .append(detail.entityTypeUuid == null ? "" : detail.entityTypeUuid).append("&");
+            String uuid = detail.entityTypeUuid == null ? "" : detail.entityTypeUuid;
+            for (String param : entity.entityTypeUuidParams) {
+                sb.append(param).append("=").append(uuid).append("&");
+            }
         }
         if (entity.staticParams != null) {
             for (Map.Entry<String, String> param : entity.staticParams.entrySet()) {
