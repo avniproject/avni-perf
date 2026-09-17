@@ -799,14 +799,37 @@ plausible page.
 
 ## E. Scenario and workload design
 
-**E1 — Deterministic feeder.** `csv(...).random()` lets two virtual users drive the same real user
-concurrently — contention that does not occur in production — while other users never run at all. Use
-`circular()` or `queue()` for repeatable, non-overlapping runs.
+**E1 — Deterministic feeder.** *Done.* `random()` draws with replacement, so the same real user could
+be driven by two virtual users at once — contention the field does not have — while others in the file
+never ran. Now `circular()`: walks the file in order and wraps, making runs repeatable and load even.
 
-**E2 — Separate full and incremental sync scenarios.** The committed CSV sets `lastModifiedDateTime`
-to 1900-01-01, so every user performs a full first sync every run. Incremental sync is the common
-production case and has a completely different profile. Add upload-only background sync as a third
-(`sync_source = ONLY_UPLOAD_BACKGROUND_JOB`).
+The simulation also prints its configuration at startup and **warns when `USER_COUNT` exceeds the
+file**, which is the one case `circular()` still oversubscribes a user. The fix there is more users,
+not a larger `USER_COUNT`.
+
+**E2 — Separate full and incremental sync scenarios.** *Done for pull.* `SYNC_MODE` selects the
+window: `full` forces 1900-01-01, `incremental` forces a recent window (`INCREMENTAL_SINCE_HOURS`,
+default 24), `csv` takes it from the user file. The scenario is named for the mode, so reports say
+which was run.
+
+The difference is not marginal. Against a local dev database:
+
+| Mode | Requests | Mean |
+|---|---|---|
+| `full` | 44 | 57 ms |
+| `incremental` | **16** | 30 ms |
+
+**64% fewer requests.** The committed user file has always held 1900-01-01, so every run to date has
+exercised only the heaviest case — and the common production case had never been run at all.
+
+> **Incremental is only partly effective until D1's bootstrap lands.** The status body still carries
+> an empty `entityTypeUuid`, and the server matches on name *and* type uuid, so typed entities —
+> `Individual`, `Encounter`, `ProgramEncounter`, `ProgramEnrolment` — keep falling through to the
+> 1900 default and still full-sync. Reference data does honour the window, which is most of what the
+> 64% above reflects. The real incremental profile will be different again.
+
+**Upload-only background sync is not modelled** (`sync_source = ONLY_UPLOAD_BACKGROUND_JOB`). It is a
+push-only flow, so it needs D3.
 
 **E3 — Named injection profiles.**
 

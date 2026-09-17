@@ -41,6 +41,14 @@ public class AvniSyncSimulation extends Simulation {
     // The client sends its Android id; filterChangedEntities branches on it for device-aware entities.
     private static final String deviceId = System.getProperty("DEVICE_ID", "avni-perf-simulation");
 
+    // E2. Which sync is being simulated. "csv" takes lastModifiedDateTime from the feeder file;
+    // "full" forces a first sync; "incremental" forces a recent window. A run should say which of
+    // these it is - they have completely different profiles, and the committed user file has always
+    // held 1900-01-01, so every run to date has been a full sync whether or not that was intended.
+    private static final String syncMode = System.getProperty("SYNC_MODE", "csv");
+    private static final int incrementalSinceHours = Integer.getInteger("INCREMENTAL_SINCE_HOURS", 24);
+    private static final String FULL_SYNC_SINCE = "1900-01-01T00:00:00.000Z";
+
     private static final List<AvniEntity> entities = loadEntities();
 
     // Authentication mode. "none" (default) sends only the USER-NAME header and requires the target
@@ -50,7 +58,12 @@ public class AvniSyncSimulation extends Simulation {
     private static final boolean useCognito = "cognito".equalsIgnoreCase(authMode);
     private static final Map<String, String> userTokens = new ConcurrentHashMap<>();
 
-    FeederBuilder<String> feeder = csv("sync-users.csv").random();
+    // E1. circular, not random. random() draws with replacement, so the same real user can be driven
+    // by two virtual users at once - contention that does not happen in the field - while other users
+    // in the file never run at all. circular() walks the file in order and wraps, which makes a run
+    // repeatable and spreads load evenly. It only overlaps users when USER_COUNT exceeds the file,
+    // which is warned about below.
+    FeederBuilder<String> feeder = csv("sync-users.csv").circular();
 
     HttpProtocolBuilder baseProtocol = http.baseUrl(baseUrl)
         .acceptHeader("application/json")
@@ -101,12 +114,52 @@ public class AvniSyncSimulation extends Simulation {
                 .check(jsonPath("$.nowMinus10Seconds").saveAs("serverNowMinus10Seconds")))
             .exec(sync())
             .exec(postSyncTelemetry());
-    ScenarioBuilder syncScenario = scenario("Sync").feed(feeder).exec(syncChainBuilder);
+    ScenarioBuilder syncScenario = scenario("Sync " + syncMode)
+        .feed(feeder)
+        .exec(session -> session.set("lastModifiedDateTime", loadedSinceFor(session)))
+        .exec(syncChainBuilder);
 
     {
+        int feederRows = csv("sync-users.csv").recordsCount();
+        out.println(String.format(
+            "Sync mode: %s | users: %d | feeder rows: %d | ramp: %ds | page size: %d | auth: %s",
+            syncMode, userCount, feederRows, rampPeriod, pageSize, authMode));
+        if (userCount > feederRows) {
+            out.println(String.format(
+                "WARNING: USER_COUNT (%d) exceeds the user file (%d rows), so the same real user will "
+                + "be synced by more than one virtual user at once. That is contention the field does "
+                + "not have - add users rather than oversubscribing the file.",
+                userCount, feederRows));
+        }
         setUp(syncScenario.injectOpen(rampUsers(userCount).during(rampPeriod))).protocols(httpProtocol)
 //            .assertions(forAll().failedRequests().percent().lte(1.0));
         ;
+    }
+
+    /**
+     * The sync window start for this virtual user, per SYNC_MODE.
+     *
+     * Incremental is the common production case and looks nothing like a first sync, so the two
+     * belong in separate runs rather than being decided by whatever happens to be in the user file.
+     *
+     * Caveat: incremental is only partly effective until D1's bootstrap lands. The sync status body
+     * carries an empty entityTypeUuid, and the server matches on name AND type uuid, so typed
+     * entities - Individual, Encounter, ProgramEncounter, ProgramEnrolment - still fall through to
+     * the server's 1900 default and still full-sync. Reference data does honour the window.
+     */
+    private static String loadedSinceFor(Session session) {
+        switch (syncMode) {
+            case "full":
+                return FULL_SYNC_SINCE;
+            case "incremental":
+                return java.time.Instant.now()
+                    .minus(java.time.Duration.ofHours(incrementalSinceHours)).toString();
+            case "csv":
+                return session.getString("lastModifiedDateTime");
+            default:
+                throw new IllegalArgumentException(
+                    "SYNC_MODE must be one of full, incremental, csv - got: " + syncMode);
+        }
     }
 
     private static final String RESET_SYNC = "ResetSync";
