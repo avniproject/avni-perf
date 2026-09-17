@@ -483,30 +483,80 @@ from address_level
 where is_voided = false
 group by 1 order by 1;
 
--- branching factor and size per level type
--- The correlated LATERAL this replaces ran one count per address_level row
--- -- 1.2 million subqueries -- and was cancelled. Aggregating children once
--- and hash-joining turns it into two passes.
-with child_counts as (
-  select parent_id, count(*) as n
+-- hierarchy shape, per organisation
+-- A cross-organisation version of this returns nothing usable: address_level_type
+-- is per-org, so grouping by (level, name) merges ~986 independent hierarchies and
+-- the same name lands at a different depth in each. Group by organisation first,
+-- then describe the distribution across organisations.
+--
+-- address_level_type.level is a double each org sets for itself -- observed values
+-- include 0.1, 2.6, 25 and 100 -- so it cannot order anything. nlevel(lineage) is
+-- the only real depth.
+with loc as (
+  select organisation_id, id, parent_id, nlevel(lineage) as depth
   from address_level
   where is_voided = false
-    and parent_id is not null
+),
+child_counts as (
+  select parent_id, count(*) as n
+  from loc
+  where parent_id is not null
   group by parent_id
+),
+per_org as (
+  select l.organisation_id,
+         max(l.depth)                                          as depth,
+         count(*)                                              as locations,
+         round(avg(c.n) filter (where c.n is not null), 1)      as avg_branching,
+         max(c.n)                                              as max_branching
+  from loc l
+  left join child_counts c on c.parent_id = l.id
+  group by 1
 )
-select alt.level                          as type_level,
-       alt.name                           as type_name,
-       count(al.id)                       as locations,
-       round(avg(coalesce(cc.n, 0)), 1)   as avg_children,
-       max(coalesce(cc.n, 0))             as max_children
-from address_level_type alt
-left join address_level al on al.type_id = alt.id and al.is_voided = false
-left join child_counts  cc on cc.parent_id = al.id
-where alt.is_voided = false
-group by 1, 2
+select depth,
+       count(*)                                                        as orgs,
+       percentile_cont(0.5) within group (order by locations)::bigint   as median_locations,
+       max(locations)                                                   as max_locations,
+       round(avg(avg_branching), 1)                                     as avg_branching,
+       max(max_branching)                                               as max_branching
+from per_org
+group by 1
 order by 1;
+
+-- which organisations own the chains deeper than 8 levels
+select organisation_id,
+       max(nlevel(lineage)) as max_depth,
+       count(*)             as locations
+from address_level
+where is_voided = false
+  and nlevel(lineage) > 8
+group by 1
+order by 2 desc;
 ```
 
 A generator that gets total location count right but depth or branching wrong produces catchments
 that resolve in a different number of index lookups than production's — which is precisely the cost
 this drives.
+
+**Result**, 812 organisations that hold any location:
+
+| Depth | Orgs | Median locations | Max | Avg branching |
+|---|---|---|---|---|
+| 1 | 231 | 1 | 357 | — |
+| 2 | 98 | 4 | 167 | 4.8 |
+| 3 | 215 | 3 | 6,259 | 5.3 |
+| 4 | 136 | 20 | **500,039** | 9.4 |
+| 5 | 101 | 120 | 20,419 | 3.3 |
+| 6 | 25 | 155 | 2,251 | 2.4 |
+| 7 | 4 | 1,326 | 1,697 | 4.0 |
+| 8 | 1 | 2,593 | 2,593 | 1.8 |
+| 26 | 1 | 20,240 | 20,240 | 1.0 |
+
+**The depth-26 anomaly is one organisation.** The second query returns a single row: 13,734 locations
+below depth 8, all in one org. That is exactly 763 × 18, matching the 763-per-depth pattern, and it is
+68% of that organisation's 20,240 locations. Interpreted in plan section **H3**.
+
+> **Two things the first cross-organisation run exposed.** `address_level_type.level` is org-defined
+> and unusable for ordering. And the type names carry a lot of test data — `dummy`, `test`, `xyz`, an
+> empty-string name holding 19,075 locations, and several types named as voided. A generator copying
+> production's shape should copy the working hierarchies, not the debris.

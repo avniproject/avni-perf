@@ -1668,16 +1668,34 @@ impact:
   nothing, and no incremental scenario means anything. The spread must look like real editing
   activity over time.
 - **Address level hierarchy shape.** Drives the scope-resolution queries behind catchment filtering.
-  **Measured (Q13): 1,204,209 locations, 84.3% of them at depth 4** — so the working hierarchy is four
-  levels and the generator should default to that.
+  **Measured (Q13) across the 812 organisations holding any location:**
 
-  > **An anomaly worth a separate look:** depths 9 through 26 each contain **exactly 763 locations** —
-  > the same count at eighteen consecutive depths. Identical cohorts repeating that way is not a
-  > naturally occurring shape; it suggests 763 chains extended one level at a time, most likely by a
-  > defect. It is only 1.1% of locations, so it does not change generator sizing, but `lineage` is an
-  > `ltree` walked by catchment scope resolution and RLS ancestor lookups, and a 26-level path costs
-  > materially more to walk than a 4-level one. **Not this plan's problem to fix — but someone should
-  > know.**
+  | Depth | Orgs | Median locations | Max | Avg branching |
+  |---|---|---|---|---|
+  | 1 | 231 | 1 | 357 | — |
+  | 2 | 98 | 4 | 167 | 4.8 |
+  | 3 | 215 | 3 | 6,259 | 5.3 |
+  | 4 | 136 | 20 | **500,039** | 9.4 |
+  | 5 | 101 | 120 | 20,419 | 3.3 |
+  | 6–8 | 30 | 155–2,593 | 2,251 | 1.8–4.0 |
+
+  **Generate four levels with a branching factor near 9.** Depth 4 is where the working hierarchies
+  sit, and it holds the largest by a wide margin — one organisation's 500,039 locations are 42% of
+  every location on the platform. Depths 2 and 3 are more common by org count but hold almost nothing,
+  a median of 3 or 4 locations each.
+
+  **28% of organisations have no hierarchy at all** — 231 sit at depth 1 with a median of one
+  location, and a further 174 hold none. That matches the tenant skew below: the generator should
+  leave a large share of its organisations essentially unconfigured rather than giving each one a
+  hierarchy.
+
+  > **The deep-chain anomaly is one organisation, not a platform-wide defect.** Depths 9 through 26
+  > each held exactly 763 locations — 13,734 in total, all belonging to a single org, where it is 68%
+  > of that org's locations. It looks like 763 chains extended one level at a time. **It does not need
+  > reproducing in the generated dataset**, but `lineage` is an `ltree` walked by catchment scope
+  > resolution and RLS ancestor lookups, so a 26-level path costs materially more to walk than a
+  > 4-level one. Worth someone's attention outside this plan.
+
 - **Tenant count and size skew**, and **organisation hierarchy depth** — the first two set total table
   size and planner statistics, the third sets how far reference-table RLS walks ancestors. See
   section I. **Measured (Q12): 986 organisations, and the skew is severe.** The largest holds **21% of
