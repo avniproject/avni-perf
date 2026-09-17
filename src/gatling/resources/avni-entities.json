@@ -1,0 +1,809 @@
+{
+  "_generated": "DO NOT EDIT. Run tools/entity-metadata and commit the result.",
+  "_source": "openchs-models@1.33.81",
+  "_order": "pull order - already reversed from EntityMetaData.model()",
+  "entities": [
+    {
+      "entityName": "SyncTelemetry",
+      "type": "tx",
+      "path": "syncTelemetry",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 1,
+      "pullRequired": false,
+      "pushRequired": true
+    },
+    {
+      "entityName": "UserInfo",
+      "type": "tx",
+      "path": "v2/me",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 1,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "DownloadableContent",
+      "type": "reference",
+      "path": "v2/downloadableContent/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Extension",
+      "type": "reference",
+      "path": "extensions",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Individual",
+      "type": "tx",
+      "path": "individual",
+      "entityTypeUuidParam": "subjectTypeUuid",
+      "staticParams": null,
+      "syncWeight": 5,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "ProgramEnrolment",
+      "type": "tx",
+      "path": "programEnrolment",
+      "entityTypeUuidParam": "programUuid",
+      "staticParams": null,
+      "syncWeight": 5,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "ProgramEncounter",
+      "type": "tx",
+      "path": "programEncounter",
+      "entityTypeUuidParam": "programEncounterTypeUuid",
+      "staticParams": null,
+      "syncWeight": 9,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "IdentifierAssignment",
+      "type": "tx",
+      "path": "identifierAssignment",
+      "entityTypeUuidParam": null,
+      "staticParams": {
+        "deviceId": null
+      },
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Encounter",
+      "type": "tx",
+      "path": "encounter",
+      "entityTypeUuidParam": "encounterTypeUuid",
+      "staticParams": null,
+      "syncWeight": 7,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Session",
+      "type": "tx",
+      "path": "session",
+      "entityTypeUuidParam": "subjectTypeUuid",
+      "staticParams": null,
+      "syncWeight": 7,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "AttendanceRecord",
+      "type": "tx",
+      "path": "attendanceRecord",
+      "entityTypeUuidParam": "subjectTypeUuid",
+      "staticParams": null,
+      "syncWeight": 8,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Checklist",
+      "type": "tx",
+      "path": "txNewChecklistEntity",
+      "entityTypeUuidParam": "checklistDetailUuid",
+      "staticParams": null,
+      "syncWeight": 3,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "ChecklistItem",
+      "type": "tx",
+      "path": "txNewChecklistItemEntity",
+      "entityTypeUuidParam": "checklistDetailUuid",
+      "staticParams": null,
+      "syncWeight": 3,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "IndividualRelationship",
+      "type": "tx",
+      "path": "individualRelationship",
+      "entityTypeUuidParam": "subjectTypeUuid",
+      "staticParams": null,
+      "syncWeight": 2,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "ChecklistItemEntityApprovalStatus",
+      "type": "tx",
+      "path": "entityApprovalStatus",
+      "entityTypeUuidParam": "checklistDetailUuid",
+      "staticParams": {
+        "entityType": "ChecklistItem"
+      },
+      "syncWeight": 2,
+      "pullRequired": true,
+      "pushRequired": false
+    },
+    {
+      "entityName": "ProgramEnrolmentEntityApprovalStatus",
+      "type": "tx",
+      "path": "entityApprovalStatus",
+      "entityTypeUuidParam": "programUuid",
+      "staticParams": {
+        "entityType": "ProgramEnrolment"
+      },
+      "syncWeight": 2,
+      "pullRequired": true,
+      "pushRequired": false
+    },
+    {
+      "entityName": "ProgramEncounterEntityApprovalStatus",
+      "type": "tx",
+      "path": "entityApprovalStatus",
+      "entityTypeUuidParam": "programEncounterTypeUuid",
+      "staticParams": {
+        "entityType": "ProgramEncounter"
+      },
+      "syncWeight": 2,
+      "pullRequired": true,
+      "pushRequired": false
+    },
+    {
+      "entityName": "EncounterEntityApprovalStatus",
+      "type": "tx",
+      "path": "entityApprovalStatus",
+      "entityTypeUuidParam": "encounterTypeUuid",
+      "staticParams": {
+        "entityType": "Encounter"
+      },
+      "syncWeight": 2,
+      "pullRequired": true,
+      "pushRequired": false
+    },
+    {
+      "entityName": "SubjectEntityApprovalStatus",
+      "type": "tx",
+      "path": "entityApprovalStatus",
+      "entityTypeUuidParam": "subjectTypeUuid",
+      "staticParams": {
+        "entityType": "Subject"
+      },
+      "syncWeight": 2,
+      "pullRequired": true,
+      "pushRequired": false
+    },
+    {
+      "entityName": "EntityApprovalStatus",
+      "type": "tx",
+      "path": "entityApprovalStatus",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 1,
+      "pullRequired": false,
+      "pushRequired": true
+    },
+    {
+      "entityName": "CommentThread",
+      "type": "tx",
+      "path": "commentThread",
+      "entityTypeUuidParam": "subjectTypeUuid",
+      "staticParams": null,
+      "syncWeight": 1,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Comment",
+      "type": "tx",
+      "path": "comment",
+      "entityTypeUuidParam": "subjectTypeUuid",
+      "staticParams": null,
+      "syncWeight": 1,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "GroupSubject",
+      "type": "tx",
+      "path": "groupSubject",
+      "entityTypeUuidParam": "subjectTypeUuid",
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "VideoTelemetric",
+      "type": "tx",
+      "path": "videotelemetric",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": false,
+      "pushRequired": true
+    },
+    {
+      "entityName": "News",
+      "type": "tx",
+      "path": "news",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "SubjectProgramEligibility",
+      "type": "tx",
+      "path": "subjectProgramEligibility",
+      "entityTypeUuidParam": "subjectTypeUuid",
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "TaskUnAssignment",
+      "type": "tx",
+      "path": "taskUnAssignments",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Task",
+      "type": "tx",
+      "path": "task",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "UserSubjectAssignment",
+      "type": "tx",
+      "path": "userSubjectAssignment",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "SubjectMigration",
+      "type": "tx",
+      "path": "subjectMigrations",
+      "entityTypeUuidParam": "subjectTypeUuid",
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "ResetSync",
+      "type": "tx",
+      "path": "resetSyncs",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "RuleFailureTelemetry",
+      "type": "tx",
+      "path": "ruleFailureTelemetry",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": false,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Privilege",
+      "type": "reference",
+      "path": "privilege/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Groups",
+      "type": "reference",
+      "path": "groups/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "GroupPrivileges",
+      "type": "reference",
+      "path": "groupPrivilege/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "MyGroups",
+      "type": "reference",
+      "path": "myGroups/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Concept",
+      "type": "reference",
+      "path": "concept/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 4,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "ConceptAnswer",
+      "type": "reference",
+      "path": "conceptAnswer/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 2,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "SubjectType",
+      "type": "reference",
+      "path": "operationalSubjectType/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 1,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "AttendanceType",
+      "type": "reference",
+      "path": "attendanceType/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 1,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Calendar",
+      "type": "reference",
+      "path": "calendar/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 1,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "CalendarDateMarker",
+      "type": "reference",
+      "path": "calendarDateMarker/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 1,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "GroupRole",
+      "type": "reference",
+      "path": "groupRole/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Gender",
+      "type": "reference",
+      "path": "gender/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 1,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Program",
+      "type": "reference",
+      "path": "operationalProgram/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 3,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "EncounterType",
+      "type": "reference",
+      "path": "operationalEncounterType/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 4,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "TaskType",
+      "type": "reference",
+      "path": "taskType/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "TaskStatus",
+      "type": "reference",
+      "path": "taskStatus/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "AddressLevel",
+      "type": "reference",
+      "path": "locations/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 4,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "LocationMapping",
+      "type": "reference",
+      "path": "locationMapping/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 4,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Translation",
+      "type": "reference",
+      "path": "translation/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "PlatformTranslation",
+      "type": "reference",
+      "path": "platformTranslation/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "OrganisationConfig",
+      "type": "reference",
+      "path": "organisationConfig/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "IdentifierSource",
+      "type": "reference",
+      "path": "identifierSource/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Documentation",
+      "type": "reference",
+      "path": "documentations/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "DocumentationItem",
+      "type": "reference",
+      "path": "documentationItems/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Form",
+      "type": "reference",
+      "path": "form/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 4,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "FormElementGroup",
+      "type": "reference",
+      "path": "formElementGroup/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 3,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "FormElement",
+      "type": "reference",
+      "path": "formElement/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 5,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "FormMapping",
+      "type": "reference",
+      "path": "formMapping/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 1,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "IndividualRelation",
+      "type": "reference",
+      "path": "individualRelation/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 3,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "IndividualRelationGenderMapping",
+      "type": "reference",
+      "path": "individualRelationGenderMapping/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 3,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "IndividualRelationshipType",
+      "type": "reference",
+      "path": "individualRelationshipType/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 3,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "RuleDependency",
+      "type": "reference",
+      "path": "ruleDependency/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 3,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Rule",
+      "type": "reference",
+      "path": "rule/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 3,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "ChecklistDetail",
+      "type": "reference",
+      "path": "checklistDetail/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 1,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "ChecklistItemDetail",
+      "type": "reference",
+      "path": "checklistItemDetail/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 3,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Video",
+      "type": "reference",
+      "path": "video/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "LocationHierarchy",
+      "type": "reference",
+      "path": "locationHierarchy/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "MenuItem",
+      "type": "reference",
+      "path": "menuItem/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "StandardReportCardType",
+      "type": "reference",
+      "path": "standardReportCardType/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "CustomCardConfig",
+      "type": "reference",
+      "path": "v2/customCardConfig/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "ReportCard",
+      "type": "reference",
+      "path": "v2/card/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "Dashboard",
+      "type": "reference",
+      "path": "v2/dashboard/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "DashboardFilter",
+      "type": "reference",
+      "path": "v2/dashboardFilter/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "DashboardSection",
+      "type": "reference",
+      "path": "v2/dashboardSection/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "DashboardSectionCardMapping",
+      "type": "reference",
+      "path": "v2/dashboardSectionCardMapping/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "ApprovalStatus",
+      "type": "reference",
+      "path": "approvalStatus/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    },
+    {
+      "entityName": "GroupDashboard",
+      "type": "reference",
+      "path": "v2/groupDashboard/search/lastModified",
+      "entityTypeUuidParam": null,
+      "staticParams": null,
+      "syncWeight": 0,
+      "pullRequired": true,
+      "pushRequired": true
+    }
+  ]
+}

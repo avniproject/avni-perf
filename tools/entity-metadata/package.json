@@ -1,0 +1,12 @@
+{
+  "name": "avni-perf-entity-metadata",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generates the simulation's entity table from the client's own EntityMetaData.",
+  "scripts": {
+    "generate": "node generate.js"
+  },
+  "dependencies": {
+    "openchs-models": "1.33.81"
+  }
+}

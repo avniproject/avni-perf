@@ -13,17 +13,33 @@ import org.avni.models.AvniEntity;
 import org.avni.models.SyncDetail;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 
 public class AvniSyncSimulation extends Simulation {
+    // Declared first: loadEntities() runs in the static initialiser and needs it.
+    private static final ObjectMapper om = new ObjectMapper();
+
     private static final String baseUrl = System.getProperty("BASE_URL", "https://perf.avniproject.org");
     private static final Integer userCount = Integer.getInteger("USER_COUNT", csv("sync-users.csv").recordsCount());
     private static final Integer rampPeriod = Integer.getInteger("RAMP_PERIOD", csv("sync-users.csv").recordsCount() * 20);
-    private static final Integer pageSize = Integer.getInteger("PAGE_SIZE", 100);
+    // The client ships pageSize 1000 (avni-client config/initialSettings.json). It cannot be read from
+    // the pinned openchs-models package - it lives in the client app, not the models library - so it
+    // is mirrored here and must be updated if the client changes it. Older installs may still be on
+    // 100; see the plan, D8.3.
+    private static final Integer pageSize = Integer.getInteger("PAGE_SIZE", 1000);
     private static final Integer maxPauseToSimulateRealmStorage = Integer.getInteger("MAX_REALM_STORAGE_PAUSE", 2);
     private static final String now = System.getProperty("NOW", java.time.Instant.now().toString());
+    // The client sends its Android id; filterChangedEntities branches on it for device-aware entities.
+    private static final String deviceId = System.getProperty("DEVICE_ID", "avni-perf-simulation");
+
+    private static final List<AvniEntity> entities = loadEntities();
 
     // Authentication mode. "none" (default) sends only the USER-NAME header and requires the target
     // server to run with AVNI_IDP_TYPE=none. "cognito" mints a token per user and is limited to runs
@@ -33,7 +49,6 @@ public class AvniSyncSimulation extends Simulation {
     private static final Map<String, String> userTokens = new ConcurrentHashMap<>();
 
     FeederBuilder<String> feeder = csv("sync-users.csv").random();
-    static ObjectMapper om = new ObjectMapper();
 
     HttpProtocolBuilder baseProtocol = http.baseUrl(baseUrl)
         .acceptHeader("application/json")
@@ -84,110 +99,136 @@ public class AvniSyncSimulation extends Simulation {
         ;
     }
 
-    private static ChainBuilder sync() {
-        return foreach(Arrays.asList(
-            new AvniEntity("Extension", "/extensions?", "reference"),
-            new AvniEntity("Privilege", "/privilege/search/lastModified?", "reference"),
-            new AvniEntity("Groups", "/groups/search/lastModified?", "reference"),
-            new AvniEntity("GroupPrivileges", "/groupPrivilege/search/lastModified?", "reference"),
-            new AvniEntity("MyGroups", "/myGroups/search/lastModified?", "reference"),
-            new AvniEntity("Concept", "/concept/search/lastModified?", "reference"),
-            new AvniEntity("ConceptAnswer", "/conceptAnswer/search/lastModified?", "reference"),
-            new AvniEntity("SubjectType", "/operationalSubjectType/search/lastModified?", "reference"),
-            new AvniEntity("GroupRole", "/groupRole/search/lastModified?", "reference"),
-            new AvniEntity("Gender", "/gender/search/lastModified?", "reference"),
-            new AvniEntity("ProgramOutcome", "/programOutcome/search/lastModified?", "reference"),
-            new AvniEntity("Program", "/operationalProgram/search/lastModified?", "reference"),
-            new AvniEntity("EncounterType", "/operationalEncounterType/search/lastModified?", "reference"),
-            new AvniEntity("TaskType", "/taskType/search/lastModified?", "reference"),
-            new AvniEntity("TaskStatus", "/taskStatus/search/lastModified?", "reference"),
-            new AvniEntity("AddressLevel", "/addressLevel/search/lastModified?", "reference"),
-            new AvniEntity("LocationMapping", "/locationMapping/search/lastModified?", "reference"),
-            new AvniEntity("Translation", "/translation/search/lastModified?", "reference"),
-            new AvniEntity("PlatformTranslation", "/platformTranslation/search/lastModified?", "reference"),
-            new AvniEntity("OrganisationConfig", "/organisationConfig/search/lastModified?", "reference"),
-            new AvniEntity("IdentifierSource", "/identifierSource/search/lastModified?", "reference"),
-            new AvniEntity("Documentation", "/documentation/search/lastModified?", "reference"),
-            new AvniEntity("DocumentationItem", "/documentationItem/search/lastModified?", "reference"),
-            new AvniEntity("Form", "/form/search/lastModified?", "reference"),
-            new AvniEntity("FormElementGroup", "/formElementGroup/search/lastModified?", "reference"),
-            new AvniEntity("FormElement", "/formElement/search/lastModified?", "reference"),
-            new AvniEntity("FormMapping", "/formMapping/search/lastModified?", "reference"),
-            new AvniEntity("ProgramConfig", "/programConfig/search/lastModified?", "reference"),
-            new AvniEntity("IndividualRelation", "/individualRelation/search/lastModified?", "reference"),
-            new AvniEntity("IndividualRelationGenderMapping", "/individualRelationGenderMapping/search/lastModified?", "reference"),
-            new AvniEntity("IndividualRelationshipType", "/individualRelationshipType/search/lastModified?", "reference"),
-            new AvniEntity("RuleDependency", "/ruleDependency/search/lastModified?", "reference"),
-            new AvniEntity("Rule", "/rule/search/lastModified?", "reference"),
-            new AvniEntity("ChecklistDetail", "/checklistDetail/search/lastModified?", "reference"),
-            new AvniEntity("ChecklistItemDetail", "/checklistItemDetail/search/lastModified?", "reference"),
-            new AvniEntity("Video", "/video/search/lastModified?", "reference"),
-            new AvniEntity("LocationHierarchy", "/locationHierarchy/search/lastModified?", "reference"),
-            new AvniEntity("MenuItem", "/menuItem/search/lastModified?", "reference"),
-            new AvniEntity("StandardReportCardType", "/standardReportCardType/search/lastModified?", "reference"),
-            new AvniEntity("ReportCard", "/card/search/lastModified?", "reference"),
-            new AvniEntity("Dashboard", "/dashboard/search/lastModified?", "reference"),
-            new AvniEntity("DashboardSection", "/dashboardSection/search/lastModified?", "reference"),
-            new AvniEntity("DashboardSectionCardMapping", "/dashboardSectionCardMapping/search/lastModified?", "reference"),
-            new AvniEntity("ApprovalStatus", "/approvalStatus/search/lastModified?", "reference"),
-            new AvniEntity("GroupDashboard", "/groupDashboard/search/lastModified?", "reference"),
+    /**
+     * Entities are generated from the client's own EntityMetaData - see tools/entity-metadata.
+     * The table is already in pull order, so it is walked as-is.
+     */
+    private static List<AvniEntity> loadEntities() {
+        try (InputStream in = AvniSyncSimulation.class.getClassLoader()
+                .getResourceAsStream("avni-entities.json")) {
+            if (in == null) {
+                throw new IllegalStateException(
+                    "avni-entities.json not found. Run tools/entity-metadata to generate it.");
+            }
+            JsonNode root = om.readTree(in);
+            List<AvniEntity> loaded = om.convertValue(
+                root.get("entities"), new TypeReference<List<AvniEntity>>() {});
+            out.println(String.format("Loaded %d entities from %s",
+                loaded.size(), root.path("_source").asText("unknown")));
+            return loaded;
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not read avni-entities.json", e);
+        }
+    }
 
-            new AvniEntity("UserInfo", "/me/v3?", "tx"),
-            new AvniEntity("Individual", "/individual/search/lastModified/v2?subjectTypeUuid=", "tx"),
-            new AvniEntity("ProgramEnrolment", "/programEnrolment/v2?programUuid=", "tx"),
-            new AvniEntity("ProgramEncounter", "/programEncounter/v2?programEncounterTypeUuid=", "tx"),
-            new AvniEntity("IdentifierAssignment", "/identifierAssignment/v2?", "tx"),
-            new AvniEntity("Encounter", "/encounter/v2?encounterTypeUuid=", "tx"),
-            new AvniEntity("Checklist", "/txNewChecklistEntity/v2?checklistDetailUuid=", "tx"),
-            new AvniEntity("ChecklistItem", "/txNewChecklistItemEntity/v2?checklistDetailUuid=", "tx"),
-            new AvniEntity("IndividualRelationship", "/individualRelationship/v2?subjectTypeUuid=", "tx"),
-            new AvniEntity("EntityApprovalStatus", "/entityApprovalStatus/v2?", "tx"),
-            new AvniEntity("CommentThread", "/commentThread/v2?", "tx"),
-            new AvniEntity("Comment", "/comment/v2?", "tx"),
-            new AvniEntity("GroupSubject", "/groupSubject/v2?", "tx"),
-//            new AvniEntity("News", "/news/v2?", "tx"), //commented as this connects to prod s3 which fails
-            new AvniEntity("SubjectProgramEligibility", "/subjectProgramEligibility/v2?", "tx"),
-            new AvniEntity("TaskUnAssignment", "/taskUnAssignments/v2?", "tx"),
-            new AvniEntity("Task", "/task/v2?", "tx"),
-            new AvniEntity("UserSubjectAssignment", "/userSubjectAssignment/v2?", "tx"),
-            new AvniEntity("SubjectMigration", "/subjectMigrations/v2?subjectTypeUuid=", "tx")
-        ), "entity").on(
-            foreach(session -> session.getList("syncDetails"), "syncDetail").on(
-//                    doIfEqualsOrElse("#{syncDetail.entityName}", "#{entity.entityName}")
-                doIfEquals("#{syncDetail.entityName}", "#{entity.entityName}")
-                    .then(
-                        exec(getAndPaginate("#{entity.entityName}", "#{entity.resourcePath}", "#{syncDetail.entityTypeUuid}"))
-                    )
-//                    .orElse(exec(print("no match for #{entity.entityName}")))
+    /**
+     * One chain per entity, built once at startup. The previous shape nested a foreach over every
+     * entity inside a foreach over every sync detail with a doIfEquals, which is entities x details
+     * comparisons per virtual user per sync - several thousand, repeated every run.
+     */
+    private static ChainBuilder sync() {
+        ChainBuilder chain = exec(session -> session);
+        for (AvniEntity entity : entities) {
+            if (!entity.pullRequired) {
+                continue;
+            }
+            chain = chain.exec(
+                foreach(session -> syncDetailsFor(session, entity.entityName), "syncDetail")
+                    .on(exec(getAndPaginate(entity))));
+        }
+        return chain;
+    }
+
+    /** The sync details the server returned for this entity. Empty means nothing to pull. */
+    @SuppressWarnings("unchecked")
+    private static List<SyncDetail> syncDetailsFor(Session session, String entityName) {
+        List<SyncDetail> all = (List<SyncDetail>) session.get("syncDetails");
+        if (all == null) {
+            return Collections.emptyList();
+        }
+        List<SyncDetail> matching = new ArrayList<>();
+        for (SyncDetail detail : all) {
+            if (entityName.equals(detail.entityName)) {
+                matching.add(detail);
+            }
+        }
+        return matching;
+    }
+
+    private static ChainBuilder getAndPaginate(AvniEntity entity) {
+        return exec(session -> session.set("allPagesNotFetched", true))
+            .asLongAs("#{allPagesNotFetched}", "index")
+            .on(group(entity.entityName).on(
+                exec(http(requestName(entity))
+                        .get(session -> url(entity, session))
+                        .check(status().is(200))
+                        // One parse per response. The previous shape called response.body().string()
+                        // in two separate predicates, materialising every page twice just to test for
+                        // a substring - injector CPU spent inflating the latency being measured.
+                        .check(bodyString()
+                            .transformWithSession(AvniSyncSimulation::hasMorePages)
+                            .saveAs("allPagesNotFetched"))
+                )
+                    // Stands in for the time the client spends parsing and persisting the page.
+                    // See the plan, D6 - this constant is a placeholder, not a measurement.
+                    .pause(0, maxPauseToSimulateRealmStorage)
             ));
     }
 
-    private static ChainBuilder getAndPaginate(String entityName, String endpoint, String entityTypeUuid) {
-        String endpointWithParam = String.format("%s%s&", endpoint, entityTypeUuid);
-        return exec(session -> session.set("allPagesNotFetched", true))
-            .asLongAs("#{allPagesNotFetched}", "index")
-            .on(group(entityName).on(
-                exec(http(entityTypeUuid)
-                        .get(String.format("%slastModifiedDateTime=#{lastModifiedDateTime}&now=%s&size=%d&page=#{index}", endpointWithParam, now, pageSize))
-                        .check(status().is(200))
-//                    .asJson()
-                        .checkIf((response, session) -> response.body().string().contains("totalPages")).then(
-                            jmesPath("page.totalPages").ofInt()
-                                .transformWithSession((totalPages, session) -> totalPages > session.getInt("index") + 1)
-                                .saveAs("allPagesNotFetched"))
-                        .checkIf((response, session) -> response.body().string().contains("hasNext")).then(
-                            jmesPath("slice.hasNext").ofBoolean()
-                                .transformWithSession((hasNext, session) -> hasNext)
-                                .saveAs("allPagesNotFetched"))
+    /**
+     * Named per entity and type so the report is readable. The previous shape named requests after
+     * the entityTypeUuid, which is empty for every entity that is not split by type.
+     */
+    private static String requestName(AvniEntity entity) {
+        return entity.entityTypeUuidParam == null
+            ? entity.entityName
+            : entity.entityName + " [#{syncDetail.entityTypeUuid}]";
+    }
 
-                )
-                    .pause(0, maxPauseToSimulateRealmStorage) //to simulate the time between requests while client stores the data in realm
-            ));
-//                        .exec(session -> { // for debugging
-//                            System.out.println("allPagesNotFetched::" + session.getString("allPagesNotFetched"));
-//                            System.out.println("name:" + entityName);
-//                            return session;
-//                        })
+    /** Built the way ConventionalRestClient builds it, so the simulation requests what the client requests. */
+    private static String url(AvniEntity entity, Session session) {
+        StringBuilder sb = new StringBuilder("/").append(entity.path).append("?");
+        if (entity.entityTypeUuidParam != null) {
+            SyncDetail detail = (SyncDetail) session.get("syncDetail");
+            sb.append(entity.entityTypeUuidParam).append("=")
+              .append(detail.entityTypeUuid == null ? "" : detail.entityTypeUuid).append("&");
+        }
+        if (entity.staticParams != null) {
+            for (Map.Entry<String, String> param : entity.staticParams.entrySet()) {
+                String value = param.getValue() == null ? deviceIdFor(param.getKey()) : param.getValue();
+                sb.append(param.getKey()).append("=").append(value).append("&");
+            }
+        }
+        sb.append("lastModifiedDateTime=").append(session.getString("lastModifiedDateTime"))
+          .append("&now=").append(now)
+          .append("&size=").append(pageSize)
+          .append("&page=").append(session.getInt("index"));
+        return sb.toString();
+    }
 
+    /**
+     * Paged responses carry page.totalPages; sliced ones carry slice.hasNext. Which shape comes back
+     * depends on the endpoint, so both are handled - but the body is parsed once either way.
+     */
+    private static boolean hasMorePages(String body, Session session) {
+        try {
+            JsonNode root = om.readTree(body);
+            JsonNode page = root.path("page");
+            if (!page.isMissingNode() && page.has("totalPages")) {
+                return page.get("totalPages").asInt() > session.getInt("index") + 1;
+            }
+            JsonNode slice = root.path("slice");
+            if (!slice.isMissingNode() && slice.has("hasNext")) {
+                return slice.get("hasNext").asBoolean();
+            }
+            return false;
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not parse page metadata", e);
+        }
+    }
+
+    /** A null static param value means the client fills it in per device; deviceId is the only one today. */
+    private static String deviceIdFor(String key) {
+        return "deviceId".equals(key) ? deviceId : "";
     }
 }

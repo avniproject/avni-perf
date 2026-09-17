@@ -30,3 +30,5 @@ build
 /src/gatling/resources/sync-users.csv
 /src/gatling/resources/sync-users.*.csv
 !/gradle/wrapper/gradle-wrapper.jar
+tools/entity-metadata/node_modules
+tools/entity-metadata/package-lock.json

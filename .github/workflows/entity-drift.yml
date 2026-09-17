@@ -1,0 +1,23 @@
+name: Entity table drift
+
+# The simulation's entity list is generated from the client's own EntityMetaData. This fails the
+# build if the committed table no longer matches what the pinned openchs-models version produces -
+# the drift that previously let entities go missing, stale ones linger, and a typo silently disable
+# an entity on every run.
+
+on:
+  pull_request:
+    paths:
+      - 'tools/entity-metadata/**'
+      - 'src/gatling/resources/avni-entities.json'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: make check_entities_current
