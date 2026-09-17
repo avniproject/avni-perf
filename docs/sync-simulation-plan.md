@@ -168,9 +168,22 @@ Cognito call still blocks inside a session function and stalls the injector's ev
 why it is confined to the opt-in path. Fixing it properly means pre-minting off the virtual-user
 path — disproportionate for a second-class mode, and recorded here rather than hidden.
 
-**A11 — Archive runs with their metadata.** Keep each run's `simulation.log` alongside the sim's git
-SHA, the server build, `BASE_URL`, injection profile and dataset identity. Without this, runs cannot
-be compared and no trend line exists.
+**A11 — Archive runs with their metadata.** *Done.* Gatling already keeps `simulation.log` in each
+report directory; what was missing was any record of what produced it. An `archiveRun` task now
+finalizes every `gatlingRun` and writes `run-metadata.json` beside it: simulation commit, target,
+injection profile, entity table source, dataset and server build.
+
+Three deliberate choices:
+
+- **Absence is recorded, not omitted.** The server build and dataset identity cannot be discovered —
+  the server exposes only `/ping`, which returns `pong` — so they are written as `unrecorded` unless
+  `-DSERVER_BUILD` and `-DDATASET_ID` are passed, and the task says so on the console. A field that
+  is quietly missing reads as "not applicable" later; one that says `unrecorded` reads as "nobody
+  wrote it down".
+- **A dirty working tree is flagged.** The run cannot be reproduced from the recorded SHA alone, and
+  that is worth knowing before a result is quoted.
+- **The entity table source is captured** — `openchs-models@1.33.81` — so a change in what the
+  simulation asks for is visible in the archive rather than having to be inferred from dates.
 
 **A12 — Update the README.** Almost every task in this plan changes something the README documents,
 and it is the only operator-facing documentation the repo has.

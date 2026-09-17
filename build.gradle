@@ -43,3 +43,77 @@ dependencies {
     gatling 'software.amazon.awssdk:cognitoidentity'
     gatling 'software.amazon.awssdk:cognitoidentityprovider'
 }
+
+// A11. A simulation.log without provenance is not comparable to anything. This records what produced
+// each run, next to the run itself, so a result found months later can still be placed.
+//
+// Two fields cannot be discovered and must be supplied: the server build (the server exposes only
+// /ping, which returns "pong") and the dataset identity. Both are recorded as "unrecorded" when
+// absent rather than silently omitted, so their absence is visible in the archive.
+def gitOutput = { String... args ->
+    try {
+        def out = new ByteArrayOutputStream()
+        exec { commandLine args; standardOutput = out; errorOutput = new ByteArrayOutputStream() }
+        return out.toString().trim()
+    } catch (Exception ignored) {
+        return "unknown"
+    }
+}
+
+tasks.register('archiveRun') {
+    doLast {
+        def reportsRoot = file("$buildDir/reports/gatling")
+        def latest = reportsRoot.listFiles()?.findAll { it.directory }?.max { it.lastModified() }
+        if (latest == null) {
+            logger.lifecycle("archiveRun: no gatling report directory found, nothing to record")
+            return
+        }
+        def prop = { String name, Object fallback -> System.getProperty(name) ?: fallback }
+        def entityTable = new groovy.json.JsonSlurper().parse(
+            file("src/gatling/resources/avni-entities.json"))
+        def entities = entityTable.entities
+
+        def metadata = [
+            runId     : latest.name,
+            recordedAt: new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX"),
+            simulation: [
+                gitSha        : gitOutput('git', 'rev-parse', 'HEAD'),
+                gitDirty      : !gitOutput('git', 'status', '--porcelain').isEmpty(),
+                gatlingPlugin : '3.15.1.3'
+            ],
+            target    : [
+                baseUrl    : prop('BASE_URL', 'https://perf.avniproject.org'),
+                serverBuild: prop('SERVER_BUILD', 'unrecorded')
+            ],
+            profile   : [
+                syncMode    : prop('SYNC_MODE', 'csv'),
+                authMode    : prop('AUTH_MODE', 'none'),
+                userCount   : prop('USER_COUNT', 'feeder rows'),
+                rampPeriod  : prop('RAMP_PERIOD', 'feeder rows x 20'),
+                pageSize    : prop('PAGE_SIZE', '1000'),
+                storagePause: prop('MAX_REALM_STORAGE_PAUSE', '2'),
+                nowOverride : prop('NOW', 'from server response')
+            ],
+            entityTable: [
+                source: entityTable._source,
+                total : entities.size(),
+                pulled: entities.count { it.pullRequired }
+            ],
+            dataset   : prop('DATASET_ID', 'unrecorded')
+        ]
+
+        def target = new File(latest, "run-metadata.json")
+        target.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata)) + "\n"
+        logger.lifecycle("archiveRun: wrote ${target}")
+        if (metadata.simulation.gitDirty) {
+            logger.lifecycle("archiveRun: WARNING - working tree is dirty, so this run cannot be "
+                + "reproduced from ${metadata.simulation.gitSha} alone")
+        }
+        if (metadata.dataset == 'unrecorded' || metadata.target.serverBuild == 'unrecorded') {
+            logger.lifecycle("archiveRun: NOTE - pass -DDATASET_ID and -DSERVER_BUILD to make this "
+                + "run comparable with others")
+        }
+    }
+}
+
+tasks.matching { it.name == 'gatlingRun' }.configureEach { finalizedBy 'archiveRun' }

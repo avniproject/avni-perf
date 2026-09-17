@@ -56,3 +56,18 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 `PAGE_SIZE` defaults to 100
 
 `NOW` defaults to current time at start of simulation
+
+## Run archiving
+
+Every `gatlingRun` writes `run-metadata.json` next to the report's `simulation.log`, recording what
+produced the run: simulation commit (and whether the tree was dirty), target, injection profile,
+entity table source, dataset and server build.
+
+Two of those cannot be discovered and must be passed, or they are recorded as `unrecorded`:
+
+```
+./gradlew gatlingRun -DDATASET_ID=... -DSERVER_BUILD=...
+```
+
+A `simulation.log` with no provenance cannot be compared with anything, which is the whole point of
+keeping it.
