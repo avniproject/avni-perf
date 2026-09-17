@@ -1710,8 +1710,20 @@ before trusting output.
 > **Run these against a read replica if one exists.** The `jsonb_object_keys` scans in Q6 touch large
 > tables; `TABLESAMPLE` keeps them cheap, but avoid peak hours regardless.
 
-**Q1 — `baseMsPerRecord` ceiling (D6.1).** Remember this includes network and server time; see the
-caveat in D6.1.
+> **Every query over `sync_telemetry` excludes the simulation's own rows.** Since D4, the simulation
+> posts telemetry like any client, tagged `sync_source = 'avni-perf-simulation'`. Left in, simulated
+> syncs would pollute the very production distributions these queries exist to establish — and the
+> more the simulation is run, the worse the contamination. Q6, Q7, Q9 and Q10 read application tables
+> the simulation never writes to, so they need no filter.
+
+**Q1 — `baseMsPerRecord` (D6.1).** `baseMsPerRecord` is a *marginal* cost, so ask for a slope rather
+than a ratio.
+
+Dividing total duration by records pulled conflates fixed and marginal cost at every volume: every
+sync pays for `syncDetails`, an entity request per entity whether or not it returns anything, and the
+telemetry post. That fixed cost is baked into the ratio, inflating it most for small syncs and
+approaching the truth only for very large ones. No minimum-records threshold fixes that — it only
+hides the worst cases.
 
 ```sql
 with s as (
@@ -1720,16 +1732,26 @@ with s as (
     (select coalesce(sum((e->>'done')::int), 0)
        from jsonb_array_elements(entity_status->'pull') e) as pulled
   from sync_telemetry
-  where sync_status = 'complete'
+  where sync_source is distinct from 'avni-perf-simulation'
+    and sync_status = 'complete'
     and sync_end_time > now() - interval '30 days'
     and sync_source is distinct from 'ONLY_UPLOAD_BACKGROUND_JOB'
 )
-select count(*) as syncs,
-       percentile_cont(0.5)  within group (order by duration_ms / pulled) as p50_ms_per_record,
-       percentile_cont(0.95) within group (order by duration_ms / pulled) as p95_ms_per_record
+select count(*)                            as syncs,
+       regr_slope(duration_ms, pulled)     as ms_per_record,      -- marginal: baseMsPerRecord
+       regr_intercept(duration_ms, pulled) as fixed_overhead_ms,  -- per-sync cost at zero records
+       regr_r2(duration_ms, pulled)        as fit
 from s
-where pulled > 100;
+where pulled > 0;
 ```
+
+`regr_intercept` gives the per-sync fixed cost for free, which is worth having on its own. **Check
+`fit` before using the slope** — a low r² means duration is not linear in record count, and a single
+coefficient is then the wrong model, which is itself a finding.
+
+> **Still a ceiling.** Duration measured on the client includes network and server time, so the slope
+> is an upper bound on client-side parse-and-persist. See the caveat in D6.1 — do not use it as
+> `baseMsPerRecord` unmodified.
 
 **Q2 — `loadedSince` gap distribution (D1).** Drives the realistic-spread scenario.
 
@@ -1738,7 +1760,8 @@ with gaps as (
   select sync_end_time
          - lag(sync_end_time) over (partition by user_id order by sync_end_time) as gap
   from sync_telemetry
-  where sync_status = 'complete'
+  where sync_source is distinct from 'avni-perf-simulation'
+    and sync_status = 'complete'
     and sync_end_time > now() - interval '90 days'
 )
 select percentile_cont(array[0.25, 0.5, 0.75, 0.9, 0.99])
@@ -1759,7 +1782,8 @@ select percentile_cont(array[0.5, 0.9, 0.99]) within group (
          order by (entity_status->'totalCounts'->>'subjects')::numeric)
          as subjects_p50_p90_p99
 from sync_telemetry
-where sync_status = 'complete'
+where sync_source is distinct from 'avni-perf-simulation'
+  and sync_status = 'complete'
   and entity_status ? 'totalCounts'
   and sync_end_time > now() - interval '30 days';
 ```
@@ -1771,7 +1795,8 @@ select extract(hour from sync_start_time at time zone 'Asia/Kolkata') as hour_is
        count(*) as syncs,
        count(distinct user_id) as users
 from sync_telemetry
-where sync_start_time > now() - interval '30 days'
+where sync_source is distinct from 'avni-perf-simulation'
+  and sync_start_time > now() - interval '30 days'
 group by 1
 order by 1;
 ```
@@ -1785,7 +1810,8 @@ with s as (
          (select coalesce(sum((e->>'done')::int), 0)
             from jsonb_array_elements(entity_status->'pull') e) as pulled
   from sync_telemetry
-  where sync_status = 'complete'
+  where sync_source is distinct from 'avni-perf-simulation'
+    and sync_status = 'complete'
     and sync_end_time > now() - interval '30 days'
 )
 select width_bucket(pulled, 0, 50000, 10) as volume_band,
@@ -1847,7 +1873,8 @@ with s as (
     (select count(*) from jsonb_array_elements(entity_status->'pull') e
        where coalesce((e->>'todo')::int, 0) > 0) as entities_changed
   from sync_telemetry
-  where sync_status = 'complete'
+  where sync_source is distinct from 'avni-perf-simulation'
+    and sync_status = 'complete'
     and sync_source is distinct from 'ONLY_UPLOAD_BACKGROUND_JOB'
     and entity_status ? 'pull'
     and sync_end_time > now() - interval '30 days'
