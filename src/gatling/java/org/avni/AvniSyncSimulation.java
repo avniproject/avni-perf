@@ -156,7 +156,7 @@ public class AvniSyncSimulation extends Simulation {
             new AvniEntity("GroupSubject", "/groupSubject/v2?", "tx"),
 //            new AvniEntity("News", "/news/v2?", "tx"), //commented as this connects to prod s3 which fails
             new AvniEntity("SubjectProgramEligibility", "/subjectProgramEligibility/v2?", "tx"),
-            new AvniEntity("TaskUnAssigment", "/taskUnAssigments/v2?", "tx"),
+            new AvniEntity("TaskUnAssignment", "/taskUnAssignments/v2?", "tx"),
             new AvniEntity("Task", "/task/v2?", "tx"),
             new AvniEntity("UserSubjectAssignment", "/userSubjectAssignment/v2?", "tx"),
             new AvniEntity("SubjectMigration", "/subjectMigrations/v2?subjectTypeUuid=", "tx")

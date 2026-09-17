@@ -270,17 +270,29 @@ the drift runs in both directions.
 
 *Present in the simulation but not canonical (3):*
 
-- `ProgramConfig` and `ProgramOutcome` — removed upstream; the simulation still asks for them
-- **`TaskUnAssigment`** — a typo, missing an `n`. The real entity is `TaskUnAssignment`
+- **`ProgramOutcome`** — absent from *both* the client's `EntityMetaData` and the server's
+  `SyncEntityName` enum. Fully dead: `filterChangedEntities` gates on
+  `SyncEntityName.existsAsEnum`, so the server can never return it and the simulation's entry is a
+  no-op line
+- **`ProgramConfig`** — absent from the client's `EntityMetaData` but **still present in the server
+  enum**. The server would honour a request for it; the client stopped asking. So the simulation
+  asking is unrealistic rather than broken
+- **`TaskUnAssigment`** — a typo, missing an `n`, in *both* the entity name and the resource path.
+  The server declares `TaskUnAssignment` and `/taskUnAssignments/v2`. **Fixed** — see below
 
-> **The typo is a live bug, not cosmetic.** `sync()` matches with
-> `doIfEquals("#{syncDetail.entityName}", "#{entity.entityName}")`, so `TaskUnAssigment` never matches
-> the server's `TaskUnAssignment` and **that entity is silently skipped on every run** — no error, no
-> warning, just an entity that is never synced. `SyncDetailsBody.json` has the correct spelling, which
-> is why this was invisible.
+> **The typo was a live bug, not cosmetic.** `sync()` matches with
+> `doIfEquals("#{syncDetail.entityName}", "#{entity.entityName}")`, so `TaskUnAssigment` never matched
+> the server's `TaskUnAssignment` and **that entity was silently skipped on every run** — no error, no
+> warning, just an entity that was never synced. `SyncDetailsBody.json` carries the correct spelling,
+> which is why it stayed invisible.
 >
-> This is the strongest possible argument for C1: a generated list cannot contain a typo, and a CI
-> drift check would have caught all sixteen discrepancies.
+> This is the strongest argument for C1: a generated list cannot contain a typo, and a drift check
+> would have caught all sixteen discrepancies at once rather than one at a time.
+
+A cross-check of all 64 simulation entity names against the server's 79-constant `SyncEntityName`
+enum found **only `ProgramOutcome`** unknown to the server — so apart from the typo, every other
+entity the simulation asks for is at least a name the server recognises. The remaining reconciliation
+is C1's job.
 
 Also: `News` is commented out in the simulation. It can be re-enabled once the environment has a
 configured `bucketName` and consistent stored URLs — see D5.4; it does not require a real bucket.
