@@ -37,9 +37,9 @@ limits as the server's.
 
 ## Success criteria
 
-**This section is unfinished and blocks A6.** Nothing below can be asserted on until these numbers
-exist, and they are not derivable from the codebase — they are a product decision informed by
-production telemetry.
+**Partly filled; still blocks A6.** Three of the five numbers below are now measured against
+production. The two that remain are not derivable from the codebase or from telemetry — they are
+product decisions, and A6 cannot be implemented until someone makes them.
 
 **What this work is for.** Finding choke points in the current server. Not capacity certification, not
 regression gating — those are different exercises with different designs, and adopting either goal
@@ -49,15 +49,45 @@ later would change several decisions in this plan.
 
 | Target | Source | Value |
 |---|---|---|
-| p95 full sync duration, by data volume band | `sync_telemetry`, current production distribution | *TBD* |
-| p95 incremental sync duration | `sync_telemetry` | *TBD* |
+| p95 sync duration, light band (<5k records) | Q5 | **80.0 s** (p50 14.1 s) |
+| p95 sync duration, heavy band (~47.5k records) | Q5 | p50 **1,076 s**; p95 pending re-run |
 | Acceptable error rate under load | Product decision | *TBD* |
-| Concurrent-user target to design against | Largest org size + expected growth | *TBD* |
-| Peak-hour concurrency to reproduce | `sync_telemetry` timestamps, start-of-day distribution | *TBD* |
+| Concurrent-user target to design against | Q12 + growth allowance | **1,494** — largest org's full user base |
+| Peak-hour concurrency to reproduce | Q4 | **792 syncs/hour** (0.22/sec) peak; **267** distinct users; ~3 in flight |
+
+**One row remains open, and it is a product decision no query can supply:** what error rate is
+acceptable under load.
+
+> **The two concurrency rows disagree by a factor of 500, and that gap is the most useful thing in the
+> table.** The largest organisation has 1,494 users on its books, while the busiest hour production has
+> ever recorded saw 267 distinct users across *every* organisation and roughly **3 syncs in flight**.
+> Sizing against 1,494 concurrent users would be designing for a load production has never come close
+> to. Size the *Load* profile against the measured 792 syncs/hour, and treat 1,494 as the ceiling the
+> *Stress* profile ramps toward to find the knee — which is what a choke-point exercise wants anyway.
+
+**There is no separate incremental figure, and there cannot be one from this table.** `sync_telemetry`
+does not record whether a sync ran full or incremental. The light band is the closest available proxy
+and a good one — 98% of production syncs pull fewer than 5,000 records — so **"no worse than 80.0 s at
+p95" is the working threshold** for the common case.
 
 The honest default for a choke-point exercise is to derive thresholds from *today's* production
 distribution and assert "no worse than current" — that is enough to detect a regression and enough to
-recognise a knee, without requiring anyone to invent an SLO first.
+recognise a knee, without requiring anyone to invent an SLO first. That is what the filled rows above
+are: current production behaviour, not a target anyone chose.
+
+> **Provenance.** Figures marked as measured come from three query runs against production,
+> **2026-09-03** and **2026-09-17**, over a 30-day window (90 days for Q2). The second run corrected
+> defects the first exposed — hour-of-day bucketing in Q4, per-sync rather than per-user counting in
+> Q3, a missing schema filter in Q7, and clock-skew outliers in Q1 and Q5 — so where the two disagree,
+> the later run stands.
+>
+> **Two caveats attach to everything here.** The queries ran against a **physical replica**, so
+> `pg_stat_*` counters reflect Metabase's workload rather than sync traffic and cannot answer
+> index-usage questions (Q7). And the `sync_source` exclusion literal was wrong in both runs — the real
+> value is `automatic-upload-only`. A third run on **2026-09-17** applied the correct literal and the
+> clock-skew bound to Q1, Q2 and Q3; all three moved by less than 1% — `baseMsPerRecord` went from
+> 9.185 to 9.188 ms/record — so the earlier conclusions stand and the figures here are the corrected
+> ones. Re-derive rather than trusting these indefinitely; the distributions move.
 
 **Definition of done.** The exercise ends when the top bottlenecks have been named, attributed to a
 specific resource, and either fixed or explicitly accepted with a reason. Not when a run passes.
@@ -341,6 +371,41 @@ the simulation therefore only ever drives the **full-sync** shape of this endpoi
 the incremental shape, which is the common production case, and every per-row query runs with the
 same 1900 timestamp — so their selectivity and query plans are unrepresentative of production.
 
+**How stale is a real `loadedSince`? Measured (Q2):**
+
+**Measured: p25 2.4 min, p50 16.1 min, p75 12.5 h, p90 39.4 h, p99 8.2 days.**
+
+**Users sync far more often than the plan assumed, and the median is minutes rather than hours.**
+Q4 corroborates this independently: its peak hour held 792 syncs across 267 distinct users — 3.0 syncs
+per user per hour, or one every 20 minutes, against Q2's 16-minute median. Two unrelated queries
+agreeing closes the question.
+
+**The distribution is bimodal and both modes matter.** A median of 16 minutes alongside a p75 of 12.5
+hours is not one behaviour with spread; it is repeated syncing within a working session, and a long
+gap until the next session. D1's `loadedSince` spread must reproduce both — drawing from a single
+distribution centred on either mode gets the incremental payload wrong in opposite directions.
+
+**This is also why 98% of syncs are light (Q5).** Syncing every 16 minutes leaves very little to
+transfer, which is consistent with the p50 device holding only ~715 rows in total (Q3). The heavy tail
+comes from the rarer long gaps and from resets (Q10), not from ordinary use.
+
+```sql
+with gaps as (
+  select sync_end_time
+         - lag(sync_end_time) over (partition by user_id order by sync_end_time) as gap
+  from sync_telemetry
+  where sync_source is distinct from 'avni-perf-simulation'
+    and sync_source is distinct from 'automatic-upload-only'
+    and sync_status = 'complete'
+    and sync_start_time > now() - interval '90 days'
+    and sync_start_time <= now()
+)
+select percentile_cont(array[0.25, 0.5, 0.75, 0.9, 0.99])
+         within group (order by extract(epoch from gap) / 3600) as gap_hours_p25_50_75_90_99
+from gaps
+where gap is not null;
+```
+
 **How to build the array per user:**
 
 1. *Bootstrap once per user.* POST `/v2/syncDetails` with `[]`. The server's own response returns the
@@ -372,6 +437,26 @@ stable per-user device ID to the feeder.
 
 ### D1.1 — Measure what `syncDetails` costs *and* what it saves
 
+**Measured (Q8), over 112,349 syncs: the client posts 79 tracked entities and 4 come back changed at
+p50, 7 at p90 — an average changed fraction of 6.1%.** So roughly **94% of `filterChangedEntities`'
+per-row queries exist to establish that nothing changed**, and 79 matches the generated entity list
+exactly, confirming the client posts every entity every time.
+
+**This does not make `syncDetails` a bad trade — read the other side first.** Without it the client
+would issue ~75 entity requests instead of ~4, and each one pays `SetOrganisationJdbcInterceptor`'s
+three Postgres round trips on connection borrow and release. That is on the order of 225 round trips
+of pure role-switching overhead against one borrow plus 79 queries — before counting 75 HTTP round
+trips over a field mobile network. **The endpoint is buying a great deal**, which is exactly the
+framing "Measure before fixing" asks for.
+
+**The finding is the shape of the work, not its existence.** Answering "4 of 79 changed" via 79
+separate queries is the part worth attacking — a single set-based query joining against a `VALUES`
+list of the posted statuses, or a per-organisation high-water mark that lets most syncs skip the
+per-entity check entirely, would return the same answer at a fraction of the cost. **Measure the
+endpoint's share of total sync time before building either** (F1/F2); a 6.1% changed fraction is
+strong evidence of waste but says nothing yet about how much of the wall clock it occupies.
+
+
 `getChangedEntities` does a nested linear scan (`serverSyncableItems.forEach` ×
 `clientSyncStatuses.stream().noneMatch`), and `filterChangedEntities` issues **one database query per
 row**. For an organisation with many subject types, programs and encounter types that is potentially
@@ -393,7 +478,7 @@ So the trade swings on **how many entities actually change between syncs**:
 - **Full or first sync, everything changed** — pure overhead. It runs N queries to conclude
   "everything changed", and the client then fetches everything regardless.
 
-**This is answerable from production today, before any load test** — appendix query **Q8** gives the
+**This is answerable from production today, before any load test** — [measurement query](production-measurement-queries.md) **Q8** gives the
 distribution of how many entities actually return rows per sync. If the typical sync sees 3 of 60
 entities change, `syncDetails` is earning its cost many times over and effort belongs elsewhere. If
 it is 50 of 60, the endpoint is mostly ceremony.
@@ -430,7 +515,7 @@ populates the table this plan's whole measurement strategy leans on — so omitt
 write load and produced runs that generated no telemetry of their own.
 
 Rows are tagged `syncSource: avni-perf-simulation` so simulated syncs are separable from real ones in
-`sync_telemetry`. **Q1–Q11 should filter them out**, or simulation runs will pollute the very
+`sync_telemetry`. **Every measurement query should filter them out**, or simulation runs will pollute the very
 distributions they are meant to be calibrated against.
 
 `entityStatus` carries real per-entity counts but no phase durations: the simulation neither parses
@@ -459,6 +544,12 @@ simulation does not touch it at all. It is the part of media that most clearly b
 and GET real files measures S3 and consumes bandwidth without exercising avni-server. Model the
 presigned-URL requests; skip the transfers. This makes media cheap to include rather than a reason to
 exclude it.
+
+**Measured: 2.14% of `program_encounter` rows carry a media observation** (59 of 2,759 sampled).
+Against 6.86 million rows that is roughly 147,000 media-bearing encounters. Each costs a
+`GET /media/uploadUrl/{fileName}` on the push path, so media is a real but minor contributor — worth
+including in D5's push model at roughly one media call per fifty encounters, and not worth a scenario
+of its own.
 
 **D5.3 — On-demand viewing: out of scope.** *Decided.* `/media/signedUrl` traffic is driven by users
 browsing records rather than syncing, and this exercise is sync-focused. It is not modelled.
@@ -538,13 +629,35 @@ Detailed below — it changes the shape of the load, not just a constant.
 the client runs it — **before `syncDetails` is even requested**. `dataServerSync` calls
 `getResetSyncData` first and `getSyncDetails` only afterwards, which the simulation had inverted.
 
+**Measured, 27 weeks: a normal week is ~194 resets, and 89% of them are org-wide.** Across 13–24
+organisations and 40–184 users, that is a median of 1.8 resets per affected user — steady background
+activity rather than an event.
+
+**One week was 130× that: 25,141 resets, essentially all org-wide, over 14 organisations but only 156
+users — about 161 resets per user in a single week.** A user cannot usefully be reset 161 times in a
+week; each reset discards local data and forces a full re-download, and the *next* one arrives long
+before the previous re-download finishes. That is a runaway, not a workload.
+
+**This is the highest-load event the system produces, and it is the scenario most worth building.**
+It combines both worst cases at once — every affected user forced onto the full-sync path rather than
+the incremental one, and all of them starting together. Against Q5's measured band-10 p50 of 1,076 s,
+the 184 users of the worst normal week represent roughly **55 device-hours of full sync**, arriving in
+a burst. Compare that to a peak hour's ordinary traffic of 792 syncs that are 98% light, and the
+asymmetry is the point.
+
+**Two things to carry forward.** For E3, add a *Reset storm* profile: org-wide reset, whole-org
+concurrent full sync — it dominates the *Spike* profile and is a real production occurrence rather
+than a hypothetical. And separately from this exercise, **the April runaway is worth a root cause of
+its own** — whatever generated 161 resets per user is a bug, and no amount of server capacity is the
+right answer to it.
+
 Two further quirks reproduced: `getResetSyncData` does not reverse the metadata list, and it passes
 the client's own clock as `now` rather than the server's — which it could not use anyway, not having
 called `syncDetails` yet.
 
 **Still outstanding: the stampede.** A reset forces every affected user into a full re-download, and
 that is a scenario rather than a request — it belongs with E3's spike profile. Whether it is worth
-building depends on how often resets actually happen, which appendix query **Q10** answers. A reset forces affected users into a full re-download, so it is potentially the single largest
+building depends on how often resets actually happen, which [measurement query](production-measurement-queries.md) **Q10** answers. A reset forces affected users into a full re-download, so it is potentially the single largest
 load event the server sees — and it is triggered by configuration changes, meaning it can hit many
 users of an organisation at once. Two things needed: add `ResetSyncs` to the entity list (C2 already
 covers this), and model the post-reset full-sync stampede as a scenario (E3's spike profile is the
@@ -596,10 +709,50 @@ scaling it either way just propagates the original guess.
 
 Measure it instead. `sync_telemetry` holds real sync durations alongside per-entity record counts, so
 plotting total duration against total records pulled yields an observed ms-per-record directly —
-appendix query **Q1**. No code, no dependencies; start it immediately.
+[measurement query](production-measurement-queries.md) **Q1**. No code, no dependencies; start it immediately.
 
 Call the result **`baseMsPerRecord`**. Everything in D6.2 is expressed as a multiple of it, so the
 tier work can be written and reviewed before the number arrives.
+
+**Measured: `baseMsPerRecord` = 9.2 ms/record.** Two independent methods converge on it.
+
+Q1's regression over 108,374 syncs returns a slope of **9.19 ms/record**, and Q5's volume bands, which
+make no linearity assumption at all, give a median band-implied cost of **10.0 ms/record**:
+
+| Band | Midpoint records | p50 duration | Implied ms/record | n |
+|---|---|---|---|---|
+| 2 | 7,500 | 82.9 s | 11.1 | 989 |
+| 3 | 12,500 | 125.4 s | 10.0 | 453 |
+| 4 | 17,500 | 176.6 s | 10.1 | 373 |
+| 5 | 22,500 | 212.0 s | 9.4 | 143 |
+| 6 | 27,500 | 308.1 s | 11.2 | 67 |
+| 7 | 32,500 | 233.0 s | 7.2 | 35 |
+| 8 | 37,500 | 284.6 s | 7.6 | 43 |
+| 9 | 42,500 | 346.8 s | 8.2 | 20 |
+
+**Take 9.2 ms/record, subject to the netting-out caveat below.**
+
+**Eighty bad rows out of 131,538 were hiding this.** The first run returned r² = 0.00001 and a
+63-second intercept, which read as "duration is not linear in record count". After D1's guard dropped
+63 future-dated rows, 2 with negative duration and 15 over two hours — **0.06% of the table** — r² rose
+to **0.186** and the intercept fell to 26.5 s. The worst offender carried a `sync_start_time` in
+**2031**, giving it a duration of roughly five years and enough leverage in a least-squares fit to
+flatten the entire slope.
+
+The lesson generalises past this query: **least-squares regression has unbounded sensitivity to
+outliers, so an r² near zero is a signal to inspect the extremes before concluding anything about the
+relationship.** The band analysis was the right cross-check precisely because percentiles are
+insensitive to them — it gave ~10 ms/record from data that made the regression read as noise.
+
+**r² = 0.186 is still low, and that is genuine rather than an artefact.** 98% of syncs sit in band 1,
+where duration spans 14.1 s at p50 to 80.0 s at p95 — a five-fold spread driven by network, device and
+server load, not by record count. So the slope is a sound estimate of the *marginal* cost of one more
+record and a poor predictor of any individual sync's duration. For sizing a per-record pause, marginal
+cost is exactly the quantity wanted.
+
+**The intercept still is not a fixed cost.** 26.5 s exceeds band 1's p50 of 14.1 s, which is
+impossible for a genuine per-sync overhead; it remains an artefact of fitting a line through a
+long-tailed distribution. Use 14.1 s as the honest figure for a light sync.
 
 > **Q1 gives a ceiling, not the value.** Production sync duration is client parse-and-persist time
 > **plus network plus server response time**. The simulation's pause must represent client work only —
@@ -841,15 +994,26 @@ exercised only the heaviest case — and the common production case had never be
 > 1900 default and still full-sync. Reference data does honour the window, which is most of what the
 > 64% above reflects. The real incremental profile will be different again.
 
-**Upload-only background sync is not modelled** (`sync_source = ONLY_UPLOAD_BACKGROUND_JOB`). It is a
-push-only flow, so it needs D3.
+**Upload-only background sync is not modelled, and does not need to be.** It was disabled in practice
+some time ago, which is why `sync_source = 'automatic-upload-only'` is near-absent from recent
+telemetry — that absence reflects reality rather than a gap in the data. Modelling it would reproduce
+a flow production no longer runs. Should it ever be re-enabled, it is a push-only path and would need
+D3 first.
 
 **E3 — Named injection profiles.**
 
 - *Smoke* — one user, CI-gated
 - *Load* — expected peak
 - *Stress* — ramp to the knee
-- *Spike* — the start-of-day thundering herd; realistic worst case for a field app
+- *Spike* — a burst above the working-day plateau. **Not a start-of-day herd:** Q4 shows arrivals
+  ramping into a broad plateau from 10:00 to 17:00 IST, peaking at 16:00 rather than at the start of
+  the day — 09:00 carries barely half the 16:00 volume. (The *shape* holds regardless of the Q4
+  bucketing defect, which scaled every hour equally; the absolute rates come from the re-run.) Whatever this profile spikes *from*,
+  the baseline it returns to is a sustained plateau, and the plateau is the more valuable case to run
+  because it is where production actually lives
+- *Reset storm* — an org-wide `reset_sync` followed by the whole organisation full-syncing at once.
+  **Measured as real (Q10)** and the heaviest event the system produces: it forces every affected user
+  off the incremental path onto the full one, simultaneously. Expect it to dominate *Spike*
 - *Soak* — multi-hour; the case that raised the auth question
 - *Contended* — sync against a concurrent ETL cycle, export, or bulk import (F5.4). The delta against
   the equivalent uncontended profile is the finding
@@ -864,6 +1028,31 @@ failure mode from anything a single tenant produces.
 **E5 — Size everything from `sync_telemetry`.** Production already records per-sync duration,
 per-entity push/pull counts, local data volumes, device and connection type. Take user counts, data
 volumes and push volumes from that table rather than inventing them.
+
+**Measured, per real hour (Q4):**
+
+| | Syncs | Rate | Distinct users |
+|---|---|---|---|
+| Busiest hour ever recorded (12:00 IST) | **792** | 0.220/sec | **267** |
+| p95 hour (16:00 IST) | 614 | 0.171/sec | — |
+| Average busy hour (16:00 IST) | 378 | 0.105/sec | 158 |
+
+**Arrival rate is not concurrency.** At the measured p50 of 14.1 s per sync, the busiest hour
+production has ever recorded works out to roughly **3 syncs in flight**; even assuming every sync ran
+at the p95 duration of 80 s it reaches only **18**. That is strikingly low, and it is the single most
+consequential number in this plan: **the server is nowhere near saturated on arrival rate**, so choke
+points will be found in per-sync cost and in the heavy tail, not in concurrency.
+
+Size *Load* against 792 syncs/hour and *Stress* as a ramp well past it — the ramp is where the knee
+is, and reproducing production's arrival rate alone will not find one.
+
+**Activity is a working-day plateau, not a start-of-day herd.** Hourly averages hold above 200 syncs
+from **09:00 to 21:00 IST**, peaking at 16:00, with real evening activity — 19:00 still averages 245.
+The *Spike* profile should burst above that plateau rather than model a morning rush that does not
+exist.
+
+**Volume mix (Q5): 98% of syncs pull under 5,000 records.** Any profile built predominantly on `full`
+mode is modelling the remaining 2%.
 
 ---
 
@@ -1186,6 +1375,44 @@ cannot simply be raised in place. The options available, and their cost, are an 
 question — but any of them forfeits parity with today's production, so a finding here changes what
 subsequent runs are measuring against.
 
+#### A fifth of the index bulk earns almost nothing
+
+Index usage can only be read on the primary — `idx_scan` counters are per-instance, and the replica
+serves Metabase alone. Measured across 66 indexes over 69 days.
+
+**Six of the seven GIN observation indexes have never been scanned**, together about 794 MB. The
+seventh, on the same column type over the same window, took over 1.5 million scans — so the counter
+works and the opclass is usable, and these six are simply not being read.
+
+**This sharpens H3 rather than contradicting it.** H3 warns that GIN maintenance dominates insert cost
+on the push path. For these six that is now the *whole* story: write tax and cache pressure with no
+read benefit. It also fits the `jsonb_path_ops` limitation noted under Q9 in the queries document —
+the opclass supports `@>`, `@?` and `@@` but **not** `?`, so key-presence filters cannot use these
+indexes at all.
+
+**Counting every index scanned fewer than a thousand times, roughly 4.08 GB — 21% of index bulk on
+these four tables — earns almost nothing.** The largest index in the database is in that set, scanned
+about twelve times a day for 2.5× `shared_buffers` of storage. Unique constraints are excluded from
+the total, since they enforce correctness whatever their scan count.
+
+**The hot path is narrow and small.** The three busiest indexes are 185 MB, 88 MB and 29 MB, and they
+carry billions of scans between them. The bulk sits in indexes that are barely touched.
+
+**Several heavily-used indexes are poorly selective**, the worst reading tens of thousands of rows per
+lookup. An index returning that much per scan leaves the planner filtering afterwards — a plausible
+contributor to the per-sync cost that Q4 says cannot be explained by concurrency. **F1/F2 should
+attribute time here before anyone assumes the bottleneck is elsewhere.**
+
+> **Two caveats before anyone acts on this.** Sixty-nine days misses quarterly and annual reporting
+> paths, so an index used only by those would look idle. And **dropping indexes is out of scope for
+> this plan** — the finding belongs to whoever owns schema changes. What matters here is that the
+> simulation's dataset must reproduce these indexes *as they are*, cold ones included, or its cache
+> behaviour will not match production.
+
+> **Per-index names, sizes and scan counts are recorded in `avni-product-ops`**
+> (`context/production-database-state-2026-09.md`), along with the full result set behind every figure
+> in this plan. This repository is public and carries the summarised findings only.
+
 #### ETL shares that ceiling, on a 90-minute cycle
 
 `avni-etl` maintains a **flat analytical schema per organisation**, converting every JSONB key to a
@@ -1402,21 +1629,74 @@ impact:
 
 - **Rows per entity type within a user's catchment.** Drives sync volume directly. Ties to G5 —
   catchment assignment and data generation must agree.
-- **Distinct concept-UUID cardinality across observations.** See below; this is the one most likely to
-  be got wrong.
+
+  **Measured across 2,828 users (Q3)** — `totalCounts` is each device's own row count:
+
+  | Entity | p50 | p90 | p99 |
+  |---|---|---|---|
+  | Subjects | 464 | 5,685 | 42,519 |
+  | Enrolments | 100 | 1,653 | 15,254 |
+  | Program encounters | 89 | 11,762 | 153,126 |
+  | Encounters | 62 | 3,167 | 53,670 |
+  | **Total rows on device** | **~715** | **~22,267** | **~264,569** |
+
+  **A 370× spread between the median device and the 99th percentile.** The median device holds about
+  700 rows — almost nothing — while the heaviest holds a quarter of a million. Catchment generation must
+  reproduce the tail rather than the median: a generator that gives every user a typical catchment
+  produces no heavy syncs at all, and the heavy tail is where the choke points are. It also explains
+  Q5's bands directly, since 98% of syncs pull under 5,000 records.
+- **Distinct concept-UUID cardinality across observations.** **Measured (Q6): 5,623 distinct concepts**
+  appear as observation keys in a 1% sample of `program_encounter` alone. This is the number H3 flags
+  as most likely to be got wrong, and the size of it is the point — a generator drawing on a few dozen
+  concepts would build a GIN index orders of magnitude smaller than production's, entirely
+  cache-resident, and every figure it produced would be optimistic. See the GIN note below.
 - **Fill rate — observations per row.** Drives payload size, serialisation cost and GIN index size.
+  **Measured (Q6):**
+
+  | Table | p50 keys | p95 keys | Mean bytes |
+  |---|---|---|---|
+  | `program_encounter` | 12 | 34 | 879 |
+  | `individual` | 7 | 29 | 742 |
+  | `encounter` | 4 | 22 | 526 |
+  | `program_enrolment` | 2 | 20 | 360 |
+
+  The generator should reproduce both the median and the p95 — a generator that emits a constant key
+  count per row produces a GIN index of the wrong shape even when the mean matches.
 - **Coded answer value cardinality.** Same mechanism.
 - **Temporal spread of `last_modified_date_time`.** Easy to overlook and it invalidates D1's whole
   purpose: if every generated row shares a timestamp, incremental sync returns either everything or
   nothing, and no incremental scenario means anything. The spread must look like real editing
   activity over time.
 - **Address level hierarchy shape.** Drives the scope-resolution queries behind catchment filtering.
+  **Measured (Q13): 1,204,209 locations, 84.3% of them at depth 4** — so the working hierarchy is four
+  levels and the generator should default to that.
+
+  > **An anomaly worth a separate look:** depths 9 through 26 each contain **exactly 763 locations** —
+  > the same count at eighteen consecutive depths. Identical cohorts repeating that way is not a
+  > naturally occurring shape; it suggests 763 chains extended one level at a time, most likely by a
+  > defect. It is only 1.1% of locations, so it does not change generator sizing, but `lineage` is an
+  > `ltree` walked by catchment scope resolution and RLS ancestor lookups, and a 26-level path costs
+  > materially more to walk than a 4-level one. **Not this plan's problem to fix — but someone should
+  > know.**
 - **Tenant count and size skew**, and **organisation hierarchy depth** — the first two set total table
   size and planner statistics, the third sets how far reference-table RLS walks ancestors. See
-  section I.
+  section I. **Measured (Q12): 986 organisations, and the skew is severe.** The largest holds **21% of
+  all subjects** on its own; the top 10 hold 63%; the top 50 hold over 90%. **473 organisations — 48% —
+  hold no subjects at all.**
+
+  Two consequences for the generator. Reproducing "986 tenants" by making 986 similar ones would
+  misrepresent production entirely: the right shape is a handful of very large tenants, a moderate
+  tail, and roughly half the tenants empty. And **user count does not predict data volume** — the
+  largest organisation by users (1,494) ranks 71st by subjects. E4's noisy-neighbour scenario needs
+  both axes varied independently, because production varies them independently.
 - **Total size: target ~70 GB of transactional data.** That is production's `public` schema; the
   per-organisation ETL schemas are a further 62 GB (G4). Size against the transactional figure, not
   against the instance's allocated storage — those differ by several times.
+- **Indexes outweigh the rows they index.** The four sync-path tables hold **13.6 GB of data against
+  19.4 GB of indexes** — a 1.43× ratio overall, and 3.7× on `program_enrolment`. Together they are 33 GB
+  of the 70 GB schema, and **21× the instance's 933 MB `shared_buffers`**. A generator that reproduces
+  row counts but not index bulk will show a cache hit ratio production cannot achieve, which makes it
+  the single easiest way to produce optimistic numbers. Reproduce index definitions exactly (G4).
 - **The ETL-enabled fraction is a generator parameter.** ETL is not enabled for every organisation,
   so its storage and IO contribution depends on how many generated orgs have it. Enable it on none
   and the ETL-contention scenario disappears; enable it on all and both storage and IO contention
@@ -1428,6 +1708,10 @@ impact:
 >
 > - GIN maintenance dominates insert cost on the push path (D3) and scales with the number of distinct
 >   keys per document — so push benchmarks are only as realistic as the observation cardinality.
+>   **Q7c makes this sharper than expected: six of the seven observation GIN indexes have never been
+>   scanned in 69 days of production, so for them the maintenance cost is the only cost.** The
+>   simulation must still build them — cold indexes occupy cache and slow writes exactly as production's
+>   do — but the push-path finding is now concrete rather than hypothetical.
 > - GIN's `fastupdate` pending list causes periodic merge spikes rather than uniform write latency. A
 >   genuine production failure mode, and one the simulation can only reproduce with realistic data.
 > - If synthetic observations draw on fewer concepts or lower-cardinality values than production, the
@@ -1466,7 +1750,7 @@ have been more faithful than generation, but it is ruled out, and generation (H1
 Two consequences follow.
 
 **H6.1 — Production *statistics* are still required, even though production *data* is not.**
-**Confirmed available.** Runnable SQL for each of the queries below is in the appendix. These are all
+**Confirmed available.** Runnable SQL for each of the queries below is in [production-measurement-queries.md](production-measurement-queries.md). These are all
 aggregate queries returning counts, durations and sizes — no personal data leaves the database:
 
 | Needed for | Query against production |
@@ -1648,7 +1932,7 @@ Ordering reflects dependencies, not estimates.
 
 | Phase | Tasks | Why here |
 |---|---|---|
-| **0 · Foundation** | **Q1–Q11** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **Run the appendix queries first** — they are a day's work with no dependencies, and they populate the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
+| **0 · Foundation** | **Q1–Q13** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **Run the [measurement queries](production-measurement-queries.md) first** — they are a day's work with no dependencies, and they populate the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **G4's restore mechanism lands with D3** — until the simulation writes, runs are read-only and need no teardown at all, so this apparatus can be deferred to here rather than built up front. |
 | **3 · Workload** | **D7** · E3, E5 · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
@@ -1664,7 +1948,7 @@ calendar.
 
 - **Success criteria.** The table at the top of this document. Blocks A6, and shapes what counts as a
   finding. The "no worse than current production" default is a legitimate answer.
-- **~~Production statistics access.~~** *Granted.* Queries Q1–Q11 in the appendix are ready to run;
+- **~~Production statistics access.~~** *Granted.* Queries Q1–Q13 in [production-measurement-queries.md](production-measurement-queries.md) are ready to run;
   their outputs feed the Success criteria table, D6.1, D1, E5, F7 and H3/H5. **Running them is now the
   first task in Phase 0** — most other open questions resolve from their output.
 - **Which org configuration(s) to run against.** (H1.) The generator treats this as a parameter, so
@@ -1686,10 +1970,10 @@ calendar.
   inbound rule, using the IAM model CI already relies on (F4.1). Nothing blocks `AVNI_IDP_TYPE=none`;
   it is build work in the infrastructure plan, not an unknown.
 - **~~Who does this?~~** *The dedicated Avni team for Tanuh.*
-- **~~How many media files does a typical sync upload?~~** *Answerable in SQL* — appendix query **Q9**.
+- **~~How many media files does a typical sync upload?~~** *Answerable in SQL* — [measurement query](production-measurement-queries.md) **Q9**.
   `sync_telemetry` does not record media counts, but media observations do: they are keyed by concepts
   whose `data_type` is a media type, so their creation rate per user is derivable directly.
-- **~~How often do resets happen?~~** *Answerable in SQL* — appendix query **Q10** against the
+- **~~How often do resets happen?~~** *Answerable in SQL* — [measurement query](production-measurement-queries.md) **Q10** against the
   `reset_sync` table, which records every reset with user, subject type, organisation and timestamp.
 - **~~Sync only, or webapp and API consumers too?~~** *Answered: they are separate query paths.* The
   webapp uses `/web/*` endpoints (≈150 call sites in `avni-webapp/src`) and touches only two
@@ -1702,248 +1986,16 @@ calendar.
 
 ---
 
-## Appendix — production statistics queries
-
-Starting points for the H6.1 queries, all read-only aggregates. Validate and tune the time windows
-before trusting output.
-
-> **Run these against a read replica if one exists.** The `jsonb_object_keys` scans in Q6 touch large
-> tables; `TABLESAMPLE` keeps them cheap, but avoid peak hours regardless.
-
-> **Every query over `sync_telemetry` excludes the simulation's own rows.** Since D4, the simulation
-> posts telemetry like any client, tagged `sync_source = 'avni-perf-simulation'`. Left in, simulated
-> syncs would pollute the very production distributions these queries exist to establish — and the
-> more the simulation is run, the worse the contamination. Q6, Q7, Q9 and Q10 read application tables
-> the simulation never writes to, so they need no filter.
-
-**Q1 — `baseMsPerRecord` (D6.1).** `baseMsPerRecord` is a *marginal* cost, so ask for a slope rather
-than a ratio.
-
-Dividing total duration by records pulled conflates fixed and marginal cost at every volume: every
-sync pays for `syncDetails`, an entity request per entity whether or not it returns anything, and the
-telemetry post. That fixed cost is baked into the ratio, inflating it most for small syncs and
-approaching the truth only for very large ones. No minimum-records threshold fixes that — it only
-hides the worst cases.
-
-```sql
-with s as (
-  select
-    extract(epoch from (sync_end_time - sync_start_time)) * 1000 as duration_ms,
-    (select coalesce(sum((e->>'done')::int), 0)
-       from jsonb_array_elements(entity_status->'pull') e) as pulled
-  from sync_telemetry
-  where sync_source is distinct from 'avni-perf-simulation'
-    and sync_status = 'complete'
-    and sync_end_time > now() - interval '30 days'
-    and sync_source is distinct from 'ONLY_UPLOAD_BACKGROUND_JOB'
-)
-select count(*)                            as syncs,
-       regr_slope(duration_ms, pulled)     as ms_per_record,      -- marginal: baseMsPerRecord
-       regr_intercept(duration_ms, pulled) as fixed_overhead_ms,  -- per-sync cost at zero records
-       regr_r2(duration_ms, pulled)        as fit
-from s
-where pulled > 0;
-```
-
-`regr_intercept` gives the per-sync fixed cost for free, which is worth having on its own. **Check
-`fit` before using the slope** — a low r² means duration is not linear in record count, and a single
-coefficient is then the wrong model, which is itself a finding.
-
-> **Still a ceiling.** Duration measured on the client includes network and server time, so the slope
-> is an upper bound on client-side parse-and-persist. See the caveat in D6.1 — do not use it as
-> `baseMsPerRecord` unmodified.
-
-**Q2 — `loadedSince` gap distribution (D1).** Drives the realistic-spread scenario.
-
-```sql
-with gaps as (
-  select sync_end_time
-         - lag(sync_end_time) over (partition by user_id order by sync_end_time) as gap
-  from sync_telemetry
-  where sync_source is distinct from 'avni-perf-simulation'
-    and sync_status = 'complete'
-    and sync_end_time > now() - interval '90 days'
-)
-select percentile_cont(array[0.25, 0.5, 0.75, 0.9, 0.99])
-         within group (order by extract(epoch from gap) / 3600) as gap_hours_p25_50_75_90_99
-from gaps
-where gap is not null;
-```
-
-**Q3 — Per-user data volume (E5, G5, H3).** `totalCounts` is the local row count on each device, which
-is effectively "rows in this user's catchment" — the number that drives both catchment design and
-generated data volume.
-
-```sql
-select percentile_cont(array[0.5, 0.9, 0.99]) within group (
-         order by (entity_status->'totalCounts'->>'programEncounters')::numeric)
-         as program_encounters_p50_p90_p99,
-       percentile_cont(array[0.5, 0.9, 0.99]) within group (
-         order by (entity_status->'totalCounts'->>'subjects')::numeric)
-         as subjects_p50_p90_p99
-from sync_telemetry
-where sync_source is distinct from 'avni-perf-simulation'
-  and sync_status = 'complete'
-  and entity_status ? 'totalCounts'
-  and sync_end_time > now() - interval '30 days';
-```
-
-**Q4 — Peak-hour concurrency (E5, Success criteria).** The start-of-day herd, by local hour.
-
-```sql
-select extract(hour from sync_start_time at time zone 'Asia/Kolkata') as hour_ist,
-       count(*) as syncs,
-       count(distinct user_id) as users
-from sync_telemetry
-where sync_source is distinct from 'avni-perf-simulation'
-  and sync_start_time > now() - interval '30 days'
-group by 1
-order by 1;
-```
-
-**Q5 — Sync duration by volume band (F7, Success criteria).** The distribution the calibration gate
-compares against.
-
-```sql
-with s as (
-  select extract(epoch from (sync_end_time - sync_start_time)) * 1000 as duration_ms,
-         (select coalesce(sum((e->>'done')::int), 0)
-            from jsonb_array_elements(entity_status->'pull') e) as pulled
-  from sync_telemetry
-  where sync_source is distinct from 'avni-perf-simulation'
-    and sync_status = 'complete'
-    and sync_end_time > now() - interval '30 days'
-)
-select width_bucket(pulled, 0, 50000, 10) as volume_band,
-       count(*) as syncs,
-       percentile_cont(0.5)  within group (order by duration_ms) as p50_ms,
-       percentile_cont(0.95) within group (order by duration_ms) as p95_ms
-from s
-group by 1
-order by 1;
-```
-
-**Q6 — Observation shape (H3, H5).** The numbers that determine whether generated data behaves like
-production. Repeat per entity table.
-
-```sql
-select percentile_cont(0.5)  within group (order by k) as p50_obs_keys,
-       percentile_cont(0.95) within group (order by k) as p95_obs_keys,
-       avg(sz)::int                                    as avg_obs_bytes
-from (
-  select (select count(*) from jsonb_object_keys(observations)) as k,
-         pg_column_size(observations)                           as sz
-  from program_encounter tablesample system (1)
-  where observations is not null
-) t;
-
--- distinct concept cardinality across observations
-select count(distinct key) as distinct_concepts
-from (
-  select jsonb_object_keys(observations) as key
-  from program_encounter tablesample system (1)
-) t;
-```
-
-**Q7 — Row counts and index sizes (H5).** The single most informative comparison against generated
-data — a GIN index an order of magnitude smaller than production's means the cardinality is wrong.
-
-```sql
-select relname, n_live_tup
-from pg_stat_user_tables
-where relname in ('individual', 'program_enrolment', 'program_encounter', 'encounter')
-order by n_live_tup desc;
-
-select relname, indexrelname,
-       pg_size_pretty(pg_relation_size(indexrelid)) as index_size,
-       idx_scan
-from pg_stat_user_indexes
-where relname in ('individual', 'program_enrolment', 'program_encounter')
-order by pg_relation_size(indexrelid) desc;
-```
-
-**Q8 — How many entities actually change per sync (D1.1).** The benefit side of the `syncDetails`
-trade. `entity_status->'pull'` carries an entry per entity with `todo`/`done` counts; entries with
-`todo > 0` are the entities `syncDetails` flagged as changed and the client then fetched.
-
-```sql
-with s as (
-  select
-    jsonb_array_length(entity_status->'pull') as entities_tracked,
-    (select count(*) from jsonb_array_elements(entity_status->'pull') e
-       where coalesce((e->>'todo')::int, 0) > 0) as entities_changed
-  from sync_telemetry
-  where sync_source is distinct from 'avni-perf-simulation'
-    and sync_status = 'complete'
-    and sync_source is distinct from 'ONLY_UPLOAD_BACKGROUND_JOB'
-    and entity_status ? 'pull'
-    and sync_end_time > now() - interval '30 days'
-)
-select count(*) as syncs,
-       percentile_cont(array[0.5, 0.9]) within group (order by entities_tracked) as tracked_p50_p90,
-       percentile_cont(array[0.5, 0.9]) within group (order by entities_changed) as changed_p50_p90,
-       avg(entities_changed::numeric / nullif(entities_tracked, 0)) as avg_fraction_changed
-from s;
-```
-
-Read it as: **`avg_fraction_changed` near 0 means `syncDetails` is earning its cost many times over;
-near 1 means it is mostly ceremony.** Validate the `todo`/`done` semantics against a sample row before
-trusting the numbers — the client pre-populates the array from entity metadata, so entries exist for
-entities that were never fetched.
-
-**Q9 — Media uploads per sync (D5.1).** Each media file costs a `GET /media/uploadUrl/{fileName}`
-call on the sync path, so the rate sets how much server load media contributes. `sync_telemetry` does
-not record media counts, but media observations are keyed by concepts whose `data_type` is a media
-type, so the creation rate is derivable.
-
-```sql
--- media-bearing concepts for this organisation set
-WITH media_concepts AS (
-  SELECT uuid FROM concept
-  WHERE data_type IN ('Image', 'ImageV2', 'Video', 'Audio', 'File')
-    AND is_voided = false
-)
-SELECT date_trunc('day', pe.last_modified_date_time) AS day,
-       count(*) FILTER (
-         WHERE EXISTS (SELECT 1 FROM media_concepts mc
-                       WHERE pe.observations ? mc.uuid)
-       ) AS media_bearing_rows
-FROM program_encounter pe
-WHERE pe.last_modified_date_time > now() - interval '30 days'
-GROUP BY 1 ORDER BY 1;
-```
-
-Repeat per entity table, then divide by syncs per user per day (Q2) for a per-sync figure. Validate
-the `?` containment against a sample row first — media observations may store a URL string or an
-array depending on whether the concept is multi-select.
-
-**Q10 — Reset sync frequency (D9).** A reset forces affected users into a full re-download, so it is
-potentially the highest-load event in the system. `reset_sync` records every one.
-
-```sql
-SELECT date_trunc('week', created_date_time) AS week,
-       count(*)                              AS resets,
-       count(DISTINCT organisation_id)       AS orgs_affected,
-       count(DISTINCT user_id)               AS users_affected,
-       count(*) FILTER (WHERE subject_type_id IS NULL) AS org_wide_resets
-FROM reset_sync
-WHERE is_voided = false
-  AND created_date_time > now() - interval '6 months'
-GROUP BY 1 ORDER BY 1;
-```
-
-Read it as: frequent resets affecting many users at once justify modelling the post-reset stampede
-(D9); rare, narrow ones do not. `users_affected` against `orgs_affected` says whether a reset is
-typically one user or a whole organisation — which is the difference between a non-event and a herd.
-
-**Q11 — Fleet page size split (D8.3).** *Not yet answerable* — `pageSize` is not recorded in
-`app_info`. Rides the same client release as D7's per-entity durations. Until then the production
-split between page size 100 and 1000 is unknown and both must be tested.
-
----
-
 ## Related
 
+- **Raw result sets live in `avni-product-ops`** (`context/production-database-state-2026-09.md`),
+  which is private. **This repository is public and carries summarised findings only** — ratios,
+  percentiles and the figures the plan reasons about. Per-organisation sizes, per-index scan counts
+  and the full hourly and weekly series are recorded there.
+- **[production-measurement-queries.md](production-measurement-queries.md)** — the SQL behind every
+  figure in this plan marked as measured, the caveats on running it, and the defects corrected across
+  three runs against production. Findings live here, in the sections that use them: Success criteria,
+  D1, D1.1, D5, D6.1, E3, E5, G4 and H3.
 - Client-side performance (device profiling, Perfetto, Hermes profiler, Maestro/Flashlight) is a
   separate track — it answers "how long does sync take on a low-end phone", not "where does the server
   choke".

@@ -94,7 +94,7 @@ handsets are in the office.
 **A3 — Size the local dataset from the fleet too.** `sync_telemetry.entity_status->'totalCounts'`
 gives the per-device row counts users actually carry (subjects, enrolments, encounters,
 programEncounters). That distribution defines what "a heavy device" means. This is query **Q3** in the
-server plan's appendix — already written.
+server plan's [production-measurement-queries.md](production-measurement-queries.md) — already written.
 
 **A4 — Mine Bugsnag.** ANR and crash rates, segmented by device model and Android version, are
 findings already sitting in production. Cross-reference with A2's device distribution: if crashes
