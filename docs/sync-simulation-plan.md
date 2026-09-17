@@ -84,11 +84,24 @@ That second framing is the one to carry into every measurement below.
 Six minor versions behind, with several patterns that will distort results before the server is ever
 the limiting factor.
 
-**A1 — Gatling 3.9.2 → 3.15.1.2.** Also bump the Gradle wrapper from 7.6 to current 8.x, and pin a
-Java toolchain; `build.gradle` declares none today. Work through Gatling's upgrade guides one minor at
-a time rather than jumping. Watch: the JDK baseline, the `simulation.log` format (it governs whether
-logs from separate injectors can be merged), report generation, and the check/EL API used by
-`jmesPath` and `transformWithSession`.
+**A1 — Gatling 3.9.2 → 3.15.1.3.** *Done.* Gradle wrapper 7.6 → 8.14, plugin 3.9.2 → 3.15.1.3, Java
+toolchain pinned to 17 so runs do not inherit whatever JDK is ambient.
+
+Three things broke, all outside the simulation itself:
+
+- **`logLevel` / `logHttp` were removed from the plugin extension.** They were already inert — the
+  repo ships `logback-test.xml`, and those options only applied when no logback config was present.
+- **`Engine.java`, `Recorder.java`, `IDEPathHelper.java`** reference `GatlingPropertiesBuilder` and
+  `RecorderPropertiesBuilder`, which are no longer on the plugin's classpath. Removed along with
+  `recorder.conf` — IDE-launcher scaffolding from the original template, and runs go through
+  `./gradlew gatlingRun` per the Makefile.
+- Nothing else. **`AvniSyncSimulation` compiled unchanged**, and a smoke run against a dead port
+  completed end to end with reports generated — so the checks, `jmesPath` usage and
+  `transformWithSession` all survived six minors intact.
+
+> **Finding for D8.4:** the smoke run showed Gatling's default request timeout is **60 seconds**. A
+> page of 1000 observation-bearing rows plausibly approaches that, and a timeout firing mid-run looks
+> exactly like a server failure. Set it explicitly.
 
 > The specific breaking changes per version were not verifiable at time of writing — the upgrade guide
 > pages did not render through automated fetch. Treat the list above as the areas to check, not as a
@@ -127,8 +140,10 @@ the empty string, since those entities have no type UUID. Name by entity plus UU
 user-pool ID as defaults. Untrack the CSV, widen the ignore rule, move IdP identifiers to config.
 
 **A10 — Delete dead weight.** `AvniEntities.json` is unused and already inconsistent with the
-hardcoded list. `SyncDetailsBody.json` is unused — the sim posts `EmptyBody.json`. `Recorder.java` and
-the commented `resetSyncs` block can go too.
+hardcoded list. `SyncDetailsBody.json` is unused — the sim posts `EmptyBody.json`. The commented
+`resetSyncs` block can go too. *(`Recorder.java`, `Engine.java`, `IDEPathHelper.java` and
+`recorder.conf` were removed under A1 — they were IDE-launcher scaffolding that no longer compiles
+against Gatling 3.15.)*
 
 **A10.1 — Put authentication behind `AUTH_MODE`.** *Done.* Rather than deleting the Cognito path, it
 sits behind a system property defaulting to `none`.

@@ -1,13 +1,21 @@
 plugins {
     id 'java'
     // The following line allows to load io.gatling.gradle plugin and directly apply it
-    id 'io.gatling.gradle' version '3.9.2'
+    id 'io.gatling.gradle' version '3.15.1.3'
+}
+
+// Pinned so runs do not silently inherit whatever JDK happens to be on the machine.
+// A different JDK changes GC behaviour and JIT, which is exactly what we are trying to measure.
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
 }
 
 gatling {
-  // WARNING: options below only work when logback config file isn't provided
-  logLevel = 'WARN' // logback root level
-  logHttp = 'NONE' // set to 'ALL' for all HTTP traffic in TRACE, 'FAILURES' for failed HTTP traffic in DEBUG
+  // Logging is configured in src/gatling/resources/logback-test.xml. The plugin's logLevel and
+  // logHttp options were removed after 3.9, and were already inert here anyway - they only applied
+  // when no logback config was present.
   enterprise {
     // Enterprise Cloud (https://cloud.gatling.io/) configuration reference: https://gatling.io/docs/gatling/reference/current/extensions/gradle_plugin/#working-with-gatling-enterprise-cloud
     // Enterprise Self-Hosted configuration reference: https://gatling.io/docs/gatling/reference/current/extensions/gradle_plugin/#working-with-gatling-enterprise-self-hosted
