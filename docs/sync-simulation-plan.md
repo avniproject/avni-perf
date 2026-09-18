@@ -106,18 +106,20 @@ later would change several decisions in this plan.
 | p95 sync duration, light band (<5k records) | Q5 | **80.0 s** (p50 14.1 s) |
 | p95 sync duration, heavy band (~47.5k records) | Q5 | p50 **1,076 s**; p95 pending re-run |
 | Acceptable error rate under load | Product decision | *TBD* |
-| Concurrent-user target to design against | Q12 + growth allowance | **1,494** — largest org's full user base |
+| Concurrent-user target to design against | E0 | **1,000** workers across 8–10 tenants |
+| Heaviest single device to design against | E0 | **730,000** records — a supervisor at year 1 |
 | Peak-hour concurrency to reproduce | Q4 | **792 syncs/hour** (0.22/sec) peak; **267** distinct users; ~3 in flight |
 
 **One row remains open, and it is a product decision no query can supply:** what error rate is
 acceptable under load.
 
-> **The two concurrency rows disagree by a factor of 500, and that gap is the most useful thing in the
-> table.** The largest organisation has 1,494 users on its books, while the busiest hour production has
-> ever recorded saw 267 distinct users across *every* organisation and roughly **3 syncs in flight**.
-> Sizing against 1,494 concurrent users would be designing for a load production has never come close
-> to. Size the *Load* profile against the measured 792 syncs/hour, and treat 1,494 as the ceiling the
-> *Stress* profile ramps toward to find the knee — which is what a choke-point exercise wants anyway.
+> **Concurrency is not the risk here; volume per device is.** Production's busiest hour ever recorded
+> saw 267 distinct users across *every* organisation and roughly **3 syncs in flight**. The customer's
+> 1,000 workers is four times that user base — a real step up, but still a modest arrival rate. What
+> has no precedent is the **supervisor's 730,000-record catchment at year one, 4.8× the heaviest device
+> production has ever measured (Q3)**. Size the *Load* profile against arrival rate and the
+> *Supervisor* and *Growth* profiles against volume. A run that saturates on concurrency alone will
+> miss this entirely.
 
 **There is no separate incremental figure, and there cannot be one from this table.** `sync_telemetry`
 does not record whether a sync ran full or incremental. The light band is the closest available proxy
@@ -1083,39 +1085,54 @@ peak, which makes this a genuine step up rather than a reproduction.
 | Fresh syncs | 1% of users, from phone loss, replacement or reassignment |
 | Onboarding cohort | 50–100 first-time logins in one location |
 
-**Encounter volume is tractable. Beneficiary volume is not, and it dominates everything.**
+**The figures close into a model.** Ten workers share a village catchment, a village holds ~3,000
+beneficiaries, a supervisor covers ~10 villages, and data accrues at the same rate in year two as in
+year one. From 500 workers per state tenant that gives 50 villages, 150,000 beneficiaries and **five
+supervisors — a supervisor-to-worker ratio of 1:100.**
 
-At 20 encounters per worker per day across 500 workers, one state tenant generates 600,000 encounters
-by day 60, 1.8 million by day 180 and 3.65 million in a year. Two state tenants at a year come to
-**7.3 million — roughly production's entire current `program_encounter` table**, which is a large but
-comprehensible target.
+| Per device | Subjects | Day 60 | Day 180 | Year 1 | Year 2 |
+|---|---|---|---|---|---|
+| Field worker — 1 village | 3,000 | 12,000 | 36,000 | 73,000 | 146,000 |
+| **Supervisor — 10 villages** | 30,000 | 120,000 | **360,000** | **730,000** | **1,460,000** |
 
-Beneficiaries are a different order. Production holds **2.75 million subjects in total, across all 986
-organisations**, in 2.67 GB with another 2.72 GB of indexes. One crore is **3.6× that in a single
-tenant**, and at 1 KB per row it implies roughly 10 GB of subject data plus a similar weight of index.
-Several crores puts one tenant past the entire 70 GB production schema.
+Encounter counts, not subject counts — a shared catchment means all ten workers in a village pull
+every encounter recorded there, including the nine-tenths they did not create. A field worker's sync
+volume is driven by the village's total activity rather than their own.
 
-**That reframes the exercise.** The generator's hard problem stops being observation fidelity and
-becomes bulk: producing and loading tens of millions of subjects, and holding a dataset per comparison
-point at day 60, 120 and 180. It also moves the likely choke point. Sync is catchment-scoped, so a
-field worker's sync does not care how many crores sit outside their village — but **search does**, and
-the customer expects facility staff to search across the whole state.
+**Crores is not a dataset target.** The whole customer deployment — two state tenants plus eight NGOs
+— comes to about **450,000 beneficiaries**. One crore is 22× that, so the crore figure is a
+platform-wide projection long into the future, not something the generated dataset has to reach. H's
+target is hundreds of thousands of subjects, which is a far smaller problem than it looked.
 
-> **State-wide search is out of scope. Decided.** Sync reads a catchment; a facility search reads the
-> tenant. Different endpoints (`/web/*`), different indexes, different scaling behaviour.
+**The supervisor is the load case, and it is already past anything production has ever seen.** Q3's
+heaviest measured device holds 153,126 program encounters. A supervisor passes that inside six
+months, reaching **2.4× it by day 180 and 4.8× by year one**. Every other scenario here is smaller
+than production's existing tail; this one is not.
+
+> **A supervisor's fresh sync will not finish inside a Cognito token's life, and that is a production
+> problem rather than a test one.** At the measured 9.19 ms/record (D6.1), a supervisor's full sync is
+> roughly **1.9 hours of client-side work at year one and 3.8 hours at year two** — against a token
+> that expires in one. The 1% fresh-sync rate makes this routine rather than hypothetical: phone loss,
+> replacement and reassignment all force the full path, and there are only five supervisors per tenant,
+> so one of them hitting it is likely within months.
 >
-> **One consequence has to travel with that decision: a clean result from this exercise says nothing
-> about search.** Against crores of beneficiaries, search is plausibly the worse choke point of the
-> two, and it is the one load here whose cost grows with total tenant size rather than with catchment
-> size — so it is precisely the case that sync results cannot stand in for. Anyone reading a passing
-> sync run as clearance for a state-wide deployment is reading it wrong. It is a separate exercise,
-> and it is not scheduled.
+> Section B treats token expiry as a *harness* problem, solved for testing by `AVNI_IDP_TYPE=none`
+> (B1). This is the same arithmetic pointing at the real client. **B2 — the auth-cost measurement —
+> was deferred; the deferral should be revisited, and the supervisor fresh-sync case raised with the
+> client team on its own merits.** It needs no load test to confirm: it follows from a measured
+> per-record cost and a stated catchment size.
 
-**Ten workers per village is a concurrency finding, not just a density one.** A village generates ~200
-encounters a day, and if those ten workers share the village catchment then ten users sync overlapping
-rows. That is friendly to cache and hostile to lock contention in the same breath, and it is not a
-shape a single-user-per-catchment generator will produce. Whether they share a catchment or partition
-the village changes the answer.
+**A sanity check worth putting back to the customer.** Ten workers at 20 encounters a day give a
+village 200 encounters daily against 3,000 beneficiaries, which implies **every beneficiary is seen
+about every 15 days**. If the real follow-up interval is monthly or quarterly, then either the
+per-worker encounter rate or the beneficiaries-per-village figure needs adjusting, and the tables
+above move with it.
+
+**A shared catchment makes ten users read the same rows.** Confirmed by the customer: the ten workers
+in a village share its catchment rather than partitioning it. So village data is pulled ten times
+over, which is friendly to cache and hostile to page-level contention in the same breath, and it is
+not a shape a one-user-per-catchment generator produces. G5's catchment assignment has to model the
+sharing, not just the size.
 
 **Training runs against configuration only — no field data.** That makes it a **reference-data** test
 rather than a transactional one: 50 to 100 devices, every one empty, every sync a full pull of the
@@ -1132,16 +1149,18 @@ happens in year two. The two produce different datasets and different index size
 - **Field worker.** One catchment, the subjects in it.
 - **Supervisor.** Oversees many field workers, so the catchment is the union of theirs.
 
-**This probably explains Q3's 370× spread.** Per-device row counts run from ~715 at the median to
-~264,569 at the 99th percentile, and a single population does not do that. A supervisor carrying the
-union of fifty field workers' catchments is a different kind of user, not an unusually heavy one — the
-same mistake the catchment sampler already avoids for program encounters, which turned out to be two
-populations rather than one skewed one.
+**This is very likely what Q3's 370× spread has been measuring.** Per-device row counts run from ~715
+at the median to ~264,569 at the 99th percentile, and a single population does not do that. A
+supervisor holding the union of a hundred field workers' catchments is a different kind of user, not
+an unusually heavy one — the same mistake the catchment sampler already avoids for program encounters,
+which turned out to be two populations rather than one skewed one.
 
-**If that holds, sampling one distribution for every user is wrong.** The generator should model two
-user classes with their own catchment sizes and their own ratio in the population. **Query Q15 is
-needed to confirm it** — split `sync_telemetry`'s per-device counts by user role or catchment size and
-see whether the distribution is bimodal. Until then, treat the split as a hypothesis.
+**So sampling one distribution for every user is wrong.** The generator must model two user classes
+with their own catchment sizes and their own population ratio, which the customer has now given as
+1:100. **Q15 remains worth running** — not to size this deployment, which E0 already does, but because
+the platform may host these tenants alongside the existing production skew, and knowing whether
+production's own population is bimodal says whether the co-tenant load should be generated the same
+way.
 
 **Growth is a test dimension.** The customer wants **day 60, day 120 and day 180** compared. That
 makes the dataset a series rather than a single artefact, and the choke point may only appear at the
