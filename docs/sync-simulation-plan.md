@@ -1101,11 +1101,15 @@ point at day 60, 120 and 180. It also moves the likely choke point. Sync is catc
 field worker's sync does not care how many crores sit outside their village — but **search does**, and
 the customer expects facility staff to search across the whole state.
 
-> **State-wide search is a different load, and this plan does not cover it.** Sync reads a catchment;
-> a facility search reads the tenant. Different endpoints (`/web/*`), different indexes, different
-> scaling behaviour — and against crores of beneficiaries it is plausibly the worse choke point of the
-> two. **Either it comes into scope explicitly, with its own section, or it is named as excluded so
-> nobody reads a clean sync result as clearance for it.** Left unstated it will be assumed covered.
+> **State-wide search is out of scope. Decided.** Sync reads a catchment; a facility search reads the
+> tenant. Different endpoints (`/web/*`), different indexes, different scaling behaviour.
+>
+> **One consequence has to travel with that decision: a clean result from this exercise says nothing
+> about search.** Against crores of beneficiaries, search is plausibly the worse choke point of the
+> two, and it is the one load here whose cost grows with total tenant size rather than with catchment
+> size — so it is precisely the case that sync results cannot stand in for. Anyone reading a passing
+> sync run as clearance for a state-wide deployment is reading it wrong. It is a separate exercise,
+> and it is not scheduled.
 
 **Ten workers per village is a concurrency finding, not just a density one.** A village generates ~200
 encounters a day, and if those ten workers share the village catchment then ten users sync overlapping
@@ -2199,6 +2203,11 @@ calendar.
   whose `data_type` is a media type, so their creation rate per user is derivable directly.
 - **~~How often do resets happen?~~** *Answerable in SQL* — [measurement query](production-measurement-queries.md) **Q10** against the
   `reset_sync` table, which records every reset with user, subject type, organisation and timestamp.
+- **~~State-wide facility search?~~** *Out of scope, decided with the customer.* Facility staff are
+  expected to search across the whole state, against crores of beneficiaries. That is a `/web/*`
+  query path whose cost scales with total tenant size rather than with catchment size, which makes it
+  both a different exercise and the one thing a sync result cannot speak for. Recorded here so the
+  exclusion is traceable: **a passing sync run is not clearance for search at that volume.**
 - **~~Sync only, or webapp and API consumers too?~~** *Answered: they are separate query paths.* The
   webapp uses `/web/*` endpoints (≈150 call sites in `avni-webapp/src`) and touches only two
   sync-style endpoints, both reference data (`rule`, `ruleDependency`). So mobile sync and the webapp
