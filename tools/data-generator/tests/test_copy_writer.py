@@ -6,6 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pytest
 
 import copy_writer as cw
+import schema
 
 
 def unescape(s: str) -> str:
@@ -131,7 +132,7 @@ def test_tables_load_in_dependency_order():
     are DEFERRABLE, so SET CONSTRAINTS ALL DEFERRED would not help — order is the only guard."""
     tables = {"encounter": ["id"], "individual": ["id"], "address_level": ["id"],
               "catchment": ["id"]}
-    script = cw.load_script(tables)
+    script = cw.load_script(tables, verify_schema=False)
     statements = [l.strip() for l in script.splitlines() if not l.strip().startswith("--")]
     assert "SET CONSTRAINTS ALL DEFERRED;" not in statements, \
         "it is a no-op against non-deferrable constraints and would imply order does not matter"
@@ -141,35 +142,60 @@ def test_tables_load_in_dependency_order():
 
 def test_sequences_are_reset_because_copy_does_not_advance_them():
     """Without this the first application insert after a load collides on the primary key."""
-    script = cw.load_script({"individual": ["id"]})
+    script = cw.load_script({"individual": ["id"]}, verify_schema=False)
     assert "setval(pg_get_serial_sequence('individual', 'id')" in script
     assert "MAX(id) FROM individual" in script
 
 
 def test_the_load_is_one_transaction():
-    script = cw.load_script({"individual": ["id"]})
+    script = cw.load_script({"individual": ["id"]}, verify_schema=False)
     assert script.index("BEGIN;") < script.index("copy individual") < script.index("COMMIT;")
 
 
 def test_statistics_are_refreshed_after_the_load():
-    script = cw.load_script({"individual": ["id"]})
+    script = cw.load_script({"individual": ["id"]}, verify_schema=False)
     assert script.index("COMMIT;") < script.index("ANALYZE;")
 
 
 def test_the_script_uses_client_side_copy():
     """Server-side COPY FROM reads a path on the database host and needs superuser or
     pg_read_server_files. \\copy streams from wherever psql runs."""
-    script = cw.load_script({"individual": ["id"]})
+    script = cw.load_script({"individual": ["id"]}, verify_schema=False)
     assert "\\copy individual" in script
     assert "\nCOPY individual" not in script
 
 
 def test_the_script_names_every_column_explicitly():
     """Relying on table column order is how a schema change shifts every value silently."""
-    script = cw.load_script({"individual": ["id", "uuid", "observations"]})
+    script = cw.load_script({"individual": ["id", "uuid", "observations"]}, verify_schema=False)
     assert "\\copy individual (id, uuid, observations) FROM" in script
 
 
 def test_a_table_outside_the_known_order_still_loads_last():
-    script = cw.load_script({"individual": ["id"], "group_subject": ["id"]})
+    script = cw.load_script({"individual": ["id"], "group_subject": ["id"]}, verify_schema=False)
     assert script.index("copy individual") < script.index("copy group_subject")
+
+
+# --- schema drift -----------------------------------------------------------
+
+def test_a_real_target_is_verified_against_the_contract():
+    """The load refuses rather than warning. A warning in a load script is one nobody reads, and
+    the failure it guards produces data that looks fine and measures the wrong thing."""
+    cols = sorted(schema.CONTRACTS["individual"].accounted)
+    cw.load_script({"individual": cols})          # verifies by default
+
+
+def test_a_column_added_by_a_migration_stops_the_load():
+    cols = sorted(schema.CONTRACTS["individual"].accounted) + ["sync_concept_3_value"]
+    with pytest.raises(schema.SchemaDrift, match="never heard of"):
+        cw.load_script({"individual": cols})
+
+
+def test_a_table_with_no_contract_stops_the_load():
+    with pytest.raises(schema.SchemaDrift, match="no contract for table"):
+        cw.load_script({"group_subject": ["id"]})
+
+
+def test_the_script_records_the_migration_it_was_checked_against():
+    script = cw.load_script({"individual": sorted(schema.CONTRACTS["individual"].accounted)})
+    assert schema.CHECKED_AGAINST_MIGRATION in script

@@ -204,6 +204,41 @@ backslash-t, then `COPY` escaping turns that backslash into two. Postgres unwrap
 `jsonb` parser the other. The backslash has to be escaped first or everything after it
 double-escapes.
 
+## Keeping up with Flyway
+
+The schema moves — 484 migrations so far. Three of the four ways that can break a bulk load already
+fail loudly:
+
+| Change | What happens |
+|---|---|
+| Column renamed or removed | `project()` refuses a row key that is not a column |
+| Column added `NOT NULL` with no default | the `COPY` fails |
+| Column type changed incompatibly | the `COPY` fails on the first bad value |
+| **Column added, nullable** | **silently arrives empty** |
+
+The fourth is the dangerous one, and it has a precedent. `sync_concept_1_value` was added by
+**V1_208** to carry attribute-based sync; `sync_3` and `sync_4` index it. A generator predating that
+migration would have loaded cleanly while producing data that never touched those index paths, and
+every number would have come out optimistic with nothing to show why.
+
+So `schema.py` requires **every column in the target to be accounted for** — either written, or
+declared unwritten with a reason. An unrecognised column raises `SchemaDrift` and the load stops:
+
+```
+individual: columns the generator has never heard of: ['sync_concept_3_value'].
+A migration since V1_410 probably added them. For each one, decide whether the generator should
+write it -- if sync reads or indexes it, the answer is yes -- and either populate it or record it
+in `unwritten` with the reason.
+```
+
+`load_script` verifies before emitting anything, and stamps the migration it was checked against
+into the script. `CHECKED_AGAINST_MIGRATION` is the watermark to bump when the contract is reviewed,
+so drift can be dated rather than guessed at.
+
+**A reason is required, and enforced.** A test rejects any `unwritten` entry short enough to be a
+hand-wave — it caught seven of its own on the first run. "Audit only" does not explain why a column
+can be left alone; "audit column, and this table is never itself synced" does.
+
 ## Not built yet
 
 This is the first increment. Still to come, all from section H:

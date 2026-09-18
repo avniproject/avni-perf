@@ -2152,6 +2152,15 @@ application cannot read. Mitigate by round-tripping a sample through the real AP
 populate or refresh — a location belongs to a catchment when any point in its `lineage` is declared
 against it. There are no materialised views, and no triggers on the four transactional tables.
 
+**The schema moves, and only one failure mode is silent.** A renamed or dropped column, a new
+`NOT NULL` column without a default, an incompatible type change — each stops a `COPY` outright. **A
+new nullable column simply arrives empty**, and that has a precedent worth keeping in mind:
+`sync_concept_1_value` was added by V1_208 and is indexed by `sync_3` and `sync_4`, so a generator
+predating it would have loaded cleanly while producing data that never touched those paths. The
+generator therefore requires every column in the target to be accounted for — written, or declared
+unwritten with a reason — and refuses to emit a load script otherwise, stamping the Flyway migration
+it was checked against into the script.
+
 **Two things do have to be right on the way in.** `address_level.lineage` carries a check constraint
 requiring the path to end `.parent_id.id`, so a wrong immediate parent is rejected — but its own
 comment says it does not validate the whole tree, so a wrong *ancestor* loads cleanly and hands
