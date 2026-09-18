@@ -177,6 +177,33 @@ have set, because the sync indexes cover them: `address_id` on all four tables, 
 registration observation. Leaving any of them null loads without complaint and quietly stops the
 generated data from touching the index paths production uses.
 
+## Writing the load
+
+`copy_writer.py` turns rows into `COPY` input and emits the script that loads them. Four things it
+handles that a naive writer would not:
+
+**The column list comes from the target database.** Rows are column-keyed dicts, projected onto a
+column list the caller reads from `information_schema.columns`. A hardcoded list here would rot as
+migrations accumulate and produce a `COPY` that either fails or — far worse — shifts every value one
+column left and loads silently. **A row key that is not a column raises** rather than dropping the
+value quietly.
+
+**Explicit ids leave sequences behind.** The generator assigns its own ids so it can wire foreign keys
+without round-tripping the database, and `COPY` does not advance a serial's sequence. Without a
+`setval` per table, the first application insert after a load collides on the primary key.
+
+**`\copy`, not `COPY`.** Server-side `COPY FROM` reads a path on the *database* host and needs
+superuser or `pg_read_server_files`. `\copy` streams the file from wherever `psql` runs.
+
+**Load order is load-bearing.** None of Avni's foreign keys are declared `DEFERRABLE` — checked, zero
+across every migration — so `SET CONSTRAINTS ALL DEFERRED` would achieve nothing and a child row
+loaded before its parent fails on the spot. `LOAD_ORDER` is the only guard, and a test asserts it.
+
+Escaping gets its own tests because two layers stack on observations: `json.dumps` turns a tab into
+backslash-t, then `COPY` escaping turns that backslash into two. Postgres unwraps one layer and the
+`jsonb` parser the other. The backslash has to be escaped first or everything after it
+double-escapes.
+
 ## Not built yet
 
 This is the first increment. Still to come, all from section H:
@@ -184,6 +211,5 @@ This is the first increment. Still to come, all from section H:
 - Row generation for subjects, enrolments and encounters, with the catchment volumes Q3 measured —
   a p50 device holds ~715 rows and a p99 holds ~264,569, so the tail is what has to be reproduced
 - Temporal spread of `last_modified_date_time`, without which no incremental scenario means anything
-- `COPY` output, index build and `ANALYZE` (H4)
 - The structural and statistical checks that gate a dataset (H5)
 - Multiple organisations with a realistic size distribution (H1, I2)
