@@ -71,6 +71,7 @@ false. Listed so they are visible rather than buried.
 | A generated dataset can stand in for production data | H6 | An anonymised clone is not available. This is settled, not open — but it means H5's validation is the only thing that will catch an unrealistic generator |
 | Sync is the whole exercise | Closed questions | State-wide facility search is explicitly out of scope. **A passing sync run is not clearance for search**, because search cost grows with tenant size where sync cost grows with catchment size |
 | The three growth datasets differ only in encounter count | E6 | Beneficiary population does not grow with programme activity |
+| A catchment is declared against one location | H · `tools/data-generator` | A generator default, not a platform constraint — `catchment_address_mapping` is a many-to-many and real bundles carry three locations per catchment. Changes the mapping table's size and what the expansion view computes, not what anyone syncs |
 
 ---
 

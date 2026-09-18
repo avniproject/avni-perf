@@ -52,15 +52,53 @@ def test_a_supervisor_catchment_expands_wider_than_a_field_workers():
     fw = next(c for c in cs if c.role == cat.FIELD_WORKER)
     sv = next(c for c in cs if c.role == cat.SUPERVISOR)
     assert len(cat.expanded_locations(h, fw)) == 1
-    assert len(cat.expanded_locations(h, sv)) > 1
+    assert len(cat.expanded_locations(h, sv)) > len(cat.expanded_locations(h, fw))
 
 
-def test_only_the_declared_location_is_written():
-    """The server derives the expanded set itself, so writing the descendants would duplicate it."""
+def test_a_mapping_row_is_written_per_declared_location():
+    """catchment_address_mapping is a many-to-many and real configuration uses it — the bundles
+    examined for this work carry catchments of three locations each."""
     _, cs, _ = pilot()
     rows = cat.declared_mappings(cs)
-    assert len(rows) == len(cs)
-    assert {r["addresslevel_id"] for r in rows} == {c.root.id for c in cs}
+    assert len(rows) == sum(len(c.locations) for c in cs)
+    assert {r["addresslevel_id"] for r in rows} == {l.id for c in cs for l in c.locations}
+
+
+def test_descendants_are_never_written_as_declared_rows():
+    """The server derives the expanded set itself, so writing descendants would duplicate it."""
+    h, cs, _ = pilot()
+    sv = next(c for c in cs if c.role == cat.SUPERVISOR)
+    declared = {r["addresslevel_id"] for r in cat.declared_mappings([sv])}
+    assert declared == {l.id for l in sv.locations}
+    assert len(declared) < len(cat.expanded_locations(h, sv))
+
+
+def test_a_catchment_may_declare_several_locations():
+    h = hy.build(1, 20)
+    cs, _ = cat.plan(h, declare_leaves=True)
+    sv = next(c for c in cs if c.role == cat.SUPERVISOR)
+    assert len(sv.locations) > 1
+
+
+def test_declaring_leaves_reaches_the_same_villages():
+    """Declaring a sub-centre also includes the sub-centre itself, so the expanded sets differ by
+    that one row. The villages — which is where subjects live — are the same either way."""
+    h = hy.build(1, 167)
+    anc, _ = cat.plan(h, declare_leaves=False)
+    lea, _ = cat.plan(h, declare_leaves=True)
+    a = next(c for c in anc if c.role == cat.SUPERVISOR)
+    b = next(c for c in lea if c.role == cat.SUPERVISOR)
+    leaf = h.levels[-1].name
+    villages = lambda c: {l.id for l in cat.expanded_locations(h, c) if l.level_name == leaf}
+    assert villages(a) == villages(b)
+    assert len(cat.declared_mappings(anc)) < len(cat.declared_mappings(lea))
+
+
+def test_a_catchment_with_no_locations_is_rejected():
+    h = hy.build(1, 5)
+    with pytest.raises(ValueError, match="declares no locations"):
+        cat.CatchmentSpec(id=1, uuid="c", name="empty", organisation_id=1,
+                          locations=(), role=cat.FIELD_WORKER)
 
 
 def test_every_user_points_at_a_catchment_that_exists():

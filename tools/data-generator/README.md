@@ -135,10 +135,17 @@ not:
 row recorded there. So the same rows are read three times over, and a field worker's sync volume
 tracks the village's activity rather than their own.
 
-**A catchment is declared against one location, not a list.** The server expands it downward through
-`virtual_catchment_address_mapping_table`, so declaring a sub-centre resolves to its villages while
-declaring a village resolves to itself. Only the declared row is written. This is also why Q15 counts
-the expanded set rather than the declared one.
+**A catchment holds many locations.** `catchment_address_mapping` is a many-to-many and real
+configuration uses it — the bundles examined for this work carry catchments of three locations each.
+The server expands every declared location down its own subtree through
+`virtual_catchment_address_mapping_table`, so the expanded set is the union of those subtrees, and
+descendants are never written as declared rows. That is also why Q15 counts the expanded set.
+
+**The generator declares one location per catchment by default, and that is an assumption rather than
+a constraint** — a village for a field worker, a sub-centre for a supervisor. `declare_leaves=True`
+declares the villages instead. Both reach the same villages, which is where subjects live, but they
+write a different number of mapping rows: 227 against 334 for a pilot tenant. Which shape production
+uses has not been measured.
 
 A pilot state tenant at 167 villages comes out at **501 field workers and 60 supervisors**, against
 E6's 500 and 62.
