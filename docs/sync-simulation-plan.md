@@ -1322,6 +1322,109 @@ exist.
 **Volume mix (Q5): 98% of syncs pull under 5,000 records.** Any profile built predominantly on `full`
 mode is modelling the remaining 2%.
 
+### E6 — Test cases, with numbers
+
+**For customer review, and for the generator to build against.** Everything here derives from E0's
+establishment figures. Where a number is an assumption rather than something supplied, it says so —
+those are the lines to check first.
+
+#### The deployment being modelled
+
+| | ASHAs | ANMs | Villages | Beneficiaries | Encounters/day |
+|---|---|---|---|---|---|
+| State tenant (pilot) × 2 | 500 | 62 | 167 | 501,000 | 10,000 |
+| NGO tenant × 8 | 63 | 8 | 21 | 63,000 | 1,260 |
+| **Platform total** | **1,504** | **188** | **502** | **1,506,000** | **30,080** |
+
+Derived at 3 ASHAs per village, 3,000 beneficiaries per village, 8 ASHAs per sub-centre and 20
+encounters per ASHA per day. **Assumption to confirm: the customer's "500 workers" is read as 500
+field workers, with supervisors added on top rather than counted within it.**
+
+#### Dataset size at each growth point
+
+| | Encounters | Total rows | vs production today |
+|---|---|---|---|
+| Day 60 | 1,804,800 | 3,310,800 | 26% of its encounters |
+| Day 120 | 3,609,600 | 5,115,600 | 53% |
+| **Day 180** | **5,414,400** | **6,920,400** | **79%** |
+| Day 365 | 10,979,200 | 12,485,200 | 160% |
+
+Beneficiaries stay at 1,506,000 throughout — 55% of production's current subject count — because
+population does not grow with programme activity. **Three datasets are needed**, at day 60, 120 and
+180, each a G4 snapshot.
+
+#### What each device holds
+
+| | Subjects | Day 60 | Day 120 | Day 180 | Year 1 |
+|---|---|---|---|---|---|
+| Field worker — 1 village | 3,000 | 3,600 | 7,200 | 10,800 | 21,900 |
+| Supervisor — 1 sub-centre | 8,400 | 9,600 | 19,200 | 28,800 | 58,400 |
+
+Full-sync client time at 9.19 ms/record: a field worker **2.1 min** at day 180 and **3.8** at year one;
+a supervisor **5.7** and **10.2**.
+
+#### Sync frequency — the one number with no basis yet
+
+Arrival rate needs a per-worker sync frequency, and nothing measured or supplied gives one.
+**Assumed: 4 syncs per worker per working day**, spread across the 09:00–21:00 plateau Q4 measured in
+production.
+
+| At 4 syncs/worker/day | Syncs/day | Average hour | Peak hour |
+|---|---|---|---|
+| One state tenant (562 users) | 2,248 | 187 | ~232 |
+| Whole platform (1,692 users) | 6,768 | 564 | ~700 |
+
+For reference, production's busiest hour ever recorded was **792 syncs** (Q4). So the whole
+deployment at four syncs a day lands just under production's existing peak. **If the real figure is
+two or eight a day, halve or double every arrival rate below.**
+
+#### The cases
+
+| # | Case | Users | Dataset | Mode | What it answers |
+|---|---|---|---|---|---|
+| **1** | Training cohort | 100 field workers, all first login within 15 min | Config only, **no field data** | Full | Reference-data sync and `syncDetails` cost, isolated from catchment volume |
+| **2** | Field worker steady state | 500 | Day 180, one state tenant | Incremental, 1% full | The common case |
+| **3** | Supervisor steady state | 62 | Day 180, one state tenant | Incremental, 1% full | Whether 3× the volume per device changes anything |
+| **4** | **Combined** | 500 + 62 | Day 180, one state tenant | Incremental, 1% full | **The realistic case.** Wide and frequent syncs competing for one pool |
+| **5** | Full platform | 1,504 + 188 | Day 180, all 10 tenants | Incremental, 1% full | Cross-tenant contention, RLS at 10 tenants, `set role` churn |
+| **6** | Shared infrastructure | Case 5 | Day 180 **plus production's tenant skew** | Incremental, 1% full | Whether 986 co-tenant organisations change any of it |
+| **7** | Growth comparison | Case 4 | Day 60, then 120, then 180 | Incremental, 1% full | The shape of the curve. A knee between points is the finding |
+| **8** | Reset storm | 562, one tenant, org-wide reset | Day 180 | **All full** | The heaviest real event (Q10 measured it at 130× a normal week) |
+| **9** | Stress ramp | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
+| **10** | Soak | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
+
+**Build order: 1, 4, 7, then the rest.** Case 1 needs no generated data at all, so it can run before
+the generator exists. Case 4 is the one to answer first. Case 7 needs all three datasets, so it sets
+the generator's deadline.
+
+#### Conditional on one open question
+
+Cases 3, 4, 5 and 7 assume **supervision at sub-centre level** — 8 field workers per supervisor. If it
+sits higher, per-device volume changes by roughly an order of magnitude and the cases above change
+with it:
+
+| Supervisor tier | Field workers each | Records at day 180 | Full sync | vs Q3's heaviest device |
+|---|---|---|---|---|
+| **Sub-centre** | 8 | 37,200 | 5.7 min | 0.14× |
+| PHC | 45 | 207,000 | 32 min | 0.78× |
+| Block | 200 | 920,000 | 141 min | 3.5× |
+
+**At sub-centre level no case here exceeds what production already carries, so this exercise tests
+concurrency and tenancy. At block level it tests volume as well.** That is a different exercise, and
+it is one answer away.
+
+#### What the generator has to produce
+
+1. **Three datasets** — day 60, 120, 180 — differing only in encounter count.
+2. **Ten tenants**: 2 × 500 field workers, 8 × 63, each with its own location hierarchy and catchments.
+3. **Shared village catchments**, so 3 field workers per village pull the same rows.
+4. **Two user classes**: field worker at one village, supervisor at one sub-centre of ~2.8 villages.
+5. **Timestamps per Q14** — median age near two years, and program encounters written twice.
+6. **Observation shape per Q6** — the measured key-count distributions, per form type.
+7. Optionally the **production tenant skew** for case 6: 986 organisations, 48% empty.
+
+---
+
 ---
 
 ## F. Observability, environment and run process
@@ -2257,6 +2360,11 @@ Ordering reflects dependencies, not estimates.
 | **3 · Workload** | **D7** · E3, E5 · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
 | **4 · Operate** | A11 · F2, F3 · **A12** | Saturate, name the resource, fix, re-run. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
+**Test cases with numbers are in E6**, derived from E0 and ready for customer review. Three
+assumptions in it are the ones to check: that "500 workers" means 500 field workers with supervisors
+on top, that a worker syncs four times a working day, and that supervision sits at sub-centre level.
+The last changes per-device volume by an order of magnitude.
+
 **Deliberately unscheduled.** **D8.2** (page size tuning) and **E4** (noisy neighbour) are
 finding-triggered — pull them forward when a result points at serialisation or at tenancy, not on a
 calendar.
@@ -2294,6 +2402,15 @@ calendar.
   whose `data_type` is a media type, so their creation rate per user is derivable directly.
 - **~~How often do resets happen?~~** *Answerable in SQL* — [measurement query](production-measurement-queries.md) **Q10** against the
   `reset_sync` table, which records every reset with user, subject type, organisation and timestamp.
+- **Which tier supervises?** E6's cases assume an ANM at sub-centre level, covering 8 field workers.
+  At PHC level a supervisor's day-180 catchment is 5.6× larger and at block level 25× — the difference
+  between an exercise about concurrency and one about volume. **One answer changes four test cases.**
+- **How often does a worker sync?** E6 assumes four times a working day and nothing measured or
+  supplied supports it. Every arrival rate scales linearly with this figure.
+- **Is "500 workers" field workers only, or all users?** E6 reads it as field workers and adds 62
+  supervisors per state tenant on top. If it is the total, the deployment is 11% smaller.
+- **Is 500 workers the pilot, the first year, or the design target?** A real state runs 165,000
+  ASHAs, so 500 is 0.3% of one. Nothing in a 500-worker result extrapolates to a state.
 - **~~State-wide facility search?~~** *Out of scope, decided with the customer.* Facility staff are
   expected to search across a whole state's beneficiaries. That is a `/web/*` query path whose cost
   scales with total tenant size rather than with catchment size, which makes it both a different
