@@ -40,14 +40,26 @@ from section H3:
 
 **Key count is a distribution, not a constant.** `KeyCount` fits a lognormal to a measured median
 and 95th percentile, so both are reproduced by construction. A generator emitting a fixed key count
-builds a GIN index of the wrong shape even when the mean matches. The measured pairs:
+builds a GIN index of the wrong shape even when the mean matches.
 
-| Table | p50 keys | p95 keys | Mean bytes |
-|---|---|---|---|
-| `program_encounter` | 12 | 34 | 879 |
-| `individual` | 7 | 29 | 742 |
-| `encounter` | 4 | 22 | 526 |
-| `program_enrolment` | 2 | 20 | 360 |
+The targets live in a **profile**, not in code — `profiles/production-2026-09.json` holds what Q6
+measured:
+
+| Form type | Table | p50 keys | p95 keys | Mean bytes |
+|---|---|---|---|---|
+| `ProgramEncounter` | `program_encounter` | 12 | 34 | 879 |
+| `IndividualProfile` | `individual` | 7 | 29 | 742 |
+| `Encounter` | `encounter` | 4 | 22 | 526 |
+| `ProgramEnrolment` | `program_enrolment` | 2 | 20 | 360 |
+
+Kept as data for three reasons. The numbers are measurements and will move when production is
+measured again. A run has to be able to record which shape it targeted (A11). And a run that
+deliberately targets something heavier than today's production should say so in a file rather than a
+patch. Pass an alternative with `--profile`:
+
+```
+python3 survey.py /path/to/bundle --profile profiles/my-target.json
+```
 
 **Which concepts appear varies row to row.** Mandatory elements are filled first, then the rest are
 drawn at random. Always filling the same elements produces a narrower index than production's

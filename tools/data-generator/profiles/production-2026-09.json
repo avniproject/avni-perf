@@ -1,0 +1,12 @@
+{
+  "name": "production-2026-09",
+  "measured_on": "2026-09-17",
+  "source": "docs/production-measurement-queries.md Q6",
+  "note": "Observation shape per form type. Key counts are a median and 95th percentile, fitted as a lognormal so both reproduce. mean_bytes is a comparison target only, not an input.",
+  "form_types": {
+    "IndividualProfile":  {"table": "individual",        "p50_keys": 7,  "p95_keys": 29, "mean_bytes": 742},
+    "ProgramEnrolment":   {"table": "program_enrolment", "p50_keys": 2,  "p95_keys": 20, "mean_bytes": 360},
+    "ProgramEncounter":   {"table": "program_encounter", "p50_keys": 12, "p95_keys": 34, "mean_bytes": 879},
+    "Encounter":          {"table": "encounter",         "p50_keys": 4,  "p95_keys": 22, "mean_bytes": 526}
+  }
+}

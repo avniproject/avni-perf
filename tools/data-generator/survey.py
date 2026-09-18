@@ -19,22 +19,17 @@ from datetime import date
 
 import bundle as bundle_mod
 import observations as obs
-
-# Measured from production by Q6. Used only to say how far a bundle sits from it.
-PRODUCTION = {
-    "IndividualProfile": ("individual", 7, 29, 742),
-    "ProgramEnrolment": ("program_enrolment", 2, 20, 360),
-    "ProgramEncounter": ("program_encounter", 12, 34, 879),
-    "Encounter": ("encounter", 4, 22, 526),
-}
+import profile as profile_mod
 
 SAMPLE_ROWS = 5000
 
 
-def describe(path: str, seed: int) -> int:
+def describe(path: str, seed: int, profile_path: str | None) -> int:
+    prof = profile_mod.load(profile_path)
     b = bundle_mod.load(path)
     elements = sum(len(v) for v in b.forms.values())
-    print(f"bundle: {b.path}")
+    print(f"bundle:  {b.path}")
+    print(f"profile: {prof.name}" + (f"  (measured {prof.measured_on})" if prof.measured_on else ""))
     print(f"  live concepts        {len(b.concepts)}")
     print(f"  forms                {len(b.forms)}")
     print(f"  live form mappings   {len(b.mappings)}")
@@ -51,15 +46,16 @@ def describe(path: str, seed: int) -> int:
         covered = sum(len(b.elements_for(m)) for m in b.mappings if m.form_type == t)
         print(f"  {t:34s} {n:3d} mapping(s), {covered:4d} generatable element(s)")
 
-    missing = sorted(set(PRODUCTION) - set(by_type))
+    missing = sorted(set(prof.targets) - set(by_type))
     if missing:
         print(f"\n  not present: {', '.join(missing)}")
         print("  rows of those kinds cannot be generated from this bundle.")
 
     print(f"\nprojected observations, {SAMPLE_ROWS} sampled rows per form type:")
-    print(f"  {'form type':<26} {'keys p50':>9} {'p95':>5} {'bytes':>7}   production")
+    print(f"  {'form type':<26} {'keys p50':>9} {'p95':>5} {'bytes':>7}   target")
     anchor = date.today()
-    for form_type, (table, p50, p95, mean_bytes) in PRODUCTION.items():
+    for form_type, target in prof.targets.items():
+        p50, p95 = target.key_count.p50, target.key_count.p95
         mappings = [m for m in b.mappings if m.form_type == form_type]
         if not mappings:
             continue
@@ -67,7 +63,7 @@ def describe(path: str, seed: int) -> int:
         if not els:
             continue
         rng = random.Random(seed)
-        kc = obs.KeyCount(p50=p50, p95=p95)
+        kc = target.key_count
         rows = [obs.generate(els, kc, rng, anchor) for _ in range(SAMPLE_ROWS)]
         n = sorted(len(r) for r in rows)
         size = statistics.mean(len(json.dumps(r).encode()) for r in rows)
@@ -75,7 +71,8 @@ def describe(path: str, seed: int) -> int:
         if len(els) < p95:
             note = f"  <- only {len(els)} elements, cannot reach p95 {p95}"
         print(f"  {form_type:<26} {statistics.median(n):>9.0f} {n[int(0.95*len(n))]:>5d} "
-              f"{size:>7.0f}   {table} {p50}/{p95}/{mean_bytes}{note}")
+              f"{size:>7.0f}   {target.table} {p50:g}/{p95:g}"
+              f"{'/' + str(target.mean_bytes) if target.mean_bytes else ''}{note}")
 
     print("\nConcept cardinality is a whole-platform property, not a per-org one. Production's "
           "5,623\ndistinct observation keys span every organisation, so total cardinality comes "
@@ -88,10 +85,12 @@ def main(argv: list[str]) -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("bundle", help="path to an exported Avni implementation bundle")
     ap.add_argument("--seed", type=int, default=42, help="seed, for a reproducible sample")
+    ap.add_argument("--profile", default=None,
+                    help=f"distribution targets (default: {profile_mod.DEFAULT.name})")
     args = ap.parse_args(argv)
     try:
-        return describe(args.bundle, args.seed)
-    except (NotADirectoryError, FileNotFoundError) as e:
+        return describe(args.bundle, args.seed, args.profile)
+    except (NotADirectoryError, FileNotFoundError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
 
