@@ -623,7 +623,7 @@ the visit happens, so creation and completion are two writes weeks apart. A gene
 each row once produces neither the edit volume nor the timestamp spread, and **that is the difference
 between an incremental sync returning a realistic trickle and returning nothing**.
 
-**Q15 — Is the per-device volume two populations? (E0, H3, G5).** **Not yet run.** Q3 found per-device
+**Q15 — Is the per-device volume two populations? (E0, H3, G5).** Q3 found per-device
 row counts running from ~715 at the median to ~264,569 at the 99th percentile. The customer's
 deployment has two user roles — field workers holding one catchment, supervisors holding the union of
 many — which would produce exactly that spread without anyone being an outlier.

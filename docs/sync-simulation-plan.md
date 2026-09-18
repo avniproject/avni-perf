@@ -2373,6 +2373,19 @@ calendar.
 
 ## Open questions
 
+**[open-questions.md](open-questions.md) collects these for review**, grouped by who can answer each
+one, with what it blocks and what changes if an assumption is wrong. The four customer questions at
+the top of that document are the ones that move numbers.
+
+- **Which tier supervises?** E6's cases assume an ANM at sub-centre level, covering 8 field workers.
+  At PHC level a supervisor's day-180 catchment is 5.6× larger and at block level 25× — the difference
+  between an exercise about concurrency and one about volume. **One answer changes four test cases.**
+- **How often does a worker sync?** E6 assumes four times a working day and nothing measured or
+  supplied supports it. Every arrival rate scales linearly with this figure.
+- **Is "500 workers" field workers only, or all users?** E6 reads it as field workers and adds 62
+  supervisors per state tenant on top. If it is the total, the deployment is 11% smaller.
+- **Is 500 workers the pilot, the first year, or the design target?** A real state runs 165,000
+  ASHAs, so 500 is 0.3% of one. Nothing in a 500-worker result extrapolates to a state.
 - **Success criteria.** The table at the top of this document. Blocks A6, and shapes what counts as a
   finding. The "no worse than current production" default is a legitimate answer.
 - **~~Production statistics access.~~** *Granted.* Queries Q1–Q13 in [production-measurement-queries.md](production-measurement-queries.md) are ready to run;
@@ -2402,15 +2415,6 @@ calendar.
   whose `data_type` is a media type, so their creation rate per user is derivable directly.
 - **~~How often do resets happen?~~** *Answerable in SQL* — [measurement query](production-measurement-queries.md) **Q10** against the
   `reset_sync` table, which records every reset with user, subject type, organisation and timestamp.
-- **Which tier supervises?** E6's cases assume an ANM at sub-centre level, covering 8 field workers.
-  At PHC level a supervisor's day-180 catchment is 5.6× larger and at block level 25× — the difference
-  between an exercise about concurrency and one about volume. **One answer changes four test cases.**
-- **How often does a worker sync?** E6 assumes four times a working day and nothing measured or
-  supplied supports it. Every arrival rate scales linearly with this figure.
-- **Is "500 workers" field workers only, or all users?** E6 reads it as field workers and adds 62
-  supervisors per state tenant on top. If it is the total, the deployment is 11% smaller.
-- **Is 500 workers the pilot, the first year, or the design target?** A real state runs 165,000
-  ASHAs, so 500 is 0.3% of one. Nothing in a 500-worker result extrapolates to a state.
 - **~~State-wide facility search?~~** *Out of scope, decided with the customer.* Facility staff are
   expected to search across a whole state's beneficiaries. That is a `/web/*` query path whose cost
   scales with total tenant size rather than with catchment size, which makes it both a different
@@ -2433,6 +2437,9 @@ calendar.
   which is private. **This repository is public and carries summarised findings only** — ratios,
   percentiles and the figures the plan reasons about. Per-organisation sizes, per-index scan counts
   and the full hourly and weekly series are recorded there.
+- **[open-questions.md](open-questions.md)** — everything this plan is waiting on, grouped by who can
+  answer it, with what each one blocks. Four customer questions move numbers; one product decision
+  fills the last success criterion.
 - **[production-measurement-queries.md](production-measurement-queries.md)** — the SQL behind every
   figure in this plan marked as measured, the caveats on running it, and the defects corrected across
   three runs against production. Findings live here, in the sections that use them: Success criteria,
