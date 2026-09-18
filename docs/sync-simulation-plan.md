@@ -1081,14 +1081,29 @@ peak, which makes this a genuine step up rather than a reproduction.
 | Field workers per village | ~10 |
 | Beneficiary encounters | ~20 per field worker per day |
 | Encounter types per NCD programme | 10 |
-| Beneficiaries | **crores** — tens of millions |
 | Fresh syncs | 1% of users, from phone loss, replacement or reassignment |
 | Onboarding cohort | 50–100 first-time logins in one location |
 
 **The figures close into a model.** Ten workers share a village catchment, a village holds ~3,000
 beneficiaries, a supervisor covers ~10 villages, and data accrues at the same rate in year two as in
-year one. From 500 workers per state tenant that gives 50 villages, 150,000 beneficiaries and **five
-supervisors — a supervisor-to-worker ratio of 1:100.**
+year one. From 500 workers per state tenant that gives **50 villages and 150,000 beneficiaries**.
+
+> **How many supervisors is a guess, and a shaky one.** The customer gave a supervisor's *span* —
+> around 10 villages — not a *count*. Dividing 50 villages by 10 gives five supervisors per tenant,
+> which assumes supervisors partition the villages exactly, with one tier, full coverage and no
+> overlap. None of that was stated.
+>
+> The ratio it implies should be read as a warning rather than a result: 10 workers per village across
+> 10 villages puts **100 field workers under one supervisor**, where field supervision in health
+> programmes usually runs nearer 1:10 to 1:25. So something in the chain probably does not compose the
+> way this arithmetic assumes — the 10-village figure may describe a different administrative unit,
+> there may be more than one supervisory tier, or worker density may be lower in the villages a
+> supervisor covers.
+>
+> **The supervisor's catchment size below does not depend on the count**, so the volume figures stand.
+> What depends on it is how many heavy devices sync at once, which is what the *Combined* profile
+> needs. Worth asking the customer directly: how many supervisors per 500 field workers, and is there
+> more than one tier?
 
 | Per device | Subjects | Day 60 | Day 180 | Year 1 | Year 2 |
 |---|---|---|---|---|---|
@@ -1099,28 +1114,37 @@ Encounter counts, not subject counts — a shared catchment means all ten worker
 every encounter recorded there, including the nine-tenths they did not create. A field worker's sync
 volume is driven by the village's total activity rather than their own.
 
-**Crores is not a dataset target.** The whole customer deployment — two state tenants plus eight NGOs
-— comes to about **450,000 beneficiaries**. One crore is 22× that, so the crore figure is a
-platform-wide projection long into the future, not something the generated dataset has to reach. H's
-target is hundreds of thousands of subjects, which is a far smaller problem than it looked.
+**The dataset target follows from the model.** Two state tenants plus eight NGO tenants come to
+roughly **450,000 beneficiaries**, and H sizes against that. Volume grows out of the daily encounter
+rate and the worker count, so a longer-term projection is arithmetic on this model rather than a
+separate target to build for.
 
 **The supervisor is the load case, and it is already past anything production has ever seen.** Q3's
 heaviest measured device holds 153,126 program encounters. A supervisor passes that inside six
 months, reaching **2.4× it by day 180 and 4.8× by year one**. Every other scenario here is smaller
 than production's existing tail; this one is not.
 
-> **A supervisor's fresh sync will not finish inside a Cognito token's life, and that is a production
-> problem rather than a test one.** At the measured 9.19 ms/record (D6.1), a supervisor's full sync is
-> roughly **1.9 hours of client-side work at year one and 3.8 hours at year two** — against a token
-> that expires in one. The 1% fresh-sync rate makes this routine rather than hypothetical: phone loss,
-> replacement and reassignment all force the full path, and there are only five supervisors per tenant,
-> so one of them hitting it is likely within months.
+> **A supervisor's fresh sync runs for hours, and the harness is the only thing that struggles with
+> that.** At the measured 9.19 ms/record (D6.1), a supervisor's full sync is roughly **1.9 hours of
+> client-side work at year one and 3.8 hours at year two**. The 1% fresh-sync rate makes it routine
+> rather than hypothetical — phone loss, replacement and reassignment all force the full path.
 >
-> Section B treats token expiry as a *harness* problem, solved for testing by `AVNI_IDP_TYPE=none`
-> (B1). This is the same arithmetic pointing at the real client. **B2 — the auth-cost measurement —
-> was deferred; the deferral should be revisited, and the supervisor fresh-sync case raised with the
-> client team on its own merits.** It needs no load test to confirm: it follows from a measured
-> per-record cost and a stated catchment size.
+> **Token expiry is not the concern.** The real client calls `getAuthToken()` per request, and
+> `CognitoAuthService` resolves it through `cognitoUser.getSession()`, which refreshes against the
+> refresh token whenever the id token has expired. A sync of any length is fine. The one-hour lifetime
+> is a **harness** limitation, because the simulation mints a token once and caches it for the run —
+> which is what section B is about, and what B1 resolves with `AVNI_IDP_TYPE=none`.
+>
+> What the duration does mean is that *Supervisor* and *Soak* are the same run. A multi-hour sync is
+> the normal case for this user rather than an endurance test, so the soak profile should be a
+> supervisor fresh sync instead of a synthetic long run.
+
+> **State-wide search is out of scope. Decided.** Sync reads a catchment; a facility search reads the
+> whole tenant — different endpoints (`/web/*`), different indexes, different scaling behaviour.
+>
+> **One consequence travels with that decision: a clean result here says nothing about search.** It is
+> the one load whose cost grows with total tenant size rather than with catchment size, which makes it
+> precisely the case sync results cannot stand in for. Separate exercise, not scheduled.
 
 **A sanity check worth putting back to the customer.** Ten workers at 20 encounters a day give a
 village 200 encounters daily against 3,000 beneficiaries, which implies **every beneficiary is seen
@@ -1151,16 +1175,16 @@ happens in year two. The two produce different datasets and different index size
 
 **This is very likely what Q3's 370× spread has been measuring.** Per-device row counts run from ~715
 at the median to ~264,569 at the 99th percentile, and a single population does not do that. A
-supervisor holding the union of a hundred field workers' catchments is a different kind of user, not
-an unusually heavy one — the same mistake the catchment sampler already avoids for program encounters,
+supervisor holding the union of many field workers' catchments is a different kind of user, not an
+unusually heavy one — the same mistake the catchment sampler already avoids for program encounters,
 which turned out to be two populations rather than one skewed one.
 
 **So sampling one distribution for every user is wrong.** The generator must model two user classes
-with their own catchment sizes and their own population ratio, which the customer has now given as
-1:100. **Q15 remains worth running** — not to size this deployment, which E0 already does, but because
-the platform may host these tenants alongside the existing production skew, and knowing whether
-production's own population is bimodal says whether the co-tenant load should be generated the same
-way.
+with their own catchment sizes and their own population ratio. E0 gives the catchment sizes; the ratio
+is the part still missing, since the customer supplied a supervisor's span rather than a count.
+**Q15 remains worth running** — not to size this deployment, which E0 mostly does, but because the
+platform may host these tenants alongside the existing production skew, and whether production's own
+population is bimodal decides how that co-tenant load should be generated.
 
 **Growth is a test dimension.** The customer wants **day 60, day 120 and day 180** compared. That
 makes the dataset a series rather than a single artefact, and the choke point may only appear at the
@@ -2223,10 +2247,10 @@ calendar.
 - **~~How often do resets happen?~~** *Answerable in SQL* — [measurement query](production-measurement-queries.md) **Q10** against the
   `reset_sync` table, which records every reset with user, subject type, organisation and timestamp.
 - **~~State-wide facility search?~~** *Out of scope, decided with the customer.* Facility staff are
-  expected to search across the whole state, against crores of beneficiaries. That is a `/web/*`
-  query path whose cost scales with total tenant size rather than with catchment size, which makes it
-  both a different exercise and the one thing a sync result cannot speak for. Recorded here so the
-  exclusion is traceable: **a passing sync run is not clearance for search at that volume.**
+  expected to search across a whole state's beneficiaries. That is a `/web/*` query path whose cost
+  scales with total tenant size rather than with catchment size, which makes it both a different
+  exercise and the one thing a sync result cannot speak for. Recorded here so the exclusion is
+  traceable: **a passing sync run is not clearance for search at that scale.**
 - **~~Sync only, or webapp and API consumers too?~~** *Answered: they are separate query paths.* The
   webapp uses `/web/*` endpoints (≈150 call sites in `avni-webapp/src`) and touches only two
   sync-style endpoints, both reference data (`rule`, `ruleDependency`). So mobile sync and the webapp
