@@ -41,6 +41,21 @@ class TemporalSpread:
 
 
 @dataclass(frozen=True)
+class IndexWeight:
+    """Production's index bulk, normalised per row so a smaller dataset compares directly.
+
+    `gin_observation_bytes` is H5's most informative single check. It falls out of how many distinct
+    observation keys each row carries, so it cannot be reached by getting row counts right -- and a
+    generated index an order of magnitude lighter per row means the cardinality is wrong, the index
+    sits in cache, and every push figure comes out optimistic.
+    """
+    table: str
+    rows: int
+    all_index_bytes: float
+    gin_observation_bytes: float
+
+
+@dataclass(frozen=True)
 class Profile:
     name: str
     measured_on: str | None
@@ -48,6 +63,7 @@ class Profile:
     targets: dict[str, FormTypeTarget]
     catchment: dict[str, Quantiles]
     temporal: dict[str, TemporalSpread] = field(default_factory=dict)
+    index_weight: dict[str, IndexWeight] = field(default_factory=dict)
 
     def for_form_type(self, form_type: str) -> FormTypeTarget | None:
         return self.targets.get(form_type)
@@ -57,6 +73,16 @@ class Profile:
 
     def temporal_for(self, table: str) -> TemporalSpread | None:
         return self.temporal.get(table)
+
+    def index_weight_for(self, table: str) -> IndexWeight | None:
+        return self.index_weight.get(table)
+
+    def for_form_type_by_table(self, table: str) -> FormTypeTarget | None:
+        """Observation targets are keyed by form type; validation works in table names."""
+        for t in self.targets.values():
+            if t.table == table:
+                return t
+        return None
 
     @property
     def unmeasured_inputs(self) -> list[str]:
@@ -110,6 +136,16 @@ def load(path: str | Path | None = None) -> Profile:
             median_days_to_first_edit=t.get("median_days_to_first_edit"),
         )
 
+    index_weight = {}
+    for table, w in ((raw.get("index_weight_per_row") or {}).get("tables") or {}).items():
+        for required in ("rows", "all_index_bytes", "gin_observation_bytes"):
+            if required not in w:
+                raise ValueError(f"profile {p}: index_weight.{table} is missing {required}")
+        index_weight[table] = IndexWeight(
+            table=table, rows=int(w["rows"]),
+            all_index_bytes=float(w["all_index_bytes"]),
+            gin_observation_bytes=float(w["gin_observation_bytes"]))
+
     return Profile(
         name=raw.get("name", p.stem),
         measured_on=raw.get("measured_on"),
@@ -117,4 +153,5 @@ def load(path: str | Path | None = None) -> Profile:
         targets=targets,
         catchment=catchment,
         temporal=temporal,
+        index_weight=index_weight,
     )

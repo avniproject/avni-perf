@@ -24,3 +24,7 @@ test_data_generator: ## Run the data generator's tests
 	@cd tools/data-generator && \
 		test -d .venv || python3 -m venv .venv; \
 		.venv/bin/pip install -q pytest && .venv/bin/python -m pytest tests -q
+
+validate_dataset: ## Run the H5 statistical gate. STATS=stats.json from validate.sql
+	@test -n "$(STATS)" || (echo "usage: make validate_dataset STATS=stats.json" && exit 1)
+	@cd tools/data-generator && python3 validate.py "$(abspath $(STATS))"

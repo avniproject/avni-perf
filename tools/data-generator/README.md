@@ -239,6 +239,66 @@ so drift can be dated rather than guessed at.
 hand-wave — it caught seven of its own on the first run. "Audit only" does not explain why a column
 can be left alone; "audit column, and this table is never itself synced" does.
 
+## H5 — is the dataset good enough to measure against?
+
+Section H6 rules out an anonymised production clone, so **the generated dataset is the only
+dataset**. Nothing else will catch a generator producing plausible row counts and unrealistic
+cardinality, which makes this a gate rather than a nicety. Run it before a dataset is used, and again
+whenever the generator changes.
+
+### The statistical check
+
+```
+psql -d <generated_db> -A -F',' -f validate.sql     # after loading and ANALYZE
+python3 validate.py stats.json                       # exit 1 on any failure
+```
+
+**The checks are ordered by how hard they are to fake**, and that ordering is the point:
+
+| Check | Tolerance | What it proves |
+|---|---|---|
+| Row count | 0.1% | Only that the loader wrote what the generator produced |
+| Observation keys, median | 20% | Weak — the generator targets this directly |
+| Observation keys, p95 | 25% | **A constant key count passes the median and fails here** |
+| Observation mean bytes | 30% | Payload size |
+| Index bytes per row | 35% | That production's index definitions are present (G4) |
+| **GIN bytes per row** | **35%** | **Observation cardinality. The generator cannot target this** |
+
+**GIN bytes per row is the one that matters.** It falls out of how many distinct keys each row
+actually carries, so it cannot be reached by getting row counts right. Production's figures, from Q7c
+normalised per row: `individual` 99 B, `program_encounter` 69 B, `encounter` 59 B,
+`program_enrolment` 54 B.
+
+A generated index an order of magnitude lighter means the cardinality is wrong, the index sits in
+cache, and every push figure comes out optimistic — with nothing in the run to show why. **An index
+heavier than production's fails too**, because that makes the server look worse than it is, which is
+a different way of not measuring production.
+
+Failures block; warnings do not. A statistic that was not measured **warns rather than passing
+quietly**, because a silently absent check is the same as no check.
+
+### The structural check
+
+Not automated — it is a run, and it catches the errors statistics cannot: a datatype the client
+cannot parse, a reference to a UUID that does not exist, a rule that throws.
+
+1. Load a dataset and run the simulation against it in `full` mode for one user of each role.
+2. Confirm every entity returns 200 and pagination terminates.
+3. Point a real client at one field worker and one supervisor account. Confirm the sync completes,
+   subjects list, and a subject's profile and an encounter form render.
+4. Check the client's logs for rule failures. A generated observation that violates skip logic will
+   surface here and nowhere else.
+
+Step 3 is the one worth not skipping. The simulation only checks that the server responds; the client
+is what proves the data is *valid* rather than merely well-shaped.
+
+### What neither check covers
+
+**Per-organisation concept cardinality is compared against the bundle, not against production's
+platform-wide figure.** Q6's 5,623 distinct keys spans all 986 organisations — the query has no
+organisation filter — and a single bundle reaches a few hundred. Comparing one generated tenant
+against 5,623 would fail a correct dataset.
+
 ## Not built yet
 
 This is the first increment. Still to come, all from section H:
@@ -246,5 +306,4 @@ This is the first increment. Still to come, all from section H:
 - Row generation for subjects, enrolments and encounters, with the catchment volumes Q3 measured —
   a p50 device holds ~715 rows and a p99 holds ~264,569, so the tail is what has to be reproduced
 - Temporal spread of `last_modified_date_time`, without which no incremental scenario means anything
-- The structural and statistical checks that gate a dataset (H5)
 - Multiple organisations with a realistic size distribution (H1, I2)

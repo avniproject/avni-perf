@@ -2178,13 +2178,32 @@ deviation in F5.2.
 Two checks, both cheap:
 
 **Structural.** Point the real client (or the simulation) at it and confirm a full sync completes and
-subjects render without rule failures. Catches datatype and reference errors immediately.
+subjects render without rule failures. Catches datatype and reference errors immediately. Not
+automated, because it is a run — the procedure is in the generator's README.
 
-**Statistical.** Compare aggregates against production: rows per entity, mean observations per row,
-distinct concept count, JSONB size distribution, and — the single most informative check —
-**`pg_total_relation_size` per index**. If the generated GIN index is an order of magnitude smaller
-than production's for comparable row counts, the observation cardinality is wrong and every push
-number will be optimistic.
+**The client step is the one not to skip.** The simulation only proves the server responded; the
+client is what proves the data is *valid* rather than merely well-shaped. A generated observation
+that violates a form's skip logic surfaces there and nowhere else.
+
+**Statistical.** *Built* — `tools/data-generator/validate.sql` produces the statistics and
+`validate.py` judges them against the measured profile, exiting non-zero so it can gate a run rather
+than be read and ignored.
+
+**The checks are ordered by how hard they are to fake, and that ordering is the finding.** Row counts
+the generator sets directly, so matching them proves only that the loader worked. Observation key
+medians it targets, so matching them is weak evidence — **a generator emitting a constant key count
+passes the median and fails the p95**, which is exactly the failure H3 warns about.
+
+**Index bytes per row is the check that cannot be targeted.** It falls out of how many distinct keys
+each row actually carries. Production's figures from Q7c, normalised per row: `individual` 99 B,
+`program_encounter` 69 B, `encounter` 59 B, `program_enrolment` 54 B of GIN per row. An order of
+magnitude lighter means the cardinality is wrong, the index sits in cache, and every push number is
+optimistic with nothing in the run to show why. **Heavier than production fails too** — that makes
+the server look worse than it is, which is a different way of not measuring production.
+
+One trap avoided: **per-organisation concept cardinality is compared against the bundle's own
+reachable set, not against Q6's 5,623.** That figure spans all 986 organisations, and judging one
+generated tenant against it would fail a correct dataset.
 
 ### H6 — Decided: no production clone
 

@@ -2,7 +2,7 @@
   "name": "production-2026-09",
   "measured_on": "2026-09-17",
   "source": "docs/production-measurement-queries.md",
-  "note": "Observation shape from Q6, per-device row counts from Q3, timestamp spread from Q14. Key counts are a median and 95th percentile; catchment volumes and row ages are a median, 90th and 99th, interpolated rather than fitted because program encounters are not one population.",
+  "note": "Observation shape from Q6, per-device row counts from Q3, timestamp spread from Q14, index weight from Q7 and Q7c. Key counts are a median and 95th percentile; catchment volumes and row ages are a median, 90th and 99th, interpolated rather than fitted because program encounters are not one population.",
   "form_types": {
     "IndividualProfile": {
       "table": "individual",
@@ -92,5 +92,34 @@
         "median_days_to_first_edit": 383
       }
     }
+  },
+  "index_weight_per_row": {
+    "note": "Q7 and Q7c, normalised per row so a smaller generated dataset can be compared against production directly. GIN bytes per row is the check H5 calls the single most informative one: it falls out of how many distinct observation keys each row carries, which is what H3 says is most likely to be got wrong. A generated index an order of magnitude lighter per row means the cardinality is wrong, the index is cache-resident, and every push figure will be optimistic.",
+    "tables": {
+      "individual": {
+        "rows": 2751205,
+        "all_index_bytes": 1061,
+        "gin_observation_bytes": 99
+      },
+      "program_enrolment": {
+        "rows": 733114,
+        "all_index_bytes": 2550,
+        "gin_observation_bytes": 54
+      },
+      "program_encounter": {
+        "rows": 6860430,
+        "all_index_bytes": 1722,
+        "gin_observation_bytes": 69
+      },
+      "encounter": {
+        "rows": 3306138,
+        "all_index_bytes": 1283,
+        "gin_observation_bytes": 59
+      }
+    }
+  },
+  "observation_concept_cardinality": {
+    "note": "Q6 found 5,623 distinct observation keys in program_encounter, but that spans all 986 organisations -- the query carries no organisation filter. A single bundle reaches a few hundred through its live form mappings, so this is compared per organisation against the bundle's own reachable set, not against the platform-wide figure.",
+    "platform_wide_program_encounter": 5623
   }
 }
