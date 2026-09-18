@@ -1724,6 +1724,11 @@ impact:
   purpose: if every generated row shares a timestamp, incremental sync returns either everything or
   nothing, and no incremental scenario means anything. The spread must look like real editing
   activity over time.
+
+  **This is the one generator input with no measurement.** Query **Q14** was added to cover it and
+  has not been run. Until it is, the generator carries a placeholder that it reports as a guess
+  rather than a measurement — see `tools/data-generator/profiles/`. **Run Q14 before any incremental
+  scenario is treated as meaningful.**
 - **Address level hierarchy shape.** Drives the scope-resolution queries behind catchment filtering.
   **Measured (Q13) across the 812 organisations holding any location:**
 

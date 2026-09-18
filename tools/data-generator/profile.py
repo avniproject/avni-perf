@@ -11,6 +11,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from distribution import Quantiles
 from observations import KeyCount
 
 DEFAULT = Path(__file__).parent / "profiles" / "production-2026-09.json"
@@ -25,14 +26,36 @@ class FormTypeTarget:
 
 
 @dataclass(frozen=True)
+class TemporalSpread:
+    """Age of `last_modified_date_time`, in days before the dataset's reference date."""
+    days: Quantiles
+    edited_after_creation_fraction: float
+    unmeasured: bool = False
+    note: str | None = None
+
+
+@dataclass(frozen=True)
 class Profile:
     name: str
     measured_on: str | None
     source: str | None
     targets: dict[str, FormTypeTarget]
+    catchment: dict[str, Quantiles]
+    temporal: TemporalSpread | None = None
 
     def for_form_type(self, form_type: str) -> FormTypeTarget | None:
         return self.targets.get(form_type)
+
+    def rows_per_user(self, entity: str) -> Quantiles | None:
+        return self.catchment.get(entity)
+
+    @property
+    def unmeasured_inputs(self) -> list[str]:
+        """Inputs carrying a guess rather than a measurement. A run should report these."""
+        out = []
+        if self.temporal and self.temporal.unmeasured:
+            out.append("temporal_spread")
+        return out
 
 
 def load(path: str | Path | None = None) -> Profile:
@@ -57,9 +80,33 @@ def load(path: str | Path | None = None) -> Profile:
             mean_bytes=t.get("mean_bytes"),
         )
 
+    catchment = {}
+    for entity, qs in (raw.get("catchment_rows_per_user") or {}).items():
+        if entity == "note":
+            continue
+        pct = {k: v for k, v in qs.items() if k.startswith("p")}
+        if not pct:
+            raise ValueError(f"profile {p}: {entity} declares no percentiles")
+        catchment[entity] = Quantiles.of(**pct)
+
+    temporal = None
+    t = raw.get("temporal_spread")
+    if t:
+        days = {k.replace("days_", ""): v for k, v in t.items() if k.startswith("days_p")}
+        if not days:
+            raise ValueError(f"profile {p}: temporal_spread declares no days_pNN percentiles")
+        temporal = TemporalSpread(
+            days=Quantiles.of(**days),
+            edited_after_creation_fraction=float(t.get("edited_after_creation_fraction", 0.0)),
+            unmeasured=bool(t.get("unmeasured")),
+            note=t.get("note"),
+        )
+
     return Profile(
         name=raw.get("name", p.stem),
         measured_on=raw.get("measured_on"),
         source=raw.get("source"),
         targets=targets,
+        catchment=catchment,
+        temporal=temporal,
     )

@@ -1,12 +1,30 @@
 {
   "name": "production-2026-09",
   "measured_on": "2026-09-17",
-  "source": "docs/production-measurement-queries.md Q6",
-  "note": "Observation shape per form type. Key counts are a median and 95th percentile, fitted as a lognormal so both reproduce. mean_bytes is a comparison target only, not an input.",
+  "source": "docs/production-measurement-queries.md",
+  "note": "Observation shape from Q6, per-device row counts from Q3. Key counts are a median and 95th percentile; catchment volumes are a median, 90th and 99th, interpolated rather than fitted because program encounters are not one population.",
+
   "form_types": {
     "IndividualProfile":  {"table": "individual",        "p50_keys": 7,  "p95_keys": 29, "mean_bytes": 742},
     "ProgramEnrolment":   {"table": "program_enrolment", "p50_keys": 2,  "p95_keys": 20, "mean_bytes": 360},
     "ProgramEncounter":   {"table": "program_encounter", "p50_keys": 12, "p95_keys": 34, "mean_bytes": 879},
     "Encounter":          {"table": "encounter",         "p50_keys": 4,  "p95_keys": 22, "mean_bytes": 526}
+  },
+
+  "catchment_rows_per_user": {
+    "note": "Q3, from each user's most recent sync. A 370x spread between the median device and the 99th percentile. Reproduce the tail: a generator giving every user a typical catchment produces no heavy syncs, and the heavy tail is where the choke points are.",
+    "subjects":           {"p50": 464, "p90": 5685,  "p99": 42519},
+    "enrolments":         {"p50": 100, "p90": 1653,  "p99": 15254},
+    "program_encounters": {"p50": 89,  "p90": 11762, "p99": 153126},
+    "encounters":         {"p50": 62,  "p90": 3167,  "p99": 53670}
+  },
+
+  "temporal_spread": {
+    "unmeasured": true,
+    "note": "NOT MEASURED. No production query covers the age distribution of last_modified_date_time -- see Q14. Section H3 warns that getting this wrong invalidates every incremental scenario: rows sharing one timestamp make incremental sync return either everything or nothing. The values below are a placeholder chosen to be obviously a guess, and a run using them should say so.",
+    "days_p50": 120,
+    "days_p90": 540,
+    "days_p99": 1460,
+    "edited_after_creation_fraction": 0.15
   }
 }

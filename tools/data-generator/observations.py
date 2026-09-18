@@ -19,18 +19,12 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from bundle import Element
-
-# 95th percentile of the standard normal, for fitting a lognormal to two percentiles.
-_Z95 = 1.6448536269514722
+from distribution import Quantiles
 
 
 @dataclass(frozen=True)
 class KeyCount:
-    """Samples a per-row key count reproducing an observed median and 95th percentile.
-
-    Fitted as a lognormal, which is the shape a fill-rate distribution takes: a floor of zero, a
-    dense body, and a long right tail. Both percentiles are matched by construction --
-    exp(mu) is the median, and exp(mu + 1.645*sigma) the 95th.
+    """How many keys one observation carries, reproducing a measured median and 95th percentile.
 
     Production, measured by Q6:
 
@@ -38,6 +32,10 @@ class KeyCount:
         individual         p50  7  p95 29
         encounter          p50  4  p95 22
         program_enrolment  p50  2  p95 20
+
+    Two percentiles is the minimum that says anything about spread. A single mean would let a
+    generator emit a constant key count per row, which builds a GIN index of the wrong shape even
+    when the mean matches.
     """
     p50: float
     p95: float
@@ -49,21 +47,16 @@ class KeyCount:
             raise ValueError("p95 must be at least p50")
 
     @property
-    def _mu(self) -> float:
-        return math.log(self.p50)
-
-    @property
-    def _sigma(self) -> float:
-        return (math.log(self.p95) - math.log(self.p50)) / _Z95
+    def _quantiles(self) -> Quantiles:
+        # Equal percentiles carry no spread, so nudge the upper one to keep the curve monotonic.
+        hi = self.p95 if self.p95 > self.p50 else self.p50 * 1.0000001
+        return Quantiles(points=((0.5, float(self.p50)), (0.95, float(hi))))
 
     def sample(self, rng: random.Random, cap: int) -> int:
         """A key count in [0, cap]. `cap` is how many elements the form actually has."""
         if cap <= 0:
             return 0
-        if self._sigma == 0:
-            return min(int(round(self.p50)), cap)
-        n = int(round(math.exp(rng.normalvariate(self._mu, self._sigma))))
-        return max(0, min(n, cap))
+        return max(0, min(self._quantiles.sample_int(rng), cap))
 
 
 def _numeric(concept, rng: random.Random) -> float:

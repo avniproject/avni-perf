@@ -438,6 +438,49 @@ split between page size 100 and 1000 is unknown and both must be tested.
 
 ---
 
+**Q14 — Temporal spread of `last_modified_date_time` (H3, D1).** **Not yet run.** Section H3 warns
+that getting this wrong invalidates every incremental scenario — rows sharing one timestamp make
+incremental sync return either everything or nothing — and no query covered it, so the generator
+currently carries a placeholder flagged as unmeasured.
+
+Two things are needed: how old rows are, and how often a row is edited after it was created. The
+second matters because an edit moves a row back into every subsequent incremental window, which is
+what makes an incremental sync non-empty at all.
+
+```sql
+with sampled as (
+  select 'individual'        as tbl, created_date_time, last_modified_date_time
+  from individual tablesample system (1) where is_voided = false
+  union all
+  select 'program_enrolment', created_date_time, last_modified_date_time
+  from program_enrolment tablesample system (1) where is_voided = false
+  union all
+  select 'program_encounter', created_date_time, last_modified_date_time
+  from program_encounter tablesample system (1) where is_voided = false
+  union all
+  select 'encounter', created_date_time, last_modified_date_time
+  from encounter tablesample system (1) where is_voided = false
+)
+select tbl,
+       count(*) as sampled_rows,
+       percentile_cont(array[0.5, 0.9, 0.99]) within group (
+         order by extract(epoch from (now() - last_modified_date_time)) / 86400
+       ) as age_days_p50_p90_p99,
+       round(100.0 * count(*) filter (
+         where last_modified_date_time > created_date_time + interval '1 hour'
+       ) / nullif(count(*), 0), 2) as pct_edited_after_creation,
+       percentile_cont(0.5) within group (
+         order by extract(epoch from (last_modified_date_time - created_date_time)) / 86400
+       ) filter (where last_modified_date_time > created_date_time + interval '1 hour')
+       as median_days_to_first_edit
+from sampled
+group by tbl
+order by tbl;
+```
+
+The one-hour threshold separates a genuine later edit from the write that created the row, since
+both timestamps are set on insert and can differ by milliseconds.
+
 **Q12 — Organisation size and skew (Success criteria, I2, I3, H3, G5).** The plan requires tenant size
 skew in four places and had no query for it. It also supplies the one remaining measurable row in the
 Success criteria table — the concurrent-user target is "largest org size plus expected growth", and

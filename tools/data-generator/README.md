@@ -65,6 +65,40 @@ python3 survey.py /path/to/bundle --profile profiles/my-target.json
 drawn at random. Always filling the same elements produces a narrower index than production's
 regardless of key count.
 
+## How many rows a user carries
+
+Q3 measured each device's own row count. The profile carries the percentiles, and
+`distribution.Quantiles` samples from them:
+
+| Entity | p50 | p90 | p99 |
+|---|---|---|---|
+| Subjects | 464 | 5,685 | 42,519 |
+| Enrolments | 100 | 1,653 | 15,254 |
+| Program encounters | 89 | 11,762 | 153,126 |
+| Encounters | 62 | 3,167 | 53,670 |
+
+**A 370× spread between the median device and the 99th.** Reproduce the tail: a generator giving
+every user a typical catchment produces no heavy syncs at all, and the heavy tail is where the choke
+points are.
+
+**These are interpolated, not fitted.** A lognormal fitted to two of the percentiles reproduces
+subjects and enrolments within a few percent and misses program encounters by 54%. Program
+encounters rise 132× from the median to the 90th percentile and only 13× from there to the 99th,
+which is not one population — programme enrolment is optional, so most devices carry almost no
+programme activity and a minority carry a great deal. Interpolating the measured quantiles in log
+space reproduces all three points exactly and assumes nothing about the shape between them. A test
+records the lognormal's failure so the approach is not reinstated.
+
+## One input is still a guess
+
+**The age spread of `last_modified_date_time` has never been measured.** H3 warns that getting it
+wrong invalidates every incremental scenario: rows sharing one timestamp make incremental sync
+return either everything or nothing. Query **Q14** was added to cover it and has not been run.
+
+Until it is, the profile carries a placeholder marked `unmeasured`, and `Profile.unmeasured_inputs`
+reports it so a run can state that it used a guess. **Run Q14 before treating any incremental
+result as meaningful.**
+
 ## Concept cardinality is a platform property
 
 Production carries **5,623 distinct observation keys**, but that figure spans all 986 organisations —
