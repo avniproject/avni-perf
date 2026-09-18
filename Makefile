@@ -29,3 +29,7 @@ validate_dataset: ## Run the H5 statistical gate. STATS=stats.json from validate
 	@test -n "$(STATS)" || (echo "usage: make validate_dataset STATS=stats.json" && exit 1)
 	@cd tools/data-generator && python3 validate.py "$(abspath $(STATS))"
 
+
+structural_check: ## H5 steps 1-2: can the client read this dataset? USERS=path [URL=...]
+	@test -n "$(USERS)" || (echo "usage: make structural_check USERS=path/to/sync-users.csv [URL=http://host:port]" && exit 1)
+	@./tools/data-generator/structural_check.sh --users "$(USERS)" $(if $(URL),--url "$(URL)",) $(if $(OUT),--out "$(OUT)",)

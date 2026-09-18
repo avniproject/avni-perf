@@ -67,7 +67,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Server APM | not provisioned for a load-test environment | **Not started — F1** |
 | Request-logging overhead | unmeasured | **Not started — F2** |
 | Second Gatling setup | unreconciled | **Not started — F3** |
-| Assertions | commented out | **Not started — A6** |
+| Assertions | commented out | zero-failure structural gate, plus rate and p95 bounds for a load run |
 | Calibration gate | none | **Not started — F7** |
 | **Grounding** | | |
 | Production measurement | none — every figure was an estimate | Q1–Q13 run, three passes |
@@ -211,12 +211,13 @@ every encounter type, program and subject type adds a row (visible in `SyncDetai
 already has several `Encounter` entries). For a large organisation the real figure is several times
 higher. Resolve the ordered work list once in a session function, then iterate it.
 
-**A6 — Re-enable assertions.** The `forAll().failedRequests()` assertion is commented out, so no run
-can pass or fail today. Add failed-request and per-group p95 assertions.
+**A6 — Re-enable assertions.** *Done.* `MAX_FAILED_PERCENT` bounds the error rate for a load run
+and `MAX_P95_MS` the 95th percentile, asserted only when set because production's 80.0 s figure (Q5)
+was not measured on a laptop against a local database. `STRUCTURAL_CHECK=true` replaces the rate with
+**zero failures**, which is H5's gate on a generated dataset.
 
-> **Blocked on Success criteria.** "Add p95 assertions" is not implementable until someone says p95
-> of what, against what threshold. Fill in the table at the top of this document first; the
-> "no worse than current production" default is a legitimate answer and unblocks this immediately.
+The remaining open figure is the acceptable error rate itself — a product decision, and the last
+unfilled row of the Success criteria table.
 
 **A7 — Name requests meaningfully.** `http(entityTypeUuid)` names every reference-entity request with
 the empty string, since those entities have no type UUID. Name by entity plus UUID.
@@ -2198,13 +2199,18 @@ deviation in F5.2.
 
 Two checks, both cheap:
 
-**Structural.** Point the real client (or the simulation) at it and confirm a full sync completes and
-subjects render without rule failures. Catches datatype and reference errors immediately. Not
-automated, because it is a run — the procedure is in the generator's README.
+**Structural.** *Half built.* `tools/data-generator/structural_check.sh` runs the simulation against
+a loaded dataset in full-sync mode, one virtual user per role, and **asserts zero failures** — a
+stricter bar than a load run, because this asks whether the data is readable at all rather than
+whether an error rate is acceptable. A6's assertions carry it.
 
-**The client step is the one not to skip.** The simulation only proves the server responded; the
-client is what proves the data is *valid* rather than merely well-shaped. A generated observation
-that violates a form's skip logic surfaces there and nowhere else.
+**The client half stays manual and cannot be automated from here.** The simulation only proves the
+server responded. The client is what proves the data is *valid* rather than merely well-shaped: a
+generated observation violating a form's skip logic surfaces there and nowhere else, because nothing
+server-side evaluates the rule. Device automation belongs to the Android plan.
+
+So a dataset passing the automated half is **loadable, not blessed**, and the verdict file records
+the two separately rather than letting one stand for the other.
 
 **Statistical.** *Built* — `tools/data-generator/validate.sql` produces the statistics and
 `validate.py` judges them against the measured profile, exiting non-zero so it can gate a run rather

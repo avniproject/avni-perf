@@ -46,6 +46,28 @@ public class AvniSyncSimulation extends Simulation {
     // these it is - they have completely different profiles, and the committed user file has always
     // held 1900-01-01, so every run to date has been a full sync whether or not that was intended.
     private static final String syncMode = System.getProperty("SYNC_MODE", "csv");
+    /**
+     * STRUCTURAL_CHECK turns the run into H5's structural gate rather than a measurement.
+     *
+     * A load run tolerates a small error budget, because at scale something always fails and the
+     * question is whether the rate is acceptable. The structural check asks a different question -
+     * can the client read this data at all - so its budget is zero. One bad datatype or one
+     * dangling reference is a defective dataset, however rare.
+     *
+     * It also caps duration: a structural check that has not finished in a few minutes has found
+     * something, and waiting out a full run to see it is wasted time.
+     */
+    private static final boolean structuralCheck =
+        Boolean.parseBoolean(System.getProperty("STRUCTURAL_CHECK", "false"));
+    private static final double maxFailedPercent =
+        Double.parseDouble(System.getProperty("MAX_FAILED_PERCENT", "1.0"));
+    /**
+     * p95 for a light sync, measured at 80.0s in production (Q5, success criteria). Band 1 carries
+     * 98% of production's syncs, so this is the threshold the common case is held to. Asserted only
+     * when explicitly set, because a laptop against a local database is not the environment the
+     * figure was measured in.
+     */
+    private static final String maxP95Millis = System.getProperty("MAX_P95_MS");
     private static final int incrementalSinceHours = Integer.getInteger("INCREMENTAL_SINCE_HOURS", 24);
     private static final String FULL_SYNC_SINCE = "1900-01-01T00:00:00.000Z";
 
@@ -131,9 +153,28 @@ public class AvniSyncSimulation extends Simulation {
                 + "not have - add users rather than oversubscribing the file.",
                 userCount, feederRows));
         }
-        setUp(syncScenario.injectOpen(rampUsers(userCount).during(rampPeriod))).protocols(httpProtocol)
-//            .assertions(forAll().failedRequests().percent().lte(1.0));
-        ;
+        if (structuralCheck) {
+            out.println(
+                "STRUCTURAL CHECK: asserting zero failures. This is H5's gate on a generated "
+                + "dataset, not a measurement - any failure means the client cannot read the data.");
+        }
+
+        List<Assertion> assertions = new ArrayList<>();
+        if (structuralCheck) {
+            // Zero, not a rate. A non-200 anywhere means a reference the generated data does not
+            // satisfy, and one is enough to make the dataset defective.
+            assertions.add(forAll().failedRequests().count().is(0L));
+        } else {
+            assertions.add(forAll().failedRequests().percent().lte(maxFailedPercent));
+        }
+        if (maxP95Millis != null) {
+            assertions.add(global().responseTime().percentile(95.0)
+                .lte(Integer.parseInt(maxP95Millis)));
+        }
+
+        setUp(syncScenario.injectOpen(rampUsers(userCount).during(rampPeriod)))
+            .protocols(httpProtocol)
+            .assertions(assertions.toArray(new Assertion[0]));
     }
 
     /**

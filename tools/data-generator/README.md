@@ -279,18 +279,34 @@ quietly**, because a silently absent check is the same as no check.
 
 ### The structural check
 
-Not automated — it is a run, and it catches the errors statistics cannot: a datatype the client
-cannot parse, a reference to a UUID that does not exist, a rule that throws.
+Catches what statistics cannot: a datatype the client cannot parse, a reference to a UUID that does
+not exist, a rule that throws.
 
-1. Load a dataset and run the simulation against it in `full` mode for one user of each role.
-2. Confirm every entity returns 200 and pagination terminates.
+**Steps 1 and 2 are automated.**
+
+```
+make structural_check USERS=/data/e6-day-180/state-1/sync-users.csv URL=http://host:8021
+```
+
+It runs the simulation against the loaded dataset in `full` mode, one virtual user per role found in
+the user file, and **asserts zero failures**. That is a stricter bar than a load run on purpose: a
+load run tolerates an error budget because at scale something always fails and the question is the
+rate, whereas this asks whether the data is readable at all, so one dangling reference is a defective
+dataset however rare. `--out` writes the result alongside the dataset's other records.
+
+**Steps 3 and 4 are manual, and cannot be automated from here.**
+
 3. Point a real client at one field worker and one supervisor account. Confirm the sync completes,
    subjects list, and a subject's profile and an encounter form render.
-4. Check the client's logs for rule failures. A generated observation that violates skip logic will
-   surface here and nowhere else.
+4. Read the client's log for rule failures.
 
-Step 3 is the one worth not skipping. The simulation only checks that the server responds; the client
-is what proves the data is *valid* rather than merely well-shaped.
+**Step 3 is the one worth not skipping.** The simulation only proves the server responded. The client
+is what proves the data is *valid* rather than merely well-shaped — a generated observation that
+violates a form's skip logic surfaces there and nowhere else, because nothing server-side evaluates
+the rule. Device automation is the Android plan's territory, not this one's.
+
+So a dataset that passes steps 1–2 is **loadable**, not **blessed**. The verdict file records the two
+separately, and says the manual half is outstanding until someone fills it in.
 
 ### What neither check covers
 
