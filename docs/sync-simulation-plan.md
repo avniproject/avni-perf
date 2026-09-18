@@ -1700,10 +1700,13 @@ impact:
   produces no heavy syncs at all, and the heavy tail is where the choke points are. It also explains
   Q5's bands directly, since 98% of syncs pull under 5,000 records.
 - **Distinct concept-UUID cardinality across observations.** **Measured (Q6): 5,623 distinct concepts**
-  appear as observation keys in a 1% sample of `program_encounter` alone. This is the number H3 flags
-  as most likely to be got wrong, and the size of it is the point — a generator drawing on a few dozen
-  concepts would build a GIN index orders of magnitude smaller than production's, entirely
-  cache-resident, and every figure it produced would be optimistic. See the GIN note below.
+  appear as observation keys in a 1% sample of `program_encounter`.
+
+  **That figure spans every organisation** — the query carries no organisation filter — and getting
+  the level wrong in either direction produces the wrong index. A real implementation bundle reaches
+  a few hundred concepts through its live form mappings, so **total cardinality comes from tenant
+  count, not from inflating any one organisation**. Generating a single org with 5,623 concepts would
+  misrepresent production as badly as generating one with a dozen. See the GIN note below.
 - **Fill rate — observations per row.** Drives payload size, serialisation cost and GIN index size.
   **Measured (Q6):**
 
