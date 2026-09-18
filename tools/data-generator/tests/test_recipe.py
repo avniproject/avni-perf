@@ -182,3 +182,43 @@ def test_a_failing_dataset_records_a_failing_verdict():
                                                           profile_mod.load()))
     assert doc["verdict"] == "fail"
     assert any(c["verdict"] == "fail" and c["name"] == "GIN bytes/row" for c in doc["checks"])
+
+
+# --- a bundle per tenant ----------------------------------------------------
+
+def test_bundle_paths_fall_back_to_the_deployments():
+    r = a_recipe()
+    paths = r.bundle_paths()
+    assert set(paths) == {t["organisation_id"] for t in r.tenants}
+    assert set(paths.values()) == {"/tmp/bundle"}
+
+
+def test_a_tenant_can_name_its_own_bundle():
+    r = a_recipe()
+    r.tenants[0]["bundle_path"] = "/tmp/large-config"
+    paths = r.bundle_paths()
+    assert paths[r.tenants[0]["organisation_id"]] == "/tmp/large-config"
+    assert paths[r.tenants[1]["organisation_id"]] == "/tmp/bundle"
+
+
+def test_per_tenant_bundles_are_fingerprinted_and_checked():
+    a, b = Path(tempfile.mkdtemp()), Path(tempfile.mkdtemp())
+    fixture.write(a); fixture.write(b)
+    r = a_recipe()
+    r.bundle_path = str(a)
+    r.tenants[1]["bundle_path"] = str(b)
+    r.fingerprint_tenants()
+    assert len(r.tenant_bundle_fingerprints) == len(r.tenants)
+    assert r.check_tenant_bundles() == []
+    (b / "concepts.json").write_text("[]")
+    problems = r.check_tenant_bundles()
+    assert len(problems) == 1
+    assert str(r.tenants[1]["organisation_id"]) in problems[0]
+
+
+def test_the_committed_recipes_allow_a_bundle_per_tenant():
+    """H1: cover the range of organisation size deliberately rather than assuming the small case
+    generalises. Config size drives the syncDetails row count."""
+    r = recipe_mod.Recipe.load(DATASETS / "e6-day-180.json")
+    assert all("bundle_path" in t for t in r.tenants)
+    assert "own bundle_path" in (r.notes or "")

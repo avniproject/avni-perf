@@ -189,3 +189,61 @@ def test_encounters_reference_only_their_own_tenants_subjects():
         f = ln.split("\t")
         sid, org = f[ecols.index("individual_id")], f[ecols.index("organisation_id")]
         assert subj.get(sid) == org, f"encounter in org {org} references subject {sid}"
+
+
+# --- a bundle per tenant ----------------------------------------------------
+
+def two_bundles():
+    """Two bundles of different size. H1 makes organisation complexity a load variable: config
+    size drives the syncDetails row count and therefore D1.1's per-row queries."""
+    import json
+    small = Path(tempfile.mkdtemp()); fixture.write(small)
+    large = Path(tempfile.mkdtemp()); fixture.write(large)
+    # give the second bundle a second mapping, so its reachable surface differs
+    mappings = json.loads((large / "formMappings.json").read_text())
+    mappings.append({"uuid": "m3", "formUUID": fixture.FORM, "formType": "Encounter",
+                     "subjectTypeUUID": fixture.SUBJECT_TYPE})
+    (large / "formMappings.json").write_text(json.dumps(mappings))
+    return bundle_mod.load(small), bundle_mod.load(large)
+
+
+def test_each_tenant_can_be_built_from_its_own_bundle():
+    _, p, st, pr, et = refs()
+    small, large = two_bundles()
+    assert len(large.mappings) > len(small.mappings)
+    spec = dep.DeploymentSpec(
+        tenants=(dep.TenantSpec(name="a", organisation_id=1, field_workers=3,
+                                beneficiaries_per_village=4),
+                 dep.TenantSpec(name="b", organisation_id=2, field_workers=3,
+                                beneficiaries_per_village=4)),
+        days=30, reference=REFERENCE)
+    out = Path(tempfile.mkdtemp())
+    counts = dep.write_dataset(spec, {1: small, 2: large}, p, columns(), out,
+                               subject_types=st, programs=pr, encounter_types=et)
+    assert counts["individual"] == 8
+
+
+def test_a_tenant_with_no_bundle_fails_loudly():
+    _, p, st, pr, et = refs()
+    small, _ = two_bundles()
+    spec = dep.DeploymentSpec(
+        tenants=(dep.TenantSpec(name="a", organisation_id=1, field_workers=3),
+                 dep.TenantSpec(name="b", organisation_id=2, field_workers=3)),
+        days=30, reference=REFERENCE)
+    with pytest.raises(KeyError, match="no bundle for organisation 2"):
+        dep.write_dataset(spec, {1: small}, p, columns(), Path(tempfile.mkdtemp()),
+                          subject_types=st, programs=pr, encounter_types=et)
+
+
+def test_one_bundle_still_covers_every_tenant():
+    b, p, st, pr, et = refs()
+    out = Path(tempfile.mkdtemp())
+    counts = dep.write_dataset(tiny(), b, p, columns(), out,
+                               subject_types=st, programs=pr, encounter_types=et)
+    assert counts["individual"] > 0
+
+
+def test_a_tenant_spec_records_its_own_bundle():
+    t = dep.TenantSpec(name="a", organisation_id=1, field_workers=3, bundle_path="/tmp/x")
+    assert t.bundle_path == "/tmp/x"
+    assert dep.TenantSpec(name="b", organisation_id=2, field_workers=3).bundle_path is None

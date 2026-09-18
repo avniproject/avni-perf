@@ -43,6 +43,12 @@ class TenantSpec:
     beneficiaries_per_village: int = 3000
     encounters_per_worker_per_day: int = 20
     supervisor_level: str = "Sub-Centre"
+    # Each tenant may carry its own implementation bundle. H1 makes organisation complexity a load
+    # variable in its own right: the number of entities a config defines is the number of rows the
+    # client posts to syncDetails, and therefore the number of per-row queries
+    # filterChangedEntities runs (D1.1). A small config will not exercise that; a large one will.
+    # None falls back to the deployment's bundle.
+    bundle_path: str | None = None
 
     @property
     def villages(self) -> int:
@@ -233,7 +239,8 @@ class _Sink:
             fh.close()
 
 
-def write_dataset(deployment: DeploymentSpec, bundle: Bundle, profile: Profile,
+def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle],
+                  profile: Profile,
                   columns: dict[str, list[str]], directory: str | Path,
                   *, subject_types, programs, encounter_types,
                   verify_schema: bool = True, recipe_name: str | None = None,
@@ -269,8 +276,14 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle, profile: Profile,
             for row in cat.user_rows(build.users):
                 sink.write("users", row)
 
+            tenant_bundle = (bundle.get(spec.organisation_id)
+                             if isinstance(bundle, dict) else bundle)
+            if tenant_bundle is None:
+                raise KeyError(
+                    f"no bundle for organisation {spec.organisation_id} ({spec.name}). Each "
+                    f"tenant needs one, either its own or the deployment's.")
             ctx = row_gen.Context(
-                bundle=bundle, organisation_id=spec.organisation_id,
+                bundle=tenant_bundle, organisation_id=spec.organisation_id,
                 subject_types=subject_types, programs=programs,
                 encounter_types=encounter_types, clocks=clocks,
                 key_counts=key_counts, reference=deployment.reference)

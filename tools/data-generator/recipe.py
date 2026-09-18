@@ -85,6 +85,9 @@ class Recipe:
     bundle_path: str
     bundle_revision: str | None = None
     bundle_fingerprint: dict = field(default_factory=dict)
+    # Fingerprint per tenant, for tenants carrying their own bundle. H1 makes organisation
+    # complexity a load variable, so a deployment covering a range of config sizes has several.
+    tenant_bundle_fingerprints: dict = field(default_factory=dict)
     tenants: list[dict] = field(default_factory=list)
     enrolment_rate: float = 0.22
     program_encounter_share: float = 0.59
@@ -108,7 +111,8 @@ class Recipe:
                       "field_workers_per_village": t.field_workers_per_village,
                       "beneficiaries_per_village": t.beneficiaries_per_village,
                       "encounters_per_worker_per_day": t.encounters_per_worker_per_day,
-                      "supervisor_level": t.supervisor_level}
+                      "supervisor_level": t.supervisor_level,
+                      "bundle_path": t.bundle_path}
                      for t in deployment.tenants],
             enrolment_rate=deployment.enrolment_rate,
             program_encounter_share=deployment.program_encounter_share,
@@ -144,6 +148,32 @@ class Recipe:
                 f"recipe {path} is schema version {version}, this code reads {SCHEMA_VERSION}. "
                 f"An old recipe may not describe the same dataset it once did.")
         return cls(schema_version=version, **raw)
+
+    def bundle_paths(self) -> dict[int, str]:
+        """The bundle each tenant is built from, falling back to the deployment's."""
+        return {t["organisation_id"]: (t.get("bundle_path") or self.bundle_path)
+                for t in self.tenants}
+
+    def fingerprint_tenants(self) -> None:
+        """Record a fingerprint for every distinct bundle this recipe references."""
+        for org, path in self.bundle_paths().items():
+            if path and Path(path).is_dir():
+                self.tenant_bundle_fingerprints[str(org)] = bundle_fingerprint(path)
+
+    def check_tenant_bundles(self) -> list[str]:
+        """Whether each tenant's bundle is the one it was built from."""
+        problems = []
+        for org, path in sorted(self.bundle_paths().items()):
+            recorded = self.tenant_bundle_fingerprints.get(str(org))
+            if not recorded or not recorded.get("combined"):
+                continue
+            if not path or not Path(path).is_dir():
+                problems.append(f"organisation {org}: bundle path is missing: {path}")
+                continue
+            if bundle_fingerprint(path)["combined"] != recorded["combined"]:
+                problems.append(f"organisation {org}: bundle differs from the one recorded. "
+                                f"Its data will not be the same.")
+        return problems
 
     def check_bundle(self, bundle_path: str | Path) -> list[str]:
         """Whether the bundle on disk is the one this recipe was built from."""

@@ -141,7 +141,9 @@ def test_tables_load_in_dependency_order():
 
 
 def test_sequences_are_reset_because_copy_does_not_advance_them():
-    """Without this the first application insert after a load collides on the primary key."""
+    """Ids are written explicitly so the generator can wire foreign keys — COPY would happily
+    default them, but then nothing could reference the row. The cost is that the sequence is left
+    behind, and the first application insert after a load collides on the primary key."""
     script = cw.load_script({"individual": ["id"]}, verify_schema=False)
     assert "setval(pg_get_serial_sequence('individual', 'id')" in script
     assert "MAX(id) FROM individual" in script
@@ -199,3 +201,13 @@ def test_a_table_with_no_contract_stops_the_load():
 def test_the_script_records_the_migration_it_was_checked_against():
     script = cw.load_script({"individual": sorted(schema.CONTRACTS["individual"].accounted)})
     assert schema.CHECKED_AGAINST_MIGRATION in script
+
+
+def test_the_one_table_whose_id_nothing_references_leaves_it_to_the_sequence():
+    """The explicit-id rule is applied per table, not blanket. catchment_address_mapping is the
+    only table nothing points at, and schema.py records that as the reason."""
+    c = schema.CONTRACTS["catchment_address_mapping"]
+    assert "id" in c.unwritten
+    assert "sequence" in c.unwritten["id"]
+    for other in ("individual", "program_enrolment", "program_encounter", "encounter"):
+        assert "id" in schema.CONTRACTS[other].populated

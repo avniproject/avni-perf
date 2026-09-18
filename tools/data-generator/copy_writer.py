@@ -9,10 +9,20 @@ column to the left and loads silently. The caller supplies the column list, read
 `information_schema.columns` on the target, and rows are projected onto it. A row key that is not a
 column is an error rather than a value quietly dropped.
 
-**Explicit ids leave the sequences behind.** The generator assigns its own ids so it can wire foreign
-keys without round-tripping the database. `COPY` does not advance a serial's sequence, so the first
-application insert after a load collides on the primary key. `load_script` emits a `setval` per table
-to close that.
+**Ids are written explicitly, which costs a `setval`.** `COPY` applies a column's default for any
+column left out of its list, so omitting `id` would let the sequence assign it -- but then nothing
+could reference the row. The generator has to write `program_enrolment.individual_id` and
+`program_encounter.program_enrolment_id`, and it cannot know an id the database is about to choose.
+The alternatives are both worse than the tax: reading ids back mid-generation needs a round trip
+that streaming to disk exists to avoid, and resolving them afterwards means an `UPDATE ... SET
+individual_id = (SELECT id FROM individual WHERE uuid = ...)` per child table across millions of
+rows, which costs more than the `COPY` it supports.
+
+The rule is applied per table rather than blanket: `catchment_address_mapping.id` is left to the
+sequence, because nothing references it. It is the only one.
+
+So `COPY` does not advance the sequences it bypassed, and the first application insert after a load
+would collide on the primary key. `load_script` emits a `setval` per table to close that.
 
 **TEXT format has its own escaping.** A tab or newline inside a value ends the field or the row, so
 backslash, tab, newline and carriage return are escaped, and NULL is `\\N` -- which is why the

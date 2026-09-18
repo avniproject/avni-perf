@@ -1434,11 +1434,15 @@ run-to-run comparability is G4's database snapshot rather than a file in git.
 (1,506,000 beneficiaries; 5.4 M encounters at day 180) at about **41,000 rows/sec**, so a full
 day-180 dataset generates in roughly three minutes and lands around 2 GB on disk.
 
-Three things remain, and none is generation. A command-line entry point to tie the pieces together;
-the subject type, programme and encounter type ids read from the target database alongside its column
-list; and H5's structural check run once for real, which needs a loaded dataset. **Item 7 is not
-built** — the production tenant skew for case 6 is a separate generation run against a different
-spec, not a variation of this one.
+**Each tenant may carry its own bundle**, which is how H1's "cover the range of organisation size"
+gets done rather than assumed: the number of entities a config defines is the number of rows posted
+to `syncDetails`, and therefore the number of per-row queries `filterChangedEntities` runs — Q8
+measured 79 tracked against 4 changed. A small configuration will not exercise that; a large one
+will.
+
+One thing remains: **H5's structural check run once for real**, which needs a loaded dataset.
+**Item 7 is not built** — the production tenant skew for case 6 is a separate generation run against
+a different spec, not a variation of this one.
 
 ---
 

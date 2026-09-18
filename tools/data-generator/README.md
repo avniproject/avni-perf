@@ -378,12 +378,55 @@ psql -d <target_db> -At -f columns.sql > columns.json
 Read from the database rather than hardcoded, for the reason in **Keeping up with Flyway** above.
 `schema.py` then refuses to proceed if that list contains anything it has not accounted for.
 
+## Generating
+
+```
+psql -d <db> -At -f columns.sql > columns.json      # the target's own columns
+psql -d <db> -At -f refs.sql    > refs.json         # its subject type, programme and encounter ids
+python3 generate.py --recipe datasets/e6-day-180.json \
+                    --columns columns.json --refs refs.json \
+                    --bundle /path/to/bundle --out /data/e6-day-180
+```
+
+Both dumps come from the target rather than from anything committed here — 484 migrations have
+already moved this schema, and the ids belong to whichever bundle was loaded. `refs.sql` gates each
+sync concept on its `_usable` flag, because that is what the server does: reporting a concept the
+flag disables would make the generator write a `sync_concept` value no query ever reads.
+
+It refuses to start if the bundle is not the one the recipe names, if the schema contains a column
+the contract has not accounted for, or if a tenant has no subject type of its own — that last one
+would otherwise produce subjects of another tenant's type, which loads cleanly and is wrong in a way
+no statistic would catch.
+
+**Generating is not the gate.** Load the dataset, then run `validate.py`. H5 is the gate.
+
+### Each tenant may have its own bundle
+
+Set `bundle_path` on a tenant in the recipe and it is built from that configuration instead of the
+deployment's. This is how H1's "cover the range of organisation size" is done rather than assumed:
+**the number of entities a config defines is the number of rows the client posts to `syncDetails`,
+and therefore the number of per-row queries `filterChangedEntities` runs** (D1.1, where Q8 measured
+79 entities tracked against 4 changed). A small configuration will not exercise that; a large one
+will.
+
+Distinct bundles are loaded once however many tenants share them, and each gets its own fingerprint
+in the recipe, so substituting one tenant's configuration is caught.
+
+### Ids are written explicitly
+
+`COPY` applies a column's default for anything left out of its list, so omitting `id` would let the
+sequence assign it. But then nothing could reference the row — the generator has to write
+`program_enrolment.individual_id` and `program_encounter.program_enrolment_id`, and it cannot know an
+id the database is about to choose. Reading ids back mid-generation needs the round trip that
+streaming to disk avoids; resolving them afterwards costs an `UPDATE … SELECT` per child table across
+millions of rows.
+
+Applied per table, not blanket: **`catchment_address_mapping.id` is left to the sequence**, because
+nothing references it. It is the only one. The tax is a `setval` per table in `load.sql`, without
+which the first application insert after a load collides on the primary key.
+
 ## What is left
 
-- **A command-line entry point.** Everything composes — bundle, profile, hierarchy, catchments,
-  rows, deployment, writer — but tying them together still takes a few lines of Python. It needs the
-  subject type, programme and encounter type ids from the target, which is the same database read as
-  `columns.sql`.
 - **Within-class catchment variation.** The two user classes are modelled, and E0's figures give
   every village 3,000 beneficiaries uniformly. Q3 measured a 370× spread between the median device
   and the 99th percentile, and Q15 found catchment breadth and per-location density vary
