@@ -335,6 +335,37 @@ one `sync-users.csv` spanning every tenant, which is what E4 needs.
 89 program encounters to 62 encounters. Those are ratios of medians, not measurements of enrolment
 rate, and the customer has supplied neither. Both are parameters.
 
+## Datasets are recipes here, not files
+
+A generated dataset runs to gigabytes and is a pure function of its inputs, so this repository holds
+three small files per named dataset instead of the output.
+
+| File | What it is |
+|---|---|
+| `datasets/<name>.json` | **The recipe.** Every input, so the dataset can be rebuilt exactly |
+| `manifest.json` | **The fingerprint.** Row count, byte size and SHA-256 per table |
+| `verdict.json` | **The H5 gate result**, recording that the dataset was blessed and against which profile |
+
+`datasets/` carries the three E6 datasets — `e6-day-60`, `e6-day-120`, `e6-day-180` — differing only
+in growth point, which a test asserts.
+
+**Storing the output instead would discard the only safety property the generator has.** `schema.py`
+refuses to generate against a schema it does not recognise; a committed `.tsv` carries no such guard,
+so a dataset built against an older migration loads into a newer database either confusingly or with
+a column silently empty. And the durable artefact for run-to-run comparability is a **database
+snapshot restored before each run** (G4), which lives in infrastructure rather than in git.
+
+**The recipe records the bundle, because reproducibility depends on it and it is deliberately not in
+this repository.** `bundle_fingerprint` hashes `concepts.json`, `formMappings.json` and `forms/` —
+only those three, so an unrelated dashboard or translation edit does not look like a change to the
+dataset. `check_bundle()` then says whether the bundle on disk is the one a recipe was built from.
+The committed recipes leave it unset on purpose, and say so, so they cannot be mistaken for
+complete.
+
+**The manifest hashes content, not just counts**, because most changes to the generator keep the row
+counts and alter what is in them. `Manifest.differences()` reports a rebuild that diverges, and
+distinguishes "different row count" from "same count, different content".
+
 ## Getting the column list
 
 The one step that needs a live database. Rows are projected onto the target's own columns, so dump

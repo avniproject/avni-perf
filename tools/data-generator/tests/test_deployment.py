@@ -105,14 +105,40 @@ def test_every_table_is_written_and_counted():
         assert (out / f"{table}.tsv").exists()
 
 
-def test_a_load_script_and_a_manifest_are_written():
+def test_a_load_script_a_summary_and_a_manifest_are_written():
     b, p, st, pr, et = refs()
     out = Path(tempfile.mkdtemp())
-    dep.write_dataset(tiny(), b, p, columns(), out,
-                      subject_types=st, programs=pr, encounter_types=et)
+    counts = dep.write_dataset(tiny(), b, p, columns(), out,
+                               subject_types=st, programs=pr, encounter_types=et,
+                               recipe_name="tiny")
     assert "\\copy individual" in (out / "load.sql").read_text()
-    manifest = (out / "manifest.txt").read_text()
-    assert "day 60" in manifest and "individual" in manifest
+
+    summary = (out / "summary.txt").read_text()
+    assert "day 60" in summary and "individual" in summary
+
+    import recipe as recipe_mod
+    m = recipe_mod.Manifest.load(out / "manifest.json")
+    assert m.recipe == "tiny"
+    assert m.total_rows == sum(counts.values())
+    assert m.tables["individual"]["sha256"]
+
+
+def test_the_manifest_is_a_fingerprint_a_rebuild_is_checked_against():
+    """Row counts alone would miss a change that keeps the counts and alters the content, which is
+    most changes to the generator."""
+    b, p, st, pr, et = refs()
+    import recipe as recipe_mod
+    built = []
+    for seed in (7, 8):
+        out = Path(tempfile.mkdtemp())
+        spec = dep.DeploymentSpec(tenants=tiny().tenants, days=60,
+                                  reference=REFERENCE, seed=seed)
+        dep.write_dataset(spec, b, p, columns(), out, subject_types=st, programs=pr,
+                          encounter_types=et, recipe_name="tiny")
+        built.append(recipe_mod.Manifest.load(out / "manifest.json"))
+    diffs = built[0].differences(built[1])
+    assert diffs, "a different seed must show up as a difference"
+    assert any("different content" in d for d in diffs)
 
 
 def test_the_write_refuses_a_schema_it_does_not_recognise():

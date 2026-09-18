@@ -236,7 +236,8 @@ class _Sink:
 def write_dataset(deployment: DeploymentSpec, bundle: Bundle, profile: Profile,
                   columns: dict[str, list[str]], directory: str | Path,
                   *, subject_types, programs, encounter_types,
-                  verify_schema: bool = True) -> dict[str, int]:
+                  verify_schema: bool = True, recipe_name: str | None = None,
+                  hash_files: bool = True) -> dict[str, int]:
     """Generate and write a whole deployment. Returns the row count per table.
 
     Rows stream to disk as they are produced, so the peak memory cost is one village's subjects
@@ -280,9 +281,15 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle, profile: Profile,
 
     (directory / "load.sql").write_text(
         cw.load_script(columns, directory=str(directory), verify_schema=verify_schema))
-    (directory / "manifest.txt").write_text(
+    (directory / "summary.txt").write_text(
         summarise(deployment) + "\n\nwritten:\n" +
         "\n".join(f"  {t:<28} {n:>12,}" for t, n in sorted(counts.items())) + "\n")
+
+    # The fingerprint a rebuild is checked against. Row counts alone would miss a change that
+    # keeps the counts and alters the content, which is most changes to the generator.
+    import recipe as recipe_mod
+    recipe_mod.Manifest.of(recipe_name or "(unnamed)", directory, counts,
+                           hash_files=hash_files).save(directory / "manifest.json")
     return counts
 
 

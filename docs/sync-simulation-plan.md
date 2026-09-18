@@ -1423,6 +1423,13 @@ it is one answer away.
 6. **Observation shape per Q6** — the measured key-count distributions, per form type.
 7. Optionally the **production tenant skew** for case 6: 986 organisations, 48% empty.
 
+**Datasets are held as recipes, not files.** A dataset is gigabytes and a pure function of its
+inputs, so `tools/data-generator/datasets/` carries three small files per named dataset — the recipe
+(every input, so it rebuilds exactly), the manifest (row count, size and content hash per table, as
+the fingerprint a rebuild is checked against) and H5's verdict. The three E6 datasets are committed.
+Storing the output instead would discard the generator's schema guard, and the durable artefact for
+run-to-run comparability is G4's database snapshot rather than a file in git.
+
 **All seven are built** — `tools/data-generator`, 164 tests. It reproduces E6's totals exactly
 (1,506,000 beneficiaries; 5.4 M encounters at day 180) at about **41,000 rows/sec**, so a full
 day-180 dataset generates in roughly three minutes and lands around 2 GB on disk.

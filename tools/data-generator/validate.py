@@ -158,6 +158,7 @@ def main(argv: list[str]) -> int:
     """
     import argparse
     import json
+    from pathlib import Path
 
     import profile as profile_mod
 
@@ -166,6 +167,10 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--profile", default=None, help="production reference to judge against")
     ap.add_argument("--expected-rows", default=None,
                     help="what the generator was asked to produce, as JSON keyed by table")
+    ap.add_argument("--recipe", default=None,
+                    help="recipe name this dataset was built from, recorded in the verdict")
+    ap.add_argument("--out", default=None,
+                    help="write the verdict here, as the record that the dataset was blessed")
     args = ap.parse_args(argv)
 
     with open(args.stats) as fh:
@@ -177,6 +182,14 @@ def main(argv: list[str]) -> int:
 
     report = run(stats, profile_mod.load(args.profile), expected_rows=expected)
     print(report.render())
+
+    if args.out:
+        import recipe as recipe_mod
+        Path(args.out).write_text(
+            json.dumps(recipe_mod.verdict_document(args.recipe or "(unnamed)", report),
+                       indent=2) + "\n")
+        print(f"\n  verdict written to {args.out}")
+
     return 0 if report.ok else 1
 
 

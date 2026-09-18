@@ -1,0 +1,109 @@
+{
+  "name": "e6-day-60",
+  "days": 60,
+  "reference_date": "2026-09-18",
+  "seed": 42,
+  "profile": "production-2026-09",
+  "bundle_path": "<set to the implementation bundle for the run>",
+  "bundle_revision": null,
+  "bundle_fingerprint": {
+    "files": {},
+    "combined": null
+  },
+  "tenants": [
+    {
+      "name": "state-1",
+      "organisation_id": 1,
+      "field_workers": 500,
+      "field_workers_per_village": 3,
+      "beneficiaries_per_village": 3000,
+      "encounters_per_worker_per_day": 20,
+      "supervisor_level": "Sub-Centre"
+    },
+    {
+      "name": "state-2",
+      "organisation_id": 2,
+      "field_workers": 500,
+      "field_workers_per_village": 3,
+      "beneficiaries_per_village": 3000,
+      "encounters_per_worker_per_day": 20,
+      "supervisor_level": "Sub-Centre"
+    },
+    {
+      "name": "ngo-1",
+      "organisation_id": 3,
+      "field_workers": 62,
+      "field_workers_per_village": 3,
+      "beneficiaries_per_village": 3000,
+      "encounters_per_worker_per_day": 20,
+      "supervisor_level": "Sub-Centre"
+    },
+    {
+      "name": "ngo-2",
+      "organisation_id": 4,
+      "field_workers": 62,
+      "field_workers_per_village": 3,
+      "beneficiaries_per_village": 3000,
+      "encounters_per_worker_per_day": 20,
+      "supervisor_level": "Sub-Centre"
+    },
+    {
+      "name": "ngo-3",
+      "organisation_id": 5,
+      "field_workers": 62,
+      "field_workers_per_village": 3,
+      "beneficiaries_per_village": 3000,
+      "encounters_per_worker_per_day": 20,
+      "supervisor_level": "Sub-Centre"
+    },
+    {
+      "name": "ngo-4",
+      "organisation_id": 6,
+      "field_workers": 62,
+      "field_workers_per_village": 3,
+      "beneficiaries_per_village": 3000,
+      "encounters_per_worker_per_day": 20,
+      "supervisor_level": "Sub-Centre"
+    },
+    {
+      "name": "ngo-5",
+      "organisation_id": 7,
+      "field_workers": 62,
+      "field_workers_per_village": 3,
+      "beneficiaries_per_village": 3000,
+      "encounters_per_worker_per_day": 20,
+      "supervisor_level": "Sub-Centre"
+    },
+    {
+      "name": "ngo-6",
+      "organisation_id": 8,
+      "field_workers": 62,
+      "field_workers_per_village": 3,
+      "beneficiaries_per_village": 3000,
+      "encounters_per_worker_per_day": 20,
+      "supervisor_level": "Sub-Centre"
+    },
+    {
+      "name": "ngo-7",
+      "organisation_id": 9,
+      "field_workers": 62,
+      "field_workers_per_village": 3,
+      "beneficiaries_per_village": 3000,
+      "encounters_per_worker_per_day": 20,
+      "supervisor_level": "Sub-Centre"
+    },
+    {
+      "name": "ngo-8",
+      "organisation_id": 10,
+      "field_workers": 62,
+      "field_workers_per_village": 3,
+      "beneficiaries_per_village": 3000,
+      "encounters_per_worker_per_day": 20,
+      "supervisor_level": "Sub-Centre"
+    }
+  ],
+  "enrolment_rate": 0.22,
+  "program_encounter_share": 0.59,
+  "notes": "E6 test case dataset. Two state tenants of 500 field workers, eight NGO tenants sharing 500, at day 60. Only encounter volume differs between the three; beneficiary population does not grow with programme activity. bundle_path and bundle_revision must be filled in before generating -- without them this recipe cannot be reproduced.",
+  "schema_version": 1
+}
