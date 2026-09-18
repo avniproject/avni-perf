@@ -622,3 +622,59 @@ scheduled-visit pattern. A program encounter is created when a visit is schedule
 the visit happens, so creation and completion are two writes weeks apart. A generator that writes
 each row once produces neither the edit volume nor the timestamp spread, and **that is the difference
 between an incremental sync returning a realistic trickle and returning nothing**.
+
+**Q15 — Is the per-device volume two populations? (E0, H3, G5).** **Not yet run.** Q3 found per-device
+row counts running from ~715 at the median to ~264,569 at the 99th percentile. The customer's
+deployment has two user roles — field workers holding one catchment, supervisors holding the union of
+many — which would produce exactly that spread without anyone being an outlier.
+
+It matters because the generator currently samples one distribution for every user. If the population
+is bimodal, that produces a continuum of catchment sizes where production has two clusters, and the
+supervisor case — the expensive one — is then under-represented at exactly the volumes that matter.
+
+Catchment size is the available proxy for role, since `sync_telemetry` records no role.
+
+```sql
+with device as (
+  select distinct on (user_id)
+         user_id,
+         ((entity_status -> 'totalCounts' ->> 'subjects')::numeric
+          + coalesce((entity_status -> 'totalCounts' ->> 'programEncounters')::numeric, 0)) as rows_held
+  from sync_telemetry
+  where sync_source is distinct from 'avni-perf-simulation'
+    and sync_status = 'complete'
+    and sync_start_time > now() - interval '30 days'
+    and sync_start_time <= now()
+    and entity_status ? 'totalCounts'
+  order by user_id, sync_start_time desc
+),
+scoped as (
+  select d.user_id, d.rows_held, count(v.addresslevel_id) as locations_in_catchment
+  from device d
+  join users u on u.id = d.user_id
+  left join virtual_catchment_address_mapping_table v on v.catchment_id = u.catchment_id
+  group by d.user_id, d.rows_held
+)
+select width_bucket(locations_in_catchment, 0, 200, 10) as catchment_band,
+       count(*)                                          as users,
+       min(locations_in_catchment)                       as min_locations,
+       max(locations_in_catchment)                       as max_locations,
+       percentile_cont(array[0.5, 0.9]) within group (order by rows_held) as rows_held_p50_p90
+from scoped
+group by 1
+order by 1;
+```
+
+A clean split — a dense band of small catchments and a separate band of large ones — confirms two
+populations and gives the ratio between them. A smooth ramp across every band says it is one
+population after all, and the current single-distribution sampler is right.
+
+**Counting the effective catchment, not the declared one.** `catchment_address_mapping` holds the
+locations an administrator picked; `virtual_catchment_address_mapping_table` is a view that expands
+those down the location lineage to every descendant, and that expanded set is what determines how
+much data a user actually holds. Counting the declared rows instead would make a supervisor whose
+catchment is one high-level location look smaller than a field worker with five villages listed.
+
+Being a view over a function, it is the expensive half of this query. If it will not finish, fall
+back to `catchment_address_mapping` and read the result as a lower bound on the split rather than a
+measurement of it.

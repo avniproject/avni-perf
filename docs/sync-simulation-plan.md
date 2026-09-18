@@ -1054,8 +1054,75 @@ telemetry — that absence reflects reality rather than a gap in the data. Model
 a flow production no longer runs. Should it ever be re-enabled, it is a push-only path and would need
 D3 first.
 
-**E3 — Named injection profiles.**
+### E0 — What the customer is deploying
 
+Added after discussion with the customer, and it reorders parts of this section. Figures marked
+*TBC* are ones the customer has quoted and that are not yet recorded here.
+
+**Two deployment shapes, not one.**
+
+| | Geography | Tenants | Workers | Data |
+|---|---|---|---|---|
+| **State level** | Whole state | 2 | ~500 each | Rolling |
+| **NGO** | Smaller, local | ~8 | ~500 across all of them | *TBC* |
+
+So roughly **1,000 workers across 8–10 tenants**, starting at 2 tenants and possibly running the
+first tests at 5. For scale: production's busiest hour ever recorded saw **267 distinct users across
+every organisation** (Q4). A thousand provisioned workers is about four times production's entire
+peak, which makes this a genuine step up rather than a reproduction.
+
+**"Rolling data" needs pinning down.** For a state-level tenant it could mean volume grows without
+bound, or that older data ages out and volume plateaus. The two produce different datasets and
+different index sizes, so this is a question for the customer rather than an assumption to make.
+
+**Two user roles, and they are not the same workload.**
+
+- **Field worker.** One catchment, the subjects in it.
+- **Supervisor.** Oversees many field workers, so the catchment is the union of theirs.
+
+**This probably explains Q3's 370× spread.** Per-device row counts run from ~715 at the median to
+~264,569 at the 99th percentile, and a single population does not do that. A supervisor carrying the
+union of fifty field workers' catchments is a different kind of user, not an unusually heavy one — the
+same mistake the catchment sampler already avoids for program encounters, which turned out to be two
+populations rather than one skewed one.
+
+**If that holds, sampling one distribution for every user is wrong.** The generator should model two
+user classes with their own catchment sizes and their own ratio in the population. **Query Q15 is
+needed to confirm it** — split `sync_telemetry`'s per-device counts by user role or catchment size and
+see whether the distribution is bimodal. Until then, treat the split as a hypothesis.
+
+**Growth is a test dimension.** The customer wants **day 60, day 120 and day 180** compared. That
+makes the dataset a series rather than a single artefact, and the choke point may only appear at the
+largest. Section H has to generate dated states, and G4's restore has to hold one per comparison
+point.
+
+**Fresh sync is 1% of syncs daily.** This is the mix E2 was missing. The full-sync path is rare but
+it is the expensive one, and 1% of 1,000 workers is ten full syncs a day against a dataset that grows
+to day 180.
+
+**Two assumptions to carry explicitly**, both the customer's:
+
+- All of this customer's organisations behave alike, so one usage pattern covers them.
+- The platform may host them **alongside existing tenants on shared infrastructure**, so the
+  production org skew measured in Q12 — 986 organisations, 48% of them empty, the largest holding 21%
+  of all subjects — has to be present in the dataset as well. That is not a separate scenario; it is
+  background load and table size that every one of these runs sits on top of.
+
+**E3 — Named injection profiles.** The first four are the customer's scenarios and come before the
+rest; the remainder are the instrument's own.
+
+- *Field worker sync* — one catchment. The common case, and the one E0's 1% fresh-sync mix applies to
+- *Supervisor sync* — the union of many field workers' catchments. Expected to be the heavy case, and
+  probably what Q3's 99th percentile has been measuring all along
+- *Combined* — both roles concurrently, in their real population ratio. **This is the realistic one**,
+  and running either role alone will understate contention: supervisors pull wide while field workers
+  pull often, and they compete for the same connection pool
+- *Training and onboarding* — a cohort of new field workers first-syncing together. Every device
+  starts empty, so every sync is a full sync, and they arrive in a block rather than spread out.
+  Structurally the same load as *Reset storm* below but triggered deliberately and schedulable, which
+  makes it the more useful of the two to measure first
+- *Growth comparison* — the same profile replayed against the day 60, day 120 and day 180 datasets.
+  The finding is the shape of the curve between them, not any single run
 - *Smoke* — one user, CI-gated
 - *Load* — expected peak
 - *Stress* — ramp to the knee
@@ -1073,9 +1140,11 @@ D3 first.
   the equivalent uncontended profile is the finding
 
 **E4 — Multi-tenant load.** *First-class, not finding-triggered — see section I.* The feeder and
-user provisioning must be able to span organisations with a controllable mix. Two shapes worth
-running: a realistic spread of tenants syncing concurrently, and one large organisation alongside
-several small ones to expose noisy-neighbour effects. Neither can surface in a single-org run, and the
+user provisioning must be able to span organisations with a controllable mix. **E0 fixes the shape:**
+two state-level tenants of ~500 workers each alongside ~8 NGO tenants sharing ~500, on a platform
+that also carries the existing production tenant skew. That is both shapes at once — a realistic
+spread, and large tenants beside small ones — so noisy-neighbour effects are not a separate run.
+Start at 2 tenants, then 5, then the full set. Neither can surface in a single-org run, and the
 shared connection pool plus per-borrow `set role` churn make cross-tenant contention a distinct
 failure mode from anything a single tenant produces.
 
