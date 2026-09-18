@@ -1071,9 +1071,57 @@ first tests at 5. For scale: production's busiest hour ever recorded saw **267 d
 every organisation** (Q4). A thousand provisioned workers is about four times production's entire
 peak, which makes this a genuine step up rather than a reproduction.
 
-**"Rolling data" needs pinning down.** For a state-level tenant it could mean volume grows without
-bound, or that older data ages out and volume plateaus. The two produce different datasets and
-different index sizes, so this is a question for the customer rather than an assumption to make.
+**Customer figures, and what they size.**
+
+| | |
+|---|---|
+| Programme duration | 1 year |
+| Field workers per village | ~10 |
+| Beneficiary encounters | ~20 per field worker per day |
+| Encounter types per NCD programme | 10 |
+| Beneficiaries | **crores** — tens of millions |
+| Fresh syncs | 1% of users, from phone loss, replacement or reassignment |
+| Onboarding cohort | 50–100 first-time logins in one location |
+
+**Encounter volume is tractable. Beneficiary volume is not, and it dominates everything.**
+
+At 20 encounters per worker per day across 500 workers, one state tenant generates 600,000 encounters
+by day 60, 1.8 million by day 180 and 3.65 million in a year. Two state tenants at a year come to
+**7.3 million — roughly production's entire current `program_encounter` table**, which is a large but
+comprehensible target.
+
+Beneficiaries are a different order. Production holds **2.75 million subjects in total, across all 986
+organisations**, in 2.67 GB with another 2.72 GB of indexes. One crore is **3.6× that in a single
+tenant**, and at 1 KB per row it implies roughly 10 GB of subject data plus a similar weight of index.
+Several crores puts one tenant past the entire 70 GB production schema.
+
+**That reframes the exercise.** The generator's hard problem stops being observation fidelity and
+becomes bulk: producing and loading tens of millions of subjects, and holding a dataset per comparison
+point at day 60, 120 and 180. It also moves the likely choke point. Sync is catchment-scoped, so a
+field worker's sync does not care how many crores sit outside their village — but **search does**, and
+the customer expects facility staff to search across the whole state.
+
+> **State-wide search is a different load, and this plan does not cover it.** Sync reads a catchment;
+> a facility search reads the tenant. Different endpoints (`/web/*`), different indexes, different
+> scaling behaviour — and against crores of beneficiaries it is plausibly the worse choke point of the
+> two. **Either it comes into scope explicitly, with its own section, or it is named as excluded so
+> nobody reads a clean sync result as clearance for it.** Left unstated it will be assumed covered.
+
+**Ten workers per village is a concurrency finding, not just a density one.** A village generates ~200
+encounters a day, and if those ten workers share the village catchment then ten users sync overlapping
+rows. That is friendly to cache and hostile to lock contention in the same breath, and it is not a
+shape a single-user-per-catchment generator will produce. Whether they share a catchment or partition
+the village changes the answer.
+
+**Training runs against configuration only — no field data.** That makes it a **reference-data** test
+rather than a transactional one: 50 to 100 devices, every one empty, every sync a full pull of the
+same metadata at the same moment. Useful precisely because it isolates reference-data sync and the
+`syncDetails` per-row cost from any catchment volume at all, and cheap to build because the dataset is
+a bundle load with no generation step.
+
+**"Rolling data" is still open.** For a state-level tenant it could mean volume grows without bound,
+or that older data ages out and volume plateaus. With a one-year programme the question is what
+happens in year two. The two produce different datasets and different index sizes.
 
 **Two user roles, and they are not the same workload.**
 
@@ -1117,10 +1165,12 @@ rest; the remainder are the instrument's own.
 - *Combined* — both roles concurrently, in their real population ratio. **This is the realistic one**,
   and running either role alone will understate contention: supervisors pull wide while field workers
   pull often, and they compete for the same connection pool
-- *Training and onboarding* — a cohort of new field workers first-syncing together. Every device
-  starts empty, so every sync is a full sync, and they arrive in a block rather than spread out.
-  Structurally the same load as *Reset storm* below but triggered deliberately and schedulable, which
-  makes it the more useful of the two to measure first
+- *Training and onboarding* — **50 to 100** new field workers first-syncing together from one
+  location, against an organisation holding **configuration only and no field data**. Every device
+  starts empty, so every sync is a full pull of the same reference data at the same moment. That makes
+  it a reference-data and `syncDetails` test with catchment volume removed entirely, which is both the
+  cheapest scenario to build — a bundle load, no generation — and the cleanest isolation of the
+  per-row `filterChangedEntities` cost in D1.1. **Build this one first**
 - *Growth comparison* — the same profile replayed against the day 60, day 120 and day 180 datasets.
   The finding is the shape of the curve between them, not any single run
 - *Smoke* — one user, CI-gated
