@@ -299,11 +299,65 @@ platform-wide figure.** Q6's 5,623 distinct keys spans all 986 organisations —
 organisation filter — and a single bundle reaches a few hundred. Comparing one generated tenant
 against 5,623 would fail a correct dataset.
 
-## Not built yet
+## Assembling a deployment
 
-This is the first increment. Still to come, all from section H:
+`deployment.py` turns E6's specification into files a `COPY` can load. `e6_deployment(days, ref)`
+gives its shape with its numbers as defaults — two state tenants of 500 field workers, eight NGO
+tenants sharing 500 — and reproduces E6's totals:
 
-- Row generation for subjects, enrolments and encounters, with the catchment volumes Q3 measured —
-  a p50 device holds ~715 rows and a p99 holds ~264,569, so the tail is what has to be reproduced
-- Temporal spread of `last_modified_date_time`, without which no incremental scenario means anything
-- Multiple organisations with a realistic size distribution (H1, I2)
+| Day | Beneficiaries | Encounters | Total rows |
+|---|---|---|---|
+| 60 | 1,506,000 | 1,795,200 | 3,301,200 |
+| 120 | 1,506,000 | 3,590,400 | 5,096,400 |
+| 180 | 1,506,000 | 5,385,600 | **6,891,600** |
+
+Only encounter volume grows between the three, because beneficiary population does not grow with
+programme activity.
+
+**Measured throughput: ~41,000 rows/sec**, so the full day-180 dataset takes about three minutes to
+generate and lands around 2 GB on disk.
+
+Two things the driver handles that the per-tenant pieces do not:
+
+**Ids cannot collide.** Every tenant writes into the same tables, so each gets a disjoint range
+100 million wide — enough that a tenant ten times its planned size still cannot reach its
+neighbour's. A test checks the stride against the largest planned tenant, and another checks that
+no encounter references another tenant's subject, which would break RLS and sync scope alike.
+
+**Nothing is held in memory.** Rows stream to per-table files as they are produced, so peak cost is
+one village's subjects rather than the deployment's 6.9 million rows.
+
+It also writes `load.sql`, a `manifest.txt` recording what was produced, and — via `feeder_csv` —
+one `sync-users.csv` spanning every tenant, which is what E4 needs.
+
+**Two ratios in it are weaker than they look.** `enrolment_rate` (0.22) and
+`program_encounter_share` (0.59) come from Q3's per-device medians — 100 enrolments to 464 subjects,
+89 program encounters to 62 encounters. Those are ratios of medians, not measurements of enrolment
+rate, and the customer has supplied neither. Both are parameters.
+
+## Getting the column list
+
+The one step that needs a live database. Rows are projected onto the target's own columns, so dump
+them first:
+
+```
+psql -d <target_db> -At -f columns.sql > columns.json
+```
+
+Read from the database rather than hardcoded, for the reason in **Keeping up with Flyway** above.
+`schema.py` then refuses to proceed if that list contains anything it has not accounted for.
+
+## What is left
+
+- **A command-line entry point.** Everything composes — bundle, profile, hierarchy, catchments,
+  rows, deployment, writer — but tying them together still takes a few lines of Python. It needs the
+  subject type, programme and encounter type ids from the target, which is the same database read as
+  `columns.sql`.
+- **Within-class catchment variation.** The two user classes are modelled, and E0's figures give
+  every village 3,000 beneficiaries uniformly. Q3 measured a 370× spread between the median device
+  and the 99th percentile, and Q15 found catchment breadth and per-location density vary
+  independently. Whether that variation matters here depends on the answer to "which tier
+  supervises" in [open-questions.md](../../docs/open-questions.md) — at sub-centre level the two
+  classes may be the whole story.
+- **The structural check, run once for real** (H5). The statistical gate is built; the client
+  round-trip has not been done because no dataset has been loaded yet.

@@ -59,9 +59,13 @@ class EncounterTypeRef:
 
 
 @dataclass(frozen=True)
-class Catchment:
-    """One user's slice of the location hierarchy, and the rows that will sit inside it."""
-    user_id: int
+class AddressScope:
+    """The locations a generated row may be placed in.
+
+    Deliberately not called Catchment. `catchments.CatchmentSpec` is the catchment *record* that
+    gets written to the database; this is just the set of address ids to draw from when placing a
+    row, which is usually one village.
+    """
     address_ids: tuple[int, ...]
 
     def address(self, rng: random.Random) -> int:
@@ -142,13 +146,23 @@ class Context:
                                      reference_uuids=self.reference_uuids)
 
 
+def _uuid(rng: random.Random) -> str:
+    """A version-4 UUID drawn from the seeded generator, not from `uuid.uuid4()`.
+
+    `uuid4()` reads the OS entropy source, so a dataset built twice from the same seed would differ
+    in every uuid. G4 restores a snapshot before each run and A11 records dataset identity, both of
+    which assume a seed reproduces a dataset exactly.
+    """
+    return str(uuid_mod.UUID(int=rng.getrandbits(128), version=4))
+
+
 def _audit(ctx: Context, table: str, rng: random.Random) -> dict:
     clock = ctx.clocks.get(table)
     if clock is None:
         raise KeyError(f"no timestamp spread configured for table {table!r}")
     created, modified = clock.created_and_modified(rng)
     return {
-        "uuid": str(uuid_mod.uuid4()),
+        "uuid": _uuid(rng),
         "is_voided": False,
         "version": 0,
         "organisation_id": ctx.organisation_id,
@@ -183,7 +197,7 @@ def _sync_values(subject_type: SubjectTypeRef, observations: dict) -> dict:
     return out
 
 
-def individual(ctx: Context, catchment: Catchment, subject_type: SubjectTypeRef,
+def individual(ctx: Context, scope: AddressScope, subject_type: SubjectTypeRef,
                rng: random.Random) -> dict:
     row = _audit(ctx, "individual", rng)
     obs = ctx.observations("IndividualProfile", rng, ctx.reference,
@@ -191,7 +205,7 @@ def individual(ctx: Context, catchment: Catchment, subject_type: SubjectTypeRef,
     registration = (row["created_date_time"]).date()
     row.update({
         "subject_type_id": subject_type.id,
-        "address_id": catchment.address(rng),
+        "address_id": scope.address(rng),
         "registration_date": registration,
         "date_of_birth": registration - timedelta(days=rng.randrange(0, 80 * 365)),
         "date_of_birth_verified": False,

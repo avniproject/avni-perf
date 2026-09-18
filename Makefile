@@ -28,3 +28,4 @@ test_data_generator: ## Run the data generator's tests
 validate_dataset: ## Run the H5 statistical gate. STATS=stats.json from validate.sql
 	@test -n "$(STATS)" || (echo "usage: make validate_dataset STATS=stats.json" && exit 1)
 	@cd tools/data-generator && python3 validate.py "$(abspath $(STATS))"
+

@@ -1423,6 +1423,16 @@ it is one answer away.
 6. **Observation shape per Q6** — the measured key-count distributions, per form type.
 7. Optionally the **production tenant skew** for case 6: 986 organisations, 48% empty.
 
+**All seven are built** — `tools/data-generator`, 164 tests. It reproduces E6's totals exactly
+(1,506,000 beneficiaries; 5.4 M encounters at day 180) at about **41,000 rows/sec**, so a full
+day-180 dataset generates in roughly three minutes and lands around 2 GB on disk.
+
+Three things remain, and none is generation. A command-line entry point to tie the pieces together;
+the subject type, programme and encounter type ids read from the target database alongside its column
+list; and H5's structural check run once for real, which needs a loaded dataset. **Item 7 is not
+built** — the production tenant skew for case 6 is a separate generation run against a different
+spec, not a variation of this one.
+
 ---
 
 ---

@@ -37,8 +37,8 @@ def context():
     ), st
 
 
-def catchment():
-    return rows.Catchment(user_id=1, address_ids=(101, 102, 103))
+def scope():
+    return rows.AddressScope(address_ids=(101, 102, 103))
 
 
 # --- timestamps -------------------------------------------------------------
@@ -92,17 +92,17 @@ def test_a_table_with_no_configured_spread_fails_loudly():
     ctx, st = context()
     ctx.clocks.pop("individual")
     with pytest.raises(KeyError, match="individual"):
-        rows.individual(ctx, catchment(), st, random.Random(1))
+        rows.individual(ctx, scope(), st, random.Random(1))
 
 
 # --- rows -------------------------------------------------------------------
 
 def test_subject_carries_the_audit_and_tenant_columns():
     ctx, st = context()
-    r = rows.individual(ctx, catchment(), st, random.Random(1))
+    r = rows.individual(ctx, scope(), st, random.Random(1))
     assert r["organisation_id"] == 42
     assert r["subject_type_id"] == 1
-    assert r["address_id"] in catchment().address_ids
+    assert r["address_id"] in scope().address_ids
     assert r["is_voided"] is False
     assert r["uuid"] and r["version"] == 0
 
@@ -111,7 +111,7 @@ def test_sync_concept_value_is_denormalised_from_the_subjects_own_observation():
     """sync_3 and sync_4 index these columns. Leaving them null means never touching those paths."""
     ctx, st = context()
     rng = random.Random(2)
-    filled = [rows.individual(ctx, catchment(), st, rng) for _ in range(200)]
+    filled = [rows.individual(ctx, scope(), st, rng) for _ in range(200)]
     matched = [r for r in filled if r["sync_concept_1_value"] is not None]
     assert matched, "the designated sync concept was never populated"
     for r in matched:
@@ -135,14 +135,14 @@ def test_a_single_valued_answer_is_stored_as_a_scalar_not_a_list():
 def test_no_sync_value_when_the_subject_type_designates_none():
     ctx, _ = context()
     plain = rows.SubjectTypeRef(id=2, uuid=fixture.SUBJECT_TYPE, name="Plain")
-    r = rows.individual(ctx, catchment(), plain, random.Random(1))
+    r = rows.individual(ctx, scope(), plain, random.Random(1))
     assert r["sync_concept_1_value"] is None and r["sync_concept_2_value"] is None
 
 
 def test_enrolment_inherits_address_and_sync_values_from_its_subject():
     ctx, st = context()
     rng = random.Random(4)
-    subject = rows.individual(ctx, catchment(), st, rng) | {"id": 555}
+    subject = rows.individual(ctx, scope(), st, rng) | {"id": 555}
     e = rows.program_enrolment(ctx, subject, ctx.programs[0], rng)
     assert e["individual_id"] == 555
     assert e["address_id"] == subject["address_id"]
@@ -153,7 +153,7 @@ def test_a_child_row_never_predates_its_parent():
     ctx, st = context()
     rng = random.Random(6)
     for _ in range(300):
-        subject = rows.individual(ctx, catchment(), st, rng) | {"id": 1}
+        subject = rows.individual(ctx, scope(), st, rng) | {"id": 1}
         enrolment = rows.program_enrolment(ctx, subject, ctx.programs[0], rng) | {"id": 2}
         pe = rows.program_encounter(ctx, enrolment, ctx.encounter_types[0], rng)
         enc = rows.encounter(ctx, subject, ctx.encounter_types[0], rng)
@@ -165,7 +165,7 @@ def test_a_child_row_never_predates_its_parent():
 def test_program_encounter_denormalises_both_parents():
     ctx, st = context()
     rng = random.Random(8)
-    subject = rows.individual(ctx, catchment(), st, rng) | {"id": 11}
+    subject = rows.individual(ctx, scope(), st, rng) | {"id": 11}
     enrolment = rows.program_enrolment(ctx, subject, ctx.programs[0], rng) | {"id": 22}
     pe = rows.program_encounter(ctx, enrolment, ctx.encounter_types[0], rng)
     assert (pe["program_enrolment_id"], pe["individual_id"]) == (22, 11)
@@ -175,7 +175,7 @@ def test_program_encounter_denormalises_both_parents():
 def test_uuids_are_unique_across_rows():
     ctx, st = context()
     rng = random.Random(10)
-    seen = {rows.individual(ctx, catchment(), st, rng)["uuid"] for _ in range(2000)}
+    seen = {rows.individual(ctx, scope(), st, rng)["uuid"] for _ in range(2000)}
     assert len(seen) == 2000
 
 
@@ -183,12 +183,30 @@ def test_a_form_type_absent_from_the_bundle_yields_empty_observations():
     """The fixture has only an IndividualProfile mapping, so encounters have nothing to fill."""
     ctx, st = context()
     rng = random.Random(12)
-    subject = rows.individual(ctx, catchment(), st, rng) | {"id": 1}
+    subject = rows.individual(ctx, scope(), st, rng) | {"id": 1}
     assert rows.encounter(ctx, subject, ctx.encounter_types[0], rng)["observations"] == {}
 
 
 def test_generation_is_reproducible_for_a_seed():
     ctx, st = context()
-    a = [rows.individual(ctx, catchment(), st, random.Random(77))["observations"] for _ in range(10)]
-    b = [rows.individual(ctx, catchment(), st, random.Random(77))["observations"] for _ in range(10)]
+    a = [rows.individual(ctx, scope(), st, random.Random(77))["observations"] for _ in range(10)]
+    b = [rows.individual(ctx, scope(), st, random.Random(77))["observations"] for _ in range(10)]
     assert a == b
+
+
+def test_uuids_come_from_the_seed_so_a_dataset_is_reproducible():
+    """G4 restores a snapshot before each run and A11 records dataset identity. Both assume a seed
+    reproduces a dataset exactly, and uuid.uuid4() reads OS entropy instead."""
+    ctx, st = context()
+    a = [rows.individual(ctx, scope(), st, random.Random(4))["uuid"] for _ in range(20)]
+    b = [rows.individual(ctx, scope(), st, random.Random(4))["uuid"] for _ in range(20)]
+    assert a == b
+
+
+def test_seeded_uuids_are_still_version_4_and_unique():
+    import uuid as uuid_mod
+    ctx, st = context()
+    rng = random.Random(5)
+    got = [rows.individual(ctx, scope(), st, rng)["uuid"] for _ in range(3000)]
+    assert len(set(got)) == 3000
+    assert all(uuid_mod.UUID(u).version == 4 for u in got)
