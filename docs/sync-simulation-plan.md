@@ -17,25 +17,61 @@ production RUM) is tracked separately.
 telemetry at the end. The entity list is generated from `openchs-models` rather than hand-maintained,
 and CI fails if it drifts.
 
-That is a faithful download-sync probe. The push path is still absent, which is the largest remaining
-gap.
+That is a faithful download-sync probe, and production is now measured. What does not exist yet is
+everything around it: no generated dataset, no environment to run against, no instrumentation on the
+server, and no write path. **Roughly half the plan has not been started**, and the harness is the half
+that has.
+
+The table below covers the whole plan rather than just the harness. **A `Not started` cell means no
+work has been done on that item at all** — the "Before" column still describes it today.
 
 | | Before | Now |
 |---|---|---|
+| **Harness hygiene** | | |
 | Gatling plugin | 3.9.2 | 3.15.1.3 |
 | Gradle wrapper | 7.6 | 8.14 |
 | Java toolchain | not declared — runs inherited the ambient JDK | 17, declared |
+| Dead scaffolding | `Engine`, `Recorder`, `IDEPathHelper`, `recorder.conf` | deleted |
+| Entity loop | every entity nested inside every sync detail | one chain per entity, built at startup |
+| Request naming | generic | named per entity and entity type |
+| Credentials | user file committed to the repo | gitignored, example file only |
+| README | stale | documents both auth and sync modes |
+| Run archiving | none | metadata written into each report directory |
+| **Read-path fidelity** | | |
 | Entity list | 64, hand-maintained in `AvniEntities.json` | 79, generated from `openchs-models`, drift-checked in CI |
 | `syncDetails` body | `EmptyBody.json` — an empty array | full 79-entity status array |
 | Page size | 100 | 1000, matching the client |
 | Sync window | client clock, always 1900 in the committed user file | server-supplied, with `SYNC_MODE` for full / incremental / per-user |
 | Auth | Cognito only | `AUTH_MODE` — username header or Cognito |
 | Telemetry | none | posted like a real client, tagged so production queries exclude it |
-| Run archiving | none | metadata written into each report directory |
+| Reset sync | not requested at all | request modelled; **scenario Not started — D9** |
 | Storage pause | uniform random, 0 to a constant | **Not started — D6** |
-| Push path coverage | none | **Not started — D3** |
+| Request timeouts | Gatling defaults | **Not started — D8.4** |
+| **Write path** | | |
+| Push / upload | none | **Not started — D3** |
+| Media presigned URLs | none | **Not started — D5** |
+| **Workload design** | | |
+| Feeder | `random()`, drawing with replacement | `circular()`, warns when oversubscribed |
+| Full vs incremental | full only, every run | `SYNC_MODE`; incremental stays partial until D1 |
+| Injection profiles | one open ramp | **Not started — E3** |
+| Multi-tenant load | single organisation | **Not started — E4** |
+| **Test data** | | |
+| Dataset generation | none — runs hit whatever happened to be in the database | **Not started — H** |
+| Dataset and environment parity | none | **Not started — F5** |
+| User provisioning | hand-built CSV | **Not started — G5** |
+| Run-to-run restore | none — nothing reset between runs | **Not started — G4 / F6** |
+| **Environment** | | |
+| Deploy path into the closed environment | none | **Not started — F4** |
+| Environment contract | undocumented | specified in section J; **Not started** to implement |
+| **Trustworthiness** | | |
 | Server APM | not provisioned for a load-test environment | **Not started — F1** |
+| Request-logging overhead | unmeasured | **Not started — F2** |
+| Second Gatling setup | unreconciled | **Not started — F3** |
 | Assertions | commented out | **Not started — A6** |
+| Calibration gate | none | **Not started — F7** |
+| **Grounding** | | |
+| Production measurement | none — every figure was an estimate | Q1–Q13 run, three passes |
+| Success criteria | empty | measured, one row left to fill |
 
 **The empty body row is the one that mattered most.** Posting an empty array made the server
 synthesise every entity at 1900, so every run drove the full-sync path and never the incremental one
