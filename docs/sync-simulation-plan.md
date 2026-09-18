@@ -12,21 +12,30 @@ production RUM) is tracked separately.
 
 ## Where it stands
 
-`AvniSyncSimulation` mints a Cognito token per user, posts `/v2/syncDetails`, then walks a hardcoded
-list of ~60 entities, paginating each one that appears in the response. It groups requests per entity,
-splits reporting by `entityTypeUuid`, and pauses per page to stand in for client-side storage time.
+`AvniSyncSimulation` authenticates under a selectable mode, posts a full 79-entity status array to
+`/v2/syncDetails`, walks every entity the response marks changed, paginates each one, and posts sync
+telemetry at the end. The entity list is generated from `openchs-models` rather than hand-maintained,
+and CI fails if it drifts.
 
-That is a real, working download-sync probe and a good foundation.
+That is a faithful download-sync probe. The push path is still absent, which is the largest remaining
+gap.
 
 | | |
 |---|---|
-| Gatling plugin | 3.9.2 → 3.15.1.2 available |
-| Gradle wrapper | 7.6 (plugin minimum) |
-| Java toolchain | not declared — runs inherit ambient JDK |
-| Entities in sim | 60, hardcoded in `sync()` |
-| Push path coverage | none |
-| Server APM | New Relic, attached by javaagent — **not** provisioned for a load-test env |
-| Assertions | commented out |
+| Gatling plugin | **3.15.1.3** · Gradle wrapper 8.14 · Java toolchain 17 declared |
+| Entity list | **79 generated** from `openchs-models` — 75 pulled, 74 pushable · drift-checked in CI |
+| Sync window | `SYNC_MODE` selects full, incremental or per-user · window end taken from the server |
+| Auth | `AUTH_MODE` selects username-header or Cognito |
+| Telemetry | posted like a real client, tagged `avni-perf-simulation` so production queries exclude it |
+| Push path coverage | **none** — only `syncDetails` and telemetry are posted |
+| Server APM | New Relic, attached by javaagent in production — **not** provisioned for a load-test env |
+| Assertions | still commented out — the threshold now exists (A6) |
+| Run archiving | run metadata written into each report directory |
+
+**Production is now measured.** `baseMsPerRecord`, the sync-gap distribution, peak concurrency,
+catchment volumes, observation shape, tenant skew and hierarchy shape all come from the queries in
+[production-measurement-queries.md](production-measurement-queries.md). The figures sit in the
+sections that use them, and the Success criteria table below has one row left to fill.
 
 The work below is of two kinds: making the simulation **faithful** to what the client actually does,
 and making it **trustworthy** as a measuring instrument. Neither is optional given the goal — an
