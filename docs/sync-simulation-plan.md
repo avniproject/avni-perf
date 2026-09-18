@@ -107,7 +107,7 @@ later would change several decisions in this plan.
 | p95 sync duration, heavy band (~47.5k records) | Q5 | p50 **1,076 s**; p95 pending re-run |
 | Acceptable error rate under load | Product decision | *TBD* |
 | Concurrent-user target to design against | E0 | **1,000** workers across 8–10 tenants |
-| Heaviest single device to design against | E0 | **730,000** records — a supervisor at year 1 |
+| Heaviest single device to design against | E0 | **~125,000** records — a sub-centre supervisor at year 2 |
 | Peak-hour concurrency to reproduce | Q4 | **792 syncs/hour** (0.22/sec) peak; **267** distinct users; ~3 in flight |
 
 **One row remains open, and it is a product decision no query can supply:** what error rate is
@@ -116,10 +116,12 @@ acceptable under load.
 > **Concurrency is not the risk here; volume per device is.** Production's busiest hour ever recorded
 > saw 267 distinct users across *every* organisation and roughly **3 syncs in flight**. The customer's
 > 1,000 workers is four times that user base — a real step up, but still a modest arrival rate. What
-> has no precedent is the **supervisor's 730,000-record catchment at year one, 4.8× the heaviest device
-> production has ever measured (Q3)**. Size the *Load* profile against arrival rate and the
-> *Supervisor* and *Growth* profiles against volume. A run that saturates on concurrency alone will
-> miss this entirely.
+> is new is the **mix**: a thousand workers across 8–10 tenants, with supervisors carrying an order of
+> magnitude more than field workers, on infrastructure also holding production's existing tenant skew.
+> Per-device volume stays inside what production already carries (Q3's p99 is 264,569 rows against a
+> supervisor's ~125,000 at year two), so this exercise is about concurrency and tenancy rather than
+> about finding a volume ceiling — unless supervision sits above the sub-centre, which would put
+> volume back at the centre.
 
 **There is no separate incremental figure, and there cannot be one from this table.** `sync_telemetry`
 does not record whether a sync ran full or incremental. The light band is the closest available proxy
@@ -1088,46 +1090,92 @@ peak, which makes this a genuine step up rather than a reproduction.
 beneficiaries, a supervisor covers ~10 villages, and data accrues at the same rate in year two as in
 year one. From 500 workers per state tenant that gives **50 villages and 150,000 beneficiaries**.
 
-> **How many supervisors is a guess, and a shaky one.** The customer gave a supervisor's *span* —
-> around 10 villages — not a *count*. Dividing 50 villages by 10 gives five supervisors per tenant,
-> which assumes supervisors partition the villages exactly, with one tier, full coverage and no
-> overlap. None of that was stated.
->
-> The ratio it implies should be read as a warning rather than a result: 10 workers per village across
-> 10 villages puts **100 field workers under one supervisor**, where field supervision in health
-> programmes usually runs nearer 1:10 to 1:25. So something in the chain probably does not compose the
-> way this arithmetic assumes — the 10-village figure may describe a different administrative unit,
-> there may be more than one supervisory tier, or worker density may be lower in the villages a
-> supervisor covers.
->
-> **The supervisor's catchment size below does not depend on the count**, so the volume figures stand.
-> What depends on it is how many heavy devices sync at once, which is what the *Combined* profile
-> needs. Worth asking the customer directly: how many supervisors per 500 field workers, and is there
-> more than one tier?
+**A real state's establishment, supplied by the customer.** ASHA as field worker, ANM as supervisor.
+
+| Level | Units | ASHAs per unit | ANMs per unit | CHOs per unit |
+|---|---|---|---|---|
+| State | 1 | 165,000 | 24,000 | 20,000 |
+| District | 75 | 2,200 | 320 | 265 |
+| Block | 850 | 200 | 30 | 25 |
+| PHC | 3,600 | 45 | 7 | 6 |
+| Sub-Centre | 21,000 | 8 | 1 | 1 |
+| Village | 59,000 | 3 | 0 | 0 |
+
+**It is internally consistent** — units times per-unit reproduces the state totals within 7% at every
+level — and it corrects the model above in four places.
+
+| | Earlier figure | This table | |
+|---|---|---|---|
+| Field workers per state | 500 | **165,000** | 330× |
+| Field workers per village | 10 | **3** | 3.3× |
+| Supervisor span | 10 villages | **2.8** (a sub-centre) | 3.6× |
+| Supervisor : field worker | 1:100 | **1:7** | 14× |
+
+**The 1:100 ratio was wrong, as suspected.** A real state runs 165,000 ASHAs against 24,000 ANMs, and
+one ANM per sub-centre covers 8 ASHAs. That is 1:7, inside the 1:10–1:25 convention rather than an
+order of magnitude outside it.
+
+**The table also settles the visit-interval check, in favour of itself.** Three ASHAs at 20 encounters
+a day give a village 60 daily against 3,000 beneficiaries — **every beneficiary seen about every 50
+days**. Ten ASHAs gave every 15 days, which is what looked wrong. And 3,000 per village is
+independently confirmed: 165,000 ASHAs at the 1-per-1,000-population norm implies a 16.5 crore state,
+which over 59,000 villages is 2,797 per village.
+
+**So the supervisor is no longer the extreme case, and which tier supervises decides everything.**
+
+| Supervisor sits at | ASHAs | Encounters/day | Day 180 | Year 1 | vs Q3's heaviest device |
+|---|---|---|---|---|---|
+| **Sub-Centre (ANM)** | 8 | 160 | 28,800 | **58,400** | **0.38×** |
+| PHC | 45 | 900 | 162,000 | 328,500 | 2.15× |
+| Block | 200 | 4,000 | 720,000 | 1,460,000 | 9.53× |
+
+An ANM at a sub-centre lands at **0.38× the heaviest device production has already measured** — well
+inside observed range, and nothing like the 4.8× claimed above from the 10-village span. **Taking ANM
+as the supervisor removes the extreme-volume case from this deployment entirely.** A block-level
+supervisor would restore it and then some, so *which role is being modelled* is now the single
+highest-leverage question in this section.
+
+**And 500 workers is 0.3% of a state.** That figure has to be a pilot rather than a rollout. Sizing
+the exercise at 500 workers while the eventual deployment is 165,000 means this measures the pilot,
+which is a legitimate thing to measure — but nothing in a 500-worker result extrapolates to a state,
+because the tenant's total data volume grows with worker count and sync cost depends on it through
+index size and cache residency. **Worth confirming: is 500 the pilot, the first year, or the design
+target?**
+
+Per-device volumes, on the establishment table's figures. Encounter counts, not subject counts — a
+shared catchment means every worker in a village pulls every encounter recorded there, including the
+ones they did not create, so a field worker's sync volume tracks the village's total activity rather
+than their own.
 
 | Per device | Subjects | Day 60 | Day 180 | Year 1 | Year 2 |
 |---|---|---|---|---|---|
-| Field worker — 1 village | 3,000 | 12,000 | 36,000 | 73,000 | 146,000 |
-| **Supervisor — 10 villages** | 30,000 | 120,000 | **360,000** | **730,000** | **1,460,000** |
+| Field worker — 1 village, 3 ASHAs | 3,000 | 3,600 | 10,800 | 21,900 | 43,800 |
+| Supervisor — sub-centre, 8 ASHAs | ~8,400 | 9,600 | 28,800 | 58,400 | 116,800 |
 
-Encounter counts, not subject counts — a shared catchment means all ten workers in a village pull
-every encounter recorded there, including the nine-tenths they did not create. A field worker's sync
-volume is driven by the village's total activity rather than their own.
+**Both sit inside what production already carries.** Q3's median device holds ~715 rows and its
+heaviest ~264,569; a supervisor at year two reaches 116,800, which is under half the existing p99. The
+volumes above are a real increase on the median but they are not new territory, and that is a
+different exercise from the one the 10-village figure implied.
 
 **The dataset target follows from the model.** Two state tenants plus eight NGO tenants come to
 roughly **450,000 beneficiaries**, and H sizes against that. Volume grows out of the daily encounter
 rate and the worker count, so a longer-term projection is arithmetic on this model rather than a
 separate target to build for.
 
-**The supervisor is the load case, and it is already past anything production has ever seen.** Q3's
-heaviest measured device holds 153,126 program encounters. A supervisor passes that inside six
-months, reaching **2.4× it by day 180 and 4.8× by year one**. Every other scenario here is smaller
-than production's existing tail; this one is not.
+**On the establishment figures, no scenario here exceeds production's existing tail.** Q3's heaviest
+measured device holds 153,126 program encounters; a sub-centre supervisor reaches 58,400 at year one
+and 116,800 at year two. That reverses what the 10-village span implied, and it changes what this
+exercise is for: **not finding the volume at which the server breaks, but confirming it holds at
+volumes it already sees, under a concurrency and tenancy mix it has not seen.**
 
-> **A supervisor's fresh sync runs for hours, and the harness is the only thing that struggles with
-> that.** At the measured 9.19 ms/record (D6.1), a supervisor's full sync is roughly **1.9 hours of
-> client-side work at year one and 3.8 hours at year two**. The 1% fresh-sync rate makes it routine
-> rather than hypothetical — phone loss, replacement and reassignment all force the full path.
+The extreme-volume case returns only if supervision sits above the sub-centre. A PHC-level supervisor
+reaches 2.15× the p99 device and a block-level one 9.5×, so that question decides whether volume or
+concurrency is the thing being tested.
+
+> **Fresh-sync duration, at the measured 9.19 ms/record (D6.1).** A field worker is **4 minutes at
+> year one and 7 at year two**; a sub-centre supervisor **10 and 19**. Those are tolerable. A
+> PHC-level supervisor would be **57 minutes** at year one and a block-level one **over four hours** —
+> another reason the supervising tier decides what this exercise is measuring.
 >
 > **Token expiry is not the concern.** The real client calls `getAuthToken()` per request, and
 > `CognitoAuthService` resolves it through `cognitoUser.getSession()`, which refreshes against the

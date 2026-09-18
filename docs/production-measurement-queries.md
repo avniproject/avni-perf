@@ -665,9 +665,37 @@ group by 1
 order by 1;
 ```
 
-A clean split — a dense band of small catchments and a separate band of large ones — confirms two
-populations and gives the ratio between them. A smooth ramp across every band says it is one
-population after all, and the current single-distribution sampler is right.
+**Result**, 2,829 users:
+
+| Locations in catchment | Users | Share | Rows p50 | Rows p90 |
+|---|---|---|---|---|
+| 0–19 | 2,081 | **73.6%** | 615 | 10,423 |
+| 20–39 | 181 | 6.4% | 2,898 | 45,679 |
+| 40–59 | 67 | 2.4% | 4,398 | 57,411 |
+| 60–79 | 46 | 1.6% | 13,069 | 73,930 |
+| 80–99 | 47 | 1.7% | 7,733 | 87,780 |
+| 100–115 | 22 | 0.8% | 12,055 | 25,553 |
+| 121–139 | 18 | 0.6% | 308 | 29,536 |
+| 140–157 | 16 | 0.6% | **21** | 1,463 |
+| 161–174 | 18 | 0.6% | 10,405 | 43,484 |
+| 186–199 | 10 | 0.4% | 4,412 | 256,559 |
+| 209–495,952 | 323 | **11.4%** | 3,926 | 124,188 |
+
+**Catchment size is bimodal.** Three quarters of users hold 19 locations or fewer, 11% hold 209 or
+more, and only 15% sit anywhere between. Two populations, as E0 predicted.
+
+**But catchment size barely predicts how much data a user holds.** The 140–157 band has a median of
+**21 rows** — thirty times *less* than the smallest-catchment band, despite holding eight times the
+locations. The 121–139 band is similar at 308. A wide catchment in a sparsely populated organisation
+still holds almost nothing, so catchment size and organisation data density vary independently.
+
+**The consequence for the generator is concrete**: assigning catchments by size alone will not
+reproduce the volume distribution. Catchment breadth and per-location data density have to be
+separate parameters, and the second one is what Q3's spread is actually made of.
+
+**One user's catchment spans 495,952 locations** — 41% of every location on the platform (Q13's
+1,204,209). Those users exist today and sync today, which is worth knowing before treating any
+generated catchment as an extreme.
 
 **Counting the effective catchment, not the declared one.** `catchment_address_mapping` holds the
 locations an administrator picked; `virtual_catchment_address_mapping_table` is a view that expands
