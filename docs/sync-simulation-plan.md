@@ -20,17 +20,26 @@ and CI fails if it drifts.
 That is a faithful download-sync probe. The push path is still absent, which is the largest remaining
 gap.
 
-| | |
-|---|---|
-| Gatling plugin | **3.15.1.3** · Gradle wrapper 8.14 · Java toolchain 17 declared |
-| Entity list | **79 generated** from `openchs-models` — 75 pulled, 74 pushable · drift-checked in CI |
-| Sync window | `SYNC_MODE` selects full, incremental or per-user · window end taken from the server |
-| Auth | `AUTH_MODE` selects username-header or Cognito |
-| Telemetry | posted like a real client, tagged `avni-perf-simulation` so production queries exclude it |
-| Push path coverage | **none** — only `syncDetails` and telemetry are posted |
-| Server APM | New Relic, attached by javaagent in production — **not** provisioned for a load-test env |
-| Assertions | still commented out — the threshold now exists (A6) |
-| Run archiving | run metadata written into each report directory |
+| | Before | Now |
+|---|---|---|
+| Gatling plugin | 3.9.2 | **3.15.1.3** |
+| Gradle wrapper | 7.6 | **8.14** |
+| Java toolchain | not declared — runs inherited the ambient JDK | **17, declared** |
+| Entity list | 64, hand-maintained in `AvniEntities.json` | **79, generated** from `openchs-models`, drift-checked in CI |
+| `syncDetails` body | `EmptyBody.json` — an empty array | **full 79-entity status array** |
+| Page size | 100 | **1000**, matching the client |
+| Sync window | client clock, always 1900 in the committed user file | **server-supplied**, with `SYNC_MODE` for full / incremental / per-user |
+| Auth | Cognito only | **`AUTH_MODE`** — username header or Cognito |
+| Storage pause | uniform random, 0 to a constant | unchanged — **D6** replaces it with a per-record model |
+| Telemetry | none | **posted like a real client**, tagged so production queries exclude it |
+| Run archiving | none | **metadata written into each report directory** |
+| Push path coverage | none | **none** — still only `syncDetails` and telemetry |
+| Server APM | not provisioned for a load-test environment | unchanged — **F1** |
+| Assertions | commented out | commented out — the threshold now exists (**A6**) |
+
+**The empty body row is the one that mattered most.** Posting an empty array made the server
+synthesise every entity at 1900, so every run drove the full-sync path and never the incremental one
+that 98% of production syncs take.
 
 **Production is now measured.** `baseMsPerRecord`, the sync-gap distribution, peak concurrency,
 catchment volumes, observation shape, tenant skew and hierarchy shape all come from the queries in
