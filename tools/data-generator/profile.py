@@ -8,7 +8,7 @@ organisation, a heavier fill rate -- should say so in a file rather than a patch
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from distribution import Quantiles
@@ -27,11 +27,17 @@ class FormTypeTarget:
 
 @dataclass(frozen=True)
 class TemporalSpread:
-    """Age of `last_modified_date_time`, in days before the dataset's reference date."""
-    days: Quantiles
+    """How old a table's rows are, and how often one is edited after it was created.
+
+    Per table, because Q14 found them sharply different. Three quarters of program encounters are
+    edited and the median edit lands 32 days after creation, against 383 to 595 days for encounters
+    and subjects -- the scheduled-visit pattern, where a row is created when a visit is booked and
+    filled in when it happens.
+    """
+    table: str
+    age_days: Quantiles
     edited_after_creation_fraction: float
-    unmeasured: bool = False
-    note: str | None = None
+    median_days_to_first_edit: float | None = None
 
 
 @dataclass(frozen=True)
@@ -41,7 +47,7 @@ class Profile:
     source: str | None
     targets: dict[str, FormTypeTarget]
     catchment: dict[str, Quantiles]
-    temporal: TemporalSpread | None = None
+    temporal: dict[str, TemporalSpread] = field(default_factory=dict)
 
     def for_form_type(self, form_type: str) -> FormTypeTarget | None:
         return self.targets.get(form_type)
@@ -49,13 +55,13 @@ class Profile:
     def rows_per_user(self, entity: str) -> Quantiles | None:
         return self.catchment.get(entity)
 
+    def temporal_for(self, table: str) -> TemporalSpread | None:
+        return self.temporal.get(table)
+
     @property
     def unmeasured_inputs(self) -> list[str]:
         """Inputs carrying a guess rather than a measurement. A run should report these."""
-        out = []
-        if self.temporal and self.temporal.unmeasured:
-            out.append("temporal_spread")
-        return out
+        return []
 
 
 def load(path: str | Path | None = None) -> Profile:
@@ -89,17 +95,19 @@ def load(path: str | Path | None = None) -> Profile:
             raise ValueError(f"profile {p}: {entity} declares no percentiles")
         catchment[entity] = Quantiles.of(**pct)
 
-    temporal = None
-    t = raw.get("temporal_spread")
-    if t:
-        days = {k.replace("days_", ""): v for k, v in t.items() if k.startswith("days_p")}
-        if not days:
-            raise ValueError(f"profile {p}: temporal_spread declares no days_pNN percentiles")
-        temporal = TemporalSpread(
-            days=Quantiles.of(**days),
-            edited_after_creation_fraction=float(t.get("edited_after_creation_fraction", 0.0)),
-            unmeasured=bool(t.get("unmeasured")),
-            note=t.get("note"),
+    temporal = {}
+    for table, t in ((raw.get("temporal_spread") or {}).get("tables") or {}).items():
+        ages = t.get("age_days") or {}
+        if not ages:
+            raise ValueError(f"profile {p}: temporal_spread.{table} declares no age_days")
+        frac = float(t.get("edited_after_creation_fraction", 0.0))
+        if not 0.0 <= frac <= 1.0:
+            raise ValueError(f"profile {p}: {table} edited fraction must be between 0 and 1")
+        temporal[table] = TemporalSpread(
+            table=table,
+            age_days=Quantiles.of(**ages),
+            edited_after_creation_fraction=frac,
+            median_days_to_first_edit=t.get("median_days_to_first_edit"),
         )
 
     return Profile(

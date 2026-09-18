@@ -438,49 +438,6 @@ split between page size 100 and 1000 is unknown and both must be tested.
 
 ---
 
-**Q14 — Temporal spread of `last_modified_date_time` (H3, D1).** **Not yet run.** Section H3 warns
-that getting this wrong invalidates every incremental scenario — rows sharing one timestamp make
-incremental sync return either everything or nothing — and no query covered it, so the generator
-currently carries a placeholder flagged as unmeasured.
-
-Two things are needed: how old rows are, and how often a row is edited after it was created. The
-second matters because an edit moves a row back into every subsequent incremental window, which is
-what makes an incremental sync non-empty at all.
-
-```sql
-with sampled as (
-  select 'individual'        as tbl, created_date_time, last_modified_date_time
-  from individual tablesample system (1) where is_voided = false
-  union all
-  select 'program_enrolment', created_date_time, last_modified_date_time
-  from program_enrolment tablesample system (1) where is_voided = false
-  union all
-  select 'program_encounter', created_date_time, last_modified_date_time
-  from program_encounter tablesample system (1) where is_voided = false
-  union all
-  select 'encounter', created_date_time, last_modified_date_time
-  from encounter tablesample system (1) where is_voided = false
-)
-select tbl,
-       count(*) as sampled_rows,
-       percentile_cont(array[0.5, 0.9, 0.99]) within group (
-         order by extract(epoch from (now() - last_modified_date_time)) / 86400
-       ) as age_days_p50_p90_p99,
-       round(100.0 * count(*) filter (
-         where last_modified_date_time > created_date_time + interval '1 hour'
-       ) / nullif(count(*), 0), 2) as pct_edited_after_creation,
-       percentile_cont(0.5) within group (
-         order by extract(epoch from (last_modified_date_time - created_date_time)) / 86400
-       ) filter (where last_modified_date_time > created_date_time + interval '1 hour')
-       as median_days_to_first_edit
-from sampled
-group by tbl
-order by tbl;
-```
-
-The one-hour threshold separates a genuine later edit from the write that created the row, since
-both timestamps are set on insert and can differ by milliseconds.
-
 **Q12 — Organisation size and skew (Success criteria, I2, I3, H3, G5).** The plan requires tenant size
 skew in four places and had no query for it. It also supplies the one remaining measurable row in the
 Success criteria table — the concurrent-user target is "largest org size plus expected growth", and
@@ -603,3 +560,65 @@ below depth 8, all in one org. That is exactly 763 × 18, matching the 763-per-d
 > and unusable for ordering. And the type names carry a lot of test data — `dummy`, `test`, `xyz`, an
 > empty-string name holding 19,075 locations, and several types named as voided. A generator copying
 > production's shape should copy the working hierarchies, not the debris.
+
+**Q14 — Temporal spread of `last_modified_date_time` (H3, D1).** Section H3 warns
+that getting this wrong invalidates every incremental scenario — rows sharing one timestamp make
+incremental sync return either everything or nothing — and no query covered it, so the generator
+currently carries a placeholder flagged as unmeasured.
+
+Two things are needed: how old rows are, and how often a row is edited after it was created. The
+second matters because an edit moves a row back into every subsequent incremental window, which is
+what makes an incremental sync non-empty at all.
+
+```sql
+with sampled as (
+  select 'individual'        as tbl, created_date_time, last_modified_date_time
+  from individual tablesample system (1) where is_voided = false
+  union all
+  select 'program_enrolment', created_date_time, last_modified_date_time
+  from program_enrolment tablesample system (1) where is_voided = false
+  union all
+  select 'program_encounter', created_date_time, last_modified_date_time
+  from program_encounter tablesample system (1) where is_voided = false
+  union all
+  select 'encounter', created_date_time, last_modified_date_time
+  from encounter tablesample system (1) where is_voided = false
+)
+select tbl,
+       count(*) as sampled_rows,
+       percentile_cont(array[0.5, 0.9, 0.99]) within group (
+         order by extract(epoch from (now() - last_modified_date_time)) / 86400
+       ) as age_days_p50_p90_p99,
+       round(100.0 * count(*) filter (
+         where last_modified_date_time > created_date_time + interval '1 hour'
+       ) / nullif(count(*), 0), 2) as pct_edited_after_creation,
+       percentile_cont(0.5) within group (
+         order by extract(epoch from (last_modified_date_time - created_date_time)) / 86400
+       ) filter (where last_modified_date_time > created_date_time + interval '1 hour')
+       as median_days_to_first_edit
+from sampled
+group by tbl
+order by tbl;
+```
+
+The one-hour threshold separates a genuine later edit from the write that created the row, since
+both timestamps are set on insert and can differ by milliseconds.
+
+**Result:**
+
+| Table | Sampled | Age p50 | p90 | p99 | Edited after creation | Median days to first edit |
+|---|---|---|---|---|---|---|
+| `encounter` | 32,969 | 821 d | 1,663 | 2,664 | 40.1% | 383 |
+| `individual` | 25,751 | 788 d | 1,791 | 2,991 | 36.7% | 595 |
+| `program_encounter` | 66,844 | 698 d | 1,897 | 2,869 | **74.8%** | **32** |
+| `program_enrolment` | 7,459 | 444 d | 2,076 | 2,724 | 61.0% | 274 |
+
+**Production data is old.** A median row was last touched nearly two years ago, and the 99th
+percentile reaches eight years. Interpreted in plan section **H3**.
+
+**Program encounters behave unlike everything else: three quarters are edited, and the median edit
+lands 32 days after creation** — against 383 to 595 days for encounters and subjects. That is the
+scheduled-visit pattern. A program encounter is created when a visit is scheduled and filled in when
+the visit happens, so creation and completion are two writes weeks apart. A generator that writes
+each row once produces neither the edit volume nor the timestamp spread, and **that is the difference
+between an incremental sync returning a realistic trickle and returning nothing**.

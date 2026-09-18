@@ -1449,6 +1449,17 @@ these four tables — earns almost nothing.** The largest index in the database 
 about twelve times a day for 2.5× `shared_buffers` of storage. Unique constraints are excluded from
 the total, since they enforce correctness whatever their scan count.
 
+**The cold ones are not arbitrary — they are one sync strategy nobody uses.** Each table carries five
+`sync_N` indexes, one per sync strategy: `sync_1` keys on `address_id` (sync by location), `sync_2` on
+`individual_id` (by subject), `sync_3` on `sync_concept_1_value` (by one attribute) and `sync_4` on
+both `sync_concept_1_value` and `sync_concept_2_value` (by two attributes). The scan counts line up
+with that exactly — `individual_sync_2_index` took 3.48 billion scans, while the `sync_4` family is
+the bulk of the cold 4.08 GB.
+
+So this is not a set of indexes that turned out useless. It is **the two-attribute sync strategy
+being almost unused across the platform**, with an index per table standing ready for it. That is a
+product question rather than a schema one, and it changes who the finding belongs to.
+
 **The hot path is narrow and small.** The three busiest indexes are 185 MB, 88 MB and 29 MB, and they
 carry billions of scans between them. The bulk sits in indexes that are barely touched.
 
@@ -1725,10 +1736,24 @@ impact:
   nothing, and no incremental scenario means anything. The spread must look like real editing
   activity over time.
 
-  **This is the one generator input with no measurement.** Query **Q14** was added to cover it and
-  has not been run. Until it is, the generator carries a placeholder that it reports as a guess
-  rather than a measurement — see `tools/data-generator/profiles/`. **Run Q14 before any incremental
-  scenario is treated as meaningful.**
+  **Measured (Q14), and it differs sharply by table:**
+
+  | Table | Age p50 | p90 | p99 | Edited after creation | Median days to first edit |
+  |---|---|---|---|---|---|
+  | `encounter` | 821 d | 1,663 | 2,664 | 40.1% | 383 |
+  | `individual` | 788 d | 1,791 | 2,991 | 36.7% | 595 |
+  | `program_encounter` | 698 d | 1,897 | 2,869 | **74.8%** | **32** |
+  | `program_enrolment` | 444 d | 2,076 | 2,724 | 61.0% | 274 |
+
+  **Production data is old** — a median row was last touched nearly two years ago, and the 99th
+  percentile reaches eight years. A generator emitting recent rows makes every incremental window
+  return far more than production would.
+
+  **Program encounters have to be written twice.** Three quarters are edited and the median edit
+  lands 32 days after creation, against 383 to 595 days elsewhere. That is the scheduled-visit
+  pattern: the row is created when a visit is booked and filled in when it happens. A generator
+  writing each row once produces neither the edit volume nor the timestamp spread, and that is the
+  difference between an incremental sync returning a realistic trickle and returning nothing.
 - **Address level hierarchy shape.** Drives the scope-resolution queries behind catchment filtering.
   **Measured (Q13) across the 812 organisations holding any location:**
 

@@ -67,21 +67,35 @@ def test_the_catchment_note_is_not_read_as_an_entity():
     assert "note" not in profile_mod.load().catchment
 
 
-def test_temporal_spread_is_reported_as_a_guess():
-    """H3 says getting this wrong invalidates every incremental scenario. Q14 is not yet run."""
+def test_temporal_spread_is_measured_per_table():
+    """Q14 has run, so nothing here is a guess any more."""
     p = profile_mod.load()
-    assert p.temporal is not None and p.temporal.unmeasured
-    assert p.unmeasured_inputs == ["temporal_spread"]
-
-
-def test_a_measured_temporal_spread_stops_being_reported():
-    p = profile_mod.load(write({"form_types": {"Encounter": {"p50_keys": 4, "p95_keys": 22}},
-                                "temporal_spread": {"days_p50": 30, "days_p99": 900,
-                                                    "edited_after_creation_fraction": 0.2}}))
-    assert p.temporal.unmeasured is False
+    assert set(p.temporal) == {"individual", "program_enrolment", "program_encounter", "encounter"}
     assert p.unmeasured_inputs == []
+
+
+def test_program_encounters_are_edited_far_more_often_and_far_sooner():
+    t = profile_mod.load()
+    pe = t.temporal_for("program_encounter")
+    assert pe.edited_after_creation_fraction == pytest.approx(0.748)
+    assert pe.median_days_to_first_edit == 32
+    assert t.temporal_for("individual").median_days_to_first_edit == 595
+
+
+def test_row_ages_reproduce_q14():
+    t = profile_mod.load().temporal_for("encounter")
+    assert t.age_days.quantile(0.5) == pytest.approx(821)
+    assert t.age_days.quantile(0.99) == pytest.approx(2664)
+
+
+def test_an_impossible_edit_fraction_is_rejected():
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        profile_mod.load(write({"form_types": {"Encounter": {"p50_keys": 4, "p95_keys": 22}},
+                                "temporal_spread": {"tables": {"encounter": {
+                                    "age_days": {"p50": 10, "p99": 100},
+                                    "edited_after_creation_fraction": 1.4}}}}))
 
 
 def test_a_profile_may_omit_catchment_and_temporal():
     p = profile_mod.load(write({"form_types": {"Encounter": {"p50_keys": 4, "p95_keys": 22}}}))
-    assert p.catchment == {} and p.temporal is None
+    assert p.catchment == {} and p.temporal == {}
