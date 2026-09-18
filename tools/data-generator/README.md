@@ -113,6 +113,36 @@ python3 -m venv .venv && .venv/bin/pip install pytest
 .venv/bin/python -m pytest tests -q
 ```
 
+## Locations and catchments
+
+`hierarchy.py` builds a tenant's location tree from the real state establishment in plan section E0 —
+State, District, Block, PHC, Sub-Centre, Village — using its measured branching factors: 75 districts
+to a state, 11.3 blocks to a district, down to 2.8 villages per sub-centre.
+
+It works **upward from the leaf count**, because that is the number everything else depends on. A
+tenant's village count sets its field worker count, its beneficiary count and its encounter volume,
+so scaling a state's 59,000 villages downward by a ratio would land wherever the rounding fell.
+
+**Six levels, where Q13 measured production at four for 84% of its locations.** That is two levels
+deeper than production's typical, and `lineage` is an `ltree` walked by both catchment scope
+resolution and reference-table RLS, so a generated tenant's lookups cost more than a typical
+production one's.
+
+`catchments.py` assigns catchments and users. Two things it gets right that a simpler generator would
+not:
+
+**Field workers in a village share its catchment.** Three ASHAs to a village, all three pulling every
+row recorded there. So the same rows are read three times over, and a field worker's sync volume
+tracks the village's activity rather than their own.
+
+**A catchment is declared against one location, not a list.** The server expands it downward through
+`virtual_catchment_address_mapping_table`, so declaring a sub-centre resolves to its villages while
+declaring a village resolves to itself. Only the declared row is written. This is also why Q15 counts
+the expanded set rather than the declared one.
+
+A pilot state tenant at 167 villages comes out at **501 field workers and 60 supervisors**, against
+E6's 500 and 62.
+
 ## Not built yet
 
 This is the first increment. Still to come, all from section H:
@@ -120,7 +150,6 @@ This is the first increment. Still to come, all from section H:
 - Row generation for subjects, enrolments and encounters, with the catchment volumes Q3 measured —
   a p50 device holds ~715 rows and a p99 holds ~264,569, so the tail is what has to be reproduced
 - Temporal spread of `last_modified_date_time`, without which no incremental scenario means anything
-- Address level hierarchy — four levels branching around 9 (Q13)
 - `COPY` output, index build and `ANALYZE` (H4)
 - The structural and statistical checks that gate a dataset (H5)
 - Multiple organisations with a realistic size distribution (H1, I2)
