@@ -150,6 +150,33 @@ uses has not been measured.
 A pilot state tenant at 167 villages comes out at **501 field workers and 60 supervisors**, against
 E6's 500 and 62.
 
+## What a bulk load bypasses, and what it does not
+
+H4 loads with `COPY`, which skips the application entirely. So the question is what the application
+would otherwise have maintained. Checked against the migrations rather than assumed:
+
+**`virtual_catchment_address_mapping_table` needs nothing.** It is a plain view over a SQL function,
+not a table and not materialised, so there is nothing to populate or refresh. The function splits each
+location's `lineage` and joins every element against `catchment_address_mapping`, which means a
+location belongs to a catchment when **any point in its lineage** is declared against it. A test
+asserts the generator's descendant walk agrees with that definition.
+
+**There are no materialised views and no triggers on the four transactional tables.** So nothing else
+is recomputed behind a write.
+
+**`lineage` is guarded, but only partly.** `address_level` carries a check constraint,
+`lineage_parent_consistency`, requiring the path to end `.parent_id.id` — so a `COPY` with a wrong
+immediate parent is rejected outright. Its own comment notes it validates the parent-child link and
+**not the whole tree**, so a wrong *ancestor* would load cleanly and hand catchment expansion the
+wrong scope with no error anywhere. Nothing but the generator guards that, and two tests cover it: one
+for the constraint as written, one for the full ancestor chain.
+
+**What the generator does have to write itself** is the denormalised columns the application would
+have set, because the sync indexes cover them: `address_id` on all four tables, `individual_id` on
+`program_encounter`, and `sync_concept_1_value` / `sync_concept_2_value` from the subject's own
+registration observation. Leaving any of them null loads without complaint and quietly stops the
+generated data from touching the index paths production uses.
+
 ## Not built yet
 
 This is the first increment. Still to come, all from section H:

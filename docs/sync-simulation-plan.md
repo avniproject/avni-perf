@@ -2147,6 +2147,19 @@ slower and millions of rows are needed. Build indexes after the load, then `ANAL
 The tradeoff is that `COPY` bypasses server-side validation, so a generator bug produces data the
 application cannot read. Mitigate by round-tripping a sample through the real API and comparing.
 
+**Checked, rather than assumed: very little is recomputed behind a write.**
+`virtual_catchment_address_mapping_table` is a plain view over a SQL function, so there is nothing to
+populate or refresh — a location belongs to a catchment when any point in its `lineage` is declared
+against it. There are no materialised views, and no triggers on the four transactional tables.
+
+**Two things do have to be right on the way in.** `address_level.lineage` carries a check constraint
+requiring the path to end `.parent_id.id`, so a wrong immediate parent is rejected — but its own
+comment says it does not validate the whole tree, so a wrong *ancestor* loads cleanly and hands
+catchment expansion the wrong scope silently. And the denormalised columns the application would
+otherwise set — `address_id`, `program_encounter.individual_id`, and the two `sync_concept_*_value`
+columns — have to be written by the generator, because the sync indexes cover them and a null loads
+without complaint while quietly keeping the data off the index paths production uses.
+
 Post-load indexes are pristine, with none of production's accumulated bloat — acceptable here, because
 G4 snapshots this state and every run restores to it, so it is at least deterministic. Note the
 deviation in F5.2.

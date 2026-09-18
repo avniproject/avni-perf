@@ -83,3 +83,55 @@ def test_ids_are_unique_and_offsettable_for_a_second_tenant():
 def test_a_leafless_hierarchy_is_rejected():
     with pytest.raises(ValueError, match="at least one"):
         hy.build(1, 0)
+
+
+def test_lineage_satisfies_the_databases_check_constraint():
+    """`lineage_parent_consistency` on address_level:
+
+        (parent_id IS NOT NULL AND SUBLTREE(lineage, 0, NLEVEL(lineage)) ~ '*.<parent_id>.<id>')
+        OR (parent_id IS NULL AND lineage ~ '<id>')
+
+    A COPY that violates it is rejected outright, so this is the cheapest possible check that the
+    generated tree will load at all.
+    """
+    h = hy.build(1, 167)
+    for l in h.locations:
+        path = h.lineage(l).split(".")
+        if l.parent_id is None:
+            assert path == [str(l.id)], f"{l.title}: root lineage must be its own id"
+        else:
+            assert path[-2:] == [str(l.parent_id), str(l.id)], \
+                f"{l.title}: lineage must end .parent_id.id"
+
+
+def test_lineage_carries_the_whole_ancestor_chain():
+    """The constraint only validates the last two path elements — its own comment says it checks
+    the parent-child link and not the whole tree. So a wrong ancestor would load cleanly and give
+    catchment expansion the wrong scope, silently. Nothing but the generator guards this."""
+    h = hy.build(1, 167)
+    by_id = {l.id: l for l in h.locations}
+    for l in h.locations:
+        path = [int(x) for x in h.lineage(l).split(".")]
+        walked, cur = [], l.id
+        while cur is not None:
+            walked.append(cur)
+            cur = by_id[cur].parent_id
+        assert path == list(reversed(walked)), f"{l.title}: lineage diverges from its parent chain"
+
+
+def test_catchment_expansion_matches_what_the_database_view_computes():
+    """virtual_catchment_address_mapping_table is a view whose function splits each location's
+    lineage and joins every element against catchment_address_mapping — so a location belongs to a
+    catchment when any of its lineage points is declared against it. This asserts the generator's
+    descendant walk agrees with that lineage-based definition."""
+    import catchments as cat
+    h = hy.build(1, 167)
+    cs, _ = cat.plan(h)
+    declared: dict[int, set[int]] = {}
+    for row in cat.declared_mappings(cs):
+        declared.setdefault(row["catchment_id"], set()).add(row["addresslevel_id"])
+
+    for c in cs[:40]:
+        as_view = {l.id for l in h.locations
+                   if {int(x) for x in h.lineage(l).split(".")} & declared[c.id]}
+        assert {l.id for l in cat.expanded_locations(h, c)} == as_view, c.name
