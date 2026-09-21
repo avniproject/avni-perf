@@ -4,7 +4,7 @@ Everything [the sync simulation plan](sync-simulation-plan.md) and
 [the test scenarios](test-scenarios.md) are waiting on.
 
 **This document holds the inputs only** — the questions someone has to answer before the tests can
-be designed, built or run. No amount of running will settle them. **Four remain.**
+be designed, built or run. No amount of running will settle them. **Three remain.**
 
 The questions the tests *answer* are a different kind and live in
 [the plan](sync-simulation-plan.md#what-the-tests-will-answer), because they are what the exercise is
@@ -74,14 +74,6 @@ Blocks the last unfilled row of the Success criteria table.
 **The only success criterion no query can supply** — everything else in that table is now measured.
 A6 is built and takes it as `MAX_FAILED_PERCENT`, so this is a number to choose rather than code to
 write.
-
-### 4. Is 500 workers the pilot, the first year, or the design target?
-
-**Assumed: a pilot.** Blocks the scope of every conclusion rather than the build.
-
-A real state runs 165,000 ASHAs, so 500 is 0.3% of one. **Nothing in a 500-worker result
-extrapolates upward** — tenant data volume grows with worker count, and sync cost follows it through
-index size and cache residency.
 
 ---
 
@@ -159,6 +151,35 @@ problem nobody has yet. **The signal to revisit is the injector showing up in it
 saturated CPU on the load generator, or response times that rise with virtual user count while the
 server's own metrics stay flat. F7's calibration gate is where that would surface. Scope it then, not
 now.
+
+### 500 workers is the pilot
+
+Confirmed. It scopes every conclusion this exercise produces, and the scoping is sharper than it
+sounds: **a state runs 165,000 ASHAs, so the pilot is 110× smaller in workers and in beneficiaries
+alike.**
+
+| | Workers | Beneficiaries |
+|---|---|---|
+| Pilot, whole deployment | 1,504 | 1,506,000 |
+| One state | 165,000 | 165,000,000 |
+
+**Nothing in a pilot result extrapolates to a state on its own.** Sync cost follows data volume
+through index size and cache residency, and those do not scale linearly — an index that fits in
+cache and one that does not behave differently in kind, not in degree.
+
+**The stress ramp does not close that gap, and it is worth being clear about why.** Case 10 ramps
+*arrival rate* against a pilot-sized dataset. What will not extrapolate is *data volume*. Ramping
+users harder against 1.5 million beneficiaries says nothing about 165 million.
+
+**The growth comparison is the only evidence available**, and it should be read as exactly that. Case
+8 runs the same load against day 60, 120 and 180 — three points on a volume curve. If cost is flat
+across them, that is weak evidence it stays flat further out. If it bends, the bend is the finding
+and the pilot has already told you something about the state.
+
+**Testing a state directly is not currently practical.** A state-sized day-180 dataset is around 759
+million rows — five hours to generate at the measured rate, and roughly 220 GB on disk against the
+pilot's 2 GB. If a statement about state scale is ever needed, that is the size of the ask, and it is
+a separate exercise.
 
 ### Over what period the work runs
 

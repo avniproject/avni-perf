@@ -243,12 +243,13 @@ as the supervisor removes the extreme-volume case from this deployment entirely.
 supervisor would restore it and then some, so *which role is being modelled* is now the single
 highest-leverage question in this section.
 
-**And 500 workers is 0.3% of a state.** That figure has to be a pilot rather than a rollout. Sizing
-the exercise at 500 workers while the eventual deployment is 165,000 means this measures the pilot,
-which is a legitimate thing to measure — but nothing in a 500-worker result extrapolates to a state,
-because the tenant's total data volume grows with worker count and sync cost depends on it through
-index size and cache residency. **Worth confirming: is 500 the pilot, the first year, or the design
-target?**
+**And 500 workers is 0.3% of a state — confirmed as the pilot.** A state runs 165,000 ASHAs, so this
+measures something 110× smaller in workers and beneficiaries alike. That is a legitimate thing to
+measure, and every conclusion here is scoped to it. **Nothing in a pilot result extrapolates to a
+state on its own**: sync cost follows data volume through index size and cache residency, and an
+index that fits in cache behaves differently in kind from one that does not. Case 8's growth curve
+across day 60, 120 and 180 is the only evidence this exercise produces about what happens further
+out.
 
 Per-device volumes, on the establishment table's figures (see the last section). Encounter counts, not subject counts — a
 shared catchment means every worker in a village pulls every encounter recorded there, including the

@@ -2186,8 +2186,9 @@ under **Measure before fixing** above.
   supplied supports it. Every arrival rate scales linearly with this figure.
 - **Is "500 workers" field workers only, or all users?** The test cases read it as field workers and add 62
   supervisors per state tenant on top. If it is the total, the deployment is 11% smaller.
-- **Is 500 workers the pilot, the first year, or the design target?** A real state runs 165,000
-  ASHAs, so 500 is 0.3% of one. Nothing in a 500-worker result extrapolates to a state.
+- **~~Is 500 workers the pilot?~~** *Confirmed: the pilot.* A state runs 165,000 ASHAs, so this
+  measures something 110× smaller. Every conclusion is scoped to the pilot, and case 8's growth curve
+  is the only evidence it produces about what lies beyond it.
 - **Success criteria.** One row left — the acceptable error rate. A6 is built and takes it as
   `MAX_FAILED_PERCENT`, so it is a number to choose rather than code to write. The "no worse than
   current production" default is a legitimate answer.
