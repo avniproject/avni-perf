@@ -1,6 +1,6 @@
 # Test scenarios
 
-**For customer review, and for the generator to build against.** Twelve test cases with actual
+**For customer review, and for the generator to build against.** Eleven test cases with actual
 numbers, and the deployment they are derived from.
 
 Split out of [the sync simulation plan](sync-simulation-plan.md) because it has a different audience
@@ -27,10 +27,9 @@ a 16-minute median.
 | **6** | **Shared — co-tenant data** | **10 + 986** | 1,504 + 188 | Day 180 **plus production's organisations**, which sync nothing | Incremental, 1% full | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
 | **7** | **Shared — co-tenant load** | **10 + 986** | Case 6, plus production's own arrival rate | Same as case 6 | Incremental, 1% full | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
 | **8** | Growth comparison | 1 state | Case 4 | Day 60, 120, 180, **365** | Incremental, 1% full | The shape of the curve. A knee between points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
-| **9** | Reset storm | 1 state | 562, org-wide reset | Day 180 | **All full** | The heaviest real event (Q10 measured it at 130× a normal week) |
-| **10** | Stress ramp | **10** | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
-| **11** | Soak | 1 state | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
-| **12** | **Configuration size** | 1, twice | Case 1 | Config only, **a small and a large bundle** | Full | How `syncDetails` cost scales with the number of entities a configuration defines |
+| **9** | Stress ramp | **10** | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
+| **10** | Soak | 1 state | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
+| **11** | **Configuration size** | 1, twice | Case 1 | Config only, **a small and a large bundle** | Full | How `syncDetails` cost scales with the number of entities a configuration defines |
 
 **Tenant counts trace to the table under [the deployment](#the-deployment-being-modelled)**: a state
 tenant is 500 field workers and 62 supervisors, and the ten together are 1,504 and 188. The 986 in
@@ -51,9 +50,7 @@ incremental sync costs about the same whether it carries 15 records or 500.
 | 5 · all ten tenants | 564 | **2.2** |
 | 6, 7 · ten tenants plus production active | 1,356 | **5.3** |
 | 1 · training cohort, 100 logins in 15 min | — | **~3** |
-| **9 · reset storm, 562 users over an hour** | — | **~20** |
-| **9 · reset storm, 562 users in 15 minutes** | — | **~79** |
-| 10 · stress ramp | — | unbounded by design |
+| 9 · stress ramp | — | unbounded by design |
 
 On the assumptions this document carries: four syncs per worker per working day, spread across the
 09:00–21:00 plateau. **Production's own busiest hour ever recorded works out at 3.1 in flight.**
@@ -63,26 +60,24 @@ syncs in flight — the whole ten-tenant deployment beside production's live tra
 production's own peak. Those cases are measuring per-sync cost and tenancy, and a run that reports
 "no contention" from them has confirmed very little about contention.
 
-**The reset storm is the exception, by an order of magnitude**, and its number depends entirely on
-how fast the affected users come back. Spread over an hour it is 20; compressed into 15 minutes it is
-79. **That spread is worth measuring rather than assuming**, and **Q16 now exists to measure it** — Q10
-found a real week at 130× the normal reset rate, but nothing yet says how quickly those devices came
-back.
+**The training cohort is the only case that bursts**, and even that reaches about 3 — the same as
+production's ordinary peak. Nothing here except the deliberate stress ramp asks the server to hold
+more than a handful of syncs at once.
 
 If [sync frequency](open-questions.md) turns out to be weekly rather than four a day, every
-steady-state figure above falls by a factor of 28 and the reset storm becomes the only case with
-meaningful concurrency at all.
+steady-state figure above falls by a factor of 28, and **no case except the stress ramp has more than
+one sync in flight at any moment.**
 
 **Every user count above comes from the tenant table** under *The deployment being modelled*. A state
 tenant is 500 field workers and 62 supervisors; the ten tenants together are 1,504 and 188.
 
-**Build order: 1, 12, 4, 8, then the rest.** Cases 1 and 12 need no generated data at all, so they can run before
-the generator exists — and 12 is only case 1 repeated against a second bundle. Case 4 is the one to answer first. Case 8 needs all four datasets, so it sets
+**Build order: 1, 11, 4, 8, then the rest.** Cases 1 and 11 need no generated data at all, so they can run before
+the generator exists — and 11 is only case 1 repeated against a second bundle. Case 4 is the one to answer first. Case 8 needs all four datasets, so it sets
 the generator's deadline.
 
 ### Two cases the closed questions asked for
 
-**Case 12 exists because the configuration decision left something unexercised.** Separate hosting
+**Case 11 exists because the configuration decision left something unexercised.** Separate hosting
 runs the customer's tenants on similar configurations, which is right for them — but H1 makes
 organisation complexity a load variable in its own right: **the number of entities a configuration
 defines is the number of rows the client posts to `syncDetails`, and therefore the number of per-row
@@ -160,7 +155,7 @@ theirs — ten tenants, 1,692 users, 1.5 million beneficiaries. **Where it runs 
 
 | Hosting | What is in the database | Cases |
 |---|---|---|
-| **Separate** | The customer's tenants only | 1–5, 8–12 |
+| **Separate** | The customer's tenants only | 1–5, 8–11 |
 | **Shared, co-tenants idle** | Plus production's 986 organisations | 6 |
 | **Shared, co-tenants active** | Plus their traffic | 7 |
 

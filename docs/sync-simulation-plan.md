@@ -17,7 +17,7 @@ production RUM) is tracked separately.
 telemetry at the end. The entity list is generated from `openchs-models` rather than hand-maintained,
 and CI fails if it drifts.
 
-That is a faithful download-sync probe, production is measured, the twelve test cases are specified
+That is a faithful download-sync probe, production is measured, the eleven test cases are specified
 with numbers, and a dataset generator exists that reproduces them.
 
 **What is missing is everywhere those three meet a server.** No environment to run against, no
@@ -47,7 +47,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Sync window | client clock, always 1900 in the committed user file | server-supplied, with `SYNC_MODE` for full / incremental / per-user |
 | Auth | Cognito only | `AUTH_MODE` — username header or Cognito |
 | Telemetry | none | posted like a real client, tagged so production queries exclude it |
-| Reset sync | not requested at all | request modelled; **scenario Not started — D9** |
+| Reset sync | not requested at all | request modelled in the right order; no scenario needed — the storm was a defect |
 | Storage pause | uniform random, 0 to a constant | **Not started — D6** |
 | Request timeouts | Gatling defaults | **Not started — D8.4** |
 | **Write path** | | |
@@ -56,12 +56,12 @@ work has been done on that item at all** — the "Before" column still describes
 | **Workload design** | | |
 | Feeder | `random()`, drawing with replacement | `circular()`, warns when oversubscribed |
 | Full vs incremental | full only, every run | `SYNC_MODE`; incremental stays partial until D1 |
-| Test cases | none defined | **12 cases with numbers**, in [test-scenarios.md](test-scenarios.md) |
+| Test cases | none defined | **11 cases with numbers**, in [test-scenarios.md](test-scenarios.md) |
 | Injection profiles | one open ramp | defined as cases; **not yet implemented as Gatling profiles — E3** |
 | Multi-tenant load | single organisation | **Not started — E4** |
 | Co-tenant sync traffic | none | **Not started — E7**, and case 7 needs it |
 | Production's tenant skew | none | **Not started — H7**, and cases 6 and 7 need it |
-| Configurations of differing size | one bundle | **Not started — H8**, and case 12 needs it |
+| Configurations of differing size | one bundle | **Not started — H8**, and case 11 needs it |
 | **Test data** | | |
 | Dataset generation | none — runs hit whatever happened to be in the database | built: `tools/data-generator`, 195 tests · needs a target database to run against |
 | User provisioning | hand-built CSV | generated with the dataset — catchments, users and a feeder spanning every tenant |
@@ -191,9 +191,8 @@ visible.
 | **Where are the choke points?** | The whole exercise; cases 4 and 10 most directly | Storage IO is the prime suspect — 19.4 GB of indexes against 933 MB of cache, on a fixed 3,000 IOPS |
 | **Does the server hold at this load at all?** | Cases 2, 3, 4 | Nothing yet. Per-device volumes sit inside what production already carries, and these cases run under one sync in flight |
 | **Does volume growth show a knee?** | Case 8, across day 60/120/180/365 | Index size crossing cache residency is the shape to look for. **The only evidence this exercise gives about scale beyond the pilot** |
-| **Does configuration size cost anything?** | Case 12, a small bundle against a large one | Q8 found 4 of 79 entities changed, and the count of entities is set by the configuration rather than by the data |
+| **Does configuration size cost anything?** | Case 11, a small bundle against a large one | Q8 found 4 of 79 entities changed, and the count of entities is set by the configuration rather than by the data |
 | **What does a supervisor's catchment cost?** | Case 3 against case 2 | Depends entirely on question 1 above |
-| **What does the heaviest real event cost?** | Case 9, the reset storm | Q10 measured one week at 130× normal, all users forced onto the full-sync path |
 | **Is `syncDetails`' per-row cost material?** | Cases 1 and 4, with F1/F2 attribution | Q8 found 4 of 79 entities changed at p50, so 94% of the per-row queries prove nothing changed — but the endpoint saves 75 HTTP round trips, so the question is cost *relative to what it buys* |
 | **Does the organisation interceptor cost enough to matter?** | F2.1, under case 5 | Three Postgres round trips per connection borrow, plus `getMetaData()` evaluated for a TRACE log argument |
 | **Does ETL contention matter?** | The contended variant of case 4 | ETL shares the same IO ceiling on a 90-minute cycle |
@@ -726,7 +725,7 @@ Detailed below.
 (`packages/openchs-android/config/initialSettings.json`); the simulation defaults `PAGE_SIZE` to 100.
 Detailed below — it changes the shape of the load, not just a constant.
 
-**D9 — Reset sync.** *Request modelled; scenario outstanding.* The `ResetSync` pull now runs where
+**D9 — Reset sync.** *Done — request modelled, and no scenario is needed.* The `ResetSync` pull now runs where
 the client runs it — **before `syncDetails` is even requested**. `dataServerSync` calls
 `getResetSyncData` first and `getSyncDetails` only afterwards, which the simulation had inverted.
 
@@ -746,11 +745,16 @@ the 184 users of the worst normal week represent roughly **55 device-hours of fu
 a burst. Compare that to a peak hour's ordinary traffic of 792 syncs that are 98% light, and the
 asymmetry is the point.
 
-**Two things to carry forward.** For E3, add a *Reset storm* profile: org-wide reset, whole-org
-concurrent full sync — it dominates the *Spike* profile and is a real production occurrence rather
-than a hypothetical. And separately from this exercise, **the April runaway is worth a root cause of
-its own** — whatever generated 161 resets per user is a bug, and no amount of server capacity is the
-right answer to it.
+**Not modelled, and the reason is the finding.** The April week is
+[avni-client#2115](https://github.com/avniproject/avni-client/issues/2115) — a reset sync that
+re-arms itself when the sync following it does not complete. **It is a defect, so load-testing it
+would be measuring a bug rather than a workload**, and no amount of server capacity is the right
+answer to one. The card is filed; these figures are evidence of its cost, which is the useful thing
+to do with them.
+
+**Normal reset volume needs no scenario either.** At ~194 a week across 13–24 organisations and 1.8
+per affected user, it is a trickle of users dropping onto the full-sync path — which is exactly what
+the test cases' 1% fresh-sync mix already models, and at a higher rate.
 
 Two further quirks reproduced: `getResetSyncData` does not reverse the metadata list, and it passes
 the client's own clock as `now` rather than the server's — which it could not use anyway, not having
@@ -1104,7 +1108,7 @@ D3 first.
 ### Scenarios and test cases
 
 **Moved to [test-scenarios.md](test-scenarios.md)** — the deployment being modelled, the datasets at
-each growth point, and twelve test cases with numbers, for customer review. Different audience and
+each growth point, and eleven test cases with numbers, for customer review. Different audience and
 different lifecycle from this document: that one is what the instrument gets pointed at, this one is
 how it gets built.
 
@@ -1140,9 +1144,6 @@ rest; the remainder are the instrument's own.
   bucketing defect, which scaled every hour equally; the absolute rates come from the re-run.) Whatever this profile spikes *from*,
   the baseline it returns to is a sustained plateau, and the plateau is the more valuable case to run
   because it is where production actually lives
-- *Reset storm* — an org-wide `reset_sync` followed by the whole organisation full-syncing at once.
-  **Measured as real (Q10)** and the heaviest event the system produces: it forces every affected user
-  off the incremental path onto the full one, simultaneously. Expect it to dominate *Spike*
 - *Soak* — multi-hour; the case that raised the auth question
 - *Contended* — sync against a concurrent ETL cycle, export, or bulk import (F5.4). The delta against
   the equivalent uncontended profile is the finding
@@ -2014,13 +2015,13 @@ customer's own day-180 dataset, so expect the co-tenant half to dominate load ti
 
 ### H8 — Two configurations for the configuration-size case
 
-Test case 12 runs the training cohort against a small bundle and a large one, which is the only case
+Test case 11 runs the training cohort against a small bundle and a large one, which is the only case
 that varies configuration size — and configuration size is what sets the `syncDetails` row count, so
 it drives D1.1's per-row queries directly.
 
 **The two bundles are an input the plan does not currently have.** Either select real implementation
 configurations at either end of the range, or scale one by duplicating concept trees and form
-mappings until it reaches a realistic large-org shape. H1 already allows both; case 12 is what makes
+mappings until it reaches a realistic large-org shape. H1 already allows both; case 11 is what makes
 choosing necessary.
 
 Record the entity count each produces, because that is the x-axis of the result. Q8 measured 79
@@ -2277,7 +2278,7 @@ plan itself decided. What the tests will *answer* is under **Measure before fixi
   which is private. **This repository is public and carries summarised findings only** — ratios,
   percentiles and the figures the plan reasons about. Per-organisation sizes, per-index scan counts
   and the full hourly and weekly series are recorded there.
-- **[test-scenarios.md](test-scenarios.md)** — the deployment being modelled and twelve test cases
+- **[test-scenarios.md](test-scenarios.md)** — the deployment being modelled and eleven test cases
   with numbers, for customer review. Split out because it has a different audience: that is what the
   instrument gets pointed at, this is how it gets built.
 - **[open-questions.md](open-questions.md)** — the inputs this plan is waiting on. What it will

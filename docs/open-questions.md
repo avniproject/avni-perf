@@ -86,7 +86,6 @@ section that uses them.
 | What | State |
 |---|---|
 | **Q11 — fleet page size split** | **Not answerable.** `pageSize` is not recorded in `sync_telemetry`, so it needs a client change first (D8.3) |
-| **Q16 — how fast devices return after a reset** | **Written, not run.** Test case 9's concurrency is 20 in flight or 79 depending on the answer, and nothing measured says which |
 | **Locations per catchment in production** | **No query written.** The generator declares one location per catchment and real bundles carry three. Changes the mapping table's size and the expansion view's work, not what anyone syncs |
 
 ---
@@ -141,7 +140,7 @@ and 7 wait on.
 **This decision left one thing unexercised, so a case was added for it.** Configuration size drives
 the `syncDetails` row count and therefore D1.1's per-row queries — Q8 measured 79 entities tracked
 against 4 changed, so 94% of that work proves nothing changed, and the cost grows with the
-configuration rather than with the data. Nothing else varies it, so **case 12** runs case 1 against a
+configuration rather than with the data. Nothing else varies it, so **case 11** runs case 1 against a
 small bundle and a large one. It needs no generated data at all.
 
 ### Distributed injectors
@@ -210,5 +209,9 @@ list.
   request, so a multi-hour sync is fine for it.
 - **Perf environment isolation** — designed, not an unknown.
 - **Rolling data** — year two accrues at year one's rate, with nothing ageing out.
+- **Reset storm** — **not modelled.** The week Q10 found at 130× the normal rate is
+  `avni-client#2115`, a reset that re-arms itself when the following sync does not complete. Testing
+  it would measure a defect rather than a workload. Normal reset volume is a trickle onto the
+  full-sync path, which the 1% fresh-sync mix already covers at a higher rate.
 - **Is "500 workers" field workers only?** — **yes, field workers only.** Supervisors are added on
   top, so a state tenant is 500 plus 62. The deployment table stands as written.
