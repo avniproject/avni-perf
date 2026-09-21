@@ -33,7 +33,7 @@ a 16-minute median.
 | **12** | **Configuration size** | Case 1, twice | Config only, **a small and a large bundle** | Full | How `syncDetails` cost scales with the number of entities a configuration defines |
 
 **Build order: 1, 12, 4, 8, then the rest.** Cases 1 and 12 need no generated data at all, so they can run before
-the generator exists — and 12 is only case 1 repeated against a second bundle. Case 4 is the one to answer first. Case 8 needs all three datasets, so it sets
+the generator exists — and 12 is only case 1 repeated against a second bundle. Case 4 is the one to answer first. Case 8 needs all four datasets, so it sets
 the generator's deadline.
 
 ### Two cases the closed questions asked for
@@ -404,11 +404,11 @@ volume; case 7 moving the third points at contention.
 **Datasets are held as recipes, not files.** A dataset is gigabytes and a pure function of its
 inputs, so `tools/data-generator/datasets/` carries three small files per named dataset — the recipe
 (every input, so it rebuilds exactly), the manifest (row count, size and content hash per table, as
-the fingerprint a rebuild is checked against) and H5's verdict. All three datasets are committed.
+the fingerprint a rebuild is checked against) and H5's verdict. All four dataset recipes are committed.
 Storing the output instead would discard the generator's schema guard, and the durable artefact for
 run-to-run comparability is G4's database snapshot rather than a file in git.
 
-**All seven are built** — `tools/data-generator`, 194 tests. It reproduces these totals exactly
+**Six of the seven are built** — `tools/data-generator`, 195 tests. It reproduces these totals exactly
 (1,506,000 beneficiaries; 5.4 M encounters at day 180) at about **41,000 rows/sec**, so a full
 day-180 dataset generates in roughly three minutes and lands around 2 GB on disk.
 

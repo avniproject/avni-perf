@@ -17,10 +17,13 @@ production RUM) is tracked separately.
 telemetry at the end. The entity list is generated from `openchs-models` rather than hand-maintained,
 and CI fails if it drifts.
 
-That is a faithful download-sync probe, production is measured, and a dataset generator exists. What
-does not exist yet is an environment to run any of it against, instrumentation on the server, or a
-write path. **The harness and the dataset are built; the environment and the observability are not**,
-and no run has happened against generated data.
+That is a faithful download-sync probe, production is measured, the twelve test cases are specified
+with numbers, and a dataset generator exists that reproduces them.
+
+**What is missing is everywhere those three meet a server.** No environment to run against, no
+instrumentation on it, no write path, and no restore between runs — so **no run has yet happened
+against generated data**, and the generator's own output has never been loaded. That is the next
+boundary, and most of what remains sits behind it.
 
 The table below covers the whole plan rather than just the harness. **A `Not started` cell means no
 work has been done on that item at all** — the "Before" column still describes it today.
@@ -53,12 +56,14 @@ work has been done on that item at all** — the "Before" column still describes
 | **Workload design** | | |
 | Feeder | `random()`, drawing with replacement | `circular()`, warns when oversubscribed |
 | Full vs incremental | full only, every run | `SYNC_MODE`; incremental stays partial until D1 |
-| Injection profiles | one open ramp | **Not started — E3** |
+| Test cases | none defined | **12 cases with numbers**, in [test-scenarios.md](test-scenarios.md) |
+| Injection profiles | one open ramp | defined as cases; **not yet implemented as Gatling profiles — E3** |
 | Multi-tenant load | single organisation | **Not started — E4** |
 | **Test data** | | |
-| Dataset generation | none — runs hit whatever happened to be in the database | built: `tools/data-generator`, 194 tests · needs a target database to run against |
+| Dataset generation | none — runs hit whatever happened to be in the database | built: `tools/data-generator`, 195 tests · needs a target database to run against |
 | User provisioning | hand-built CSV | generated with the dataset — catchments, users and a feeder spanning every tenant |
 | Dataset gate (H5) | none | statistical gate built; the client half of the structural check is manual |
+| Schema drift | nothing to drift against | generation refuses on any column the contract has not accounted for |
 | Dataset and environment parity | none | **Not started — F5** |
 | Run-to-run restore | none — nothing reset between runs | **Not started — G4 / F6** |
 | **Environment** | | |
@@ -68,6 +73,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Server APM | not provisioned for a load-test environment | **Not started — F1** |
 | Request-logging overhead | unmeasured | **Not started — F2** |
 | Second Gatling setup | unreconciled | **Not started — F3** |
+| Distributed injection | undecided | **Deferred** — one injector until F7 shows it saturating |
 | Assertions | commented out | zero-failure structural gate, plus rate and p95 bounds for a load run |
 | Calibration gate | none | **Not started — F7** |
 | **Grounding** | | |
@@ -1090,7 +1096,7 @@ D3 first.
 ### Scenarios and test cases
 
 **Moved to [test-scenarios.md](test-scenarios.md)** — the deployment being modelled, the datasets at
-each growth point, and ten test cases with numbers, for customer review. Different audience and
+each growth point, and twelve test cases with numbers, for customer review. Different audience and
 different lifecycle from this document: that one is what the instrument gets pointed at, this one is
 how it gets built.
 
@@ -2175,38 +2181,12 @@ calendar.
 
 ## Open questions
 
-**[open-questions.md](open-questions.md) collects these for review** — the inputs someone has to
-answer before the tests can be built and run. **Which tier supervises** leads it, because it decides
-whether this exercise tests volume or concurrency. What the tests will *answer* is a different list,
-under **Measure before fixing** above.
+**[open-questions.md](open-questions.md) is the list.** Three inputs remain: which tier supervises,
+how often a worker syncs, and what error rate is acceptable. The first decides whether this exercise
+tests volume or concurrency.
 
-- **Which tier supervises?** The test cases assume an ANM at sub-centre level, covering 8 field workers.
-  At PHC level a supervisor's day-180 catchment is 5.6× larger and at block level 25× — the difference
-  between an exercise about concurrency and one about volume. **One answer changes four test cases.**
-- **How often does a worker sync?** The test cases assume four times a working day, and nothing measured or
-  supplied supports it. Every arrival rate scales linearly with this figure.
-- **Is "500 workers" field workers only, or all users?** The test cases read it as field workers and add 62
-  supervisors per state tenant on top. If it is the total, the deployment is 11% smaller.
-- **~~Is 500 workers the pilot?~~** *Confirmed: the pilot.* A state runs 165,000 ASHAs, so this
-  measures something 110× smaller. Every conclusion is scoped to the pilot, and case 8's growth curve
-  is the only evidence it produces about what lies beyond it.
-- **Success criteria.** One row left — the acceptable error rate. A6 is built and takes it as
-  `MAX_FAILED_PERCENT`, so it is a number to choose rather than code to write. The "no worse than
-  current production" default is a legitimate answer.
-- **~~Production statistics access.~~** *Granted, and used.* Fourteen of the fifteen queries in [production-measurement-queries.md](production-measurement-queries.md) have run;
-  their outputs feed the Success criteria table, D6.1, D1, E5, F7 and H3/H5. Only Q11 remains, and it
-  is not answerable until `pageSize` is recorded in telemetry (D8.3).
-- **Which org configuration(s) to run against.** (H1.) The generator treats this as a parameter, so
-  the question is which implementations to cover and whether any available configuration is large
-  enough to exercise org complexity. If none is, the large-org shape has to be synthesised by scaling
-  a smaller one, and that becomes a task rather than a question.
-- **~~Is on-demand media viewing in scope?~~** *Decided: no.* Browsing workload, not a sync one. See
-  D5.3.
-- **~~Distributed injectors.~~** *Deferred — one injector until F7 says otherwise.* Gatling OSS has no orchestration; multiple injectors mean merging
-  `simulation.log` files by hand (`gatling.sh -ro`). Cannot be answered until the concurrent-user
-  target in Success criteria exists — one large injector goes a long way.
-- **Over what period?** Ownership is settled — the dedicated Avni team for Tanuh. Sequencing here
-  reflects dependencies only, so effort still needs attaching before it becomes a schedule.
+Keeping a second copy here is what let the two drift apart, so this section now holds only what the
+plan itself decided. What the tests will *answer* is under **Measure before fixing** above.
 
 ### Closed
 
