@@ -1,6 +1,6 @@
 # Test scenarios
 
-**For customer review, and for the generator to build against.** Eleven test cases with actual
+**For customer review, and for the generator to build against.** Twelve test cases with actual
 numbers, and the deployment they are derived from.
 
 Split out of [the sync simulation plan](sync-simulation-plan.md) because it has a different audience
@@ -26,14 +26,36 @@ a 16-minute median.
 | **5** | **Separate infrastructure** | 1,504 + 188 | Day 180, these 10 tenants only | Incremental, 1% full | The customer's own load, with nobody else's data in the tables. **The baseline the next two are measured against** |
 | **6** | **Shared — co-tenant data** | 1,504 + 188 | Day 180 **plus production's 986 organisations**, which sync nothing | Incremental, 1% full | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
 | **7** | **Shared — co-tenant load** | Case 6, plus production's own arrival rate | Same as case 6 | Incremental, 1% full | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
-| **8** | Growth comparison | Case 4 | Day 60, then 120, then 180 | Incremental, 1% full | The shape of the curve. A knee between points is the finding |
+| **8** | Growth comparison | Case 4 | Day 60, 120, 180, **365** | Incremental, 1% full | The shape of the curve. A knee between points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
 | **9** | Reset storm | 562, one tenant, org-wide reset | Day 180 | **All full** | The heaviest real event (Q10 measured it at 130× a normal week) |
 | **10** | Stress ramp | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
 | **11** | Soak | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
+| **12** | **Configuration size** | Case 1, twice | Config only, **a small and a large bundle** | Full | How `syncDetails` cost scales with the number of entities a configuration defines |
 
-**Build order: 1, 4, 8, then the rest.** Case 1 needs no generated data at all, so it can run before
-the generator exists. Case 4 is the one to answer first. Case 8 needs all three datasets, so it sets
+**Build order: 1, 12, 4, 8, then the rest.** Cases 1 and 12 need no generated data at all, so they can run before
+the generator exists — and 12 is only case 1 repeated against a second bundle. Case 4 is the one to answer first. Case 8 needs all three datasets, so it sets
 the generator's deadline.
+
+### Two cases the closed questions asked for
+
+**Case 12 exists because the configuration decision left something unexercised.** Separate hosting
+runs the customer's tenants on similar configurations, which is right for them — but H1 makes
+organisation complexity a load variable in its own right: **the number of entities a configuration
+defines is the number of rows the client posts to `syncDetails`, and therefore the number of per-row
+queries `filterChangedEntities` runs.** Q8 measured 79 tracked against 4 changed, so 94% of that work
+proves nothing changed, and the cost grows with the configuration rather than with the data.
+
+Nothing else here varies it. Case 1 is the natural vehicle: config only, no field data, so the
+per-row cost is isolated from catchment volume entirely. Running it twice against a small and a large
+bundle turns a platform property into a measured curve, and it needs no generated data at all.
+
+**Case 8 gains day 365 because it is now carrying more weight than three points can bear.** With 500
+workers confirmed as the pilot, this curve is the only evidence the exercise produces about scale
+beyond it — and rolling data means year two accrues at year one's rate, so volume keeps climbing
+rather than levelling. A fourth point doubles the baseline for one more dataset: 12.4 million rows,
+five minutes to generate, 3.6 GB. Day 365 also puts encounter volume at **1.6× production's entire
+current `program_encounter` table**, which is the first point where the dataset stops being smaller
+than production.
 
 ### Conditional on one open question
 
@@ -94,7 +116,7 @@ theirs — ten tenants, 1,692 users, 1.5 million beneficiaries. **Where it runs 
 
 | Hosting | What is in the database | Cases |
 |---|---|---|
-| **Separate** | These 10 tenants only | 1–4, 5, 8–11 |
+| **Separate** | These 10 tenants only | 1–5, 8–12 |
 | **Shared, co-tenants idle** | Plus production's 986 organisations | 6 |
 | **Shared, co-tenants active** | Plus their traffic | 7 |
 
@@ -120,10 +142,10 @@ workers, with supervisors added on top rather than counted within it.**
 
 | | Encounters | Total rows | vs production today |
 |---|---|---|---|
-| Day 60 | 1,804,800 | 3,310,800 | 26% of its encounters |
-| Day 120 | 3,609,600 | 5,115,600 | 53% |
-| **Day 180** | **5,414,400** | **6,920,400** | **79%** |
-| Day 365 | 10,979,200 | 12,485,200 | 160% |
+| Day 60 | 1,795,200 | 3,301,200 | 26% of its encounters |
+| Day 120 | 3,590,400 | 5,096,400 | 52% |
+| **Day 180** | **5,385,600** | **6,891,600** | **79%** |
+| **Day 365** | **10,920,800** | **12,426,800** | **159%** |
 
 Beneficiaries stay at 1,506,000 throughout — 55% of production's current subject count — because
 population does not grow with programme activity. **Three datasets are needed**, at day 60, 120 and

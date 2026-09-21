@@ -24,7 +24,7 @@ def a_recipe(**kw):
 
 # --- the committed recipes --------------------------------------------------
 
-@pytest.mark.parametrize("days", [60, 120, 180])
+@pytest.mark.parametrize("days", [60, 120, 180, 365])
 def test_a_committed_recipe_rebuilds_the_deployment_it_describes(days):
     r = recipe_mod.Recipe.load(DATASETS / f"e6-day-{days}.json")
     d = r.to_deployment()
@@ -36,8 +36,8 @@ def test_a_committed_recipe_rebuilds_the_deployment_it_describes(days):
 
 def test_the_committed_recipes_differ_only_in_growth_point():
     """E6: only encounter volume grows between the three datasets."""
-    rs = {d: recipe_mod.Recipe.load(DATASETS / f"e6-day-{d}.json") for d in (60, 120, 180)}
-    assert {r.days for r in rs.values()} == {60, 120, 180}
+    rs = {d: recipe_mod.Recipe.load(DATASETS / f"e6-day-{d}.json") for d in (60, 120, 180, 365)}
+    assert {r.days for r in rs.values()} == {60, 120, 180, 365}
     assert len({json.dumps(r.tenants, sort_keys=True) for r in rs.values()}) == 1
     assert len({r.seed for r in rs.values()}) == 1
 
@@ -45,7 +45,7 @@ def test_the_committed_recipes_differ_only_in_growth_point():
 def test_the_committed_recipes_say_the_bundle_must_be_filled_in():
     """Reproducibility depends on the bundle, which is deliberately not in this repository. A
     recipe without it is a promise the repo cannot keep, so it must not look complete."""
-    for days in (60, 120, 180):
+    for days in (60, 120, 180, 365):
         r = recipe_mod.Recipe.load(DATASETS / f"e6-day-{days}.json")
         assert r.bundle_fingerprint.get("combined") is None
         assert "must be filled in" in (r.notes or "")

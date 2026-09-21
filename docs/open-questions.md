@@ -137,10 +137,11 @@ That is not two settings of one dial; it is **two tenant-shape specifications th
 produce**. The first it already builds. The second is the outstanding generation run that cases 6
 and 7 wait on.
 
-The generator takes the bundle per tenant, so covering a range of configuration sizes stays available
-if a finding calls for it — configuration size drives the `syncDetails` row count and therefore
-D1.1's per-row queries, where Q8 measured 79 entities tracked against 4 changed. It is no longer a
-question blocking anything.
+**This decision left one thing unexercised, so a case was added for it.** Configuration size drives
+the `syncDetails` row count and therefore D1.1's per-row queries — Q8 measured 79 entities tracked
+against 4 changed, so 94% of that work proves nothing changed, and the cost grows with the
+configuration rather than with the data. Nothing else varies it, so **case 12** runs case 1 against a
+small bundle and a large one. It needs no generated data at all.
 
 ### Distributed injectors
 
@@ -172,9 +173,10 @@ cache and one that does not behave differently in kind, not in degree.
 users harder against 1.5 million beneficiaries says nothing about 165 million.
 
 **The growth comparison is the only evidence available**, and it should be read as exactly that. Case
-8 runs the same load against day 60, 120 and 180 — three points on a volume curve. If cost is flat
-across them, that is weak evidence it stays flat further out. If it bends, the bend is the finding
-and the pilot has already told you something about the state.
+8 runs the same load against day 60, 120, 180 and 365 — **day 365 was added for this reason**, because
+three points over 180 days is a short baseline for a curve carrying the whole extrapolation question.
+If cost is flat across all four, that is weak evidence it stays flat further out. If it bends, the
+bend is the finding and the pilot has already told you something about the state.
 
 **Testing a state directly is not currently practical.** A state-sized day-180 dataset is around 759
 million rows — five hours to generate at the measured rate, and roughly 220 GB on disk against the
