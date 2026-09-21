@@ -147,7 +147,7 @@ queued per sync, default 1 / 1 / 20 / 2
 
 `PUSH_OBSERVATION_MULTIPLE` harvested observation sets per pushed record, default 1
 
-`PUSH_MEDIA_PER_ENCOUNTER` media files each encounter queues, default 0.5; `0` disables media
+`PUSH_MEDIA_PER_ENCOUNTER` media files each encounter queues, default 1.42; `0` disables media
 
 `MEDIA_MODEL` `pause` (default) charges the upload time; `none` charges nothing — see below
 
@@ -200,11 +200,16 @@ Every queued media file costs one `GET /media/uploadUrl` against the server and 
 S3. `MediaQueueService` sends them **one at a time, and drains the whole queue before the first
 record is pushed** — `PARALLEL_UPLOAD_COUNT` is 1, despite the chunking around it.
 
-**Set the rate from the deployment's bundle, not from the default.** `make survey_bundle
-BUNDLE=/path/to/bundle` reports files per filled form, per form type. A platform-wide average is
-the wrong base rate for any one implementation: production sits at 0.02 files per encounter across
-986 organisations, while a screening bundle puts three images and a multi-select on its main
-encounter form.
+**Set the rate from the deployment's bundle, not from the default.** `survey.py BUNDLE
+--media-repeats N` reports files per filled form, per form type. A platform-wide average is the
+wrong base rate for any one implementation: production sits at 0.02 files per encounter across 986
+organisations, while the customer's screening bundle reaches **16 on a single encounter**.
+
+Two structural details drive that, and a flat count of media form elements misses both. Images sit
+inside **repeatable question groups** — one is named *"Take photos of all lesions and 1 photo
+without lesion"* — so a single form element produces one file per repeat. And elements carrying
+`editable: false` are the app's own display copies of images another element already uploaded;
+counting them doubles every image.
 
 **The bytes are not transferred, but the time is charged.** S3 serves the objects directly, so a
 PUT from the injector would measure the injector's own network — an in-region pipe that moves
@@ -212,12 +217,15 @@ PUT from the injector would measure the injector's own network — an in-region 
 server's load nor the device's timing. So `MEDIA_MODEL=pause` spends the elapsed time and skips the
 request, the same trade `STORAGE_MODEL=weighted` makes for parse-and-persist.
 
-| `MEDIA_UPLOAD_KBPS` | ~ | 11 files | Sync duration |
+| `MEDIA_UPLOAD_KBPS` | ~ | 31 files | Sync duration |
 |---|---|---|---|
-| 40 | 0.3 Mbps | 138 s | 152 s |
-| 125 (default) | 1 Mbps | 44 s | 58 s |
-| 375 | 3 Mbps | 15 s | 29 s |
-| 1250 | 10 Mbps | 4 s | 18 s |
+| 40 | 0.3 Mbps | 388 s | 402 s |
+| 125 (default) | 1 Mbps | 125 s | 139 s |
+| 375 | 3 Mbps | 42 s | 56 s |
+| 1250 | 10 Mbps | 12 s | 26 s |
+
+That is the *conservative* row of the encounter mix — a uniform one. Where the image-heavy
+encounter type is the common one, multiply by up to eleven.
 
 > **This inflates sync duration without adding server load.** During the transfer the device asks
 > avni-server for nothing, so *syncs in progress* rises several-fold while *server requests in

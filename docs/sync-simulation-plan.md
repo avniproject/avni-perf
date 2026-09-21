@@ -720,44 +720,70 @@ So the whole media queue drains, one file at a time, before the first record is 
 **The rate is a property of the bundle, not of the platform.** The first version of this used
 production's 2.14% of `program_encounter` rows carrying a media observation — one file per fifty
 encounters. That figure spans 986 organisations, most of which capture no images at all, and it is
-the wrong base rate for a screening programme. The customer's own bundle says otherwise:
+the wrong base rate for a screening programme. Two structural facts about the customer's bundle
+raise it by roughly three orders of magnitude, and **a flat count of media form elements misses
+both**.
 
-| | Files per filled form |
+**Repeatable question groups.** The oral screening encounter's images sit inside question groups
+marked `repeatable`, linked to their parent by `parentFormElementUuid`. The group named *"Take
+photos of all lesions and 1 photo without lesion"* says plainly what that means: the element is
+filled once per lesion, so **one form element produces as many files as the patient has lesions**.
+Two such groups are mandatory on that form, and at eight repeats each they give **16 files per
+encounter** — the customer's own figure, which the bundle now reproduces exactly.
+
+**Display-only elements, which must not be counted.** Three of the six media elements carry
+`editable: false`: the AI assessment's copy of each image and the gallery of suspicious ones. They
+reference files another element already captured and uploaded. Counting them would double every
+image in the form.
+
+| | Captured files per filled form |
 |---|---|
-| Oral Screening Encounter | **3 image elements (2 mandatory) plus a multi-select** |
-| Mental Health Encounter | 1 audio, mandatory |
-| Clinician Review Form | 1 image, optional |
-| Averaged over all 12 encounter types | 0.25 mandatory, **0.50 counting every element** |
+| Oral Screening Encounter | 2 mandatory images, each in a repeatable group — **16 at 8 repeats** |
+| Mental Health Encounter | 1 audio, mandatory, not repeatable |
+| Clinician Review Form | display-only — **0** |
+| Averaged over all 12 encounter types | **1.42** |
 
-**That is 25x the rate first modelled, and the 0.50 is a floor twice over** — the multi-select holds
-an unknown number of files and counts as one, and averaging across encounter types assumes they are
-equally frequent when a screening programme's screening encounter dominates its own mix. At half the
-encounters being oral screenings the figure is 2.0, which is 100x.
+**What a sync then costs, by encounter mix** — 22 records pushed, 500 KB per file, serial and
+entirely ahead of the first record:
 
-`make survey_bundle BUNDLE=...` now reports this per form type, so it is read off the deployment
-rather than guessed. `bundle.py` counts media elements instead of silently discarding them.
+| Oral screening share of encounters | Files per encounter | Files per sync | Data | At 1 Mbps |
+|---|---|---|---|---|
+| Uniform, 1 of 12 | 1.42 | 31 | 15 MB | 125 s |
+| A quarter | 4.08 | 90 | 44 MB | **6 min** |
+| Half | 8.08 | 178 | 87 MB | **12 min** |
+| All of them | 16.0 | 352 | 172 MB | **23 min** |
 
-> **One thing the bundle cannot settle: all five image elements are `readOnly`.** They are therefore
-> not captured through the ordinary media form element, and whether they still queue a file depends
-> on what populates them — a rule writing a local path does, a server-side URL does not. It is the
-> difference between the figures above and zero, so it is an open question for the customer rather
-> than something to assume either way. The audio element is not readOnly and is mandatory.
+**For this deployment, sync time is a media problem rather than a data problem.** The 22 POSTs are
+seconds; the images are minutes. That is worth knowing before anyone tunes a query — and at the
+pilot's 500 workers, the upper rows are 86 GB a day of uploads, which is an operational question in
+its own right.
+
+`make survey_bundle BUNDLE=... --media-repeats N` reports all of this per form type. `bundle.py`
+now counts media elements rather than discarding them, resolves question-group parents, and
+excludes display-only copies.
+
+> **Two inputs the bundle cannot supply**, and both are large. **How often a repeatable group is
+> filled** — nothing records it, and it is a straight multiplier on everything above. **The
+> encounter mix** — the table's own spread, 11x between its first and last rows. Both are questions
+> for whoever knows the programme.
 
 **D5.2 — Do not transfer the bytes, but do spend the time.** *Revised.* The original reasoning held
 that since S3 serves the objects directly, transferring them measures S3 and consumes bandwidth
 without exercising avni-server. That is true and still the conclusion — but it was used to justify
 charging **nothing** for media, and that is a much larger distortion than the one it avoided.
 
-A sync is not just its server requests. At the bundle's 0.5 files per encounter, a device pushing 22
-records queues **11 files**, and at 500 KB each — the client captures 1280x960 at quality 1 — that
-is real time on a field link:
+A sync is not just its server requests. At the bundle's 1.42 files per encounter — the *conservative*
+reading, a uniform encounter mix — a device pushing 22 records queues **31 files**, and at 500 KB
+each (the client captures 1280x960 at quality 1) that is real time on a field link:
 
-| Upload bandwidth | Transfer | Sync duration |
-|---|---|---|
-| 0.3 Mbps | 138 s | 152 s — **11x** |
-| 1 Mbps | 44 s | 58 s — **4x** |
-| 3 Mbps | 15 s | 29 s — 2x |
-| 10 Mbps | 4 s | 18 s — 1.3x |
+| Upload bandwidth | Transfer | Sync duration | vs 14.1 s of server work |
+|---|---|---|---|
+| 0.3 Mbps | 388 s | 402 s | **29x** |
+| 1 Mbps | 125 s | 139 s | **10x** |
+| 3 Mbps | 42 s | 56 s | 4x |
+| 10 Mbps | 12 s | 26 s | 2x |
+
+A screening-dominated mix multiplies every figure in that table by up to eleven.
 
 **So the fix is to model the time, not to send the bytes.** Transferring would reproduce the
 *injector's* network — a fat in-region pipe that moves 500 KB in tens of milliseconds — which is
@@ -774,8 +800,9 @@ trade D6 already makes for parse-and-persist: model the elapsed cost, do not per
 
 **The consequence for every concurrency figure in this plan:** media time inflates *syncs in
 progress* without touching *server requests in flight*, because during the transfer the device asks
-avni-server for nothing. At case 13's arrival rate those diverge from 9.7 to 40. Both are true and
-they answer different questions — see [test-scenarios.md](test-scenarios.md).
+avni-server for nothing. At case 13's arrival rate and a uniform mix those diverge from 9.7 to 96;
+at a quarter screening, to 258. Both numbers are true and they answer different questions — see
+[test-scenarios.md](test-scenarios.md).
 
 **Measured, and superseded as a default: 2.14% of `program_encounter` rows carry a media
 observation** (59 of 2,759 sampled). Against 6.86 million rows that is roughly 147,000 media-bearing
@@ -2409,10 +2436,12 @@ Ordering reflects dependencies, not estimates.
 | **3 · Workload** | **D7** · E3, E5, **E7** · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5 no longer sits here - upload landed with D3 and viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
 | **4 · Operate** | A11 · F2, F3 · **A12** | Saturate, name the resource, fix, re-run. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
-**Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review. Two
-assumptions in it remain open: that every supervisor sits at sub-centre level, which changes
-per-device volume by an order of magnitude, and that the daily syncs spread over a working day
-rather than clustering. Sync frequency is confirmed at once a working day, and the acceptable error
+**Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review.
+Three assumptions in them remain open: that every supervisor sits at sub-centre level, which changes
+per-device volume by an order of magnitude; that the daily syncs spread over a working day rather
+than clustering, which cases 11 to 13 bracket; and how many images a screening encounter produces
+against how many encounters are screenings, which swings elapsed sync time elevenfold without
+touching server load. Sync frequency is confirmed at once a working day, and the acceptable error
 rate at 0.05%.
 
 **Deliberately unscheduled.** **D8.2** (page size tuning) and **E4** (noisy neighbour) are
@@ -2423,11 +2452,12 @@ calendar.
 
 ## Open questions
 
-**[open-questions.md](open-questions.md) is the list.** Two inputs remain, both shaping load rather
+**[open-questions.md](open-questions.md) is the list.** Three inputs remain, all shaping load rather
 than blocking a build: **how many supervisors sit above sub-centre level and at which tiers**, which
-sets per-device volume and is now the only question that changes what the exercise measures; and
-**over what window the daily syncs fall**, which sets the arrival rate and can be bracketed with one
-extra run rather than waited on.
+sets per-device volume and is the only one of the three that changes what the exercise measures;
+**over what window the daily syncs fall**, which sets the arrival rate and is bracketed by cases 11
+to 13 rather than waited on; and **how many images a screening encounter produces against how many
+encounters are screenings**, which sets elapsed sync time but not server load.
 
 Keeping a second copy here is what let the two drift apart, so this section now holds only what the
 plan itself decided. What the tests will *answer* is under **Measure before fixing** above.

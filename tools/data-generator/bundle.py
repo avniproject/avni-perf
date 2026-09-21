@@ -59,6 +59,17 @@ class MediaElement:
     Counted rather than generated. One of these on a form means every filled instance of that form
     queues at least one `GET /media/uploadUrl` and one direct-to-S3 PUT, ahead of the data push -
     so the count per encounter type, not a platform-wide average, is what sizes media load.
+
+    Two attributes decide whether it is one file or sixteen, and missing either understates the
+    load by an order of magnitude:
+
+    `editable` separates capture from display. An element the app fills in - an AI verdict's copy
+    of an image, a gallery of the suspicious ones - carries a reference to a file that was already
+    uploaded by the element that captured it. Counting those again double-counts every image.
+
+    `repeatable` comes from the parent question group. An Image inside a repeatable group is filled
+    once per repeat, so a screening protocol that says "photograph every lesion" produces as many
+    files as there are lesions from a single form element.
     """
     uuid: str
     concept_name: str
@@ -66,17 +77,26 @@ class MediaElement:
     multi_select: bool
     mandatory: bool
     read_only: bool
+    editable: bool = True
+    parent_uuid: str | None = None
+    parent_name: str | None = None
+    repeatable: bool = False
 
     @property
-    def files(self) -> float:
-        """Files one filled instance of this element queues.
+    def captured(self) -> bool:
+        """Whether the device produces a file here, as opposed to displaying one it already has."""
+        return self.editable
 
-        A multi-select holds an unknown number; counted as one so the figure stays a floor rather
-        than an invention. An optional element is not always filled, but how often is a question
-        about field behaviour that no bundle answers - so it counts as one too, and the pair of
-        bounds is reported instead of a single made-up mean.
+    def files(self, repeats: int = 1) -> float:
+        """Files one filled instance of this element queues, given how often its group repeats.
+
+        `repeats` is the caller's input because no bundle records it: "take photos of all lesions"
+        produces as many files as the patient has lesions. A multi-select holds an unknown number
+        and still counts as one, so the result remains a floor.
         """
-        return 1.0
+        if not self.captured:
+            return 0.0
+        return float(repeats) if self.repeatable else 1.0
 
 
 @dataclass(frozen=True)
@@ -108,15 +128,19 @@ class Bundle:
         """The media elements a filled instance of this mapping's form would queue."""
         return self.media.get(mapping.form_uuid, [])
 
-    def media_per_form_type(self) -> dict[str, tuple[float, float]]:
+    def media_per_form_type(self, repeats: int = 1) -> dict[str, tuple[float, float]]:
         """Files queued per filled form, by form type, as (mandatory only, every element).
 
         Two numbers rather than one because the gap between them is a question about field
         behaviour - how often an optional photo is actually taken - that the bundle cannot answer.
+
         Averaged across the distinct mappings of each type, which assumes encounter types are
         equally frequent. They are not: a screening programme's screening encounter dominates its
         own mix, and weighting by real frequency moves this figure a long way. It is a starting
         point to be overridden per deployment, not a measurement.
+
+        `repeats` multiplies every element inside a repeatable question group. It is the single
+        largest term for an image-heavy form and nothing in the bundle sets it.
         """
         by_type: dict[str, list[tuple[float, float]]] = {}
         seen: set[tuple[str, str]] = set()
@@ -125,8 +149,8 @@ class Bundle:
                 continue
             seen.add((m.form_type, m.form_uuid))
             elements = self.media_for(m)
-            mandatory = sum(e.files for e in elements if e.mandatory)
-            every = sum(e.files for e in elements)
+            mandatory = sum(e.files(repeats) for e in elements if e.mandatory)
+            every = sum(e.files(repeats) for e in elements)
             by_type.setdefault(m.form_type, []).append((mandatory, every))
         return {
             t: (sum(a for a, _ in v) / len(v), sum(b for _, b in v) / len(v))
@@ -198,6 +222,16 @@ def load(path: str | Path) -> Bundle:
                 continue
             elements: list[Element] = []
             media: list[MediaElement] = []
+            # Question-group membership is a reference to another element in the same form
+            # (parentFormElementUuid), which may be declared either side of the child. So the
+            # live elements are indexed first and resolved second.
+            live = {
+                el["uuid"]: el
+                for group in form.get("formElementGroups") or []
+                if not group.get("voided")
+                for el in group.get("formElements") or []
+                if not el.get("voided") and el.get("uuid")
+            }
             for group in form.get("formElementGroups") or []:
                 if group.get("voided"):
                     continue
@@ -211,6 +245,7 @@ def load(path: str | Path) -> Bundle:
                     # it carries lowAbsolute/highAbsolute, which the embedded copy omits.
                     concept = bundle.concepts.get(raw_concept["uuid"]) or _concept(raw_concept)
                     if concept.data_type in MEDIA_DATATYPES:
+                        parent = live.get(el.get("parentFormElementUuid") or "")
                         media.append(MediaElement(
                             uuid=el["uuid"],
                             concept_name=concept.name,
@@ -223,6 +258,12 @@ def load(path: str | Path) -> Bundle:
                             # reason lowAbsolute is taken from there.
                             read_only=(_key_value(el, "readOnly") is True
                                        or concept.read_only),
+                            # Absent means editable. Only an explicit false marks an element the
+                            # app fills in rather than the user.
+                            editable=_key_value(el, "editable") is not False,
+                            parent_uuid=(parent or {}).get("uuid"),
+                            parent_name=(parent or {}).get("name"),
+                            repeatable=_key_value(parent or {}, "repeatable") is True,
                         ))
                         continue
                     if not concept.generatable:

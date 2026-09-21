@@ -8,10 +8,12 @@ and a different lifecycle: the plan is how the instrument gets built, this is wh
 at. Every figure here is either something the customer supplied or something derived from it, and the
 derivations say so.
 
-**Two assumptions still move the numbers, and one of them changes what the exercise measures.** They
-are flagged where they appear and listed in [open-questions.md](open-questions.md): which tier
-supervises, and how often a worker syncs — where the requirement says weekly and production measures
-a 16-minute median.
+**Three assumptions still move the numbers**, flagged where they appear and listed in
+[open-questions.md](open-questions.md): **which tier supervises**, which changes per-device volume
+by an order of magnitude and is the one that changes what the exercise measures; **what window the
+daily syncs fall in**, which cases 11 to 13 bracket rather than wait on; and **how many images a
+screening encounter produces and how many encounters are screenings**, which swings elapsed sync
+time by eleven times without touching server load.
 
 ---
 
@@ -66,8 +68,8 @@ seconds to a 14.1-second sync. And **the volumes themselves are arithmetic, not 
 encounters per worker per day was the customer's figure, and Q17 is written to replace it from
 production's own telemetry.
 
-Media is the larger effect by far, and it lands on elapsed time rather than server load — see
-[what media does](#what-media-does-to-all-of-this).
+Media is the larger effect by an order of magnitude, and it lands on elapsed time rather than
+server load — see [below](#media-dominates-sync-time-and-it-is-not-close).
 
 **Tenant counts trace to the table under [the deployment](#the-deployment-being-modelled)**: a state
 tenant is 500 field workers and 62 supervisors, and the ten together are 1,504 and 188. The 986 in
@@ -82,9 +84,10 @@ incremental sync costs about the same whether it carries 15 records or 500.
 > **Two different numbers hide behind "in flight", and media splits them apart.** A device uploading
 > photos is mid-sync but is talking to S3, not to avni-server — so it holds a sync slot while asking
 > the server for nothing. Every figure in this section is **server-busy concurrency**: arrival rate
-> times the 14.1 seconds of server work. The count of *syncs in progress* is several times higher
-> once media is included, and is the number that matters for anything measuring elapsed sync time
-> rather than server load. [Media time](#what-media-does-to-all-of-this) sets them out side by side.
+> times the 14.1 seconds of server work. The count of *syncs in progress* is an order of magnitude
+> higher once this bundle's images are included, and is the number that matters for anything
+> measuring elapsed sync time rather than server load.
+> [Media](#media-dominates-sync-time-and-it-is-not-close) sets them out side by side.
 
 | Case | Syncs/hour | **In flight** |
 |---|---|---|
@@ -124,36 +127,48 @@ cluster, if workers sync when they return to signal or at the end of a shift.
 twelve times the spread figure.** So the conclusion that this is not a concurrency exercise holds
 for the assumed shape and **not for a clustered one**.
 
-#### What media does to all of this
+#### Media dominates sync time, and it is not close
 
-The customer's bundle puts **3 image elements plus a multi-select on its oral screening encounter**
-and an audio element on its mental health encounter — averaged across all 12 encounter types, half a
-file per encounter, and that average is a floor. A device pushing 22 records therefore queues around
-**11 files**, and `MediaQueueService` uploads them **one at a time, all of them before the first
+The oral screening encounter puts two mandatory image elements inside **repeatable question
+groups** — one is named *"Take photos of all lesions and 1 photo without lesion"* — so each is
+filled once per lesion photographed. At eight repeats that is **16 files from a single encounter**.
+`MediaQueueService` uploads them **one at a time, and drains the whole queue before the first
 record is posted**.
 
-| Upload bandwidth | Media transfer | Sync duration | Syncs in progress, case 13 | Server-busy, case 13 |
-|---|---|---|---|---|
-| 0.3 Mbps | 138 s | 152 s | **105** | 9.7 |
-| 1 Mbps | 44 s | 58 s | **40** | 9.7 |
-| 3 Mbps | 15 s | 29 s | **20** | 9.7 |
-| 10 Mbps | 4 s | 18 s | 12 | 9.7 |
+Against that, the 22 records a sync pushes cost a couple of seconds.
 
-**The right-hand column does not move, and that is the point.** Media stretches how long a sync
-takes without adding server work beyond the signing calls, so it changes the user's experience and
-the number of open sessions without changing contention on the database. Read a scary "105 in
-flight" as a statement about field bandwidth, not about the server.
+| Oral screening share of a worker's encounters | Files per sync | Data | Upload at 1 Mbps |
+|---|---|---|---|
+| Uniform, 1 of 12 encounter types | 31 | 15 MB | 125 s |
+| A quarter | 90 | 44 MB | **6 min** |
+| Half | 178 | 87 MB | **12 min** |
+| All of them | 352 | 172 MB | **23 min** |
 
-Two places it does bite. Sessions and connections are held far longer, so **anything with an idle
-timeout or a per-session resource sees the stretched figure, not the busy one**. And because the
-whole media queue drains first, the data pushes arrive tens of seconds later than they otherwise
-would — which spreads server load across the window rather than concentrating it, and is the
-opposite of what a run charging nothing for media would show.
+**For this deployment the sync problem is a media problem.** Worth settling before anyone tunes a
+query — and at the pilot's 500 workers the lower rows are tens of gigabytes a day of uploads, which
+is a bandwidth and storage question of its own.
 
-> **One open question sits under these numbers.** All five image elements in the bundle are
-> `readOnly`, so they are not captured through the ordinary media form element. Whether they still
-> queue a file depends on what populates them — it is the difference between the table above and
-> nothing at all, and it is a question for the customer.
+**But almost none of it lands on avni-server.** Only the signing call does; the bytes go straight
+to S3. So the two concurrency numbers diverge hard:
+
+| | Syncs in progress, case 13 | Server-busy, case 13 |
+|---|---|---|
+| No media | 9.7 | 9.7 |
+| Uniform mix, 1 Mbps | **96** | 9.7 |
+| A quarter screening, 1 Mbps | **258** | 9.7 |
+
+**The right-hand column never moves, and that is the point.** Read a frightening "258 in flight" as
+a statement about field bandwidth, not about the database.
+
+Two places it does bite. Sessions and connections are held minutes rather than seconds, so
+**anything with an idle timeout or a per-session resource sees the stretched figure**. And because
+the media queue drains first, the data pushes arrive minutes later than a run charging nothing for
+media would show — which spreads server load out rather than concentrating it.
+
+> **Two inputs here are assumptions, and both are large.** How often a repeatable group is filled
+> — nothing in the bundle records it, and eight is back-solved from the customer's own "about 16
+> per encounter". And the encounter mix, which is the 11x spread in the table above. Both are
+> questions for whoever knows the programme.
 
 That makes the sync *window* worth asking about alongside the frequency, since the two together set
 the arrival rate and only one of them has been confirmed. **Cases 11 to 13 are the bracket**: the

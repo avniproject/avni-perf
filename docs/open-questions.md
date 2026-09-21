@@ -65,31 +65,33 @@ Cheap to bracket rather than wait on, and already bracketed: **cases 11 to 13 ru
 one-hour window**, so the suite covers both ends for three extra hours. An answer would let three
 runs be dropped; it does not gate anything.
 
-### Do the bundle's readOnly image elements actually queue a file?
+### How many images does a real screening encounter produce, and how many of a worker's encounters are screenings?
 
-**Assumed: yes, they upload like any other media.** Being asked of the customer. It is the
-difference between media dominating elapsed sync time and contributing nothing at all.
+**Assumed: 16 images per oral screening encounter, and a uniform encounter mix.** Being asked of
+the customer. Together these swing media load by more than an order of magnitude, and media is the
+larger part of sync time for this deployment.
 
-The customer's bundle carries five image elements — three on the oral screening encounter, plus a
-multi-select and one on clinician review — and **every one of them is `readOnly`**. That means none
-is captured through the ordinary media form element, so what populates them decides whether a file
-exists on the device to upload: a rule or a custom capture writing a local path queues one, a
-server-side URL does not. The audio element on the mental health encounter is not readOnly and is
-mandatory, so that one queues regardless.
+The bundle settles the structure but not the two numbers. Its oral screening encounter carries two
+mandatory image elements, each inside a **repeatable** question group — one named *"Take photos of
+all lesions and 1 photo without lesion"* — so each is filled once per lesion photographed. Sixteen
+is back-solved from the customer's own estimate and reproduces exactly at eight repeats per group.
+Three further media elements are `editable: false`, meaning the app fills them with images another
+element already uploaded, so they are display copies and are not counted.
 
-| If they do queue | If they do not |
-|---|---|
-| ~11 files per sync, **44 s of upload at 1 Mbps** | ~1 file per sync, a few seconds |
-| Sync duration 4x its server work | Sync duration essentially unchanged |
+| Oral screening share of a worker's encounters | Files per sync | Upload at 1 Mbps |
+|---|---|---|
+| Uniform, 1 of 12 encounter types | 31 | 125 s |
+| A quarter | 90 | 6 min |
+| Half | 178 | 12 min |
+| All of them | 352 | 23 min |
 
-**It changes elapsed time, not server load** — the transfer goes to S3, and only the signing call
-touches avni-server. So it does not gate the hosting decision or any contention finding. It does
-decide whether "sync takes too long in the field" is a media problem or a data problem, which is
-worth knowing before anyone optimises the wrong half.
+**It changes elapsed time, not server load** — the bytes go to S3 and only the signing call touches
+avni-server. So it gates neither the hosting decision nor any contention finding. What it decides
+is whether "sync takes too long in the field" is a media problem or a data problem, and on these
+figures it is overwhelmingly the former. Worth settling before anyone optimises the other half.
 
-A second, smaller part of the same question: **how often the optional elements are filled, and how
-many files the multi-select holds.** The bundle reports 0.25 mandatory against 0.50 counting every
-element, and the multi-select counts as one file when it may hold several.
+It also sets a bandwidth and storage bill: the middle rows are tens of gigabytes a day across the
+pilot's 500 workers.
 
 ---
 

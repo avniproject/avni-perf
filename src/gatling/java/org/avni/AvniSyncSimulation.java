@@ -166,13 +166,24 @@ public class AvniSyncSimulation extends Simulation {
      * which capture no images at all, and it is the wrong base rate for a screening programme. Read
      * the deployment's own bundle instead: `make survey_bundle` reports files per filled form.
      *
-     * The default is the customer bundle's figure, averaged over its encounter types and counting
-     * every media element. It is a floor twice over - a multi-select holds an unknown number of
-     * files, and weighting by real encounter frequency raises it wherever the media-bearing type is
-     * the common one.
+     * The default is the customer bundle's figure averaged over its twelve encounter types, with
+     * the screening encounter at 16 files: two mandatory image elements, each inside a repeatable
+     * question group filled once per lesion photographed.
+     *
+     * **It is a floor, and the encounter mix is what moves it.** 1.42 assumes every encounter type
+     * is equally frequent. In a screening programme the screening encounter is not one of twelve,
+     * it is most of them, and the figure runs to 16:
+     *
+     *   uniform, 1 of 12   1.42 per encounter    31 files per sync    125s at 1 Mbps
+     *   a quarter          4.08                  90                   359s
+     *   half               8.08                 178                   711s
+     *   all of them       16.00                 352                  1408s
+     *
+     * Set it from the deployment, not from this default: `make survey_bundle` reports files per
+     * form, and the mix is a question for whoever knows the programme.
      */
     private static final double mediaPerEncounter =
-        Double.parseDouble(System.getProperty("PUSH_MEDIA_PER_ENCOUNTER", "0.5"));
+        Double.parseDouble(System.getProperty("PUSH_MEDIA_PER_ENCOUNTER", "1.42"));
 
     /**
      * D5.2 - whether the simulation spends the time a media upload really takes.
@@ -407,10 +418,15 @@ public class AvniSyncSimulation extends Simulation {
             if (mediaPerEncounter > 0) {
                 long transferMs = mediaTransfer().toMillis();
                 out.println(String.format(
-                    "Media: %.1f files per sync at %.2f per encounter | %d KB each at %d KB/s = "
-                    + "%.0fs of transfer, ahead of the first pushed record",
-                    mediaFiles, mediaPerEncounter, mediaFileKb, mediaUploadKbps,
+                    "Media: %.0f files per sync at %.2f per encounter | %d KB each = %.0f MB at "
+                    + "%d KB/s = %.0fs of transfer, ahead of the first pushed record",
+                    mediaFiles, mediaPerEncounter, mediaFileKb,
+                    mediaFiles * mediaFileKb / 1024.0, mediaUploadKbps,
                     mediaFiles * transferMs / 1000.0));
+                out.println(
+                    "  PUSH_MEDIA_PER_ENCOUNTER assumes an encounter mix. The default is a "
+                    + "uniform one; where the image-heavy encounter type is the common one the "
+                    + "figure is up to 11x higher. Set it from the deployment's own bundle.");
                 if (!"pause".equals(mediaModel)) {
                     out.println(
                         "  MEDIA_MODEL=" + mediaModel + " - transfer time is NOT charged. The data "
