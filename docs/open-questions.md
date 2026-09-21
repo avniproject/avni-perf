@@ -44,8 +44,8 @@ a supervisor holds 920,000, which is **3.5× that device**, and it becomes a tes
 
 | Source | Frequency | Platform-wide, per hour |
 |---|---|---|
-| **The requirement** | **once a week** | ~20 |
-| This document's assumption | 4 a working day | ~564 |
+| **The requirement** | **once a week** | ~20 syncs, 0.08 in flight |
+| This document's assumption | 4 a working day | ~564 syncs, 2.2 in flight |
 | Production today (Q2) | median gap of **16 minutes** | — |
 
 For scale, production's busiest hour ever recorded was 792 syncs.
@@ -56,8 +56,8 @@ Production's own p75 gap is 12.5 hours and its p99 is 8.2 days, so roughly 1% of
 week, which is about what a weekly minimum would produce.
 
 **If weekly is what the deployment expects, this exercise changes shape.** Arrival rate falls to
-around 20 syncs an hour across every tenant — a fortieth of production's peak — and concurrency stops
-being worth testing at all. What remains is per-sync cost and tenancy, which cases 5, 6 and 7 already
+around 20 syncs an hour across every tenant — a fortieth of production's peak — and **fewer than one
+sync is in flight at any moment**, so concurrency stops being worth testing at all. What remains is per-sync cost and tenancy, which cases 5, 6 and 7 already
 target.
 
 **The payload barely moves, which is the part worth knowing.** A longer gap means more accumulated

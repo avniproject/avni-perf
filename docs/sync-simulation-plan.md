@@ -186,7 +186,7 @@ visible.
 |---|---|---|
 | **Shared or separate infrastructure?** | Cases 5, 6, 7 — the deltas between them | Multi-tenancy costs scale with the platform, not with this customer: RLS selectivity, planner statistics across all tenants, `set role` on every borrow |
 | **Where are the choke points?** | The whole exercise; cases 4 and 10 most directly | Storage IO is the prime suspect — 19.4 GB of indexes against 933 MB of cache, on a fixed 3,000 IOPS |
-| **Does the server hold at this load at all?** | Cases 2, 3, 4 | Nothing yet. Per-device volumes sit inside what production already carries |
+| **Does the server hold at this load at all?** | Cases 2, 3, 4 | Nothing yet. Per-device volumes sit inside what production already carries, and these cases run under one sync in flight |
 | **Does volume growth show a knee?** | Case 8, across day 60/120/180/365 | Index size crossing cache residency is the shape to look for. **The only evidence this exercise gives about scale beyond the pilot** |
 | **Does configuration size cost anything?** | Case 12, a small bundle against a large one | Q8 found 4 of 79 entities changed, and the count of entities is set by the configuration rather than by the data |
 | **What does a supervisor's catchment cost?** | Case 3 against case 2 | Depends entirely on question 1 above |

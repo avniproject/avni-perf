@@ -36,6 +36,42 @@ a 16-minute median.
 tenant is 500 field workers and 62 supervisors, and the ten together are 1,504 and 188. The 986 in
 cases 6 and 7 is production's existing organisation count (Q12).
 
+### How many syncs are in flight at once
+
+Arrival rate times duration. Both sides are measured: a sync takes **14.1 seconds at p50** in
+production (Q5 band 1, where 98% of syncs sit), and the per-request overhead dominates it, so an
+incremental sync costs about the same whether it carries 15 records or 500.
+
+| Case | Syncs/hour | **In flight** |
+|---|---|---|
+| 3 · supervisors, one tenant | 21 | **0.1** |
+| 2 · field workers, one tenant | 167 | **0.7** |
+| 4 · combined, one tenant | 187 | **0.7** |
+| 11 · soak, same load sustained | 187 | **0.7** |
+| 5 · all ten tenants | 564 | **2.2** |
+| 6, 7 · ten tenants plus production active | 1,356 | **5.3** |
+| 1 · training cohort, 100 logins in 15 min | — | **~3** |
+| **9 · reset storm, 562 users over an hour** | — | **~20** |
+| **9 · reset storm, 562 users in 15 minutes** | — | **~79** |
+| 10 · stress ramp | — | unbounded by design |
+
+On the assumptions this document carries: four syncs per worker per working day, spread across the
+09:00–21:00 plateau. **Production's own busiest hour ever recorded works out at 3.1 in flight.**
+
+**Almost nothing here is a concurrency test.** Every steady-state case sits between 0.1 and 5.3
+syncs in flight — the whole ten-tenant deployment beside production's live traffic is under twice
+production's own peak. Those cases are measuring per-sync cost and tenancy, and a run that reports
+"no contention" from them has confirmed very little about contention.
+
+**The reset storm is the exception, by an order of magnitude**, and its number depends entirely on
+how fast the affected users come back. Spread over an hour it is 20; compressed into 15 minutes it is
+79. **That spread is worth measuring rather than assuming** — Q10 found a real week at 130× the
+normal reset rate, and nothing in the telemetry says how quickly those devices re-synced.
+
+If [sync frequency](open-questions.md) turns out to be weekly rather than four a day, every
+steady-state figure above falls by a factor of 28 and the reset storm becomes the only case with
+meaningful concurrency at all.
+
 **Every user count above comes from the tenant table** under *The deployment being modelled*. A state
 tenant is 500 field workers and 62 supervisors; the ten tenants together are 1,504 and 188.
 
