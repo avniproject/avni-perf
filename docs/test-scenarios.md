@@ -62,9 +62,24 @@ data, so those devices have nothing queued to push.
 
 Two consequences for the numbers on this page. **The 24 records a field worker queues per day go up
 as 24 separate POSTs** — the client has no bulk endpoint and waits for each — which adds one to two
-seconds to a 14.1-second sync. And **the volumes themselves are arithmetic, not measurement**: 20
-encounters per worker per day was the customer's figure, and Q17 is written to replace it from
-production's own telemetry.
+seconds to a 14.1-second sync.
+
+And **these are the customer's projection, which the simulation now takes as its default**
+(`PUSH_PROFILE=customer`). Q17 measured the platform as it stands at 2.38 program encounters per
+sync, with a third of syncs pushing nothing at all — an order of magnitude lighter. That
+measurement is reference, and the setting for case 7's and 13's co-tenants; it is not what the
+customer's own cases run on.
+
+> **These cases assume the programme design, which is still being built.** The bundle the customer
+> exports today has no live programs — every form mapping is a general `Encounter` on one `Patient`
+> subject type — so it cannot yet generate the `program_enrolment` and `program_encounter` rows
+> these scenarios size. The simulation follows the design by default and switches with one
+> property; **the datasets cannot, and need a bundle carrying the programme**. Dataset work
+> therefore follows the design rather than leading it. Both figures can be right: production spans 986 organisations of varied intensity, and this is
+a high-intensity screening programme. But it means **every push and media number on this page rests
+on the customer's estimate, not on a measurement**, and the simulation's own defaults are
+production's. Cases 1 to 13 override them; case 7's co-tenants use the measured ones, which is what
+makes their load realistic.
 
 Media is the larger effect by an order of magnitude, and it lands on elapsed time rather than
 server load — see [below](#media-dominates-sync-time-and-it-is-not-close).
@@ -133,7 +148,8 @@ filled once per lesion photographed. At eight repeats that is **16 files from a 
 `MediaQueueService` uploads them **one at a time, and drains the whole queue before the first
 record is posted**.
 
-Against that, the 22 records a sync pushes cost a couple of seconds.
+Against that, the 22 records a sync pushes — on the customer's projection — cost a couple of
+seconds.
 
 | Oral screening share of a worker's encounters | Files per sync | Data | Upload at 1 Mbps |
 |---|---|---|---|

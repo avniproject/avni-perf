@@ -40,14 +40,12 @@ organisation names.
 
 ## What has run
 
-Everything below has run against production except the rows here, each also recorded against its
-own entry further down.
+Everything below has run against production except the row here, which is also recorded against
+its own entry further down.
 
 | | State |
 |---|---|
 | **Q11** — fleet page size split | **Not answerable yet.** `pageSize` is not recorded in `sync_telemetry`, so it needs a client change first (D8.3) |
-| **Q16** — locations per catchment | **Written, not run.** Decides whether the generator's one-location default is right |
-| **Q17** — records pushed per sync | **Written, not run.** What D3's push volumes are still guessing at, and the data is already in `sync_telemetry` |
 
 ## Provenance
 
@@ -732,7 +730,7 @@ Being a view over a function, it is the expensive half of this query. If it will
 back to `catchment_address_mapping` and read the result as a lower bound on the split rather than a
 measurement of it.
 
-**Q16 — How many locations does a catchment declare? (H, generator).** **Not yet run.**
+**Q16 — How many locations does a catchment declare? (H, generator).**
 `catchment_address_mapping` is a many-to-many, and the generator declares one location per catchment
 by default while the bundles examined for this work carry three. The difference does not change what
 anyone syncs — the server expands each declared location down its own subtree either way — but it
@@ -754,14 +752,32 @@ group by 1
 order by 1;
 ```
 
-If most catchments declare one, the generator's default is right and this closes. If most declare
-several, `declare_leaves=True` is the better default and the mapping table is larger than the
-generator currently produces.
+**Result: the generator's default is right for the typical catchment, and low for the table.**
+15,831 catchments hold 51,469 mapping rows.
+
+| | |
+|---|---|
+| Declare exactly one location | **61.3%** |
+| Declare more than one | 37.8% |
+| Declare none at all | 0.8% — a catchment mapped to nothing |
+| p50 / p95 / p99 | **1** / 11 / 25 |
+| Mean | **3.25** |
+| Largest | **1,911 locations in one catchment** |
+
+**So `declare_leaves=False` stays the default**, since it matches the median catchment and the
+question was framed on the typical case.
+
+The mean is the part worth carrying: at one location each the generator produces **3.3x fewer
+mapping rows than production holds**, and the distribution is skewed enough that the mean is
+triple the median. It does not change what anyone syncs — the server expands each declared location
+down its own subtree either way — so this is a fidelity option for `catchment_address_mapping` and
+the expansion view's own cost, not a correctness problem. Worth setting if a run ever points at
+that view.
 
 ---
 
-**Q17 — How many records does a device push per sync? (D3).** **Not yet run.** What D3's push
-volumes are currently guessing at. The simulation ships with 20 program encounters, 2 encounters, 1
+**Q17 — How many records does a device push per sync? (D3).** What D3's push volumes were
+guessing at, and now take their defaults from. The simulation ships with 20 program encounters, 2 encounters, 1
 subject and 1 enrolment per sync, derived from the customer's "20 encounters per field worker per
 day" against a daily sync — arithmetic, not measurement. This replaces it.
 
@@ -795,14 +811,13 @@ group by entity
 order by records desc;
 ```
 
-Two things to read off it, and the second matters more.
+Two things to read off it, and the second mattered more.
 
-**The per-entity mix** replaces the four `PUSH_*` defaults directly.
+**The per-entity mix** sets the four `PUSH_*` defaults directly.
 
-**How much of a sync pushes nothing at all.** `where todo > 0` hides it, so run the count both ways:
-if most syncs push zero records, push load is concentrated in a minority of devices and modelling
-every simulated user as pushing twenty encounters overstates the write path by the ratio. That is a
-question about the *shape* of the distribution, and no average answers it.
+**How much of a sync pushes nothing at all.** `where todo > 0` hides it, so the count has to be run
+both ways — and the second query is also what supplies an honest denominator, since it counts every
+completed sync in the same window rather than borrowing one from a query that ran on another day.
 
 ```sql
 -- What share of completed syncs pushed nothing.
@@ -824,3 +839,40 @@ from (
 > **`sync_source is distinct from` is the right operator here and `!=` is not.** `sync_source` is
 > nullable and most rows predate it, so `!=` drops every one of them silently — the same defect that
 > made an earlier version of Q3 return a fraction of the syncs it should have.
+
+**Result: 105,718 completed syncs pushed 981,344 records, and 37,117 of those syncs pushed
+nothing** — the second query puts **35.1% of syncs idle on the push path**, leaving 68,601 that
+upload anything at all. Columns 2–4 below are conditional on the entity being pushed; the last two
+are not.
+
+| Entity | Pushed in | p50 | p95 | max | Per sync | Share of records |
+|---|---|---|---|---|---|---|
+| **ProgramEncounter** | 28.7% of syncs | 3 | 33 | 323 | 2.38 | 25.7% |
+| **Individual** | 59.6% | 1 | 13 | 174 | 1.98 | 21.3% |
+| **ProgramEnrolment** | 33.2% | 1 | 15 | 349 | 1.33 | 14.3% |
+| **ChecklistItem** | 1.8% | **34** | **136** | **4,790** | 1.08 | 11.6% |
+| **Encounter** | 21.1% | 1 | 13 | 479 | 0.83 | 9.0% |
+| **AttendanceRecord** | 1.2% | **45** | **203** | **750** | 0.79 | 8.6% |
+| GroupSubject | 8.3% | 2 | 14 | 169 | 0.33 | 3.6% |
+| RuleFailureTelemetry | 3.2% | 2 | 35 | 291 | 0.21 | 2.3% |
+| SyncTelemetry | 7.4% | 1 | 5 | 75 | 0.14 | 1.5% |
+| IndividualRelationship | 2.2% | 3 | 10 | 132 | 0.09 | 1.0% |
+| Everything else | under 1.5% each | | | | 0.11 | 1.2% |
+
+**A sync pushes 9.3 records on average, 14.3 when it pushes at all, and nothing a third of the
+time.** All three matter, and the fixed model D3 shipped with — 24 records every sync — got each of
+them wrong: 4x the average, no idle syncs, and flat where the real thing is steeply skewed.
+
+**When a device uploads at all, it almost always uploads a subject.** `Individual` appears in
+**91.9% of the syncs that push anything**, against 44.2% for `ProgramEncounter`. Given Q14 found
+74.8% of program encounters are edited after creation, that points at subject edits riding along
+with most uploads rather than at a flood of new registrations.
+
+**Push counts mix inserts with edits**, and this query cannot separate them. They cost differently:
+an update rewrites the `observations` jsonb and its GIN entries without adding a heap tuple.
+
+> **`ChecklistItem` and `AttendanceRecord` are 20% of pushed rows and by far the burstiest** —
+> median 34 and 45, maxima of 4,790 and 750 in a single sync, which with no bulk endpoint is
+> minutes of uninterrupted POSTing from one device. **Neither is used by the organisations in
+> scope**, so neither is modelled. Recorded because if the write path has a worst case anywhere on
+> this platform, it is here rather than in the encounter tables — see D3.

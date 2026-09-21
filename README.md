@@ -142,8 +142,13 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
 `PUSH` `true` includes the upload path. **Default false** — see below
 
-`PUSH_INDIVIDUALS` / `PUSH_ENROLMENTS` / `PUSH_PROGRAM_ENCOUNTERS` / `PUSH_ENCOUNTERS` records
-queued per sync, default 1 / 1 / 20 / 2
+`PUSH_PROFILE` `customer` (default) or `production` — see below
+
+`PUSH_ENCOUNTER_MODEL` `program` (default) or `general` — which table the customer's
+encounters land on
+
+`PUSH_INDIVIDUALS` / `PUSH_ENROLMENTS` / `PUSH_PROGRAM_ENCOUNTERS` / `PUSH_ENCOUNTERS` override one
+entity's distribution, as `probability:[min:]p50:p95:max:mean`
 
 `PUSH_OBSERVATION_MULTIPLE` harvested observation sets per pushed record, default 1
 
@@ -188,11 +193,60 @@ maintenance over the `observations` jsonb.
 A device with nothing to reference pushes nothing and fails nothing, so the run prints how many
 devices were only partially seeded and what they lacked. Read a run with a high count as a floor.
 
-**Volumes are provisional.** 20 program encounters per sync is arithmetic from the customer's "20
-encounters per worker per day", not measurement — Q17 in
-[production-measurement-queries.md](docs/production-measurement-queries.md) replaces it. Per-user
-variation comes from an optional `pushScale` column in the user file: a supervisor pulls a wide
-catchment but creates few records, so case 3 wants a value well under 1.
+**Each sync draws twice per entity**: whether it pushes that entity at all, and if so how many.
+`PUSH_PROFILE` picks which workload those draws describe.
+
+**`customer` (the default)** — the deployment this exercise exists to size, from the customer's
+stated 20 encounters per field worker per day.
+
+| Entity | Pushed in | min | p50 | p95 | max | Per sync |
+|---|---|---|---|---|---|---|
+| ProgramEncounter | every sync | 8 | **20** | 45 | 150 | 24.0 |
+| Individual | 59.6% | 1 | 1 | 13 | 174 | 1.98 |
+| ProgramEnrolment | 33.2% | 1 | 1 | 15 | 349 | 1.33 |
+
+The level is the customer's; **the spread is a modelling choice** — their one number read as the
+median, p95 at 45, floor at 8. `-DPUSH_PROGRAM_ENCOUNTERS=1.0:20:20:20:20` restores a flat twenty
+if the literal reading is preferred. No customer figure exists for registrations or enrolments, so
+those borrow production's shape.
+
+> **`PUSH_ENCOUNTER_MODEL` decides which table the twenty a day land on, and it will change.**
+> The customer's programme design is work in progress: the bundle they export today has no live
+> programs — every mapping is a general `Encounter` on one `Patient` subject type — while the
+> design this exercise was scoped against is an NCD programme with ten encounter types.
+>
+> `program` (default) follows the design. `general` follows the current export, moving the volume
+> to `Encounter` and dropping enrolments. Same volume either way; what changes is whether the
+> write path touches `program_encounter` behind a `program_enrolment` parent or `encounter`
+> hanging straight off the subject — different sync strategies, indexes and join depth.
+
+**`production`** — Q17's measurement of the platform as it stands, over 105,718 syncs.
+
+| Entity | Pushed in | p50 | p95 | max | Per sync |
+|---|---|---|---|---|---|
+| ProgramEncounter | 28.7% of syncs | 3 | 33 | 323 | 2.38 |
+| Individual | 59.6% | 1 | 13 | 174 | 1.98 |
+| ProgramEnrolment | 33.2% | 1 | 15 | 349 | 1.33 |
+| Encounter | 21.1% | 1 | 13 | 479 | 0.83 |
+
+**35% of real syncs push nothing at all**, which is what the probabilities encode. A sync that
+pushes anything averages 14.3 records; over all syncs it is 9.3 — against the customer profile's
+27.3.
+
+> **Reference, and the co-tenant setting.** Use `production` for the co-tenant traffic in cases 7
+> and 13, where the platform's existing organisations load the server alongside the customer's.
+> Never for the customer's own cases: it understates them roughly tenfold.
+
+Override either with `probability:p50:p95:max:mean` or `probability:min:p50:p95:max:mean`, e.g.
+`-DPUSH_PROGRAM_ENCOUNTERS=1.0:8:20:45:150:24`. A probability of 0 disables the entity.
+
+Per-user variation comes from an optional `pushScale` column in the user file: a supervisor pulls a
+wide catchment but creates few records, so case 3 wants a value well under 1.
+
+**`ChecklistItem` and `AttendanceRecord` are deliberately not modelled.** They are 20% of what
+production pushes and by far the burstiest — maxima of 4,790 and 750 records in one sync, minutes
+of uninterrupted POSTing from a single device — but the organisations in scope do not use them. A
+future extension if this is ever pointed at one that does.
 
 ## Media
 

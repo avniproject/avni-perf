@@ -674,13 +674,68 @@ A device that cannot be seeded pushes nothing and fails nothing, so `after()` re
 devices were only partially seeded and what they lacked. Without it a run against a dataset with no
 enrolments finishes green having exercised almost none of the write path.
 
-**Two things are still open.** The volumes — 20 program encounters, 2 encounters, 1 subject, 1
-enrolment per sync — are arithmetic from the customer's "20 encounters per worker per day", not
-measurement; **Q17** replaces them from production's own `entity_status->'push'`, and its second
-half matters more than its first: if most real syncs push nothing, modelling every user as pushing
-twenty overstates the write path by that ratio. And the payload shapes are built from the client's
-`toResource` getters and checked field-by-field against the server's request contracts, but **have
-not been sent to a running server** — that smoke run is the gate before any push result is quoted.
+**Volumes are measured, and the first version was wrong in three ways at once.** Q17 has since run
+over 105,718 completed syncs. The fixed 24 records a sync came from "20 encounters per worker per
+day"; production pushes **9.3 records per sync on average, 14.3 when it pushes at all, and nothing
+35% of the time**.
+
+| Entity | Pushed in | p50 | p95 | max | Per sync |
+|---|---|---|---|---|---|
+| ProgramEncounter | 28.7% of syncs | 3 | 33 | 323 | 2.38 |
+| Individual | 59.6% | 1 | 13 | 174 | 1.98 |
+| ProgramEnrolment | 33.2% | 1 | 15 | 349 | 1.33 |
+| Encounter | 21.1% | 1 | 13 | 479 | 0.83 |
+
+So a draw is now two steps — does this sync push this entity, and if so how many — against a
+three-segment log-linear inverse CDF whose tail is fitted analytically so the modelled mean matches
+the measured one as well as both percentiles. A fixed count reproduced none of the three: not the
+third of syncs that push nothing, not the median sync that pushes three records, and not the rare
+one that pushes hundreds. **The rare one is the interesting case**, precisely because there is no
+bulk endpoint.
+
+**When a device uploads at all, it almost always uploads a subject** — `Individual` appears in
+91.9% of pushing syncs against 44.2% for `ProgramEncounter`. With Q14's finding that 74.8% of
+program encounters are edited after creation, that reads as subject edits riding along with most
+uploads rather than a flood of new registrations. It also means the write path is dominated by
+`individual`, not by the encounter tables.
+
+**Possible future extension: `ChecklistItem` and `AttendanceRecord`.** Together they are 20% of
+what production pushes and are much the burstiest of anything measured — medians of 34 and 45,
+maxima of **4,790 and 750 records in a single sync**, which at one POST each is minutes of
+uninterrupted pushing from one device. **Neither is used by the organisations in scope**, so
+neither is modelled. Worth revisiting only if this exercise is ever pointed at an organisation that
+uses checklists or attendance, because on these numbers that is where the platform's worst write
+case lives. Each would need its own seed — a checklist, a session — on top of the four already
+harvested.
+
+**The customer's numbers govern, and production's are reference.** `PUSH_PROFILE=customer` is the
+default: this exercise exists to size the customer's deployment, and their projection is an order
+of magnitude heavier than the platform's current median. `PUSH_PROFILE=production` applies Q17's
+table and is for one thing — the co-tenant traffic in cases 7 and 13, where production's own
+organisations load the server alongside the customer's.
+
+**Which table their encounters land on is a knob, because the programme design is still being
+built.** The bundle exported today has no live programs — every form mapping is a general
+`Encounter` on a single `Patient` subject type, all three programs voided — while the description
+this exercise was scoped against is an NCD programme with ten encounter types. The first is a
+configuration mid-build, not the shape being sized.
+
+`PUSH_ENCOUNTER_MODEL=program` is the default and follows the design; `general` follows the current
+export. Volume is identical either way. What changes is whether the write path touches
+`program_encounter` behind a `program_enrolment` parent or `encounter` hanging off the subject —
+**different sync strategies, different indexes, different join depth on the pull side**, so it is
+not a detail that can be left implicit.
+
+> **The dataset side of this is not yet resolved.** [test-scenarios.md](test-scenarios.md) and the
+> generator profile both size `program_enrolment` and `program_encounter` rows, and the current
+> bundle cannot produce them — `survey_bundle` reports both as absent. So generating a dataset in
+> the designed shape needs a bundle that has the programme in it. **That makes the dataset work
+> track the customer's design rather than lead it**, and is worth knowing before H is scheduled
+> against a date.
+
+**Still open: the payload shapes have not been sent to a running server.** They are built from the
+client's `toResource` getters and checked field-by-field against the server's request contracts,
+but that smoke run is the gate before any push result is quoted.
 
 **D4 — Post sync telemetry at end of sync.** *Done.* A write on the hot path, and the one that
 populates the table this plan's whole measurement strategy leans on — so omitting it both under-counted
@@ -743,8 +798,9 @@ image in the form.
 | Clinician Review Form | display-only — **0** |
 | Averaged over all 12 encounter types | **1.42** |
 
-**What a sync then costs, by encounter mix** — 22 records pushed, 500 KB per file, serial and
-entirely ahead of the first record:
+**What a sync then costs, by encounter mix** — 22 records pushed on the customer's projection
+(production's measured figure is 3.1, see Q17), 500 KB per file, serial and entirely ahead of the
+first record:
 
 | Oral screening share of encounters | Files per encounter | Files per sync | Data | At 1 Mbps |
 |---|---|---|---|---|
@@ -774,7 +830,8 @@ without exercising avni-server. That is true and still the conclusion — but it
 charging **nothing** for media, and that is a much larger distortion than the one it avoided.
 
 A sync is not just its server requests. At the bundle's 1.42 files per encounter — the *conservative*
-reading, a uniform encounter mix — a device pushing 22 records queues **31 files**, and at 500 KB
+reading, a uniform encounter mix — a device pushing the customer's projected 22 records queues
+**31 files**, and at 500 KB
 each (the client captures 1280x960 at quality 1) that is real time on a field link:
 
 | Upload bandwidth | Transfer | Sync duration | vs 14.1 s of server work |

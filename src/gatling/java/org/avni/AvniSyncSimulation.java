@@ -11,6 +11,8 @@ import io.gatling.javaapi.http.*;
 import org.avni.helper.CognitoHelper;
 import org.avni.models.AvniEntity;
 import org.avni.models.PushSeed;
+import org.avni.models.PushProfiles;
+import org.avni.models.PushVolume;
 import org.avni.models.SyncDetail;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -138,18 +140,56 @@ public class AvniSyncSimulation extends Simulation {
     }
 
     /*
-     * Records queued per sync, per entity. Provisional: derived from the customer's stated 20
-     * encounters per field worker per day against a daily sync, not measured. Q17 replaces them
-     * with production's own `sync_telemetry.entity_status->'push'` distribution.
+     * Which workload the push volumes describe.
      *
-     * These are absolute per-sync counts, not a rate. A real queue is proportional to the time
-     * since the last sync, so a run at a different interval than INCREMENTAL_SINCE_HOURS=24 needs
-     * them re-derived rather than reused.
+     * `customer` (default) is the deployment this exercise exists to size. `production` is Q17's
+     * measurement of what the platform does today - reference, and the right setting for the
+     * co-tenant traffic in cases 7 and 13, where production's own organisations are meant to be
+     * loading the server alongside the customer's.
+     *
+     * They are not close. The customer projects twenty encounters per worker per day against a
+     * production median of one per pushing sync, so running the customer's cases on production's
+     * numbers would understate them by an order of magnitude.
      */
-    private static final int pushIndividuals = Integer.getInteger("PUSH_INDIVIDUALS", 1);
-    private static final int pushEnrolments = Integer.getInteger("PUSH_ENROLMENTS", 1);
-    private static final int pushProgramEncounters = Integer.getInteger("PUSH_PROGRAM_ENCOUNTERS", 20);
-    private static final int pushEncounters = Integer.getInteger("PUSH_ENCOUNTERS", 2);
+    private static final boolean customerProfile =
+        !"production".equalsIgnoreCase(System.getProperty("PUSH_PROFILE", "customer"));
+
+    /*
+     * Where the customer's encounters land: `program` (default) or `general`.
+     *
+     * **Their programme design is work in progress, so this will change and is meant to.** The
+     * bundle exported today has no live programs - every form mapping is a general `Encounter` on
+     * one `Patient` subject type, and all three programs are voided - but that is a configuration
+     * mid-build, not the shape being sized. The description this exercise was scoped against is an
+     * NCD programme with ten encounter types per program, so the default follows the design.
+     *
+     * It is a knob rather than an assumption because it decides **which tables the write path
+     * touches**: `program_encounter` behind a `program_enrolment` parent, or `encounter` hanging
+     * straight off the subject. Different sync strategies, different indexes, different join depth
+     * on the pull side. Volume is the same either way - the 20 a day just moves.
+     */
+    private static final boolean encountersAreProgramEncounters =
+        !"general".equalsIgnoreCase(System.getProperty("PUSH_ENCOUNTER_MODEL", "program"));
+
+    /*
+     * Records queued per sync, per entity. The tables and the rules that pick between them live in
+     * PushProfiles, which - unlike this class - can be loaded and checked without running Gatling.
+     *
+     * Per-entity system properties override whichever profile is active, as
+     * probability:p50:p95:max:mean or probability:min:p50:p95:max:mean.
+     */
+    private static final Map<String, PushVolume> pushVolumes =
+        PushProfiles.forProfile(customerProfile, encountersAreProgramEncounters);
+
+    private static PushVolume volumeFor(String entityName, String property) {
+        return PushVolume.parse(entityName, System.getProperty(property), pushVolumes.get(entityName));
+    }
+
+    private static final PushVolume pushIndividuals = volumeFor("Individual", "PUSH_INDIVIDUALS");
+    private static final PushVolume pushEnrolments = volumeFor("ProgramEnrolment", "PUSH_ENROLMENTS");
+    private static final PushVolume pushProgramEncounters =
+        volumeFor("ProgramEncounter", "PUSH_PROGRAM_ENCOUNTERS");
+    private static final PushVolume pushEncounters = volumeFor("Encounter", "PUSH_ENCOUNTERS");
 
     /**
      * Observations per pushed record, as a count of harvested rows to concatenate. One means the
@@ -405,16 +445,47 @@ public class AvniSyncSimulation extends Simulation {
                 + "performance environment, or set PUSH_ALLOW_UNSAFE_TARGET=true if this really is "
                 + "intended.");
         } else {
-            int perSync = pushIndividuals + pushEnrolments + pushProgramEncounters + pushEncounters;
-            double mediaFiles = (pushProgramEncounters + pushEncounters) * mediaPerEncounter;
+            double perSync = 0;
+            double mediaBearing = 0;
+            for (PushEntity pushEntity : PUSHABLE.values()) {
+                perSync += pushEntity.volume.perSync();
+                if (MEDIA_BEARING.contains(pushEntity.entityName)) {
+                    mediaBearing += pushEntity.volume.perSync();
+                }
+            }
+            double mediaFiles = mediaBearing * mediaPerEncounter;
+            out.println(String.format("Push: ON | profile %s | %.1f records per sync on average",
+                customerProfile ? "CUSTOMER" : "PRODUCTION (Q17)", perSync));
+            for (PushEntity pushEntity : PUSHABLE.values()) {
+                PushVolume v = pushEntity.volume;
+                out.println(String.format(
+                    "    %-18s %4.0f%% of syncs | p50 %-4d p95 %-4d max %-4d | %.2f per sync",
+                    pushEntity.entityName, 100 * v.probability, v.p50, v.p95, v.max, v.perSync()));
+            }
             out.println(String.format(
-                "Push: ON | %d records per sync (%d individual, %d enrolment, %d programEncounter, "
-                + "%d encounter)",
-                perSync, pushIndividuals, pushEnrolments, pushProgramEncounters, pushEncounters));
-            out.println(String.format(
-                "  The client has no bulk endpoint: that is %d sequential POSTs per sync, each "
-                + "through the full filter chain and its own transaction. Volumes are derived from "
-                + "20 encounters per worker per day, not measured - Q17 replaces them.", perSync));
+                "  The client has no bulk endpoint, so a sync at p95 for every entity is %d "
+                + "sequential POSTs, each through the full filter chain and its own transaction.",
+                pushIndividuals.p95 + pushEnrolments.p95 + pushProgramEncounters.p95
+                    + pushEncounters.p95));
+            if (customerProfile) {
+                out.println(String.format(
+                    "  The customer's projection: 20 encounters per worker per day, as the median, "
+                    + "on %s. Their programme design is still in progress, so "
+                    + "PUSH_ENCOUNTER_MODEL=%s moves the same volume to the other table.",
+                    encountersAreProgramEncounters
+                        ? "program_encounter (the designed shape)"
+                        : "encounter (the shape their current bundle exports)",
+                    encountersAreProgramEncounters ? "general" : "program"));
+                out.println(
+                    "  PUSH_PROFILE=production switches to Q17's measurement of the platform as it "
+                    + "is today. Use it for the co-tenant traffic in cases 7 and 13, not for the "
+                    + "customer's own load, which it understates roughly tenfold.");
+            } else {
+                out.println(
+                    "  Q17 over 105,718 syncs, of which 35.1% push nothing. These four are 70% of "
+                    + "what production pushes; ChecklistItem and AttendanceRecord are most of the "
+                    + "rest but are unused by the organisations in scope - see D3.");
+            }
             if (mediaPerEncounter > 0) {
                 long transferMs = mediaTransfer().toMillis();
                 out.println(String.format(
@@ -995,18 +1066,18 @@ public class AvniSyncSimulation extends Simulation {
     //    client's order changes.
     // ---------------------------------------------------------------------------------------
 
-    /** One pushable entity: how many records per sync, and how to build one. */
+    /** One pushable entity: its measured volume distribution, and how to build a record. */
     private static final class PushEntity {
         final String entityName;
-        final int perSync;
+        final PushVolume volume;
         final BiFunction<Session, PushSeed, String> body;
         /** Whether this device holds what the body needs. */
         final java.util.function.Predicate<PushSeed> ready;
 
-        PushEntity(String entityName, int perSync, java.util.function.Predicate<PushSeed> ready,
+        PushEntity(String entityName, PushVolume volume, java.util.function.Predicate<PushSeed> ready,
                    BiFunction<Session, PushSeed, String> body) {
             this.entityName = entityName;
-            this.perSync = perSync;
+            this.volume = volume;
             this.ready = ready;
             this.body = body;
         }
@@ -1043,10 +1114,13 @@ public class AvniSyncSimulation extends Simulation {
         // presigned-URL call lands ahead of the first record. Ordering matters because the two
         // hit the same filter chain and pool - interleaving them would spread a burst the real
         // client delivers up front.
-        ChainBuilder chain = mediaUploadChain();
+        // Volumes are drawn once per sync and carried on the session. They are random now that
+        // Q17 has replaced the fixed counts, so evaluating them per predicate would let the guard,
+        // the loop bound and the telemetry all disagree about what this sync pushed.
+        ChainBuilder chain = exec(AvniSyncSimulation::drawPushCounts).exec(mediaUploadChain());
         for (AvniEntity entity : entities) {
             PushEntity pushEntity = PUSHABLE.get(entity.entityName);
-            if (pushEntity == null || !entity.pushRequired || pushEntity.perSync <= 0) {
+            if (pushEntity == null || !entity.pushRequired || pushEntity.volume.probability <= 0) {
                 continue;
             }
             String path = entity.pushPath;
@@ -1065,18 +1139,42 @@ public class AvniSyncSimulation extends Simulation {
     }
 
     /**
-     * How many records of this entity this virtual user pushes this sync.
+     * Draw what this sync pushes, once, and put it on the session.
      *
-     * Zero when the device could not be seeded, which is a real outcome rather than an error: a
-     * user whose catchment holds no enrolments has nothing to hang a program encounter off, and the
-     * field equivalent of that user does not push one either.
+     * Zero for an entity the device cannot reference is a real outcome rather than an error: a
+     * user whose catchment holds no enrolments has nothing to hang a program encounter off, and
+     * the field equivalent of that user does not push one either.
      */
-    private static int pushCount(Session session, PushEntity pushEntity) {
+    private static Session drawPushCounts(Session session) {
         PushSeed seed = seedFor(session);
-        if (seed == null || !pushEntity.ready.test(seed)) {
+        float scale = pushScale(session);
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        int encounters = 0;
+        for (Map.Entry<String, PushEntity> entry : PUSHABLE.entrySet()) {
+            PushEntity pushEntity = entry.getValue();
+            int count = 0;
+            if (seed != null && pushEntity.ready.test(seed)) {
+                count = Math.round(pushEntity.volume.draw() * scale);
+            }
+            counts.put(entry.getKey(), count);
+            if (MEDIA_BEARING.contains(entry.getKey())) {
+                encounters += count;
+            }
+        }
+        return session.set("pushCounts", counts).set("mediaCalls", mediaCallCount(encounters));
+    }
+
+    /** Entities whose records carry the media a device uploads. */
+    private static final Set<String> MEDIA_BEARING =
+        new LinkedHashSet<>(Arrays.asList("ProgramEncounter", "Encounter"));
+
+    @SuppressWarnings("unchecked")
+    private static int pushCount(Session session, PushEntity pushEntity) {
+        Map<String, Integer> counts = (Map<String, Integer>) session.get("pushCounts");
+        if (counts == null) {
             return 0;
         }
-        return Math.round(pushEntity.perSync * pushScale(session));
+        return counts.getOrDefault(pushEntity.entityName, 0);
     }
 
     /**
@@ -1112,8 +1210,7 @@ public class AvniSyncSimulation extends Simulation {
         if (mediaPerEncounter <= 0) {
             return exec(session -> session);
         }
-        return exec(session -> session.set("mediaCalls", mediaCallCount(session)))
-            .doIf(session -> session.getInt("mediaCalls") > 0)
+        return doIf(session -> session.getInt("mediaCalls") > 0)
             .then(group("Push Media").on(
                 repeat(session -> session.getInt("mediaCalls"), "mediaIndex")
                     .on(exec(http("Media uploadUrl")
@@ -1142,12 +1239,7 @@ public class AvniSyncSimulation extends Simulation {
         return java.time.Duration.ofMillis(Math.round(1000.0 * mediaFileKb / mediaUploadKbps));
     }
 
-    private static int mediaCallCount(Session session) {
-        PushSeed seed = seedFor(session);
-        if (seed == null) {
-            return 0;
-        }
-        double encounters = (pushProgramEncounters + pushEncounters) * pushScale(session);
+    private static int mediaCallCount(int encounters) {
         double expected = encounters * mediaPerEncounter;
         int whole = (int) expected;
         return ThreadLocalRandom.current().nextDouble() < (expected - whole) ? whole + 1 : whole;
