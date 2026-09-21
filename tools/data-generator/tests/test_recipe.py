@@ -17,7 +17,7 @@ DATASETS = Path(__file__).resolve().parents[1] / "datasets"
 
 
 def a_recipe(**kw):
-    d = dep.e6_deployment(180, REFERENCE)
+    d = dep.pilot_deployment(180, REFERENCE)
     return recipe_mod.Recipe.from_deployment(
         "test", d, profile="production-2026-09", bundle_path="/tmp/bundle", **kw)
 
@@ -26,9 +26,9 @@ def a_recipe(**kw):
 
 @pytest.mark.parametrize("days", [60, 120, 180, 365])
 def test_a_committed_recipe_rebuilds_the_deployment_it_describes(days):
-    r = recipe_mod.Recipe.load(DATASETS / f"e6-day-{days}.json")
+    r = recipe_mod.Recipe.load(DATASETS / f"pilot-day-{days}.json")
     d = r.to_deployment()
-    reference = dep.e6_deployment(days, date.fromisoformat(r.reference_date))
+    reference = dep.pilot_deployment(days, date.fromisoformat(r.reference_date))
     assert d.beneficiaries == reference.beneficiaries
     assert d.encounters == reference.encounters
     assert len(d.tenants) == len(reference.tenants)
@@ -36,7 +36,7 @@ def test_a_committed_recipe_rebuilds_the_deployment_it_describes(days):
 
 def test_the_committed_recipes_differ_only_in_growth_point():
     """E6: only encounter volume grows between the three datasets."""
-    rs = {d: recipe_mod.Recipe.load(DATASETS / f"e6-day-{d}.json") for d in (60, 120, 180, 365)}
+    rs = {d: recipe_mod.Recipe.load(DATASETS / f"pilot-day-{d}.json") for d in (60, 120, 180, 365)}
     assert {r.days for r in rs.values()} == {60, 120, 180, 365}
     assert len({json.dumps(r.tenants, sort_keys=True) for r in rs.values()}) == 1
     assert len({r.seed for r in rs.values()}) == 1
@@ -46,7 +46,7 @@ def test_the_committed_recipes_say_the_bundle_must_be_filled_in():
     """Reproducibility depends on the bundle, which is deliberately not in this repository. A
     recipe without it is a promise the repo cannot keep, so it must not look complete."""
     for days in (60, 120, 180, 365):
-        r = recipe_mod.Recipe.load(DATASETS / f"e6-day-{days}.json")
+        r = recipe_mod.Recipe.load(DATASETS / f"pilot-day-{days}.json")
         assert r.bundle_fingerprint.get("combined") is None
         assert "must be filled in" in (r.notes or "")
 
@@ -171,9 +171,9 @@ def observed(gin_per_row=69):
 
 def test_a_verdict_records_the_gate_result_and_what_it_judged_against():
     p = profile_mod.load()
-    doc = recipe_mod.verdict_document("e6-day-180", validate.run(observed(), p))
+    doc = recipe_mod.verdict_document("pilot-day-180", validate.run(observed(), p))
     assert doc["verdict"] == "pass"
-    assert doc["recipe"] == "e6-day-180" and doc["profile"] == p.name
+    assert doc["recipe"] == "pilot-day-180" and doc["profile"] == p.name
     assert doc["counts"]["failed"] == 0 and doc["checks"]
 
 
@@ -219,6 +219,6 @@ def test_per_tenant_bundles_are_fingerprinted_and_checked():
 def test_the_committed_recipes_allow_a_bundle_per_tenant():
     """H1: cover the range of organisation size deliberately rather than assuming the small case
     generalises. Config size drives the syncDetails row count."""
-    r = recipe_mod.Recipe.load(DATASETS / "e6-day-180.json")
+    r = recipe_mod.Recipe.load(DATASETS / "pilot-day-180.json")
     assert all("bundle_path" in t for t in r.tenants)
     assert "own bundle_path" in (r.notes or "")

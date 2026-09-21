@@ -285,7 +285,7 @@ not exist, a rule that throws.
 **Steps 1 and 2 are automated.**
 
 ```
-make structural_check USERS=/data/e6-day-180/state-1/sync-users.csv URL=http://host:8021
+make structural_check USERS=/data/pilot-day-180/state-1/sync-users.csv URL=http://host:8021
 ```
 
 It runs the simulation against the loaded dataset in `full` mode, one virtual user per role found in
@@ -317,7 +317,7 @@ against 5,623 would fail a correct dataset.
 
 ## Assembling a deployment
 
-`deployment.py` turns E6's specification into files a `COPY` can load. `e6_deployment(days, ref)`
+`deployment.py` turns E6's specification into files a `COPY` can load. `pilot_deployment(days, ref)`
 gives its shape with its numbers as defaults — two state tenants of 500 field workers, eight NGO
 tenants sharing 500 — and reproduces E6's totals:
 
@@ -362,7 +362,7 @@ three small files per named dataset instead of the output.
 | `manifest.json` | **The fingerprint.** Row count, byte size and SHA-256 per table |
 | `verdict.json` | **The H5 gate result**, recording that the dataset was blessed and against which profile |
 
-`datasets/` carries the three E6 datasets — `e6-day-60`, `e6-day-120`, `e6-day-180` — differing only
+`datasets/` carries the three E6 datasets — `pilot-day-60`, `pilot-day-120`, `pilot-day-180` — differing only
 in growth point, which a test asserts.
 
 **Storing the output instead would discard the only safety property the generator has.** `schema.py`
@@ -437,9 +437,9 @@ Read from the database rather than hardcoded, for the reason in **Keeping up wit
 ```
 psql -d <db> -At -f columns.sql > columns.json      # the target's own columns
 psql -d <db> -At -f refs.sql    > refs.json         # its subject type, programme and encounter ids
-python3 generate.py --recipe datasets/e6-day-180.json \
+python3 generate.py --recipe datasets/pilot-day-180.json \
                     --columns columns.json --refs refs.json \
-                    --bundle /path/to/bundle --out /data/e6-day-180
+                    --bundle /path/to/bundle --out /data/pilot-day-180
 ```
 
 Both dumps come from the target rather than from anything committed here — 484 migrations have

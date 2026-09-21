@@ -3,7 +3,7 @@
 The dataset says what data exists; this says who can see it. Designing them apart produces users
 whose catchments do not intersect the data and a simulation that measures nothing (plan G5).
 
-Two facts from plan section E0 shape it:
+Two facts from the test scenarios shape it:
 
   * **Field workers in a village share its catchment.** Three ASHAs to a village, and all three pull
     every row recorded there, including the two thirds they did not create. So a field worker's sync

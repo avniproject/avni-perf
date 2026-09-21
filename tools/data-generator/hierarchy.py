@@ -1,12 +1,12 @@
 """Build a location hierarchy, and the catchments that sit on it.
 
-The shape comes from the real state establishment in plan section E0 -- State, District, Block, PHC,
+The shape comes from the real state establishment in the test scenarios -- State, District, Block, PHC,
 Sub-Centre, Village -- scaled down to a tenant's village count. Six levels, where Q13 measured
 production at four for 84% of its locations, so a generated tenant's lineage is two levels deeper
 than production's typical. That costs more to walk: `address_level.lineage` is an `ltree`, and
 catchment scope resolution and reference-table RLS both walk ancestors.
 
-Catchments matter as much as the tree. E0 establishes that the field workers in a village share its
+Catchments matter as much as the tree. The scenarios establish that the field workers in a village share its
 catchment rather than partitioning it, so three of them pull the same rows. And Q15 found catchment
 breadth and per-location data density vary independently in production -- a wide catchment in a
 sparse organisation holds almost nothing -- so breadth alone does not set sync volume.

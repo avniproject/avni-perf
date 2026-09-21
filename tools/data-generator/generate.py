@@ -3,9 +3,9 @@
 
     psql -d <db> -At -f columns.sql > columns.json      # the target's own columns
     psql -d <db> -At -f refs.sql    > refs.json         # its metadata ids
-    python3 generate.py --recipe datasets/e6-day-180.json \\
+    python3 generate.py --recipe datasets/pilot-day-180.json \\
                         --columns columns.json --refs refs.json \\
-                        --bundle /path/to/bundle --out /data/e6-day-180
+                        --bundle /path/to/bundle --out /data/pilot-day-180
 
 Both dumps come from the target rather than from anything committed here: 484 Flyway migrations have
 already moved this schema, and the ids belong to whichever bundle was loaded.

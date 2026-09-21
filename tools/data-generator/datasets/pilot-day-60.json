@@ -1,6 +1,6 @@
 {
-  "name": "e6-day-120",
-  "days": 120,
+  "name": "pilot-day-60",
+  "days": 60,
   "reference_date": "2026-09-18",
   "seed": 42,
   "profile": "production-2026-09",
@@ -114,7 +114,7 @@
   ],
   "enrolment_rate": 0.22,
   "program_encounter_share": 0.59,
-  "notes": "E6 test case dataset. Two state tenants of 500 field workers, eight NGO tenants sharing 500, at day 120. Only encounter volume differs between the three; beneficiary population does not grow with programme activity. bundle_path and bundle_revision must be filled in before generating. A tenant may also carry its own bundle_path, which is how H1's 'cover the range of organisation size' is done -- config size drives the syncDetails row count -- without them this recipe cannot be reproduced.",
+  "notes": "E6 test case dataset. Two state tenants of 500 field workers, eight NGO tenants sharing 500, at day 60. Only encounter volume differs between the three; beneficiary population does not grow with programme activity. bundle_path and bundle_revision must be filled in before generating. A tenant may also carry its own bundle_path, which is how H1's 'cover the range of organisation size' is done -- config size drives the syncDetails row count -- without them this recipe cannot be reproduced.",
   "schema_version": 1,
   "tenant_bundle_fingerprints": {}
 }

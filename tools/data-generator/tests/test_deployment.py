@@ -44,7 +44,7 @@ def columns():
 # --- E6's shape -------------------------------------------------------------
 
 def test_the_default_deployment_matches_e6():
-    d = dep.e6_deployment(180, REFERENCE)
+    d = dep.pilot_deployment(180, REFERENCE)
     assert len(d.tenants) == 10
     assert d.beneficiaries == 1_506_000
     assert abs(d.encounters - 5_414_400) / 5_414_400 < 0.01
@@ -56,7 +56,7 @@ def test_the_default_deployment_matches_e6():
 @pytest.mark.parametrize("days,expected", [(60, 1_795_200), (120, 3_590_400), (180, 5_385_600)])
 def test_only_encounter_volume_grows_between_the_three_datasets(days, expected):
     """Beneficiary population does not grow with programme activity (E6)."""
-    d = dep.e6_deployment(days, REFERENCE)
+    d = dep.pilot_deployment(days, REFERENCE)
     assert d.encounters == expected
     assert d.beneficiaries == 1_506_000
 
@@ -64,14 +64,14 @@ def test_only_encounter_volume_grows_between_the_three_datasets(days, expected):
 # --- ids --------------------------------------------------------------------
 
 def test_tenants_get_disjoint_id_ranges():
-    d = dep.e6_deployment(180, REFERENCE)
+    d = dep.pilot_deployment(180, REFERENCE)
     bases = sorted(dep.plan_ids(d).values())
     assert len(set(bases)) == len(bases)
     assert all(b - a >= dep.ID_STRIDE for a, b in zip(bases, bases[1:]))
 
 
 def test_the_stride_survives_a_tenant_ten_times_its_planned_size():
-    d = dep.e6_deployment(180, REFERENCE)
+    d = dep.pilot_deployment(180, REFERENCE)
     biggest = max(t.beneficiaries + t.encounters(180) for t in d.tenants)
     assert biggest * 10 < dep.ID_STRIDE, "a tenant could reach its neighbour's range"
 

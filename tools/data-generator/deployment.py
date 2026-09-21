@@ -1,7 +1,7 @@
 """Assemble a whole deployment: many tenants, one growth point, one dataset.
 
-Plan section E6 specifies the shape -- two state tenants of 500 field workers, eight NGO tenants
-sharing 500, at day 60, 120 or 180. This turns that into files a `COPY` can load.
+The test scenarios specify the shape -- two state tenants of 500 field workers, eight NGO tenants
+sharing 500, at day 60, 120, 180 or 365. This turns that into files a `COPY` can load.
 
 Two things it has to get right that the per-tenant pieces do not.
 
@@ -9,7 +9,7 @@ Two things it has to get right that the per-tenant pieces do not.
 rows, and they all land in the same tables. Each tenant gets a disjoint range per table, wide enough
 that a tenant growing does not run into the next one's.
 
-**Nothing is held in memory.** The full E6 dataset at day 180 is around 6.9 million rows. Rows are
+**Nothing is held in memory.** The full pilot dataset at day 180 is around 6.9 million rows. Rows are
 generated and written as they go, so the peak cost is one village's subjects rather than a
 deployment's.
 """
@@ -70,7 +70,7 @@ class TenantSpec:
 
 @dataclass(frozen=True)
 class DeploymentSpec:
-    """E6's deployment, at one growth point."""
+    """One deployment at one growth point."""
     tenants: tuple[TenantSpec, ...]
     days: int
     reference: date
@@ -96,10 +96,15 @@ class DeploymentSpec:
         return sum(t.encounters(self.days) for t in self.tenants)
 
 
-def e6_deployment(days: int, reference: date, *, state_tenants: int = 2,
-                  ngo_tenants: int = 8, state_workers: int = 500,
-                  ngo_workers_total: int = 500, seed: int = 42) -> DeploymentSpec:
-    """E6's shape, with its numbers as the defaults."""
+def pilot_deployment(days: int, reference: date, *, state_tenants: int = 2,
+                     ngo_tenants: int = 8, state_workers: int = 500,
+                     ngo_workers_total: int = 500, seed: int = 42) -> DeploymentSpec:
+    """The customer's pilot deployment, with the test cases' numbers as the defaults.
+
+    Two state tenants of 500 field workers and eight NGO tenants sharing 500. Named for what it is
+    rather than for the plan section that specifies it, because sections move -- this one already
+    has, from the plan into test-scenarios.md.
+    """
     tenants = []
     for i in range(state_tenants):
         tenants.append(TenantSpec(name=f"state-{i + 1}", organisation_id=i + 1,
