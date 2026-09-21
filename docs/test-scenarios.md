@@ -1,7 +1,7 @@
 # Test scenarios
 
 **For customer review, and for the generator to build against.** The deployment being modelled, and
-the ten test cases derived from it with actual numbers.
+the eleven test cases derived from it with actual numbers.
 
 Split out of [the sync simulation plan](sync-simulation-plan.md) because it has a different audience
 and a different lifecycle: the plan is how the instrument gets built, this is what it will be pointed
@@ -200,13 +200,37 @@ point.
 it is the expensive one, and 1% of 1,000 workers is ten full syncs a day against a dataset that grows
 to day 180.
 
-**Two assumptions to carry explicitly**, both the customer's:
+**One assumption to carry explicitly**, the customer's: all of their organisations behave alike, so
+one usage pattern covers them.
 
-- All of this customer's organisations behave alike, so one usage pattern covers them.
-- The platform may host them **alongside existing tenants on shared infrastructure**, so the
-  production org skew measured in Q12 — 986 organisations, 48% of them empty, the largest holding 21%
-  of all subjects — has to be present in the dataset as well. That is not a separate scenario; it is
-  background load and table size that every one of these runs sits on top of.
+### Shared or separate infrastructure is a question to measure, not to assume
+
+These tenants could sit on the existing shared platform, beside the 986 organisations Q12 measured —
+48% of them empty, the largest holding 21% of all subjects — or on infrastructure of their own. **That
+is a decision with a cost attached either way, and it should be made on a number rather than on
+instinct.**
+
+Sharing is not free, and multi-tenancy is where the cost hides. Row-level security selects one
+tenant's rows out of tables holding every tenant's, planner statistics are computed across all of
+them, the connection interceptor runs `set role` on every borrow, and reference-table RLS walks
+organisation ancestors. None of that scales with *this* customer's data; all of it scales with the
+platform's.
+
+Separate infrastructure removes those costs and adds its own: a second environment to deploy,
+monitor, patch and pay for, and a tenant that cannot later be merged back without a migration.
+
+**Cases 5, 6 and 7 are the same load under three conditions, and the deltas between them are the
+answer.** Case 5 is the customer alone. Case 6 adds everyone else's *data* but none of their traffic,
+which isolates what mere presence costs — RLS selectivity, planner statistics, table and index size.
+Case 7 adds their *traffic* too, at production's measured arrival rate of 792 syncs in its busiest
+recorded hour (Q4), which is what actually competes for the connection pool, CPU and IO.
+
+**Separating 6 from 7 matters because the two have different remedies.** If the cost is in case 6,
+it is structural and follows the data wherever it sits — better indexes, better statistics, a cheaper
+RLS predicate. If it only appears in case 7, it is contention, and more capacity or a separate
+instance fixes it. Running them as one case would leave you unable to tell which you were looking at.
+
+Running only case 5 would leave the decision exactly where it started.
 
 ---
 
@@ -273,20 +297,21 @@ two or eight a day, halve or double every arrival rate below.**
 | **2** | Field worker steady state | 500 | Day 180, one state tenant | Incremental, 1% full | The common case |
 | **3** | Supervisor steady state | 62 | Day 180, one state tenant | Incremental, 1% full | Whether 3× the volume per device changes anything |
 | **4** | **Combined** | 500 + 62 | Day 180, one state tenant | Incremental, 1% full | **The realistic case.** Wide and frequent syncs competing for one pool |
-| **5** | Full platform | 1,504 + 188 | Day 180, all 10 tenants | Incremental, 1% full | Cross-tenant contention, RLS at 10 tenants, `set role` churn |
-| **6** | Shared infrastructure | Case 5 | Day 180 **plus production's tenant skew** | Incremental, 1% full | Whether 986 co-tenant organisations change any of it |
-| **7** | Growth comparison | Case 4 | Day 60, then 120, then 180 | Incremental, 1% full | The shape of the curve. A knee between points is the finding |
-| **8** | Reset storm | 562, one tenant, org-wide reset | Day 180 | **All full** | The heaviest real event (Q10 measured it at 130× a normal week) |
-| **9** | Stress ramp | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
-| **10** | Soak | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
+| **5** | **Separate infrastructure** | 1,504 + 188 | Day 180, these 10 tenants only | Incremental, 1% full | The customer's own load, with nobody else's data in the tables. **The baseline the next two are measured against** |
+| **6** | **Shared — co-tenant data** | 1,504 + 188 | Day 180 **plus production's 986 organisations**, which sync nothing | Incremental, 1% full | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
+| **7** | **Shared — co-tenant load** | Case 6, plus production's own arrival rate | Same as case 6 | Incremental, 1% full | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
+| **8** | Growth comparison | Case 4 | Day 60, then 120, then 180 | Incremental, 1% full | The shape of the curve. A knee between points is the finding |
+| **9** | Reset storm | 562, one tenant, org-wide reset | Day 180 | **All full** | The heaviest real event (Q10 measured it at 130× a normal week) |
+| **10** | Stress ramp | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
+| **11** | Soak | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
 
-**Build order: 1, 4, 7, then the rest.** Case 1 needs no generated data at all, so it can run before
-the generator exists. Case 4 is the one to answer first. Case 7 needs all three datasets, so it sets
+**Build order: 1, 4, 8, then the rest.** Case 1 needs no generated data at all, so it can run before
+the generator exists. Case 4 is the one to answer first. Case 8 needs all three datasets, so it sets
 the generator's deadline.
 
 ### Conditional on one open question
 
-Cases 3, 4, 5 and 7 assume **supervision at sub-centre level** — 8 field workers per supervisor. If it
+Cases 3 to 8 assume **supervision at sub-centre level** — 8 field workers per supervisor. If it
 sits higher, per-device volume changes by roughly an order of magnitude and the cases above change
 with it:
 
@@ -308,7 +333,18 @@ it is one answer away.
 4. **Two user classes**: field worker at one village, supervisor at one sub-centre of ~2.8 villages.
 5. **Timestamps per Q14** — median age near two years, and program encounters written twice.
 6. **Observation shape per Q6** — the measured key-count distributions, per form type.
-7. Optionally the **production tenant skew** for case 6: 986 organisations, 48% empty.
+7. **Production's tenant skew** for cases 6 and 7: 986 organisations, 48% empty, the largest holding
+   21% of all subjects. Not optional — without it there is no hosting comparison, only a guess.
+
+**Cases 5 and 6 must differ in exactly one thing.** Same generated tenants, same seed, same growth
+point, same server build, same instance size — the only difference is whether the other 986
+organisations are present. Any second difference and the delta stops being attributable, which is
+the whole point of running both. Case 7 then differs from case 6 only by the co-tenant traffic.
+
+**What to record for the comparison.** Sync duration at p50 and p95 is the headline, but on its own
+it will not say *why*: add buffer cache hit ratio, rows read per index scan on the sync path, and
+connection pool wait time (F1/F2). Case 6 moving the first two and not the third points at data
+volume; case 7 moving the third points at contention.
 
 **Datasets are held as recipes, not files.** A dataset is gigabytes and a pure function of its
 inputs, so `tools/data-generator/datasets/` carries three small files per named dataset — the recipe
@@ -328,7 +364,8 @@ measured 79 tracked against 4 changed. A small configuration will not exercise t
 will.
 
 One thing remains: **H5's structural check run once for real**, which needs a loaded dataset.
-**Item 7 is not built** — the production tenant skew for case 6 is a separate generation run against
-a different spec, not a variation of this one.
+**Item 7 is not built** — production's tenant skew is a separate generation run against a different
+spec rather than a variation of this one. It is what case 6 needs, so the hosting comparison is
+blocked on it.
 
 ---

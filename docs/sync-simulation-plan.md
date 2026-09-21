@@ -1107,11 +1107,17 @@ rest; the remainder are the instrument's own.
   the equivalent uncontended profile is the finding
 
 **E4 — Multi-tenant load.** *First-class, not finding-triggered — see section I.* The feeder and
-user provisioning must be able to span organisations with a controllable mix. **[test-scenarios.md](test-scenarios.md) fixes the shape:**
-two state-level tenants of ~500 workers each alongside ~8 NGO tenants sharing ~500, on a platform
-that also carries the existing production tenant skew. That is both shapes at once — a realistic
-spread, and large tenants beside small ones — so noisy-neighbour effects are not a separate run.
-Start at 2 tenants, then 5, then the full set. Neither can surface in a single-org run, and the
+user provisioning must be able to span organisations with a controllable mix.
+**[test-scenarios.md](test-scenarios.md) fixes the shape:** two state-level tenants of ~500 workers
+each alongside ~8 NGO tenants sharing ~500. That is a realistic spread and large tenants beside small
+ones at once, so noisy-neighbour effects are not a separate run. Start at 2 tenants, then 5, then the
+full set.
+
+**Whether those tenants sit beside production's existing 986 organisations is a question the cases
+answer rather than assume.** Test cases 5, 6 and 7 run the same load with the customer alone, with
+everyone else's data present, and with everyone else's traffic on top. The deltas say whether sharing
+costs anything and — because 6 and 7 are separated — whether the cost is structural or contention.
+Those have different remedies, so running them as one case would leave the finding unattributable. Neither can surface in a single-org run, and the
 shared connection pool plus per-borrow `set role` churn make cross-tenant contention a distinct
 failure mode from anything a single tenant produces.
 
@@ -2200,8 +2206,8 @@ the top of that document are the ones that move numbers.
   which is private. **This repository is public and carries summarised findings only** — ratios,
   percentiles and the figures the plan reasons about. Per-organisation sizes, per-index scan counts
   and the full hourly and weekly series are recorded there.
-- **[test-scenarios.md](test-scenarios.md)** — the deployment being modelled and ten test cases with
-  numbers, for customer review. Split out because it has a different audience: that is what the
+- **[test-scenarios.md](test-scenarios.md)** — the deployment being modelled and eleven test cases
+  with numbers, for customer review. Split out because it has a different audience: that is what the
   instrument gets pointed at, this is how it gets built.
 - **[open-questions.md](open-questions.md)** — everything this plan is waiting on, grouped by who can
   answer it, with what each one blocks. Four customer questions move numbers; one product decision

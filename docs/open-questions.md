@@ -35,7 +35,8 @@ one's rate, with nothing ageing out.
 | # | Question | Blocks | Note |
 |---|---|---|---|
 | **5** | **What error rate is acceptable under load?** | The last row of the Success criteria table | The only success criterion no query can supply. Everything else in that table is now measured. A6 is built and takes it as `MAX_FAILED_PERCENT`, so this is a number to choose rather than code to write |
-| **6** | **Which organisation configuration(s) to run against?** | H1 · F5.1 | The generator takes the bundle as a parameter, so this does not block building it — only running it. Worth covering a range of organisation sizes deliberately, since configuration size drives the `syncDetails` row count and therefore D1.1's per-row cost |
+| **6** | **Shared or separate infrastructure?** | Hosting, and the shape of the test environment | **Not an assumption any more — cases 5, 6 and 7 exist to answer it with a number.** Case 5 is the customer alone, 6 adds everyone else's data, 7 adds their traffic. The deltas say whether sharing costs anything and whether the cost is structural or contention. Blocked on generating production's tenant skew |
+| **7** | **Which organisation configuration(s) to run against?** | H1 · F5.1 | The generator takes the bundle as a parameter, so this does not block building it — only running it. Worth covering a range of organisation sizes deliberately, since configuration size drives the `syncDetails` row count and therefore D1.1's per-row cost |
 
 ---
 
@@ -43,8 +44,8 @@ one's rate, with nothing ageing out.
 
 | # | Question | Blocks | Note |
 |---|---|---|---|
-| **7** | **Distributed injectors — needed, or not?** | F3 | Gatling OSS has no orchestration, so multiple injectors mean merging logs by hand. One injector may well carry the whole deployment's load; measure before building for it |
-| **8** | **Over what period?** | Sequencing | Ownership is settled. The order in the Sequencing table reflects dependencies, not a calendar |
+| **8** | **Distributed injectors — needed, or not?** | F3 | Gatling OSS has no orchestration, so multiple injectors mean merging logs by hand. One injector may well carry the whole deployment's load; measure before building for it |
+| **9** | **Over what period?** | Sequencing | Ownership is settled. The order in the Sequencing table reflects dependencies, not a calendar |
 
 ---
 
@@ -52,9 +53,9 @@ one's rate, with nothing ageing out.
 
 | # | What | Where | Note |
 |---|---|---|---|
-| **9** | **Q7c on the primary** | [queries](production-measurement-queries.md) | The index-usage half. `idx_scan` is per-instance, and the replica serves only the reporting tool, so this is the one query that must not run there |
-| **10** | **Q11 — fleet page size split** | [queries](production-measurement-queries.md) | **Not answerable yet.** `pageSize` is not recorded in `sync_telemetry`, so it needs a client change first (D8.3) |
-| **11** | **Locations per catchment in production** | — | No query written. The generator declares one location per catchment by default and real bundles carry three, which changes the mapping table's size and the expansion view's work, though not what anyone syncs |
+| **12** | **Q7c on the primary** | [queries](production-measurement-queries.md) | The index-usage half. `idx_scan` is per-instance, and the replica serves only the reporting tool, so this is the one query that must not run there |
+| **12** | **Q11 — fleet page size split** | [queries](production-measurement-queries.md) | **Not answerable yet.** `pageSize` is not recorded in `sync_telemetry`, so it needs a client change first (D8.3) |
+| **12** | **Locations per catchment in production** | — | No query written. The generator declares one location per catchment by default and real bundles carry three, which changes the mapping table's size and the expansion view's work, though not what anyone syncs |
 
 Everything else in Q1–Q15 has run. Q14 and Q15 were added after the first pass and both returned.
 
@@ -69,7 +70,7 @@ mistaken for open decisions.
 |---|---|
 | **H5 steps 3–4**, the manual client check | A loaded dataset. The automated half is built; the client half needs a device, and a dataset passing only the automated half is **loadable, not blessed** |
 | **The generator's column and metadata dumps** | A target database with the bundle loaded. `columns.sql` and `refs.sql` are written |
-| **Item 7 of the generator's requirements** — production's tenant skew for case 6 | A decision to build it. It is a separate generation run against a different spec, not a variation of the E6 one |
+| **Production's tenant skew**, for cases 6 and 7 | A decision to build it. A separate generation run against a different spec, not a variation of the customer's. **The hosting question cannot be answered without it** |
 
 ---
 
@@ -81,7 +82,6 @@ false. Listed so they are visible rather than buried.
 | Assumption | Where | Why it is held |
 |---|---|---|
 | All of this customer's organisations behave alike, so one usage pattern covers them | [test-scenarios.md](test-scenarios.md) | The customer's own assumption, recorded as theirs |
-| These tenants may share infrastructure with existing production tenants | [test-scenarios.md](test-scenarios.md), case 6 | Makes production's org skew background load rather than a separate scenario |
 | A generated dataset can stand in for production data | H6 | An anonymised clone is not available. This is settled, not open — but it means H5's validation is the only thing that will catch an unrealistic generator |
 | Sync is the whole exercise | Closed questions | State-wide facility search is explicitly out of scope. **A passing sync run is not clearance for search**, because search cost grows with tenant size where sync cost grows with catchment size |
 | The three growth datasets differ only in encounter count | [test-scenarios.md](test-scenarios.md) | Beneficiary population does not grow with programme activity |
