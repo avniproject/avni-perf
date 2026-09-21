@@ -1,16 +1,25 @@
 # Open questions
 
 Everything [the sync simulation plan](sync-simulation-plan.md) and
-[the test scenarios](test-scenarios.md) are waiting on, ordered by how much turns on the answer.
-Each entry says what it blocks and what changes if the assumption behind it is wrong — that is what
-decides whether it is worth anyone's time.
+[the test scenarios](test-scenarios.md) are waiting on.
 
-Answering one means editing the section named against it. This document is an index, not a second
-source of truth.
+**Two kinds, and conflating them is how an exercise like this goes wrong.** The first are *inputs* —
+someone has to answer them before the tests can be designed, built or run, and no amount of running
+will settle them. The second are *outputs* — the questions the tests exist to answer, where an answer
+asserted in advance is precisely what the exercise was built to replace.
+
+Shared versus separate infrastructure moved from the first list to the second, and that move was the
+point: it had been recorded as the customer's assumption, which decided it by assuming it.
+
+Answering an input means editing the section named against it. This document is an index, not a
+second source of truth.
 
 ---
 
-## Open
+## Questions that block building or running the tests
+
+Inputs. Someone has to answer these; no amount of running will. Ordered by how much turns on the
+answer.
 
 ### 1. Which tier supervises?
 
@@ -28,26 +37,14 @@ a supervisor holds 920,000, which is **3.5× that device**, and it becomes a tes
 | PHC | 45 | 207,000 | 32 min | 0.78× |
 | Block | 200 | 920,000 | 141 min | 3.5× |
 
-### 2. Shared or separate infrastructure?
-
-**No longer assumed — cases 5, 6 and 7 exist to answer it with a number.**
-Blocks the hosting decision and the shape of the test environment.
-
-Case 5 is the customer alone, 6 adds production's 986 organisations' data, 7 adds their traffic. The
-deltas say whether sharing costs anything and, because 6 and 7 are separate, whether the cost is
-structural or contention — which have different remedies.
-
-**Blocked on generating production's tenant skew**, which is a separate generation run against a
-different spec. Until that exists there is no case 6 or 7, and the decision has no number behind it.
-
-### 3. How often does a worker sync per working day?
+### 2. How often does a worker sync per working day?
 
 **Assumed: 4.** Blocks every arrival rate in the test cases.
 
 Nothing measured or supplied gives a figure. **Every arrival rate scales linearly with it**: at 2 a
 day the platform peaks near 350 syncs an hour, at 8 near 1,400, against production's record of 792.
 
-### 4. What error rate is acceptable under load?
+### 3. What error rate is acceptable under load?
 
 Blocks the last unfilled row of the Success criteria table.
 
@@ -55,22 +52,22 @@ Blocks the last unfilled row of the Success criteria table.
 A6 is built and takes it as `MAX_FAILED_PERCENT`, so this is a number to choose rather than code to
 write.
 
-### 5. Is "500 workers" field workers only, or all users?
+### 4. Is "500 workers" field workers only, or all users?
 
 **Assumed: field workers, with 62 supervisors added per state tenant on top.**
 Blocks the deployment table and user provisioning.
 
 If it is the total, the deployment is 11% smaller.
 
-### 6. Is 500 workers the pilot, the first year, or the design target?
+### 5. Is 500 workers the pilot, the first year, or the design target?
 
-**Assumed: a pilot.** Blocks the scope of every conclusion.
+**Assumed: a pilot.** Blocks the scope of every conclusion rather than the build.
 
 A real state runs 165,000 ASHAs, so 500 is 0.3% of one. **Nothing in a 500-worker result
 extrapolates upward** — tenant data volume grows with worker count, and sync cost follows it through
 index size and cache residency.
 
-### 7. Which organisation configuration(s) to run against?
+### 6. Which organisation configuration(s) to run against?
 
 Blocks H1 and F5.1, though not building anything.
 
@@ -79,19 +76,45 @@ exists. What is open is the choice. Worth covering a range of sizes deliberately
 drives the `syncDetails` row count and therefore D1.1's per-row queries, where Q8 measured 79
 entities tracked against 4 changed.
 
-### 8. Distributed injectors — needed, or not?
+### 7. Distributed injectors — needed, or not?
 
 Blocks F3.
 
 Gatling OSS has no orchestration, so multiple injectors mean merging logs by hand. One injector may
 well carry the whole deployment's load. Measure before building for it.
 
-### 9. Over what period?
+### 8. Over what period?
 
 Blocks sequencing. Ownership is settled; the order in the Sequencing table reflects dependencies
 rather than a calendar.
 
 ---
+
+## Questions the tests exist to answer
+
+Outputs. Nobody should answer these in advance — that is what the runs are for, and an answer
+asserted now is the thing the exercise was built to replace.
+
+They are listed because **a test case that answers no question is a run nobody needs**, and because
+several of them already have a suspect attached from reading the code. Those suspects are
+**hypotheses, not findings**: every one gets a cost attached before anyone changes it, since a
+cheap-looking fix to something costing 0.3% burns review cycles while the real bottleneck stays
+hidden.
+
+| Question | Answered by | Suspect, if any |
+|---|---|---|
+| **Shared or separate infrastructure?** | Cases 5, 6, 7 — the deltas between them | Multi-tenancy costs scale with the platform, not with this customer: RLS selectivity, planner statistics across all tenants, `set role` on every borrow |
+| **Where are the choke points?** | The whole exercise; cases 4 and 10 most directly | Storage IO is the prime suspect — 19.4 GB of indexes against 933 MB of cache, on a fixed 3,000 IOPS |
+| **Does the server hold at this load at all?** | Cases 2, 3, 4 | Nothing yet. Per-device volumes sit inside what production already carries |
+| **Does volume growth show a knee?** | Case 8, across day 60/120/180 | Index size crossing cache residency is the shape to look for |
+| **What does a supervisor's catchment cost?** | Case 3 against case 2 | Depends entirely on question 1 above |
+| **What does the heaviest real event cost?** | Case 9, the reset storm | Q10 measured one week at 130× normal, all users forced onto the full-sync path |
+| **Is `syncDetails`' per-row cost material?** | Cases 1 and 4, with F1/F2 attribution | Q8 found 4 of 79 entities changed at p50, so 94% of the per-row queries prove nothing changed — but the endpoint saves 75 HTTP round trips, so the question is cost *relative to what it buys* |
+| **Does the organisation interceptor cost enough to matter?** | F2.1, under case 5 | Three Postgres round trips per connection borrow, plus `getMetaData()` evaluated for a TRACE log argument |
+| **Does ETL contention matter?** | The contended variant of case 4 | ETL shares the same IO ceiling on a 90-minute cycle |
+| **Where does it break, and which resource names it?** | Case 10, the stress ramp | Unknown by design — this is the one question with no useful prior |
+
+**None of these blocks anything.** They are the deliverable.
 
 ## Measurements
 
@@ -115,7 +138,7 @@ an open decision.
 |---|---|
 | **H5 steps 3–4**, the manual client check | A loaded dataset and a device. The automated half is built, and a dataset passing only that half is **loadable, not blessed** |
 | **The generator's column and metadata dumps** | A target database with a bundle loaded. `columns.sql` and `refs.sql` are written |
-| **Production's tenant skew** | A decision to build it. Cases 6 and 7 need it, so question 2 is blocked behind it |
+| **Production's tenant skew** | A decision to build it. Cases 6 and 7 need it, so the hosting comparison cannot run until it exists |
 | **Q7c's index usage, re-read later** | Nothing — it has run. Worth repeating after any index change, since `idx_scan` counts only since the server last restarted |
 
 ---
