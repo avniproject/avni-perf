@@ -317,8 +317,8 @@ against 5,623 would fail a correct dataset.
 
 ## Assembling a deployment
 
-`deployment.py` turns E6's specification into files a `COPY` can load. `pilot_deployment(days, ref)`
-gives its shape with its numbers as defaults — two state tenants of 500 field workers, eight NGO
+`deployment.py` turns the test scenarios into files a `COPY` can load. `pilot_deployment(days, ref)`
+gives the customer's pilot with its numbers as defaults — two state tenants of 500 field workers, eight NGO
 tenants sharing 500 — and reproduces E6's totals:
 
 | Day | Beneficiaries | Encounters | Total rows |
@@ -362,8 +362,8 @@ three small files per named dataset instead of the output.
 | `manifest.json` | **The fingerprint.** Row count, byte size and SHA-256 per table |
 | `verdict.json` | **The H5 gate result**, recording that the dataset was blessed and against which profile |
 
-`datasets/` carries the three E6 datasets — `pilot-day-60`, `pilot-day-120`, `pilot-day-180` — differing only
-in growth point, which a test asserts.
+`datasets/` carries the four pilot datasets — `pilot-day-60` through `pilot-day-365` — differing only in
+growth point, which a test asserts, and `co-tenants-day-180` for the hosting comparison.
 
 **Storing the output instead would discard the only safety property the generator has.** `schema.py`
 refuses to generate against a schema it does not recognise; a committed `.tsv` carries no such guard,
