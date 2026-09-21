@@ -29,7 +29,7 @@ a 16-minute median.
 | **8** | Growth comparison | 1 state | Case 4 | Day 60, 120, 180, **365** | Incremental, 1% full | The shape of the curve. A knee between points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
 | **9** | Stress ramp | **10** | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
 | **10** | Soak | 1 state | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
-| **11** | **Configuration size** | 1, twice | Case 1 | Config only, **a small and a large bundle** | Full | How `syncDetails` cost scales with the number of entities a configuration defines |
+| **11** | **Configuration breadth** | 1, twice | Case 1 | Config only, **few subject types and encounter types against many** | Full | How `syncDetails` cost scales with the number of *form mappings*, which is what sets its row count |
 
 **Tenant counts trace to the table under [the deployment](#the-deployment-being-modelled)**: a state
 tenant is 500 field workers and 62 supervisors, and the ten together are 1,504 and 188. The 986 in
@@ -77,16 +77,39 @@ the generator's deadline.
 
 ### Two cases the closed questions asked for
 
-**Case 11 exists because the configuration decision left something unexercised.** Separate hosting
-runs the customer's tenants on similar configurations, which is right for them — but H1 makes
-organisation complexity a load variable in its own right: **the number of entities a configuration
-defines is the number of rows the client posts to `syncDetails`, and therefore the number of per-row
-queries `filterChangedEntities` runs.** Q8 measured 79 tracked against 4 changed, so 94% of that work
-proves nothing changed, and the cost grows with the configuration rather than with the data.
+**Case 11 exists because the configuration decision left something unexercised**, and what it varies
+is narrower than "configuration size" — narrow enough to be worth stating precisely, because the
+obvious reading is wrong.
 
-Nothing else here varies it. Case 1 is the natural vehicle: config only, no field data, so the
-per-row cost is isolated from catchment volume entirely. Running it twice against a small and a large
-bundle turns a platform property into a measured curve, and it needs no generated data at all.
+**`syncDetails` does cover metadata, but metadata volume does not move its row count.**
+`SyncDetailsService.getAllSyncableItems` builds the list in two parts. **Fifty-five entities are
+added flat**, one row each — `Concept`, `Form`, `FormElement`, `ConceptAnswer`, `EncounterType`,
+`Translation` and the rest — so **an organisation with 5,000 concepts and one with 50 contribute
+exactly one `Concept` row apiece**. Nothing about the size of a configuration reaches this number.
+
+**What does move it is the configuration's structure**, because the rest of the list is keyed on
+configuration objects:
+
+| Per | Rows |
+|---|---|
+| Subject type | `Individual`, `SubjectMigration`, `SubjectProgramEligibility`, plus up to four more for person, group, attendance, comments and approval |
+| General encounter form mapping | `Encounter`, plus one if approval is enabled |
+| Program encounter form mapping | `ProgramEncounter`, plus one if approval is enabled |
+| Program enrolment form mapping | `ProgramEnrolment`, plus one if approval is enabled |
+| Checklist detail | `Checklist`, `ChecklistItem` |
+
+Q8's median of 79 is therefore about 55 fixed and **24 from the variable part**. The customer's own
+figure is directly on this axis: **10 encounter types per NCD programme**, multiplied by subject
+types and programmes, is what a form-mapping count is made of.
+
+**So the case varies subject types, programmes and encounter types — not concepts or form
+elements.** Case 1 remains the vehicle: config only, no field data, so the per-row cost is isolated
+from catchment volume entirely, and it needs no generated data at all.
+
+> **The count is also per user, not per organisation.** Every branch is gated on
+> `groupPrivileges.hasPrivilege(...)`, so a user without `ViewSubject` on a subject type never sees
+> its rows. Two users in the same organisation can post different-sized bodies, which is worth
+> knowing before reading a single number as the organisation's.
 
 **Case 8 gains day 365 because it is now carrying more weight than three points can bear.** With 500
 workers confirmed as the pilot, this curve is the only evidence the exercise produces about scale

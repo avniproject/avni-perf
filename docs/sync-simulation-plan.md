@@ -191,7 +191,7 @@ visible.
 | **Where are the choke points?** | The whole exercise; cases 4 and 10 most directly | Storage IO is the prime suspect — 19.4 GB of indexes against 933 MB of cache, on a fixed 3,000 IOPS |
 | **Does the server hold at this load at all?** | Cases 2, 3, 4 | Nothing yet. Per-device volumes sit inside what production already carries, and these cases run under one sync in flight |
 | **Does volume growth show a knee?** | Case 8, across day 60/120/180/365 | Index size crossing cache residency is the shape to look for. **The only evidence this exercise gives about scale beyond the pilot** |
-| **Does configuration size cost anything?** | Case 11, a small bundle against a large one | Q8 found 4 of 79 entities changed, and the count of entities is set by the configuration rather than by the data |
+| **Does configuration breadth cost anything?** | Case 11, a narrow configuration against a broad one | Q8 found 4 of 79 entities changed. **55 of those 79 are fixed whatever the configuration holds** — the rest scale with subject types, programmes and encounter types |
 | **What does a supervisor's catchment cost?** | Case 3 against case 2 | Depends entirely on question 1 above |
 | **Is `syncDetails`' per-row cost material?** | Cases 1 and 4, with F1/F2 attribution | Q8 found 4 of 79 entities changed at p50, so 94% of the per-row queries prove nothing changed — but the endpoint saves 75 HTTP round trips, so the question is cost *relative to what it buys* |
 | **Does the organisation interceptor cost enough to matter?** | F2.1, under case 5 | Three Postgres round trips per connection borrow, plus `getMetaData()` evaluated for a TRACE log argument |
@@ -2005,45 +2005,6 @@ One trap avoided: **per-organisation concept cardinality is compared against the
 reachable set, not against Q6's 5,623.** That figure spans all 986 organisations, and judging one
 generated tenant against it would fail a correct dataset.
 
-### H7 — Generate production's tenant skew
-
-**Cases 6 and 7 do not exist without this, so the hosting decision has no number behind it until it
-is built.** It is a second generation run against a different specification rather than a variation
-of the customer's: **986 organisations, 48% of them holding nothing, the largest holding 21% of all
-subjects** (Q12), with the location hierarchies and catchments to match.
-
-Three things make it cheaper than it sounds. Half the organisations are empty, so they cost a row in
-`organisation` and nothing else. The bulk sits in a handful of large ones, so the generator's
-existing per-tenant path covers most of it. And the co-tenants **do not sync in case 6**, so their
-users exist only to make catchments resolvable — no feeder entry, no sync-status baseline.
-
-**Size it against production rather than against the customer.** Q7's row counts are the target:
-2.75 M subjects and 6.86 M program encounters across all organisations.
-
-**Built** — `tools/data-generator/co_tenants.py`, with a recipe committed. 513 generated tenants
-holding 2,548,061 subjects and 3.1 M encounters at day 180, plus 473 organisations that exist as a
-row and nothing else. Sizes are interpolated through Q12's measured ranks rather than fitted, since
-no single power law holds across the range — the exponent is 0.84 between ranks 1 and 10 and 1.57
-between 1 and 156. Every share reproduces within two points.
-
-Loaded together, cases 6 and 7 carry about **1.8× case 5's rows**, so expect the co-tenant half to
-dominate load time and disk.
-
-### H8 — Two configurations for the configuration-size case
-
-Test case 11 runs the training cohort against a small bundle and a large one, which is the only case
-that varies configuration size — and configuration size is what sets the `syncDetails` row count, so
-it drives D1.1's per-row queries directly.
-
-**The two bundles are an input the plan does not currently have.** Either select real implementation
-configurations at either end of the range, or scale one by duplicating concept trees and form
-mappings until it reaches a realistic large-org shape. H1 already allows both; case 11 is what makes
-choosing necessary.
-
-Record the entity count each produces, because that is the x-axis of the result. Q8 measured 79
-entities tracked per sync on production's own configurations, which is the point the curve has to
-pass through.
-
 ### H6 — Decided: no production clone
 
 **An anonymised production clone is not available.** Recorded here so it is not re-proposed: it would
@@ -2072,6 +2033,60 @@ calibrated simulation and a guessed one.
 dataset, so nothing else will catch a generator that produces unrealistic cardinality. Treat H5 as a
 gate rather than a nice-to-have: run both checks before the dataset is blessed, and re-run them
 whenever the generator changes.
+
+### H7 — Generate production's tenant skew
+
+**Cases 6 and 7 do not exist without this, so the hosting decision has no number behind it until it
+is built.** It is a second generation run against a different specification rather than a variation
+of the customer's: **986 organisations, 48% of them holding nothing, the largest holding 21% of all
+subjects** (Q12), with the location hierarchies and catchments to match.
+
+Three things make it cheaper than it sounds. Half the organisations are empty, so they cost a row in
+`organisation` and nothing else. The bulk sits in a handful of large ones, so the generator's
+existing per-tenant path covers most of it. And the co-tenants **do not sync in case 6**, so their
+users exist only to make catchments resolvable — no feeder entry, no sync-status baseline.
+
+**Size it against production rather than against the customer.** Q7's row counts are the target:
+2.75 M subjects and 6.86 M program encounters across all organisations.
+
+**Built** — `tools/data-generator/co_tenants.py`, with a recipe committed. 513 generated tenants
+holding 2,548,061 subjects and 3.1 M encounters at day 180, plus 473 organisations that exist as a
+row and nothing else. Sizes are interpolated through Q12's measured ranks rather than fitted, since
+no single power law holds across the range — the exponent is 0.84 between ranks 1 and 10 and 1.57
+between 1 and 156. Every share reproduces within two points.
+
+Loaded together, cases 6 and 7 carry about **1.8× case 5's rows**, so expect the co-tenant half to
+dominate load time and disk.
+
+### H8 — Two configurations of differing breadth
+
+Test case 11 runs the training cohort against a narrow configuration and a broad one. **Breadth, not
+size** — and the distinction is the substance of the task, because the obvious reading is wrong.
+
+`SyncDetailsService.getAllSyncableItems` builds the syncDetails list in two parts. **Fifty-five
+entities are added flat**, one row each, and they include every metadata entity — `Concept`, `Form`,
+`FormElement`, `ConceptAnswer`, `EncounterType`, `Translation`. **So a configuration with 5,000
+concepts posts exactly the same number of rows as one with 50.** Metadata volume does not reach this
+number at all.
+
+The rest is keyed on configuration *objects*: three rows per subject type and up to four more
+depending on whether it is a person, a group, has attendance, has comments or has approval enabled;
+one per general encounter, program encounter and program enrolment form mapping, each with a second
+if approval is on; and two per checklist detail. Q8's median of 79 is therefore roughly 55 fixed and
+**24 variable**.
+
+**So the two bundles must differ in subject types, programmes and encounter types** — not in concept
+count. The customer's figure sits directly on this axis: 10 encounter types per NCD programme,
+multiplied by subject types and programmes, is what a form-mapping count is made of. Either select
+real configurations at either end of that range, or add form mappings to one.
+
+Record the form-mapping count each produces, because that is the x-axis of the result.
+
+> **The row count is per user, not per organisation.** Every branch is gated on
+> `groupPrivileges.hasPrivilege(...)`, so a user without `ViewSubject` on a subject type never
+> receives its rows. Two users in one organisation can post different-sized bodies, which also means
+> **D1.1's per-row cost varies by privilege** — worth knowing before attributing a difference
+> between users to anything else.
 
 ---
 

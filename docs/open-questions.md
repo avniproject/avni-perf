@@ -135,11 +135,12 @@ That is not two settings of one dial; it is **two tenant-shape specifications th
 produce**. The first it already builds. The second is the outstanding generation run that cases 6
 and 7 wait on.
 
-**This decision left one thing unexercised, so a case was added for it.** Configuration size drives
-the `syncDetails` row count and therefore D1.1's per-row queries — Q8 measured 79 entities tracked
-against 4 changed, so 94% of that work proves nothing changed, and the cost grows with the
-configuration rather than with the data. Nothing else varies it, so **case 11** runs case 1 against a
-small bundle and a large one. It needs no generated data at all.
+**This decision left one thing unexercised, so a case was added for it** — though what it varies is
+narrower than it first looked. Checking the server showed that **55 of the 79 entities Q8 counted are
+added flat, one row each, including every metadata entity**: a configuration with 5,000 concepts
+posts the same number of rows as one with 50. What scales the row count is the number of **subject
+types, programmes and encounter types**, because the rest of the list is keyed on form mappings.
+**Case 11** varies that, against a configuration-only organisation, and needs no generated data.
 
 ### Distributed injectors
 
