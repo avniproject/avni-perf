@@ -24,6 +24,17 @@ public class AvniEntity {
      */
     public List<String> entityTypeUuidParams;
 
+    /**
+     * Path the client POSTs this entity to, for tx entities. Null for reference entities, which are
+     * never pushed.
+     *
+     * Not derivable from `path` above: postAllEntities drops the apiVersion segment and pluralises
+     * the resource name at the call site, so UserInfo pulls from v2/me and pushes to me. Some of the
+     * results look wrong - News posts to /newss - but that is what the client sends, and the
+     * simulation's job is to send the same thing.
+     */
+    public String pushPath;
+
     /** Query params the client always sends for this entity. A null value means the simulation supplies it. */
     public Map<String, String> staticParams;
 

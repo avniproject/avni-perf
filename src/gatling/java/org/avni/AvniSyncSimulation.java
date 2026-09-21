@@ -10,6 +10,7 @@ import io.gatling.javaapi.core.*;
 import io.gatling.javaapi.http.*;
 import org.avni.helper.CognitoHelper;
 import org.avni.models.AvniEntity;
+import org.avni.models.PushSeed;
 import org.avni.models.SyncDetail;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -20,6 +21,9 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 
 
 public class AvniSyncSimulation extends Simulation {
@@ -112,6 +116,70 @@ public class AvniSyncSimulation extends Simulation {
      * figure was measured in.
      */
     private static final String maxP95Millis = System.getProperty("MAX_P95_MS");
+    /*
+     * D3 - the push path.
+     *
+     * Off by default, and that default is a deliberate trade rather than caution. Push writes rows:
+     * once it is on, a run changes the database it measured, so the next run is not the same
+     * experiment and the dataset's H5 verdict no longer describes what is in the tables. Leaving it
+     * off keeps every existing run repeatable.
+     *
+     * The cost of the default is that a green result from a run without PUSH=on says nothing about
+     * write contention, lock waits or index maintenance - which is most of what the write path
+     * costs. The startup banner says so in as many words, because the failure mode here is someone
+     * reading a read-only run as the realistic case.
+     */
+    private static final boolean pushEnabled = enabled(System.getProperty("PUSH", "false"));
+
+    /** "on" as well as "true", because the banner and the docs both say PUSH=on. */
+    private static boolean enabled(String value) {
+        return "true".equalsIgnoreCase(value) || "on".equalsIgnoreCase(value)
+            || "yes".equalsIgnoreCase(value);
+    }
+
+    /*
+     * Records queued per sync, per entity. Provisional: derived from the customer's stated 20
+     * encounters per field worker per day against a daily sync, not measured. Q17 replaces them
+     * with production's own `sync_telemetry.entity_status->'push'` distribution.
+     *
+     * These are absolute per-sync counts, not a rate. A real queue is proportional to the time
+     * since the last sync, so a run at a different interval than INCREMENTAL_SINCE_HOURS=24 needs
+     * them re-derived rather than reused.
+     */
+    private static final int pushIndividuals = Integer.getInteger("PUSH_INDIVIDUALS", 1);
+    private static final int pushEnrolments = Integer.getInteger("PUSH_ENROLMENTS", 1);
+    private static final int pushProgramEncounters = Integer.getInteger("PUSH_PROGRAM_ENCOUNTERS", 20);
+    private static final int pushEncounters = Integer.getInteger("PUSH_ENCOUNTERS", 2);
+
+    /**
+     * Observations per pushed record, as a count of harvested rows to concatenate. One means the
+     * pushed row carries the same observation set as a real one; higher inflates the jsonb and the
+     * GIN maintenance with it, which is the knob F-series stress runs need.
+     */
+    private static final int pushObservationMultiple = Integer.getInteger("PUSH_OBSERVATION_MULTIPLE", 1);
+
+    /**
+     * D5.1 - media upload is sync-path load the simulation has never touched. Measured: 2.14% of
+     * program_encounter rows carry a media observation, so one presigned-URL call per fifty
+     * encounters. The bytes are never transferred (D5.2): S3 serves those directly and PUTting them
+     * would measure S3 rather than avni-server.
+     */
+    private static final int pushEncountersPerMediaFile =
+        Integer.getInteger("PUSH_ENCOUNTERS_PER_MEDIA_FILE", 50);
+
+    /** How many rows to harvest per entity when seeding a device. Enough to vary, cheap to fetch. */
+    private static final int pushSeedSize = Integer.getInteger("PUSH_SEED_SIZE", 20);
+
+    /**
+     * Hosts this simulation will not push to. Pushing invents subjects and encounters that look
+     * like field data and cannot be told apart from it afterwards by anything but the UUID prefix,
+     * so the guard is a deny list rather than a warning.
+     */
+    private static final List<String> PROTECTED_HOSTS =
+        Arrays.asList("app.avniproject.org", "prod.avniproject.org");
+    private static final boolean pushTargetAllowed =
+        Boolean.getBoolean("PUSH_ALLOW_UNSAFE_TARGET") || PROTECTED_HOSTS.stream().noneMatch(baseUrl::contains);
+
     private static final int incrementalSinceHours = Integer.getInteger("INCREMENTAL_SINCE_HOURS", 24);
     private static final String FULL_SYNC_SINCE = "1900-01-01T00:00:00.000Z";
 
@@ -137,6 +205,23 @@ public class AvniSyncSimulation extends Simulation {
      * organisation legitimately track different sets.
      */
     private static final Map<String, List<SyncDetail>> userSyncStatuses = new ConcurrentHashMap<>();
+
+    /**
+     * What each user's device holds, harvested once - see PushSeed. Keyed by user rather than by
+     * virtual user because the same real user may be fed to several, and the inventory is a
+     * property of the account's catchment, not of the injector.
+     */
+    private static final Map<String, PushSeed> userPushSeeds = new ConcurrentHashMap<>();
+
+    /**
+     * Devices that could not be fully seeded, by what they were missing.
+     *
+     * Counted rather than warned about one at a time, and reported in after(). A run where most
+     * users have no enrolments to hang encounters off pushes a fraction of the configured volume
+     * and still finishes green, so the count is the difference between a valid result and one that
+     * measured nothing - it belongs beside the report, not buried in the startup scroll.
+     */
+    private static final Map<String, AtomicInteger> unseedable = new ConcurrentHashMap<>();
     private static final java.util.concurrent.atomic.AtomicBoolean warnedAboutMissingBootstrap =
         new java.util.concurrent.atomic.AtomicBoolean(false);
 
@@ -205,7 +290,13 @@ public class AvniSyncSimulation extends Simulation {
     ChainBuilder syncChainBuilder =
         exec(authChainBuilder)
             .exec(bootstrapChain)
+            .exec(seedChain())
             .exec(session -> session.set("syncStartTime", java.time.Instant.now().toString()))
+            // The client uploads before it asks what changed: dataServerSync runs pushData, then
+            // the reset-sync check, then getSyncDetails. Pushing after the pull would measure a
+            // different thing - the server's clock for the pull window is read after the upload
+            // precisely so a device does not re-download what it just sent.
+            .exec(pushChain())
             .exec(resetSyncChain())
             .exec(http("Getting SyncDetails")
                 .post(session -> "/v2/syncDetails?includeUserSubjectType=true&deviceId=" + deviceId)
@@ -254,6 +345,32 @@ public class AvniSyncSimulation extends Simulation {
                 + "not have - add users rather than oversubscribing the file.",
                 userCount, feederRows));
         }
+        if (!pushEnabled) {
+            out.println(
+                "Push: OFF - this run exercises the download path only. Write contention, lock "
+                + "waits and index maintenance cannot appear in the result, so a green run here is "
+                + "not evidence the write path holds. PUSH=on to include it (D3).");
+        } else if (!pushTargetAllowed) {
+            throw new IllegalStateException(
+                "PUSH=on against " + baseUrl + ", which is on the protected host list. Pushing "
+                + "creates subjects and encounters indistinguishable from field data. Point at a "
+                + "performance environment, or set PUSH_ALLOW_UNSAFE_TARGET=true if this really is "
+                + "intended.");
+        } else {
+            int perSync = pushIndividuals + pushEnrolments + pushProgramEncounters + pushEncounters;
+            out.println(String.format(
+                "Push: ON | %d records per sync (%d individual, %d enrolment, %d programEncounter, "
+                + "%d encounter) | 1 media call per %d encounters",
+                perSync, pushIndividuals, pushEnrolments, pushProgramEncounters, pushEncounters,
+                pushEncountersPerMediaFile));
+            out.println(String.format(
+                "  The client has no bulk endpoint: that is %d sequential POSTs per sync, each "
+                + "through the full filter chain and its own transaction. Volumes are derived from "
+                + "20 encounters per worker per day, not measured - Q17 replaces them.", perSync));
+            out.println(
+                "  This run WRITES. The database it measures is not the database the next run "
+                + "measures, and the dataset's H5 verdict no longer describes what is in the tables.");
+        }
         if (structuralCheck) {
             out.println(
                 "STRUCTURAL CHECK: asserting zero failures. This is H5's gate on a generated "
@@ -276,6 +393,32 @@ public class AvniSyncSimulation extends Simulation {
         setUp(syncScenario.injectOpen(rampUsers(userCount).during(rampPeriod)))
             .protocols(httpProtocol)
             .assertions(assertions.toArray(new Assertion[0]));
+    }
+
+    /**
+     * What the report cannot say for itself: how much of the configured push volume actually ran.
+     *
+     * A device with nothing to reference pushes nothing and fails no request, so a run against a
+     * dataset without enrolments finishes green having exercised almost none of the write path.
+     * The counts below are the qualifier on the result.
+     */
+    @Override
+    public void after() {
+        if (!pushEnabled) {
+            return;
+        }
+        int seeded = userPushSeeds.size();
+        int incomplete = unseedable.values().stream()
+            .mapToInt(AtomicInteger::get).sum();
+        out.println(String.format("Push seeding: %d devices, %d fully seeded, %d partial",
+            seeded, seeded - incomplete, incomplete));
+        if (incomplete > 0) {
+            unseedable.forEach((missing, count) -> out.println(String.format(
+                "  %d missing %s", count.get(), missing)));
+            out.println(
+                "  Those entities were skipped, so the run pushed less than the configured volume. "
+                + "Treat the write-path result as a floor, not a measurement.");
+        }
     }
 
     /**
@@ -424,7 +567,7 @@ public class AvniSyncSimulation extends Simulation {
             pull.add(row);
         }
         entityStatus.put("pull", pull);
-        entityStatus.put("push", new ArrayList<>());
+        entityStatus.put("push", pushStatus(session));
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("uuid", UUID.randomUUID().toString());
@@ -443,6 +586,38 @@ public class AvniSyncSimulation extends Simulation {
         } catch (JsonProcessingException e) {
             throw new UncheckedIOException("Could not serialise sync telemetry", e);
         }
+    }
+
+    /**
+     * What this sync pushed, in the shape the client reports it.
+     *
+     * todo equals done because the simulation only counts requests it made: a real client records
+     * todo from the queue before pushing and done as each POST returns, so a divergence there means
+     * records failed to upload. Reporting them equal is honest about what this measures, and it
+     * keeps Q17 - which reads these very rows to derive the volumes above - free of simulated
+     * failures it would misread as field behaviour.
+     */
+    private static List<Map<String, Object>> pushStatus(Session session) {
+        List<Map<String, Object>> push = new ArrayList<>();
+        if (!pushEnabled) {
+            return push;
+        }
+        for (AvniEntity entity : entities) {
+            PushEntity pushEntity = PUSHABLE.get(entity.entityName);
+            if (pushEntity == null || !entity.pushRequired) {
+                continue;
+            }
+            int count = pushCount(session, pushEntity);
+            if (count == 0) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("entity", entity.entityName);
+            row.put("todo", count);
+            row.put("done", count);
+            push.add(row);
+        }
+        return push;
     }
 
     /**
@@ -722,6 +897,478 @@ public class AvniSyncSimulation extends Simulation {
         } catch (IOException e) {
             throw new UncheckedIOException("Could not parse page metadata", e);
         }
+    }
+
+
+    // ---------------------------------------------------------------------------------------
+    // D3 - the push path
+    //
+    // Two things about it are worth knowing before reading the code, because both shape the load
+    // and neither is visible from the server side.
+    //
+    // 1. There is no bulk endpoint. ConventionalRestClient.chainPostEntities builds one POST per
+    //    record, and ChainedRequests.fire() reduces the queue over a single promise chain - so a
+    //    device with twenty queued encounters makes twenty sequential round trips, each through the
+    //    full authentication filter, the organisation interceptor and its own @Transactional
+    //    handler. Push cost scales with record count in requests, not just in bytes.
+    //
+    // 2. Entities go in a fixed order, parents first: EntityMetaData.model() reversed, which is the
+    //    order the generated table is already in. Individual before ProgramEnrolment before
+    //    ProgramEncounter. Iterating the table rather than a list of our own keeps that true if the
+    //    client's order changes.
+    // ---------------------------------------------------------------------------------------
+
+    /** One pushable entity: how many records per sync, and how to build one. */
+    private static final class PushEntity {
+        final String entityName;
+        final int perSync;
+        final BiFunction<Session, PushSeed, String> body;
+        /** Whether this device holds what the body needs. */
+        final java.util.function.Predicate<PushSeed> ready;
+
+        PushEntity(String entityName, int perSync, java.util.function.Predicate<PushSeed> ready,
+                   BiFunction<Session, PushSeed, String> body) {
+            this.entityName = entityName;
+            this.perSync = perSync;
+            this.ready = ready;
+            this.body = body;
+        }
+    }
+
+    private static final Map<String, PushEntity> PUSHABLE = pushable();
+
+    private static Map<String, PushEntity> pushable() {
+        Map<String, PushEntity> m = new LinkedHashMap<>();
+        m.put("Individual", new PushEntity("Individual", pushIndividuals,
+            PushSeed::canPushIndividual, AvniSyncSimulation::individualBody));
+        m.put("ProgramEnrolment", new PushEntity("ProgramEnrolment", pushEnrolments,
+            PushSeed::canPushEnrolment, AvniSyncSimulation::enrolmentBody));
+        m.put("ProgramEncounter", new PushEntity("ProgramEncounter", pushProgramEncounters,
+            PushSeed::canPushProgramEncounter, AvniSyncSimulation::programEncounterBody));
+        m.put("Encounter", new PushEntity("Encounter", pushEncounters,
+            PushSeed::canPushEncounter, AvniSyncSimulation::encounterBody));
+        return m;
+    }
+
+    /**
+     * The push phase: every configured entity, in the client's own order, one request per record.
+     *
+     * Records are skipped rather than faked when the device has nothing to reference. A pushed
+     * ProgramEncounter with an invented programEnrolmentUUID is rejected in the handler before it
+     * reaches a table, so counting it as load would measure the validation path and report a write
+     * that never happened.
+     */
+    private static ChainBuilder pushChain() {
+        if (!pushEnabled) {
+            return exec(session -> session);
+        }
+        // Media first: sync() runs mediaSync to completion before dataServerSync, so every
+        // presigned-URL call lands ahead of the first record. Ordering matters because the two
+        // hit the same filter chain and pool - interleaving them would spread a burst the real
+        // client delivers up front.
+        ChainBuilder chain = mediaUploadChain();
+        for (AvniEntity entity : entities) {
+            PushEntity pushEntity = PUSHABLE.get(entity.entityName);
+            if (pushEntity == null || !entity.pushRequired || pushEntity.perSync <= 0) {
+                continue;
+            }
+            String path = entity.pushPath;
+            chain = chain.exec(
+                doIf(session -> pushCount(session, pushEntity) > 0)
+                    .then(group("Push " + entity.entityName).on(
+                        repeat(session -> pushCount(session, pushEntity), "pushIndex")
+                            .on(exec(http("Push " + entity.entityName)
+                                .post("/" + path)
+                                .body(StringBody(session ->
+                                    pushEntity.body.apply(session, seedFor(session))))
+                                .asJson()
+                                .check(status().in(200, 201, 204)))))));
+        }
+        return chain;
+    }
+
+    /**
+     * How many records of this entity this virtual user pushes this sync.
+     *
+     * Zero when the device could not be seeded, which is a real outcome rather than an error: a
+     * user whose catchment holds no enrolments has nothing to hang a program encounter off, and the
+     * field equivalent of that user does not push one either.
+     */
+    private static int pushCount(Session session, PushEntity pushEntity) {
+        PushSeed seed = seedFor(session);
+        if (seed == null || !pushEntity.ready.test(seed)) {
+            return 0;
+        }
+        return Math.round(pushEntity.perSync * pushScale(session));
+    }
+
+    /**
+     * Per-user push volume, from an optional `pushScale` column in the user file.
+     *
+     * Volume is not uniform across roles and the difference runs the opposite way to sync volume: a
+     * supervisor pulls a wide catchment but creates few records, while a field worker pulls a
+     * narrow one and creates twenty encounters a day. Without this, case 3 would push a field
+     * worker's queue from a supervisor's account and overstate the write load by the same factor it
+     * understates the read.
+     */
+    private static float pushScale(Session session) {
+        String scale = session.getString("pushScale");
+        if (scale == null || scale.isEmpty()) {
+            return 1.0f;
+        }
+        return Float.parseFloat(scale);
+    }
+
+    private static PushSeed seedFor(Session session) {
+        return userPushSeeds.get(session.getString("userName"));
+    }
+
+    /**
+     * D5.1 - one presigned-URL request per media file queued, ahead of the data push.
+     *
+     * Modelled as a rate against encounter volume rather than as a queue of its own, because that
+     * is what the measurement supports: 2.14% of program_encounter rows carry a media observation.
+     * The fractional part is played out per sync rather than rounded, so a device pushing twenty
+     * encounters makes a media call on roughly two syncs in five instead of never.
+     */
+    private static ChainBuilder mediaUploadChain() {
+        if (pushEncountersPerMediaFile <= 0) {
+            return exec(session -> session);
+        }
+        return exec(session -> session.set("mediaCalls", mediaCallCount(session)))
+            .doIf(session -> session.getInt("mediaCalls") > 0)
+            .then(group("Push Media").on(
+                repeat(session -> session.getInt("mediaCalls"), "mediaIndex")
+                    .on(exec(http("Media uploadUrl")
+                        .get(session -> "/media/uploadUrl/" + UUID.randomUUID() + ".jpg")
+                        // A device with no media privilege gets a 4xx here and carries on; the
+                        // request still costs the server the filter chain, which is the point.
+                        .check(status().in(200, 201))))));
+    }
+
+    private static int mediaCallCount(Session session) {
+        PushSeed seed = seedFor(session);
+        if (seed == null) {
+            return 0;
+        }
+        float encounters = (pushProgramEncounters + pushEncounters) * pushScale(session);
+        float expected = encounters / pushEncountersPerMediaFile;
+        int whole = (int) expected;
+        return ThreadLocalRandom.current().nextFloat() < (expected - whole) ? whole + 1 : whole;
+    }
+
+    // --- payload builders -------------------------------------------------------------------
+    //
+    // Shapes come from the client's own toResource getters (openchs-models), not from the server's
+    // request contracts. The two differ: the server accepts fields the client never sends, and
+    // sending them would measure a path no device exercises.
+
+    private static String individualBody(Session session, PushSeed seed) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("uuid", UUID.randomUUID().toString());
+        body.put("voided", false);
+        body.put("firstName", "Perf");
+        body.put("lastName", Long.toHexString(ThreadLocalRandom.current().nextLong() >>> 32));
+        body.put("dateOfBirth", "1990-01-01");
+        body.put("dateOfBirthVerified", false);
+        body.put("registrationDate", java.time.LocalDate.now().toString());
+        body.put("subjectTypeUUID", seed.subjectTypeUuid);
+        body.put("addressLevelUUID", seed.addressLevelUuid);
+        body.put("genderUUID", seed.genderUuid);
+        return withObservations(body, "observations", seed.individualObservations);
+    }
+
+    private static String enrolmentBody(Session session, PushSeed seed) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("uuid", UUID.randomUUID().toString());
+        body.put("voided", false);
+        body.put("programUUID", seed.programUuid);
+        body.put("individualUUID", pick(seed.individualUuids));
+        body.put("enrolmentDateTime", java.time.OffsetDateTime.now().toString());
+        body.put("programExitDateTime", null);
+        body.put("programExitObservations", Collections.emptyList());
+        return withObservations(body, "observations", seed.individualObservations);
+    }
+
+    private static String programEncounterBody(Session session, PushSeed seed) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("uuid", UUID.randomUUID().toString());
+        body.put("voided", false);
+        body.put("encounterTypeUUID", seed.programEncounterTypeUuid);
+        body.put("programEnrolmentUUID", pick(seed.enrolmentUuids));
+        body.put("encounterDateTime", encounterDateTime());
+        body.put("name", "Perf encounter");
+        body.put("cancelObservations", Collections.emptyList());
+        return withObservations(body, "observations", seed.programEncounterObservations);
+    }
+
+    private static String encounterBody(Session session, PushSeed seed) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("uuid", UUID.randomUUID().toString());
+        body.put("voided", false);
+        body.put("encounterTypeUUID", seed.encounterTypeUuid);
+        body.put("individualUUID", pick(seed.individualUuids));
+        body.put("encounterDateTime", encounterDateTime());
+        body.put("name", "Perf encounter");
+        body.put("cancelObservations", Collections.emptyList());
+        return withObservations(body, "observations", seed.encounterObservations);
+    }
+
+    /**
+     * An encounter date inside the last day and never in the future.
+     *
+     * Encounter.validate rejects a future encounterDateTime, and one before the subject's
+     * registrationDate. Real devices queue records made during the working day, so a few hours back
+     * is both valid and representative.
+     */
+    private static String encounterDateTime() {
+        return java.time.OffsetDateTime.now()
+            .minusMinutes(ThreadLocalRandom.current().nextInt(1, 12 * 60)).toString();
+    }
+
+    /**
+     * Serialise the body with a harvested observation array spliced in as raw JSON.
+     *
+     * Spliced rather than parsed and re-serialised: the values came off the wire as JSON and go
+     * back as JSON, and re-modelling them through a Map would lose the numeric and date shapes that
+     * decide how much work the jsonb column and its GIN index do on insert.
+     */
+    private static String withObservations(Map<String, Object> body, String field,
+                                           List<String> harvested) {
+        String observations = observationArray(harvested);
+        try {
+            String json = om.writeValueAsString(body);
+            return json.substring(0, json.length() - 1)
+                + ",\"" + field + "\":" + observations + "}";
+        } catch (JsonProcessingException e) {
+            throw new UncheckedIOException("Could not serialise push body", e);
+        }
+    }
+
+    /** One harvested observation set, or several concatenated when PUSH_OBSERVATION_MULTIPLE > 1. */
+    private static String observationArray(List<String> harvested) {
+        if (harvested == null || harvested.isEmpty()) {
+            return "[]";
+        }
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < Math.max(1, pushObservationMultiple); i++) {
+            String one = pick(harvested);
+            String inner = one.substring(1, one.length() - 1).trim();
+            if (inner.isEmpty()) {
+                continue;
+            }
+            if (sb.length() > 1) {
+                sb.append(",");
+            }
+            sb.append(inner);
+        }
+        return sb.append("]").toString();
+    }
+
+    private static String pick(List<String> values) {
+        return values.get(ThreadLocalRandom.current().nextInt(values.size()));
+    }
+
+
+    /**
+     * Harvest what this device holds, once, so it has something real to create records against.
+     *
+     * Four page-0 reads over a full window, named apart from the sync requests so they do not
+     * enter the measured distribution. They are simulation setup, not a call any client makes.
+     *
+     * Why harvest rather than configure: the alternative is a list of UUIDs produced alongside the
+     * dataset, which couples the simulation to the generator and goes stale the moment anyone runs
+     * against a restored dump or a hand-built org. Reading them off the deployment keeps the push
+     * path working wherever the data came from, and guarantees the references are ones this user
+     * can actually see - a subject outside the catchment would be rejected by the same access check
+     * a real device would hit.
+     */
+    private static ChainBuilder seedChain() {
+        if (!pushEnabled) {
+            return exec(session -> session);
+        }
+        return doIf(session -> !userPushSeeds.containsKey(session.getString("userName")))
+            .then(exec(seedRequest("Individual"))
+                .exec(seedRequest("ProgramEnrolment"))
+                .exec(seedRequest("ProgramEncounter"))
+                .exec(seedRequest("Encounter"))
+                .exec(AvniSyncSimulation::assembleSeed));
+    }
+
+    private static ChainBuilder seedRequest(String entityName) {
+        AvniEntity entity = entityByName(entityName);
+        if (entity == null) {
+            return exec(session -> session);
+        }
+        return exec(http("Seed: " + entityName)
+            .get(session -> seedUrl(entity, session))
+            .check(status().is(200))
+            // A device whose catchment holds none of this entity still gets a 200 with an empty
+            // page; the seed assembly turns that into "pushes nothing of this kind".
+            .check(bodyString().saveAs("seed" + entityName)));
+    }
+
+    /**
+     * A full-window page-0 read for one entity, with the entityTypeUuid the bootstrap pass found.
+     *
+     * The window end is this injector's clock rather than the server's, which the pull path is
+     * careful to use instead. That is correct here: the seed read is not modelling a client call,
+     * and taking it from the server would mean ordering the harvest after syncDetails, which is
+     * after the push it exists to feed.
+     */
+    private static String seedUrl(AvniEntity entity, Session session) {
+        StringBuilder sb = new StringBuilder("/").append(entity.path).append("?");
+        if (entity.entityTypeUuidParams != null && !entity.entityTypeUuidParams.isEmpty()) {
+            String uuid = firstEntityTypeUuid(session, entity.entityName);
+            for (String param : entity.entityTypeUuidParams) {
+                sb.append(param).append("=").append(uuid).append("&");
+            }
+        }
+        if (entity.staticParams != null) {
+            for (Map.Entry<String, String> param : entity.staticParams.entrySet()) {
+                String value = param.getValue() == null ? deviceIdFor(param.getKey()) : param.getValue();
+                sb.append(param.getKey()).append("=").append(value).append("&");
+            }
+        }
+        return sb.append("lastModifiedDateTime=").append(FULL_SYNC_SINCE)
+            .append("&now=").append(java.time.Instant.now().toString())
+            .append("&size=").append(pushSeedSize)
+            .append("&page=0").toString();
+    }
+
+    /** The first entityTypeUuid the server tracks for this entity, from the bootstrap pass. */
+    private static String firstEntityTypeUuid(Session session, String entityName) {
+        List<SyncDetail> tracked = userSyncStatuses.get(session.getString("userName"));
+        if (tracked == null) {
+            return "";
+        }
+        for (SyncDetail detail : tracked) {
+            if (entityName.equals(detail.entityName) && detail.entityTypeUuid != null
+                    && !detail.entityTypeUuid.isEmpty()) {
+                return detail.entityTypeUuid;
+            }
+        }
+        return "";
+    }
+
+    private static AvniEntity entityByName(String entityName) {
+        for (AvniEntity entity : entities) {
+            if (entityName.equals(entity.entityName)) {
+                return entity;
+            }
+        }
+        return null;
+    }
+
+    private static Session assembleSeed(Session session) {
+        String userName = session.getString("userName");
+        if (userPushSeeds.containsKey(userName)) {
+            return session;
+        }
+        List<JsonNode> individuals = harvested(session, "seedIndividual");
+        List<JsonNode> enrolments = harvested(session, "seedProgramEnrolment");
+        List<JsonNode> programEncounters = harvested(session, "seedProgramEncounter");
+        List<JsonNode> encounters = harvested(session, "seedEncounter");
+
+        PushSeed seed = new PushSeed(
+            uuidsOf(individuals),
+            uuidsOf(enrolments),
+            firstLink(individuals, "subjectTypeUUID"),
+            firstLink(individuals, "genderUUID"),
+            firstLink(individuals, "addressUUID"),
+            firstLink(enrolments, "programUUID"),
+            firstLink(programEncounters, "encounterTypeUUID"),
+            firstLink(encounters, "encounterTypeUUID"),
+            observationsOf(individuals),
+            observationsOf(programEncounters),
+            observationsOf(encounters));
+
+        String missing = seed.missing();
+        if (!missing.equals("nothing")) {
+            unseedable.computeIfAbsent(missing, k -> new AtomicInteger())
+                .incrementAndGet();
+        }
+        userPushSeeds.put(userName, seed);
+        return session;
+    }
+
+    /** The records in a saved seed response, or empty if the request never ran or returned none. */
+    private static List<JsonNode> harvested(Session session, String key) {
+        String body = session.getString(key);
+        if (body == null || body.isEmpty()) {
+            return Collections.emptyList();
+        }
+        try {
+            JsonNode embedded = om.readTree(body).path("_embedded");
+            for (JsonNode child : embedded) {
+                if (child.isArray()) {
+                    List<JsonNode> rows = new ArrayList<>();
+                    child.forEach(rows::add);
+                    return rows;
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not parse seed response for " + key, e);
+        }
+        return Collections.emptyList();
+    }
+
+    private static List<String> uuidsOf(List<JsonNode> rows) {
+        List<String> uuids = new ArrayList<>();
+        for (JsonNode row : rows) {
+            String uuid = row.path("uuid").asText(null);
+            if (uuid != null && !uuid.isEmpty()) {
+                uuids.add(uuid);
+            }
+        }
+        return uuids;
+    }
+
+    /**
+     * A referenced UUID off the HAL links.
+     *
+     * The resource processors put them there rather than in the body - Link.of(uuid, "programUUID")
+     * renders as _links.programUUID.href - so this is where a pulled record says what it belongs to.
+     */
+    private static String firstLink(List<JsonNode> rows, String rel) {
+        for (JsonNode row : rows) {
+            String href = row.path("_links").path(rel).path("href").asText(null);
+            if (href != null && !href.isEmpty()) {
+                return href;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Observation sets from pulled rows, converted from the wire's map form to the push form.
+     *
+     * A pulled record carries observations as an ObservationCollection - a {conceptUuid: value}
+     * map. A pushed one carries [{conceptUUID, value}]. The client converts between them in
+     * Observation.fromResource/toResource; the simulation does the same conversion once, here,
+     * rather than per request.
+     */
+    private static List<String> observationsOf(List<JsonNode> rows) {
+        List<String> converted = new ArrayList<>();
+        for (JsonNode row : rows) {
+            JsonNode observations = row.path("observations");
+            if (!observations.isObject() || observations.isEmpty()) {
+                continue;
+            }
+            List<Map<String, Object>> asList = new ArrayList<>();
+            observations.properties().forEach(field -> {
+                Map<String, Object> observation = new LinkedHashMap<>();
+                observation.put("conceptUUID", field.getKey());
+                observation.put("value", om.convertValue(field.getValue(), Object.class));
+                asList.add(observation);
+            });
+            try {
+                converted.add(om.writeValueAsString(asList));
+            } catch (JsonProcessingException e) {
+                throw new UncheckedIOException("Could not serialise harvested observations", e);
+            }
+        }
+        return converted;
     }
 
     /** A null static param value means the client fills it in per device; deviceId is the only one today. */

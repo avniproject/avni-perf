@@ -17,6 +17,8 @@ The csv expects the following columns:
 - `lastModifiedDateTime`
 - `password` — only under `AUTH_MODE=cognito`
 - `token` — only under `AUTH_MODE=cognito`; skips minting if supplied
+- `pushScale` — optional, default 1. Multiplies this user's push volume, so one file can carry
+  field workers creating twenty encounters a day alongside supervisors creating almost none
 
 ### Authentication
 
@@ -137,6 +139,54 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 `BASE_MS_PER_RECORD` defaults to 9.19 — see above
 
 `MS_PER_PAGE` defaults to 174 — see above
+
+`PUSH` `true` includes the upload path. **Default false** — see below
+
+`PUSH_INDIVIDUALS` / `PUSH_ENROLMENTS` / `PUSH_PROGRAM_ENCOUNTERS` / `PUSH_ENCOUNTERS` records
+queued per sync, default 1 / 1 / 20 / 2
+
+`PUSH_OBSERVATION_MULTIPLE` harvested observation sets per pushed record, default 1
+
+`PUSH_ENCOUNTERS_PER_MEDIA_FILE` default 50; `0` disables the presigned-URL calls
+
+`PUSH_SEED_SIZE` rows harvested per entity when seeding a device, default 20
+
+`PUSH_ALLOW_UNSAFE_TARGET` `true` lifts the protected-host guard
+
+## The push path
+
+`PUSH=on` adds the upload half of a sync: the records a device queued since it last synced, posted
+before it asks the server what changed — the order `dataServerSync` uses.
+
+**There is no bulk endpoint.** The client posts one record per request and waits for each, so a
+device with twenty queued encounters makes twenty sequential round trips, each through the full
+filter chain and its own transaction. That is the load: request count, not payload size.
+
+> **Push writes, and that is why it is off by default.** A run with `PUSH=on` changes the database
+> it just measured. The next run is not the same experiment, and the dataset's H5 verdict no longer
+> describes what is in the tables. Budget a restore between runs.
+>
+> The cost of the default running the other way: **a green run without `PUSH=on` is not evidence
+> the write path holds**, because write contention, lock waits and index maintenance cannot appear
+> in it at all. The startup banner says which of the two you are getting.
+
+A short deny list refuses the protected hosts outright. Pushed subjects and encounters cannot be
+told apart from field data afterwards.
+
+**References are harvested, not configured.** Four page-0 reads per user collect the subject type,
+address, enrolments and real observation sets that pushed records point at — so the push path works
+against a generated dataset, a restored dump or a hand-built org without a shared list of UUIDs.
+Observations are reused verbatim from real rows, because insert cost here is dominated by GIN
+maintenance over the `observations` jsonb.
+
+A device with nothing to reference pushes nothing and fails nothing, so the run prints how many
+devices were only partially seeded and what they lacked. Read a run with a high count as a floor.
+
+**Volumes are provisional.** 20 program encounters per sync is arithmetic from the customer's "20
+encounters per worker per day", not measurement — Q17 in
+[production-measurement-queries.md](docs/production-measurement-queries.md) replaces it. Per-user
+variation comes from an optional `pushScale` column in the user file: a supervisor pulls a wide
+catchment but creates few records, so case 3 wants a value well under 1.
 
 ## Run archiving
 

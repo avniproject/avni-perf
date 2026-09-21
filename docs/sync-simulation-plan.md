@@ -51,12 +51,12 @@ work has been done on that item at all** — the "Before" column still describes
 | Storage pause | uniform random, 0 to a constant | per-entity weighted model at `BASE_MS_PER_RECORD`, with `STORAGE_MODEL=zero` to remove it |
 | Request timeouts | Gatling defaults | **Not started — D8.4** |
 | **Write path** | | |
-| Push / upload | none | **Not started — D3** |
-| Media presigned URLs | none | **Not started — D5** |
+| Push / upload | none | modelled: one POST per record in the client's own order, seeded from the deployment. `PUSH=on`, off by default |
+| Media presigned URLs | none | upload signing modelled with the push (D5.1); on-demand viewing out of scope (D5.3) |
 | **Workload design** | | |
 | Feeder | `random()`, drawing with replacement | `circular()`, warns when oversubscribed |
 | Full vs incremental | full only, every run | `SYNC_MODE`; incremental stays partial until D1 |
-| Test cases | none defined | **10 cases with numbers**, in [test-scenarios.md](test-scenarios.md) |
+| Test cases | none defined | **13 cases with numbers**, in [test-scenarios.md](test-scenarios.md) |
 | Injection profiles | one open ramp | defined as cases; **not yet implemented as Gatling profiles — E3** |
 | Multi-tenant load | single organisation | **Not started — E4** |
 | Co-tenant sync traffic | none | **Not started — E7**, and case 7 needs it |
@@ -79,7 +79,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Assertions | commented out | zero-failure structural gate, plus rate and p95 bounds for a load run |
 | Calibration gate | none | **Not started — F7** |
 | **Grounding** | | |
-| Production measurement | none — every figure was an estimate | 14 of 16 queries run · Q11 needs a client change, Q16 is written and unrun |
+| Production measurement | none — every figure was an estimate | 14 of 17 queries run · Q11 needs a client change; Q16 and Q17 are written and unrun |
 | Success criteria | empty | measured, one row left to fill |
 
 **The empty body row is the one that mattered most.** Posting an empty array made the server
@@ -638,11 +638,49 @@ the reference-side discrepancy is intentional is unclear — it looks like an ar
 it is what runs, so it is what the simulation reproduces. `NOW` survives as an override for runs that
 need a pinned window.
 
-**D3 — Model the push/upload path.** Everything behind `postAllEntities` — `POST /individuals`,
-`POST /programEncounters` and the rest — is untested. These handlers are
-`@Transactional(rollbackFor = Exception.class)`; write contention, lock waits and index-maintenance
-cost are a different class of bottleneck from the read path and cannot appear in any run as it stands.
-Derive realistic per-entity push volumes from production `sync_telemetry.entity_status->'push'`.
+**D3 — Model the push/upload path.** *Done, pending a smoke run and Q17.* Everything behind
+`postAllEntities` was untested: `@Transactional(rollbackFor = Exception.class)` handlers whose write
+contention, lock waits and index-maintenance cost are a different class of bottleneck from the read
+path, and could not appear in any run.
+
+**The client has no bulk endpoint, and that is the finding.** `chainPostEntities` builds one POST
+per record and `ChainedRequests.fire()` reduces the queue over a single promise chain, so a device
+with twenty queued encounters makes **twenty sequential round trips** — each through the full
+authentication filter, the organisation interceptor and its own transaction. Push cost scales with
+record *count* in requests, not only in bytes, and none of the per-request overhead the read path
+measured at 174 ms is amortised across a batch. A push-heavy sync is therefore closer in shape to
+twenty small syncs than to one large one.
+
+Entities go in a fixed order, parents first — `EntityMetaData.model()` reversed, which the generated
+table is already in. The simulation walks that table rather than a list of its own, so the order
+stays right if the client's changes.
+
+**Push writes, so it is off by default.** Once `PUSH=on`, a run changes the database it measured:
+the next run is not the same experiment and the dataset's H5 verdict no longer describes the tables.
+The startup banner says as much in both directions, because the failure mode is someone reading a
+read-only run as the realistic case. A deny list refuses the protected hosts outright — pushed
+subjects and encounters are indistinguishable from field data afterwards.
+
+**References are harvested from the deployment, not configured.** A pushed record has to point at a
+subject type, an address, an enrolment and concepts that this user can actually see; invented UUIDs
+are rejected in the handler and would measure the validation path instead of the write path. Four
+page-0 reads per user, once, collect them — which keeps the push path working against a generated
+dataset, a restored dump or a hand-built org, with no shared UUID list to keep in step. Observations
+are carried **verbatim** from real rows rather than synthesised, because insert cost here is
+dominated by GIN maintenance over the observations jsonb and the key count and value shapes are the
+load.
+
+A device that cannot be seeded pushes nothing and fails nothing, so `after()` reports how many
+devices were only partially seeded and what they lacked. Without it a run against a dataset with no
+enrolments finishes green having exercised almost none of the write path.
+
+**Two things are still open.** The volumes — 20 program encounters, 2 encounters, 1 subject, 1
+enrolment per sync — are arithmetic from the customer's "20 encounters per worker per day", not
+measurement; **Q17** replaces them from production's own `entity_status->'push'`, and its second
+half matters more than its first: if most real syncs push nothing, modelling every user as pushing
+twenty overstates the write path by that ratio. And the payload shapes are built from the client's
+`toResource` getters and checked field-by-field against the server's request contracts, but **have
+not been sent to a running server** — that smoke run is the gate before any push result is quoted.
 
 **D4 — Post sync telemetry at end of sync.** *Done.* A write on the hot path, and the one that
 populates the table this plan's whole measurement strategy leans on — so omitting it both under-counted
@@ -669,10 +707,15 @@ presigned URLs, one request per file**:
 
 Three consequences.
 
-**D5.1 — Media upload is unmodelled sync-path load.** A user with N queued media files makes N
-`GET /media/uploadUrl/{fileName}` calls before the data sync even begins, each going through the full
-authentication filter and organisation interceptor. This is genuine per-sync server load and the
-simulation does not touch it at all. It is the part of media that most clearly belongs in scope.
+**D5.1 — Media upload is unmodelled sync-path load.** *Done, with D3.* A user with N queued media
+files makes N `GET /media/uploadUrl/{fileName}` calls before the data sync even begins, each going
+through the full authentication filter and organisation interceptor. This is genuine per-sync server
+load and the simulation did not touch it at all.
+
+Modelled as a rate against encounter volume rather than as a queue of its own, which is what the
+measurement below supports: one call per fifty encounters, with the fractional part played out per
+sync so a device pushing twenty encounters makes a call on roughly two syncs in five rather than
+never. `PUSH_ENCOUNTERS_PER_MEDIA_FILE=0` turns it off.
 
 **D5.2 — Do not transfer the bytes.** Since S3 serves the objects directly, having the injector PUT
 and GET real files measures S3 and consumes bandwidth without exercising avni-server. Model the
@@ -1181,8 +1224,8 @@ exercised only the heaviest case — and the common production case had never be
 **Upload-only background sync is not modelled, and does not need to be.** It was disabled in practice
 some time ago, which is why `sync_source = 'automatic-upload-only'` is near-absent from recent
 telemetry — that absence reflects reality rather than a gap in the data. Modelling it would reproduce
-a flow production no longer runs. Should it ever be re-enabled, it is a push-only path and would need
-D3 first.
+a flow production no longer runs. Should it ever be re-enabled, D3 has since built the push half, so
+it would be a scenario that skips the download rather than new modelling.
 
 ### Scenarios and test cases
 
@@ -1467,9 +1510,12 @@ is arguably more important than anything in the sync path itself.
 
 ### F6 — Run-to-run data lifecycle
 
-Once D3 lands and the simulation pushes data, the database changes with every run and runs stop being
-comparable. See **section G** for the full treatment — this is the hardest operational problem in the
-plan and the one most likely to silently invalidate results.
+**D3 has landed, so this is live.** With `PUSH=on` the database changes with every run and runs stop
+being comparable. See **section G** for the full treatment — this is the hardest operational problem
+in the plan and the one most likely to silently invalidate results.
+
+Push being off by default buys time rather than a reprieve: an unconfigured run is still read-only,
+but no scenario that means to measure the write path can run twice until the restore path works.
 
 ### F7 — Calibration gate
 
@@ -1732,8 +1778,9 @@ CREATE DATABASE avni_perf TEMPLATE avni_perf_template STRATEGY = FILE_COPY;
 `effective_cache_size` and the autovacuum settings all come from the RDS parameter group, and a
 restored instance inherits the snapshot's. Match production's, or record the deviation under F5.2.
 
-**None of this is needed yet.** Download sync is read-only, so runs do not modify application data
-until D3 lands. The decision belongs in Phase 2, informed by measurement, not now.
+**Needed as soon as a scenario turns push on.** Download sync is read-only and a default run still
+modifies nothing, so the decision can wait for the first `PUSH=on` run rather than for Phase 2 in
+general — but it now gates that run rather than sitting behind it.
 
 #### Which snapshot
 
@@ -1778,10 +1825,14 @@ logical restore removes it. Both are defensible; what is not defensible is a blo
 between runs. **Determinism matters more than absolute realism here**, because the primary comparison
 is run against run.
 
-**Simplification worth knowing:** download sync is read-only. Until D3 lands, runs do not modify
-application data at all and need no restore — only `POST /syncTelemetry` (D4) writes, and that is one
-small row per user. Restore-per-run only becomes mandatory when the push path arrives, which means
-this whole apparatus can be deferred to Phase 2 rather than built up front.
+**This is now mandatory rather than deferrable.** It could be put off while download sync was
+read-only: the only write was `POST /syncTelemetry` (D4), one small row per user. **D3 ended that.**
+A run with `PUSH=on` inserts subjects, enrolments and encounters, so the database it measured is not
+the database the next run measures, and the dataset's H5 verdict stops describing the tables.
+
+The default protects the gap in the meantime — push is off unless asked for, so an unconfigured run
+is still read-only and still needs no restore. But every scenario that means to measure the write
+path needs the restore path working first.
 
 ### G5 — User provisioning
 
@@ -2298,9 +2349,9 @@ Ordering reflects dependencies, not estimates.
 
 | Phase | Tasks | Why here |
 |---|---|---|
-| **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done — 14 of 15 have run.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
+| **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done — 14 of 17 have run.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
-| **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **G4's restore mechanism lands with D3** — until the simulation writes, runs are read-only and need no teardown at all, so this apparatus can be deferred to here rather than built up front. |
+| **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **D3 and D5.1 are done**; G4's restore mechanism is what remains, and it is now the gate rather than a deferral — a `PUSH=on` run cannot be repeated without it. Q17 replaces D3's guessed push volumes. |
 | **3 · Workload** | **D7** · E3, E5, **E7** · **H7** · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
 | **4 · Operate** | A11 · F2, F3 · **A12** | Saturate, name the resource, fix, re-run. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
@@ -2371,7 +2422,7 @@ plan itself decided. What the tests will *answer* is under **Measure before fixi
 - **[production-measurement-queries.md](production-measurement-queries.md)** — the SQL behind every
   figure in this plan marked as measured, the caveats on running it, and the defects corrected across
   three runs against production. Findings live here, in the sections that use them: Success criteria,
-  D1, D1.1, D5, D6.1, E3, E5, G4 and H3.
+  D1, D1.1, D3, D5, D5.1, D6.1, E3, E5, G4 and H3.
 - Client-side performance (device profiling, Perfetto, Hermes profiler, Maestro/Flashlight) is a
   separate track — it answers "how long does sync take on a low-end phone", not "where does the server
   choke".

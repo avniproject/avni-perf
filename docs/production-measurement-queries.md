@@ -40,12 +40,13 @@ organisation names.
 
 ## What has run
 
-Fourteen of sixteen. The two outstanding are both recorded against their own entries below.
+Fourteen of seventeen. The three outstanding are each recorded against their own entries below.
 
 | | State |
 |---|---|
 | **Q11** — fleet page size split | **Not answerable yet.** `pageSize` is not recorded in `sync_telemetry`, so it needs a client change first (D8.3) |
 | **Q16** — locations per catchment | **Written, not run.** Decides whether the generator's one-location default is right |
+| **Q17** — records pushed per sync | **Written, not run.** The only input D3's push volumes are still guessing at, and the data is already in `sync_telemetry` |
 
 ## Provenance
 
@@ -755,3 +756,70 @@ order by 1;
 If most catchments declare one, the generator's default is right and this closes. If most declare
 several, `declare_leaves=True` is the better default and the mapping table is larger than the
 generator currently produces.
+
+---
+
+**Q17 — How many records does a device push per sync? (D3).** **Not yet run.** The one input D3's
+push volumes currently lack. The simulation ships with 20 program encounters, 2 encounters, 1
+subject and 1 enrolment per sync, derived from the customer's "20 encounters per field worker per
+day" against a daily sync — arithmetic, not measurement. This replaces it.
+
+`entity_status` carries a `push` array of `{entity, todo, done}` alongside the `pull` array, so the
+per-sync push volume is already recorded for every real sync.
+
+```sql
+with push as (
+  select st.id,
+         j ->> 'entity'              as entity,
+         (j ->> 'todo')::int         as todo
+  from sync_telemetry st
+       cross join lateral jsonb_array_elements(st.entity_status -> 'push') as j
+  where st.sync_start_time > now() - interval '30 days'
+    and st.sync_status = 'complete'
+    -- Simulated syncs carry this tag (D4). Leaving them in would calibrate the simulation
+    -- against its own output.
+    and (st.sync_source is distinct from 'avni-perf-simulation')
+    and jsonb_typeof(st.entity_status -> 'push') = 'array'
+)
+select entity,
+       count(*)                                                   as syncs_pushing,
+       sum(todo)                                                  as records,
+       round(avg(todo)::numeric, 1)                               as mean,
+       percentile_disc(0.5)  within group (order by todo)         as p50,
+       percentile_disc(0.95) within group (order by todo)         as p95,
+       max(todo)                                                  as max
+from push
+where todo > 0
+group by entity
+order by records desc;
+```
+
+Two things to read off it, and the second matters more.
+
+**The per-entity mix** replaces the four `PUSH_*` defaults directly.
+
+**How much of a sync pushes nothing at all.** `where todo > 0` hides it, so run the count both ways:
+if most syncs push zero records, push load is concentrated in a minority of devices and modelling
+every simulated user as pushing twenty encounters overstates the write path by the ratio. That is a
+question about the *shape* of the distribution, and no average answers it.
+
+```sql
+-- What share of completed syncs pushed nothing.
+select count(*) filter (where pushed = 0) as pushed_nothing,
+       count(*)                           as syncs,
+       round(100.0 * count(*) filter (where pushed = 0) / count(*), 1) as pct_idle
+from (
+  select st.id,
+         coalesce(sum((j ->> 'todo')::int), 0) as pushed
+  from sync_telemetry st
+       left join lateral jsonb_array_elements(st.entity_status -> 'push') as j on true
+  where st.sync_start_time > now() - interval '30 days'
+    and st.sync_status = 'complete'
+    and (st.sync_source is distinct from 'avni-perf-simulation')
+  group by st.id
+) t;
+```
+
+> **`sync_source is distinct from` is the right operator here and `!=` is not.** `sync_source` is
+> nullable and most rows predate it, so `!=` drops every one of them silently — the same defect that
+> made an earlier version of Q3 return a fraction of the syncs it should have.

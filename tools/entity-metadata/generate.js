@@ -34,6 +34,16 @@ function entityTypeUuidParams(e) {
   return [e.privilegeParam, e.apiQueryParamKey].filter(Boolean);
 }
 
+// ConventionalRestClient.postAllEntities builds the push URL differently from the pull URL: no
+// apiVersion segment, no search filter, and the resource name pluralised at the call site. The one
+// irregular plural is hard-coded there, so it is hard-coded here too.
+const ES_RESOURCES = new Set(["entityApprovalStatus"]);
+
+function pushPath(e) {
+  if (e.resourceUrl) return e.resourceUrl;
+  return ES_RESOURCES.has(e.resourceName) ? `${e.resourceName}es` : `${e.resourceName}s`;
+}
+
 // Static query params the client always sends for this entity, e.g. {"deviceId": null}.
 // deviceId is filled in per run; null here means "the simulation supplies it".
 function staticParams(e) {
@@ -68,6 +78,7 @@ const entities = EntityMetaData.model()
     entityName: e.entityName,
     type: e.type,
     path: resourcePath(e),
+    pushPath: e.type === "tx" ? pushPath(e) : null,
     entityTypeUuidParams: entityTypeUuidParams(e),
     staticParams: staticParams(e),
     syncWeight: e.syncWeight === undefined ? null : e.syncWeight,
@@ -88,12 +99,13 @@ fs.writeFileSync(OUT, JSON.stringify(out, null, 2) + "\n");
 const ref = entities.filter((e) => e.type === "reference").length;
 const tx = entities.filter((e) => e.type === "tx").length;
 const noPull = entities.filter((e) => !e.pullRequired).length;
+const noPush = entities.filter((e) => e.type === "tx" && !e.pushRequired).length;
 const byWeight = entities.reduce((acc, e) => {
   acc[e.storageWeight] = (acc[e.storageWeight] || 0) + 1;
   return acc;
 }, {});
 console.log(`wrote ${entities.length} entities (${ref} reference, ${tx} tx) from openchs-models@${modelsVersion}`);
-console.log(`  ${noPull} are push-only (pullRequired false)`);
+console.log(`  ${noPull} are push-only (pullRequired false), ${noPush} tx entities are pull-only (syncPushRequired false)`);
 console.log(
   `  storage weights: ` +
     Object.entries(byWeight)

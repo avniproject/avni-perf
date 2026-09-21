@@ -51,6 +51,21 @@ syncs: case 2 at 42 an hour reaches 168 in four hours, case 5 at 141 reaches 282
 That is several days once each run is set up, watched and its dataset loaded — worth knowing before
 the schedule is drawn, since the hosting decision alone (cases 5 to 7, plus 11 to 13) is 9 of them.
 
+**Every case except 1 runs with the push path on.** A sync is an upload followed by a download, and
+the upload is where write contention, lock waits and index maintenance live — none of which can
+appear in a download-only run. Case 1 is the exception by definition: a training org holds no field
+data, so those devices have nothing queued to push.
+
+> **Push writes, so each run needs the dataset restored before the next.** That is the real cost of
+> including it, and it lands on the 42 hours above rather than inside them. The growth comparison
+> feels it worst: four datasets, four restores.
+
+Two consequences for the numbers on this page. **The 24 records a field worker queues per day go up
+as 24 separate POSTs** — the client has no bulk endpoint and waits for each — which adds one to two
+seconds to a 14.1-second sync and lifts every in-flight figure by roughly a tenth. And **the volumes
+themselves are arithmetic, not measurement**: 20 encounters per worker per day was the customer's
+figure, and Q17 is written to replace it from production's own telemetry.
+
 **Tenant counts trace to the table under [the deployment](#the-deployment-being-modelled)**: a state
 tenant is 500 field workers and 62 supervisors, and the ten together are 1,504 and 188. The 986 in
 cases 6 and 7 is production's existing organisation count (Q12).
