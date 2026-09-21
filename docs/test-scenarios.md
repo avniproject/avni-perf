@@ -1,6 +1,6 @@
 # Test scenarios
 
-**For customer review, and for the generator to build against.** Eleven test cases with actual
+**For customer review, and for the generator to build against.** Ten test cases with actual
 numbers, and the deployment they are derived from.
 
 Split out of [the sync simulation plan](sync-simulation-plan.md) because it has a different audience
@@ -19,7 +19,7 @@ a 16-minute median.
 
 | # | Case | Tenants | Users | Dataset | Mode | What it answers |
 |---|---|---|---|---|---|---|
-| **1** | Training cohort | 1 | 100 field workers, first login within 15 min | Config only, **no field data** | Full | Reference-data sync and `syncDetails` cost, isolated from catchment volume |
+| **1** | Training cohort | 1 | 100 field workers, first login within 15 min | Config only, **no field data** | Full | Reference-data sync and `syncDetails` cost, isolated from catchment volume. **Gives the per-row cost**, from which a broader configuration is arithmetic |
 | **2** | Field worker steady state | 1 state | 500 | Day 180 | Incremental, 1% full | The common case |
 | **3** | Supervisor steady state | 1 state | 62 | Day 180 | Incremental, 1% full | Whether 3× the volume per device changes anything |
 | **4** | **Combined** | 1 state | 500 + 62 | Day 180 | Incremental, 1% full | **The realistic case.** Wide and frequent syncs competing for one pool |
@@ -29,7 +29,6 @@ a 16-minute median.
 | **8** | Growth comparison | 1 state | Case 4 | Day 60, 120, 180, **365** | Incremental, 1% full | The shape of the curve. A knee between points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
 | **9** | Stress ramp | **10** | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
 | **10** | Soak | 1 state | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
-| **11** | **Configuration breadth** | 1, twice | Case 1 | Config only, **few subject types and encounter types against many** | Full | How `syncDetails` cost scales with the number of *form mappings*, which is what sets its row count |
 
 **Tenant counts trace to the table under [the deployment](#the-deployment-being-modelled)**: a state
 tenant is 500 field workers and 62 supervisors, and the ten together are 1,504 and 188. The 986 in
@@ -71,53 +70,38 @@ one sync in flight at any moment.**
 **Every user count above comes from the tenant table** under *The deployment being modelled*. A state
 tenant is 500 field workers and 62 supervisors; the ten tenants together are 1,504 and 188.
 
-**Build order: 1, 11, 4, 8, then the rest.** Cases 1 and 11 need no generated data at all, so they can run before
-the generator exists — and 11 is only case 1 repeated against a second bundle. Case 4 is the one to answer first. Case 8 needs all four datasets, so it sets
+**Build order: 1, 4, 8, then the rest.** Case 1 needs no generated data at all, so it can run before
+the generator exists. Case 4 is the one to answer first. Case 8 needs all four datasets, so it sets
 the generator's deadline.
 
-### Two cases the closed questions asked for
+### What case 1 answers about configuration breadth
 
-**Case 11 exists because the configuration decision left something unexercised**, and what it varies
-is narrower than "configuration size" — narrow enough to be worth stating precisely, because the
-obvious reading is wrong.
+`syncDetails` posts one row per tracked entity and the server runs a query per row, so a broader
+configuration costs more. It is worth knowing how much, and **worth knowing that case 1 already
+tells you** — no second case needed.
 
-**`syncDetails` does cover metadata, but metadata volume does not move its row count.**
 `SyncDetailsService.getAllSyncableItems` builds the list in two parts. **Fifty-five entities are
-added flat**, one row each — `Concept`, `Form`, `FormElement`, `ConceptAnswer`, `EncounterType`,
-`Translation` and the rest — so **an organisation with 5,000 concepts and one with 50 contribute
-exactly one `Concept` row apiece**. Nothing about the size of a configuration reaches this number.
+added flat**, one row each, including every metadata entity — `Concept`, `Form`, `FormElement`,
+`ConceptAnswer`, `EncounterType`. **So a configuration with 5,000 concepts posts exactly as many
+rows as one with 50.** Metadata volume never reaches the count. What does move it is the number of
+subject types, programmes and encounter types, because the rest of the list is keyed on form
+mappings. Q8's median of 79 is roughly 55 fixed and 24 variable.
 
-**What does move it is the configuration's structure**, because the rest of the list is keyed on
-configuration objects:
+**The relationship is linear by construction** — the per-row checks are independent queries in a
+loop, with no threshold and nothing shared between them. So case 1's per-row cost multiplied by a
+configuration's form-mapping count answers the question, and a second run against a broader bundle
+would measure a slope it already has.
 
-| Per | Rows |
-|---|---|
-| Subject type | `Individual`, `SubjectMigration`, `SubjectProgramEligibility`, plus up to four more for person, group, attendance, comments and approval |
-| General encounter form mapping | `Encounter`, plus one if approval is enabled |
-| Program encounter form mapping | `ProgramEncounter`, plus one if approval is enabled |
-| Program enrolment form mapping | `ProgramEnrolment`, plus one if approval is enabled |
-| Checklist detail | `Checklist`, `ChecklistItem` |
+**The size of the prize is small, which is the other reason.** Tripling the row count from 79 to an
+extreme 250 adds under a second at 5 ms a query — around 6% of one sync. **If case 1 comes back
+showing `syncDetails` is a large share of a config-only sync, say over 20%, a breadth variation
+earns its place.** Not before.
 
-Q8's median of 79 is therefore about 55 fixed and **24 from the variable part**. The customer's own
-figure is directly on this axis: **10 encounter types per NCD programme**, multiplied by subject
-types and programmes, is what a form-mapping count is made of.
-
-**So the case varies subject types, programmes and encounter types — not concepts or form
-elements.** Case 1 remains the vehicle: config only, no field data, so the per-row cost is isolated
-from catchment volume entirely, and it needs no generated data at all.
-
-> **The count is also per user, not per organisation.** Every branch is gated on
-> `groupPrivileges.hasPrivilege(...)`, so a user without `ViewSubject` on a subject type never sees
-> its rows. Two users in the same organisation can post different-sized bodies, which is worth
-> knowing before reading a single number as the organisation's.
-
-**Case 8 gains day 365 because it is now carrying more weight than three points can bear.** With 500
-workers confirmed as the pilot, this curve is the only evidence the exercise produces about scale
-beyond it — and rolling data means year two accrues at year one's rate, so volume keeps climbing
-rather than levelling. A fourth point doubles the baseline for one more dataset: 12.4 million rows,
-five minutes to generate, 3.6 GB. Day 365 also puts encounter volume at **1.6× production's entire
-current `program_encounter` table**, which is the first point where the dataset stops being smaller
-than production.
+> **The row count is per user, not per organisation.** Every branch is gated on
+> `groupPrivileges.hasPrivilege(...)`, so a user without `ViewSubject` on a subject type never
+> receives its rows. Two users in one organisation post different-sized bodies, which means
+> `syncDetails` cost varies by privilege — worth ruling out before attributing a difference between
+> users to anything else.
 
 ### Conditional on one open question
 
@@ -178,7 +162,7 @@ theirs — ten tenants, 1,692 users, 1.5 million beneficiaries. **Where it runs 
 
 | Hosting | What is in the database | Cases |
 |---|---|---|
-| **Separate** | The customer's tenants only | 1–5, 8–11 |
+| **Separate** | The customer's tenants only | 1–5, 8–10 |
 | **Shared, co-tenants idle** | Plus production's 986 organisations | 6 |
 | **Shared, co-tenants active** | Plus their traffic | 7 |
 

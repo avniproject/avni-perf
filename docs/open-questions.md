@@ -135,12 +135,12 @@ That is not two settings of one dial; it is **two tenant-shape specifications th
 produce**. The first it already builds. The second is the outstanding generation run that cases 6
 and 7 wait on.
 
-**This decision left one thing unexercised, so a case was added for it** — though what it varies is
-narrower than it first looked. Checking the server showed that **55 of the 79 entities Q8 counted are
-added flat, one row each, including every metadata entity**: a configuration with 5,000 concepts
-posts the same number of rows as one with 50. What scales the row count is the number of **subject
-types, programmes and encounter types**, because the rest of the list is keyed on form mappings.
-**Case 11** varies that, against a configuration-only organisation, and needs no generated data.
+**A case was briefly added for what this left unexercised, then dropped.** Configuration breadth
+does move the `syncDetails` row count, but by less than it looked and without needing its own run:
+55 of Q8's 79 entities are added flat whatever the configuration holds, the per-row checks are
+independent so the relationship is linear, and **case 1 already measures the per-row cost** — a
+broader configuration is then arithmetic. Tripling the row count adds around 6% of one sync. If case
+1 shows `syncDetails` is a large share of a config-only sync, a breadth variation earns its place.
 
 ### Distributed injectors
 
