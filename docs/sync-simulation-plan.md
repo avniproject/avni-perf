@@ -235,12 +235,12 @@ Three things broke, all outside the simulation itself:
 
 **~~A3 — Stop blocking the injector event loop.~~** *Not doing — the blocking call survives only on the opt-in `AUTH_MODE=cognito` path. Acknowledged in A10.1.*
 
-**A4 — Materialise each response body once.** The two `checkIf` predicates each call
+**A4 — Materialise each response body once.** *Done.* The two `checkIf` predicates each call
 `response.body().string()`, so every page of every entity is turned into a String twice purely to test
 for the substrings `totalPages` and `hasNext`. On large payloads this burns injector CPU and inflates
 the latency being measured. Replace with a single parsed check.
 
-**A5 — Flatten the nested entity loop.** `foreach(entities)` wrapping `foreach(syncDetails)` with a
+**A5 — Flatten the nested entity loop.** *Done.* `foreach(entities)` wrapping `foreach(syncDetails)` with a
 `doIfEquals` is at minimum 60 × 60 ≈ 3,600 in-session comparisons per virtual user per sync — and that
 is a floor, not an estimate. The syncDetails list carries one entry per entity *type instance*, so
 every encounter type, program and subject type adds a row (visible in `SyncDetailsBody.json`, which
@@ -255,16 +255,16 @@ was not measured on a laptop against a local database. `STRUCTURAL_CHECK=true` r
 The remaining open figure is the acceptable error rate itself — a product decision, and the last
 unfilled row of the Success criteria table.
 
-**A7 — Name requests meaningfully.** `http(entityTypeUuid)` names every reference-entity request with
+**A7 — Name requests meaningfully.** *Done.* `http(entityTypeUuid)` names every reference-entity request with
 the empty string, since those entities have no type UUID. Name by entity plus UUID.
 
 **~~A8 — Remove `System.exit(1)` from the auth path.~~** *Done in A10.1 — throws instead.*
 
-**A9 — Credentials and config hygiene.** `sync-users.csv` is tracked in git — `.gitignore` only covers
+**A9 — Credentials and config hygiene.** *Done.* `sync-users.csv` is tracked in git — `.gitignore` only covers
 `sync-users.*.csv`, which does not match it. `CognitoHelper` also carries a hardcoded client ID and
 user-pool ID as defaults. Untrack the CSV, widen the ignore rule, move IdP identifiers to config.
 
-**A10 — Delete dead weight.** `AvniEntities.json` is unused and already inconsistent with the
+**A10 — Delete dead weight.** *Done.* `AvniEntities.json` is unused and already inconsistent with the
 hardcoded list. `SyncDetailsBody.json` is unused — the sim posts `EmptyBody.json`. The commented
 `resetSyncs` block can go too. *(`Recorder.java`, `Engine.java`, `IDEPathHelper.java` and
 `recorder.conf` were removed under A1 — they were IDE-launcher scaffolding that no longer compiles
@@ -315,7 +315,7 @@ records a string nobody can resolve later.
 - **The entity table source is captured** — `openchs-models@1.33.81` — so a change in what the
   simulation asks for is visible in the archive rather than having to be inferred from dates.
 
-**A12 — Update the README.** Almost every task in this plan changes something the README documents,
+**A12 — Update the README.** *Done, and kept current since.* Almost every task in this plan changes something the README documents,
 and it is the only operator-facing documentation the repo has.
 
 *Wrong today, independent of any other task:*
@@ -398,13 +398,13 @@ transparent to virtual users already running.
 The 60-entry list is hardcoded in `sync()`. The git history is largely a record of repairing its
 drift; the root cause is two sources of truth and no drift detection.
 
-**C1 — Generate the entity table from `EntityMetaData.js`.** `avni-models/src/EntityMetaData.js` is
+**C1 — Generate the entity table from `EntityMetaData.js`.** *Done.* `avni-models/src/EntityMetaData.js` is
 the client's canonical, versioned list — entity name, resource path, reference/tx type, and the
 query-parameter name per entity. Emit the sim's table from it with a small script, commit the output,
 and add a CI check that fails when regenerating produces a diff. This converts a recurring manual fix
 into a build-time guarantee.
 
-**C2 — Reconcile the entity list.** The simulation has **64 entries; `EntityMetaData` has 74**, and
+**C2 — Reconcile the entity list.** *Done.* The simulation has **64 entries; `EntityMetaData` has 74**, and
 the drift runs in both directions.
 
 *Missing from the simulation (13):* `AttendanceRecord`, `AttendanceType`, `Calendar`,
@@ -1047,7 +1047,7 @@ failure.
 
 ### Tasks
 
-**D8.1 — Source the page size from the client config.** Do not hardcode 1000. Read it from
+**D8.1 — Source the page size from the client config.** *Done.* Do not hardcode 1000. Read it from
 `initialSettings.json` in the same generator that produces the entity table (C1), so it cannot drift
 again. This is the third instance of the same failure mode in this repo; fix it structurally.
 
