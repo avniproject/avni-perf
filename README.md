@@ -44,6 +44,35 @@ a run at whichever environment was hardcoded rather than the one under test.
 Running both modes against the same environment gives the per-request cost of token verification —
 see [the sync simulation plan](docs/sync-simulation-plan.md), section B.
 
+### Sync window
+
+`SYNC_MODE` sets how far back each entity's `loadedSince` reaches, which is what decides whether the
+server takes the full-sync path or the incremental one. Default is `csv`.
+
+| Mode | Window | Use it for |
+|---|---|---|
+| `full` | 1900 for every entity | A first sync, or a device after a reset. The heaviest case |
+| `incremental` | `now − INCREMENTAL_SINCE_HOURS` (default 24) for every entity | A simple, uniform incremental run |
+| `csv` | Whatever the user file carries | Replaying a specific state |
+| `realistic` | Per entity, spread as production's own gaps are | The faithful case |
+
+**`realistic` is the one that matches production.** Q2 measured the gap between a user's syncs at a
+median of 16 minutes but a 75th percentile of 12.5 hours — two behaviours, not one with spread.
+Every entity gets its own draw from that distribution, so a single user's entities span minutes to
+days, which is what a real device looks like: reference data last pulled when the configuration
+changed, transactional data a few minutes ago.
+
+Uniform timestamps are the thing to avoid. `loadedSince` feeds the per-row queries behind
+`syncDetails`, so one value across every entity produces uniform selectivity — a query plan
+production never runs. Draws are derived from the user and entity name rather than randomised, so a
+run reproduces.
+
+**The window only bites once the bootstrap has run.** The simulation asks the server what each user
+tracks — one `POST /v2/syncDetails` with `[]` per user, cached — because the server matches on
+entity name *and* type uuid. Without it every typed entity falls through to the server's 1900
+default and full-syncs whatever the mode says, which is most of the sync volume. The run warns on
+the console if it ever builds a body without one.
+
 ### Environment variables
 Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
@@ -53,9 +82,19 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
 `RAMP_PERIOD` defaults to number of rows in resources/sync-users.csv * 20
 
-`PAGE_SIZE` defaults to 100
+`PAGE_SIZE` defaults to 1000, matching the client
 
 `NOW` defaults to current time at start of simulation
+
+`SYNC_MODE` one of `full`, `incremental`, `csv`, `realistic` — see above. Default `csv`
+
+`INCREMENTAL_SINCE_HOURS` defaults to 24, used by `SYNC_MODE=incremental`
+
+`STRUCTURAL_CHECK` `true` asserts zero failures, for H5's gate on a generated dataset
+
+`MAX_FAILED_PERCENT` error budget for a load run, default 1.0
+
+`MAX_P95_MS` asserts the 95th percentile when set. Production's light-band figure is 80,000
 
 ## Run archiving
 

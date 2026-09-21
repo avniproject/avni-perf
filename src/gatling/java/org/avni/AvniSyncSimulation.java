@@ -79,6 +79,22 @@ public class AvniSyncSimulation extends Simulation {
     private static final String authMode = System.getProperty("AUTH_MODE", "none");
     private static final boolean useCognito = "cognito".equalsIgnoreCase(authMode);
     private static final Map<String, String> userTokens = new ConcurrentHashMap<>();
+    /**
+     * The entity + entityTypeUuid pairs the server says this user tracks, learned by asking it.
+     *
+     * D1: the client posts one status row per (entityName, entityTypeUuid), and the server matches
+     * on both. Posting an empty type uuid makes every typed entity - Individual, Encounter,
+     * ProgramEncounter, ProgramEnrolment, and everything split by subject type or form mapping -
+     * fall through to the server's 1900 default and full-sync regardless of what the window says.
+     * That is most of the sync volume, so incremental mode was not exercising it at all.
+     *
+     * The list is per user rather than per organisation: every branch in
+     * SyncDetailsService.getAllSyncableItems is gated on the user's privileges, so two users in one
+     * organisation legitimately track different sets.
+     */
+    private static final Map<String, List<SyncDetail>> userSyncStatuses = new ConcurrentHashMap<>();
+    private static final java.util.concurrent.atomic.AtomicBoolean warnedAboutMissingBootstrap =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
 
     // E1. circular, not random. random() draws with replacement, so the same real user can be driven
     // by two virtual users at once - contention that does not happen in the field - while other users
@@ -113,8 +129,38 @@ public class AvniSyncSimulation extends Simulation {
           })
         : exec(session -> session);
 
+    /**
+     * Ask the server what this user tracks, once, before the first real syncDetails call.
+     *
+     * An empty array is the client's own bootstrap shape: the server adds every syncable item it
+     * can see for this user at REALLY_OLD_DATE and returns the lot, so the response round-trips
+     * into the request body of every subsequent sync. Nothing has to derive the organisation's
+     * structure independently.
+     *
+     * Two virtual users on the same username can race here and both bootstrap. The result is one
+     * wasted request, not a wrong body, so it is left alone rather than locked - a lock in a
+     * session function would stall the injector's event loop, which is a worse trade.
+     */
+    ChainBuilder bootstrapChain =
+        doIf(session -> !userSyncStatuses.containsKey(session.getString("userName")))
+            .then(exec(http("Bootstrap sync statuses")
+                    .post(session -> "/v2/syncDetails?includeUserSubjectType=true&deviceId=" + deviceId)
+                    .body(StringBody("[]")).asJson()
+                    .check(status().is(200))
+                    .check(jsonPath("$.syncDetails").transform(AvniSyncSimulation::parseSyncDetails)
+                        .saveAs("bootstrappedStatuses")))
+                .exec(session -> {
+                    @SuppressWarnings("unchecked")
+                    List<SyncDetail> tracked = (List<SyncDetail>) session.get("bootstrappedStatuses");
+                    if (tracked != null && !tracked.isEmpty()) {
+                        userSyncStatuses.putIfAbsent(session.getString("userName"), tracked);
+                    }
+                    return session;
+                }));
+
     ChainBuilder syncChainBuilder =
         exec(authChainBuilder)
+            .exec(bootstrapChain)
             .exec(session -> session.set("syncStartTime", java.time.Instant.now().toString()))
             .exec(resetSyncChain())
             .exec(http("Getting SyncDetails")
@@ -122,14 +168,7 @@ public class AvniSyncSimulation extends Simulation {
                 .body(StringBody(AvniSyncSimulation::syncStatusBody)).asJson()
                 .check(status().is(200))
                 .check(jsonPath("$.syncDetails")
-                    .transform(listElements -> {
-                        try {
-                            return om.readValue(listElements, new TypeReference<List<SyncDetail>>() {
-                            });
-                        } catch (JsonProcessingException e) {
-                            throw new UncheckedIOException("Could not parse syncDetails", e);
-                        }
-                    }).saveAs("syncDetails"))
+                    .transform(AvniSyncSimulation::parseSyncDetails).saveAs("syncDetails"))
                 // The client takes the sync window end from this response rather than from its own
                 // clock, and uses two different values - see windowEndFor.
                 .check(jsonPath("$.now").saveAs("serverNow"))
@@ -138,7 +177,8 @@ public class AvniSyncSimulation extends Simulation {
             .exec(postSyncTelemetry());
     ScenarioBuilder syncScenario = scenario("Sync " + syncMode)
         .feed(feeder)
-        .exec(session -> session.set("lastModifiedDateTime", loadedSinceFor(session)))
+        // `lastModifiedDateTime` stays on the session for SYNC_MODE=csv, which reads it from the
+        // feeder. Every other mode computes the window per entity in syncStatusBody.
         .exec(syncChainBuilder);
 
     {
@@ -188,7 +228,7 @@ public class AvniSyncSimulation extends Simulation {
      * entities - Individual, Encounter, ProgramEncounter, ProgramEnrolment - still fall through to
      * the server's 1900 default and still full-sync. Reference data does honour the window.
      */
-    private static String loadedSinceFor(Session session) {
+    private static String loadedSinceFor(Session session, String entityName) {
         switch (syncMode) {
             case "full":
                 return FULL_SYNC_SINCE;
@@ -197,10 +237,63 @@ public class AvniSyncSimulation extends Simulation {
                     .minus(java.time.Duration.ofHours(incrementalSinceHours)).toString();
             case "csv":
                 return session.getString("lastModifiedDateTime");
+            case "realistic":
+                return realisticLoadedSince(session.getString("userName"), entityName);
             default:
                 throw new IllegalArgumentException(
-                    "SYNC_MODE must be one of full, incremental, csv - got: " + syncMode);
+                    "SYNC_MODE must be one of full, incremental, csv, realistic - got: " + syncMode);
         }
+    }
+
+    /**
+     * Q2's measured gap between one user's syncs: hours, against the quantile they sit at.
+     *
+     * The shape matters more than any single figure. A median of 16 minutes beside a 75th
+     * percentile of 12.5 hours is two behaviours, not one with spread - repeated syncing inside a
+     * working session, then a long gap until the next. Drawing every entity from a distribution
+     * centred on either mode gets the incremental payload wrong in opposite directions.
+     */
+    private static final double[][] GAP_HOURS = {
+        {0.25, 0.0394}, {0.50, 0.2692}, {0.75, 12.50}, {0.90, 39.44}, {0.99, 196.70}
+    };
+
+    /**
+     * A per-entity window, spread as production's own gaps are.
+     *
+     * Uniform timestamps across every entity produce uniform selectivity in the per-row queries,
+     * which is the one thing real syncs never have: reference data was last pulled when the
+     * configuration changed, transactional data a few minutes ago. Since `loadedSince` is what
+     * feeds those queries, a uniform body measures a query plan production does not run.
+     *
+     * Derived from the user and entity name rather than drawn at random, so a run reproduces and
+     * two virtual users on one account agree about what that account has already seen.
+     */
+    private static String realisticLoadedSince(String userName, String entityName) {
+        int h = (userName + "|" + entityName).hashCode();
+        double q = ((h & 0x7fffffff) % 10_000) / 10_000.0;
+        q = Math.min(Math.max(q, 0.001), 0.999);
+
+        double hours;
+        if (q <= GAP_HOURS[0][0]) {
+            hours = GAP_HOURS[0][1] * (q / GAP_HOURS[0][0]);
+        } else if (q >= GAP_HOURS[GAP_HOURS.length - 1][0]) {
+            hours = GAP_HOURS[GAP_HOURS.length - 1][1];
+        } else {
+            hours = GAP_HOURS[GAP_HOURS.length - 1][1];
+            for (int i = 0; i < GAP_HOURS.length - 1; i++) {
+                double q0 = GAP_HOURS[i][0], q1 = GAP_HOURS[i + 1][0];
+                if (q >= q0 && q <= q1) {
+                    double f = (q - q0) / (q1 - q0);
+                    // Interpolate in log space: the range spans four orders of magnitude, and a
+                    // straight line through it would put almost every entity in the tail.
+                    hours = Math.exp(Math.log(GAP_HOURS[i][1])
+                        + f * (Math.log(GAP_HOURS[i + 1][1]) - Math.log(GAP_HOURS[i][1])));
+                    break;
+                }
+            }
+        }
+        return java.time.Instant.now()
+            .minus(java.time.Duration.ofSeconds((long) (hours * 3600))).toString();
     }
 
     private static final String RESET_SYNC = "ResetSync";
@@ -324,26 +417,68 @@ public class AvniSyncSimulation extends Simulation {
      * not mention at REALLY_OLD_DATE, so an empty body asks for a full sync of everything and the
      * incremental path is never exercised. See the plan, D1.
      */
-    private static String syncStatusBody(Session session) {
-        List<Map<String, Object>> statuses = new ArrayList<>();
-        String loadedSince = session.getString("lastModifiedDateTime");
-        for (AvniEntity entity : entities) {
-            if (!entity.pullRequired) {
-                continue;
-            }
-            Map<String, Object> status = new LinkedHashMap<>();
-            status.put("uuid", UUID.randomUUID().toString());
-            status.put("entityName", entity.entityName);
-            status.put("loadedSince", loadedSince);
-            status.put("entityTypeUuid", "");
-            status.put("voided", false);
-            statuses.add(status);
+    private static List<SyncDetail> parseSyncDetails(String listElements) {
+        try {
+            return om.readValue(listElements, new TypeReference<List<SyncDetail>>() {
+            });
+        } catch (JsonProcessingException e) {
+            throw new UncheckedIOException("Could not parse syncDetails", e);
         }
+    }
+
+    /**
+     * The status array the client posts: one row per (entityName, entityTypeUuid) it tracks.
+     *
+     * Built from what the server told us this user tracks, not from the generated entity table.
+     * The table lists entity *types*; the body needs *rows*, and the difference is every entity
+     * split by subject type, programme or encounter type. Getting that wrong is not a smaller
+     * body - it is a body the server cannot match, so those entities silently full-sync.
+     *
+     * Falls back to the flat table only if the bootstrap has not run, which keeps a misconfigured
+     * run working rather than failing obscurely. The console says when that happens.
+     */
+    private static String syncStatusBody(Session session) {
+        List<SyncDetail> tracked = userSyncStatuses.get(session.getString("userName"));
+        List<Map<String, Object>> statuses = new ArrayList<>();
+
+        if (tracked == null || tracked.isEmpty()) {
+            if (warnedAboutMissingBootstrap.compareAndSet(false, true)) {
+                out.println(
+                    "WARNING: no bootstrapped status list for this user, so the body carries an "
+                    + "empty entityTypeUuid per entity. The server matches on name AND type uuid, "
+                    + "so every typed entity will fall through to its 1900 default and full-sync "
+                    + "whatever SYNC_MODE says.");
+            }
+            for (AvniEntity entity : entities) {
+                if (!entity.pullRequired) {
+                    continue;
+                }
+                statuses.add(statusRow(entity.entityName, "", loadedSinceFor(session, entity.entityName)));
+            }
+        } else {
+            for (SyncDetail d : tracked) {
+                statuses.add(statusRow(d.entityName,
+                    d.entityTypeUuid == null ? "" : d.entityTypeUuid,
+                    loadedSinceFor(session, d.entityName)));
+            }
+        }
+
         try {
             return om.writeValueAsString(statuses);
         } catch (JsonProcessingException e) {
             throw new UncheckedIOException("Could not serialise sync statuses", e);
         }
+    }
+
+    private static Map<String, Object> statusRow(String entityName, String entityTypeUuid,
+                                                 String loadedSince) {
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("uuid", UUID.randomUUID().toString());
+        status.put("entityName", entityName);
+        status.put("loadedSince", loadedSince);
+        status.put("entityTypeUuid", entityTypeUuid);
+        status.put("voided", false);
+        return status;
     }
 
     /**

@@ -42,9 +42,9 @@ work has been done on that item at all** — the "Before" column still describes
 | Run archiving | none | metadata written into each report directory |
 | **Read-path fidelity** | | |
 | Entity list | 64, hand-maintained in `AvniEntities.json` | 79, generated from `openchs-models`, drift-checked in CI |
-| `syncDetails` body | `EmptyBody.json` — an empty array | full 79-entity status array |
+| `syncDetails` body | `EmptyBody.json` — an empty array | the entities **and type uuids** the server says each user tracks, learned by bootstrapping |
 | Page size | 100 | 1000, matching the client |
-| Sync window | client clock, always 1900 in the committed user file | server-supplied, with `SYNC_MODE` for full / incremental / per-user |
+| Sync window | client clock, always 1900 in the committed user file | server-supplied, with `SYNC_MODE` for full / incremental / per-user / **realistic**, the last drawn per entity from Q2 |
 | Auth | Cognito only | `AUTH_MODE` — username header or Cognito |
 | Telemetry | none | posted like a real client, tagged so production queries exclude it |
 | Reset sync | not requested at all | request modelled in the right order; no scenario needed — the storm was a defect |
@@ -454,7 +454,7 @@ generator now emits both, in the order the client merges them.
 
 Where the simulation and `SyncService.js` disagree.
 
-**D1 — Post real sync statuses to `/v2/syncDetails`.** *(Highest value in the plan.)* The client posts
+**D1 — Post real sync statuses to `/v2/syncDetails`.** *Done.* *(Highest value in the plan.)* The client posts
 its full `entitySyncStatus` array — one row per `(entityName, entityTypeUuid)` with a `loadedSince`
 timestamp. The simulation posts `EmptyBody.json`.
 
@@ -512,21 +512,33 @@ where gap is not null;
    (`EntitySyncStatusContract` is `{uuid, entityName, loadedSince, entityTypeUuid}`, which the sim's
    `SyncDetail` already parses). It round-trips; no need to derive org structure independently.
 
-   > **Still outstanding.** The simulation now posts a real status array rather than an empty body,
-   > built from the generated entity table with `loadedSince` from the feeder — but with an empty
-   > `entityTypeUuid`, because the per-user type list is only knowable by asking the server.
-   > `matchesEntity` compares name *and* type uuid, so entities split by type still fall through to
-   > the server's 1900 default and still full-sync. **Incremental sync is not yet exercised for
-   > `Individual`, `Encounter`, `ProgramEncounter`, `ProgramEnrolment` or any other typed entity** —
-   > which is most of the sync volume. The bootstrap step in G1 is what closes this.
+   > **Built.** The simulation runs this once per user before its first real `syncDetails` call and
+   > caches the result, so the body now carries the entity *and* its type uuid. Until it did,
+   > `matchesEntity` compared both and every typed entity — `Individual`, `Encounter`,
+   > `ProgramEncounter`, `ProgramEnrolment`, and everything split by subject type or form mapping —
+   > fell through to the server's 1900 default and full-synced whatever the mode said. **That is
+   > most of the sync volume, so incremental mode was not exercising the incremental path at all.**
+   >
+   > Two virtual users on one account can race and both bootstrap. That costs one wasted request
+   > rather than a wrong body, and a lock inside a session function would stall the injector's event
+   > loop — a worse trade. If a body is ever built without a bootstrapped list the run says so on
+   > the console rather than quietly falling back.
 2. *Cache it* in a `ConcurrentHashMap` keyed by username, and build the request body with
    `StringBody(session -> …)` rather than trying to carry a 60-row array in the CSV.
-3. *Rewrite `loadedSince` per scenario* — all rows at 1900 for full sync, all at `now − 1 day` for
-   incremental, or a realistic spread for the faithful case. Real users' entities drift apart:
-   reference data was last synced when configuration changed, transactional data yesterday. Since
-   `loadedSince` is what feeds the per-row queries, uniform timestamps produce uniform and
-   unrepresentative selectivity. Source the spread from `sync_telemetry` sync history, or approximate
-   with buckets (~60% yesterday, 25% last week, 10% last month, 5% fresh device).
+3. *Rewrite `loadedSince` per scenario.* **Built as `SYNC_MODE`**: `full` puts every row at 1900,
+   `incremental` at `now − INCREMENTAL_SINCE_HOURS`, `csv` takes the feeder's value, and
+   **`realistic` draws each entity its own window from Q2's measured gaps**.
+
+   The buckets this plan originally guessed at — 60% yesterday, 25% last week — are replaced by the
+   measurement, and the measurement is a different shape: a median of 16 minutes beside a 75th
+   percentile of 12.5 hours is two behaviours rather than one with spread. Drawing every entity
+   from a distribution centred on either mode would get the incremental payload wrong in opposite
+   directions.
+
+   Verified against Q2 across 5,000 draws: p25 0.040h against 0.039, p50 0.287 against 0.269, p75
+   11.9 against 12.5, p90 39.6 against 39.4. A single user's entities span minutes to days, which is
+   the point — uniform timestamps produce uniform selectivity in the per-row queries, and that is a
+   query plan production never runs.
 
 Also send the client's query parameters: `includeUserSubjectType=true&deviceId=`. `deviceId` is not
 cosmetic — `filterChangedEntities` routes some entities through
@@ -1111,11 +1123,11 @@ The difference is not marginal. Against a local dev database:
 **64% fewer requests.** The committed user file has always held 1900-01-01, so every run to date has
 exercised only the heaviest case — and the common production case had never been run at all.
 
-> **Incremental is only partly effective until D1's bootstrap lands.** The status body still carries
-> an empty `entityTypeUuid`, and the server matches on name *and* type uuid, so typed entities —
-> `Individual`, `Encounter`, `ProgramEncounter`, `ProgramEnrolment` — keep falling through to the
-> 1900 default and still full-sync. Reference data does honour the window, which is most of what the
-> 64% above reflects. The real incremental profile will be different again.
+> **That 64% predates the bootstrap and understates the difference.** It was measured while the
+> status body carried an empty `entityTypeUuid`, so every typed entity fell through to the 1900
+> default and full-synced — reference data was doing most of the work the figure reflects. With D1
+> built, the typed entities honour the window too, and the real incremental profile will be
+> different again.
 
 **Upload-only background sync is not modelled, and does not need to be.** It was disabled in practice
 some time ago, which is why `sync_source = 'automatic-upload-only'` is near-absent from recent
