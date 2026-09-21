@@ -4,7 +4,7 @@ Everything [the sync simulation plan](sync-simulation-plan.md) and
 [the test scenarios](test-scenarios.md) are waiting on.
 
 **This document holds the inputs only** — the questions someone has to answer before the tests can
-be designed, built or run. No amount of running will settle them. **Three remain.**
+be designed, built or run. No amount of running will settle them.
 
 Nothing else lives here. **Work** someone could simply go and do is a task in
 [the plan](sync-simulation-plan.md), whose status table says what has and has not been started.
@@ -40,65 +40,24 @@ per-device volume changes by an order of magnitude between them:
 | Block | 200 | 920,000 | 141 min | **3.5×** |
 | District | ~2,200 | — | — | far beyond |
 
-**This is now the only question that changes what the exercise measures.** With sync frequency
-confirmed at once a day, concurrency is settled — the deployment produces under one sync in flight
-— so volume per device is the whole risk, and this is the number that sets it. If everyone
-supervises at sub-centre, no case exceeds what production already carries and the exercise confirms
-the server holds. If a handful supervise at block level, those few devices are individually heavier
+**Volume per device is the risk this sets.** With sync frequency confirmed at once a day,
+concurrency is settled — the deployment produces under one sync in flight — so how much any single
+device carries is what is left, and this is the number that decides it. If everyone supervises at
+sub-centre, no case exceeds what production already carries and the exercise confirms the server
+holds. If a handful supervise at block level, those few devices are individually heavier
 than anything production has measured, and the exercise is about them.
 
 **A handful is enough to matter.** These are not averages over a population: one block-level
 supervisor carries 920,000 records whatever the rest do, so the answer needed is a count per tier,
 not a typical case.
 
-### Over what window do the daily syncs fall?
-
-**Assumed: spread across the 09:00–21:00 plateau.** Not confirmed, and it is the other half of the
-arrival rate.
-
-The plateau is what Q4 measured **of production's current mix**, not a property of this deployment.
-A once-a-day sync could cluster — workers syncing when they return to signal, or at the end of a
-shift. Compressed into one hour, **case 6 goes from 0.55 syncs in flight to 6.6, about twice
-production's peak**.
-
-Cheap to bracket rather than wait on, and already bracketed: **cases 11 to 13 run cases 5 to 7 at a
-one-hour window**, so the suite covers both ends for three extra hours. An answer would let three
-runs be dropped; it does not gate anything.
-
-### How many images does a real screening encounter produce, and how many of a worker's encounters are screenings?
-
-**Assumed: 16 images per oral screening encounter, and a uniform encounter mix.** Being asked of
-the customer. Together these swing media load by more than an order of magnitude, and media is the
-larger part of sync time for this deployment.
-
-The bundle settles the structure but not the two numbers. Its oral screening encounter carries two
-mandatory image elements, each inside a **repeatable** question group — one named *"Take photos of
-all lesions and 1 photo without lesion"* — so each is filled once per lesion photographed. Sixteen
-is back-solved from the customer's own estimate and reproduces exactly at eight repeats per group.
-Three further media elements are `editable: false`, meaning the app fills them with images another
-element already uploaded, so they are display copies and are not counted.
-
-| Oral screening share of a worker's encounters | Files per sync | Upload at 1 Mbps |
-|---|---|---|
-| Uniform, 1 of 12 encounter types | 31 | 125 s |
-| A quarter | 90 | 6 min |
-| Half | 178 | 12 min |
-| All of them | 352 | 23 min |
-
-**It changes elapsed time, not server load** — the bytes go to S3 and only the signing call touches
-avni-server. So it gates neither the hosting decision nor any contention finding. What it decides
-is whether "sync takes too long in the field" is a media problem or a data problem, and on these
-figures it is overwhelmingly the former. Worth settling before anyone optimises the other half.
-
-It also sets a bandwidth and storage bill: the middle rows are tens of gigabytes a day across the
-pilot's 500 workers.
-
 ---
 
 ## Scope, and what expanding it would mean
 
-**The current scope is sync.** Not because sync is the only thing that matters, but because it is one
-coherent path that can be measured properly, and three others were set aside to keep it that way.
+**The current scope is sync.** Not because sync is the only thing that matters, but because it is
+one coherent path that can be measured properly, and the paths below were set aside to keep it
+that way.
 Each is additive: the harness, the dataset and the environment all serve them too, so bringing one
 in is a new set of scenarios rather than a new exercise.
 
@@ -255,7 +214,7 @@ Recorded briefly so none of it gets relitigated. Full reasoning is in the plan's
 list. What is out of scope is in **Scope** above rather than here, because scope is a boundary that
 can move rather than a question that was settled.
 
-- **Production statistics access** — granted; sixteen queries written, fourteen run.
+- **Production statistics access** — granted. [Which queries have run](production-measurement-queries.md#what-has-run) is tracked there.
 - **Anonymised production clone** — not available. Generation is the path.
 - **Token expiry across a long sync** — a harness limitation only. The real client refreshes per
   request, so a multi-hour sync is fine for it.

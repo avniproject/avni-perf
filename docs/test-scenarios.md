@@ -1,6 +1,6 @@
 # Test scenarios
 
-**For customer review, and for the generator to build against.** Thirteen test cases with actual
+**For customer review, and for the generator to build against.** The test cases with actual
 numbers, and the deployment they are derived from.
 
 Split out of [the sync simulation plan](sync-simulation-plan.md) because it has a different audience
@@ -8,12 +8,10 @@ and a different lifecycle: the plan is how the instrument gets built, this is wh
 at. Every figure here is either something the customer supplied or something derived from it, and the
 derivations say so.
 
-**Three assumptions still move the numbers**, flagged where they appear and listed in
-[open-questions.md](open-questions.md): **which tier supervises**, which changes per-device volume
-by an order of magnitude and is the one that changes what the exercise measures; **what window the
-daily syncs fall in**, which cases 11 to 13 bracket rather than wait on; and **how many images a
-screening encounter produces and how many encounters are screenings**, which swings elapsed sync
-time by eleven times without touching server load.
+**What is still open is in [open-questions.md](open-questions.md)**: **which tier supervises**,
+which changes per-device volume by an order of magnitude. Two assumptions here are handled by
+running rather than by asking — the clustered sync window is cases 11 to 13, and the media figures
+are parameters with a documented range, defaulted to their conservative end.
 
 ---
 
@@ -107,8 +105,8 @@ incremental sync costs about the same whether it carries 15 records or 500.
 the whole difference between them — so its arrival rate is the customer's alone. Only case 7 adds
 production's 792 syncs an hour.
 
-**Production's own busiest hour ever recorded is 3.1 in flight.** Four cases pass it — the training
-burst, case 7, and all three clustered runs, the heaviest of which is three times that peak.
+**Production's own busiest hour ever recorded is 3.1 in flight.** The cases above it are the
+training burst, case 7 and the clustered runs — the heaviest of them three times that peak.
 
 #### How much of that depends on spreading over twelve hours
 
@@ -167,14 +165,15 @@ media would show — which spreads server load out rather than concentrating it.
 
 > **Two inputs here are assumptions, and both are large.** How often a repeatable group is filled
 > — nothing in the bundle records it, and eight is back-solved from the customer's own "about 16
-> per encounter". And the encounter mix, which is the 11x spread in the table above. Both are
-> questions for whoever knows the programme.
+> per encounter". And the encounter mix, which is the 11x spread in the table above. Neither is
+> being waited on: both are parameters, `PUSH_MEDIA_PER_ENCOUNTER` and `MEDIA_UPLOAD_KBPS`,
+> defaulted to the conservative end. A run that wants the upper rows sets them.
 
 That makes the sync *window* worth asking about alongside the frequency, since the two together set
 the arrival rate and only one of them has been confirmed. **Cases 11 to 13 are the bracket**: the
 same three tenancy shapes at the opposite extreme of the window. Running both ends costs three hours
-and is cheaper than assuming the plateau and being wrong about the only cases that carry concurrent
-load.
+and is cheaper than assuming the plateau and being wrong about the cases that carry concurrent
+load, which are the only ones where the difference shows.
 
 **On the assumed shape this is not a concurrency exercise.** The customer's entire deployment
 produces **under one sync in flight**; every single-tenant case runs at a fifth of that. What these
@@ -185,7 +184,7 @@ The consequence is worth stating for whoever reads a green result: **cases 2, 3 
 you almost nothing about contention**, because at 0.18 syncs in flight there is nothing to contend
 with. Concurrent load lives in cases 7, 9 and 11 to 13.
 
-### Conditional on two open questions
+### What the cases assume
 
 **How many supervisors sit above sub-centre, and at which tiers.** Cases 3 to 8 assume every
 supervisor is at a sub-centre covering 8 field workers. They can sit at any tier above it, and a
@@ -198,8 +197,8 @@ not a single choice.
 | PHC | 45 | 207,000 | 32 min | 0.78× |
 | Block | 200 | 920,000 | 141 min | **3.5×** |
 
-**With concurrency settled at under one sync in flight, this is now the only thing that changes what
-the exercise measures.** If everyone supervises at sub-centre, no case exceeds what production
+**With concurrency settled at under one sync in flight, this is what decides what the exercise
+measures.** If everyone supervises at sub-centre, no case exceeds what production
 already carries and the runs confirm the server holds. If a handful supervise at block level, those
 few devices are individually heavier than anything production has measured, and they are the
 exercise.
@@ -372,7 +371,7 @@ year one. From 500 workers per state tenant that gives **50 villages and 150,000
 | Village | 59,000 | 3 | 0 | 0 |
 
 **It is internally consistent** — units times per-unit reproduces the state totals within 7% at every
-level — and it corrects the model above in four places.
+level — and it corrects the model above wherever the two disagree.
 
 | | Earlier figure | This table | |
 |---|---|---|---|

@@ -17,7 +17,7 @@ production RUM) is tracked separately.
 telemetry at the end. The entity list is generated from `openchs-models` rather than hand-maintained,
 and CI fails if it drifts.
 
-That is a faithful download-sync probe, production is measured, the thirteen test cases are specified
+That is a faithful download-sync probe, production is measured, the test cases are specified
 with numbers, and a dataset generator exists that reproduces them.
 
 **What is missing is everywhere those three meet a server.** No environment to run against, no
@@ -56,7 +56,7 @@ work has been done on that item at all** — the "Before" column still describes
 | **Workload design** | | |
 | Feeder | `random()`, drawing with replacement | `circular()`, warns when oversubscribed |
 | Full vs incremental | full only, every run | `SYNC_MODE`; incremental stays partial until D1 |
-| Test cases | none defined | **13 cases with numbers**, in [test-scenarios.md](test-scenarios.md) |
+| Test cases | none defined | **specified with numbers**, in [test-scenarios.md](test-scenarios.md) |
 | Injection profiles | one open ramp | defined as cases; **not yet implemented as Gatling profiles — E3** |
 | Multi-tenant load | single organisation | **Not started — E4** |
 | Co-tenant sync traffic | none | **Not started — E7**, and case 7 needs it |
@@ -79,7 +79,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Assertions | commented out | zero-failure structural gate, plus rate and p95 bounds for a load run |
 | Calibration gate | none | **Not started — F7** |
 | **Grounding** | | |
-| Production measurement | none — every figure was an estimate | 14 of 17 queries run · Q11 needs a client change; Q16 and Q17 are written and unrun |
+| Production measurement | none — every figure was an estimate | run, and [tracked per query](production-measurement-queries.md#what-has-run) · Q11 needs a client change before it can be answered |
 | Success criteria | empty | measured, one row left to fill |
 
 **The empty body row is the one that mattered most.** Posting an empty array made the server
@@ -764,8 +764,9 @@ excludes display-only copies.
 
 > **Two inputs the bundle cannot supply**, and both are large. **How often a repeatable group is
 > filled** — nothing records it, and it is a straight multiplier on everything above. **The
-> encounter mix** — the table's own spread, 11x between its first and last rows. Both are questions
-> for whoever knows the programme.
+> encounter mix** — the table's own spread, 11x between its first and last rows. Neither blocks
+> anything: both are parameters, defaulted to the conservative end and documented with their range,
+> so a run that wants the upper rows asks for them.
 
 **D5.2 — Do not transfer the bytes, but do spend the time.** *Revised.* The original reasoning held
 that since S3 serves the objects directly, transferring them measures S3 and consumes bandwidth
@@ -1311,7 +1312,7 @@ it would be a scenario that skips the download rather than new modelling.
 ### Scenarios and test cases
 
 **Moved to [test-scenarios.md](test-scenarios.md)** — the deployment being modelled, the datasets at
-each growth point, and thirteen test cases with numbers, for customer review. Different audience and
+each growth point, and the test cases with numbers, for customer review. Different audience and
 different lifecycle from this document: that one is what the instrument gets pointed at, this one is
 how it gets built.
 
@@ -2430,19 +2431,17 @@ Ordering reflects dependencies, not estimates.
 
 | Phase | Tasks | Why here |
 |---|---|---|
-| **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done — 14 of 17 have run.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
+| **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done, and tracked per query.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **D3 and D5.1 are done**; G4's restore mechanism is what remains, and it is now the gate rather than a deferral — a `PUSH=on` run cannot be repeated without it. Q17 replaces D3's guessed push volumes. |
 | **3 · Workload** | **D7** · E3, E5, **E7** · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5 no longer sits here - upload landed with D3 and viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
 | **4 · Operate** | A11 · F2, F3 · **A12** | Saturate, name the resource, fix, re-run. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
 **Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review.
-Three assumptions in them remain open: that every supervisor sits at sub-centre level, which changes
-per-device volume by an order of magnitude; that the daily syncs spread over a working day rather
-than clustering, which cases 11 to 13 bracket; and how many images a screening encounter produces
-against how many encounters are screenings, which swings elapsed sync time elevenfold without
-touching server load. Sync frequency is confirmed at once a working day, and the acceptable error
-rate at 0.05%.
+Still open in them: that every supervisor sits at sub-centre level, which changes per-device volume
+by an order of magnitude. Sync frequency is confirmed at once a working day, the acceptable error
+rate at 0.05%, and the clustered window is covered by running cases 11 to 13 rather than by settling
+it in advance.
 
 **Deliberately unscheduled.** **D8.2** (page size tuning) and **E4** (noisy neighbour) are
 finding-triggered — pull them forward when a result points at serialisation or at tenancy, not on a
@@ -2452,12 +2451,10 @@ calendar.
 
 ## Open questions
 
-**[open-questions.md](open-questions.md) is the list.** Three inputs remain, all shaping load rather
-than blocking a build: **how many supervisors sit above sub-centre level and at which tiers**, which
-sets per-device volume and is the only one of the three that changes what the exercise measures;
-**over what window the daily syncs fall**, which sets the arrival rate and is bracketed by cases 11
-to 13 rather than waited on; and **how many images a screening encounter produces against how many
-encounters are screenings**, which sets elapsed sync time but not server load.
+**[open-questions.md](open-questions.md) is the list**, and it is the only copy. What is still
+outstanding turns on **how many supervisors sit above sub-centre level and at which tiers**, which
+sets per-device volume and so decides whether the exercise is about the fleet or about a handful of
+very heavy devices.
 
 Keeping a second copy here is what let the two drift apart, so this section now holds only what the
 plan itself decided. What the tests will *answer* is under **Measure before fixing** above.
@@ -2498,7 +2495,7 @@ plan itself decided. What the tests will *answer* is under **Measure before fixi
   which is private. **This repository is public and carries summarised findings only** — ratios,
   percentiles and the figures the plan reasons about. Per-organisation sizes, per-index scan counts
   and the full hourly and weekly series are recorded there.
-- **[test-scenarios.md](test-scenarios.md)** — the deployment being modelled and thirteen test cases
+- **[test-scenarios.md](test-scenarios.md)** — the deployment being modelled and the test cases
   with numbers, for customer review. Split out because it has a different audience: that is what the
   instrument gets pointed at, this is how it gets built.
 - **[open-questions.md](open-questions.md)** — the inputs this plan is waiting on. What it will

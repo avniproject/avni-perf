@@ -40,13 +40,14 @@ organisation names.
 
 ## What has run
 
-Fourteen of seventeen. The three outstanding are each recorded against their own entries below.
+Everything below has run against production except the rows here, each also recorded against its
+own entry further down.
 
 | | State |
 |---|---|
 | **Q11** — fleet page size split | **Not answerable yet.** `pageSize` is not recorded in `sync_telemetry`, so it needs a client change first (D8.3) |
 | **Q16** — locations per catchment | **Written, not run.** Decides whether the generator's one-location default is right |
-| **Q17** — records pushed per sync | **Written, not run.** The only input D3's push volumes are still guessing at, and the data is already in `sync_telemetry` |
+| **Q17** — records pushed per sync | **Written, not run.** What D3's push volumes are still guessing at, and the data is already in `sync_telemetry` |
 
 ## Provenance
 
@@ -759,8 +760,8 @@ generator currently produces.
 
 ---
 
-**Q17 — How many records does a device push per sync? (D3).** **Not yet run.** The one input D3's
-push volumes currently lack. The simulation ships with 20 program encounters, 2 encounters, 1
+**Q17 — How many records does a device push per sync? (D3).** **Not yet run.** What D3's push
+volumes are currently guessing at. The simulation ships with 20 program encounters, 2 encounters, 1
 subject and 1 enrolment per sync, derived from the customer's "20 encounters per field worker per
 day" against a daily sync — arithmetic, not measurement. This replaces it.
 
