@@ -17,20 +17,24 @@ a 16-minute median.
 
 ## The cases
 
-| # | Case | Users | Dataset | Mode | What it answers |
-|---|---|---|---|---|---|
-| **1** | Training cohort | 100 field workers, all first login within 15 min | Config only, **no field data** | Full | Reference-data sync and `syncDetails` cost, isolated from catchment volume |
-| **2** | Field worker steady state | 500 — one state tenant | Day 180, one state tenant | Incremental, 1% full | The common case |
-| **3** | Supervisor steady state | 62 — one state tenant | Day 180, one state tenant | Incremental, 1% full | Whether 3× the volume per device changes anything |
-| **4** | **Combined** | 500 + 62 — one state tenant | Day 180, one state tenant | Incremental, 1% full | **The realistic case.** Wide and frequent syncs competing for one pool |
-| **5** | **Separate infrastructure** | 1,504 + 188 — **all 10 tenants** | Day 180, these 10 tenants only | Incremental, 1% full | The customer's own load, with nobody else's data in the tables. **The baseline the next two are measured against** |
-| **6** | **Shared — co-tenant data** | 1,504 + 188 — **all 10 tenants** | Day 180 **plus production's 986 organisations**, which sync nothing | Incremental, 1% full | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
-| **7** | **Shared — co-tenant load** | Case 6, plus production's own arrival rate | Same as case 6 | Incremental, 1% full | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
-| **8** | Growth comparison | Case 4 — one state tenant | Day 60, 120, 180, **365** | Incremental, 1% full | The shape of the curve. A knee between points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
-| **9** | Reset storm | 562 — one state tenant, org-wide reset | Day 180 | **All full** | The heaviest real event (Q10 measured it at 130× a normal week) |
-| **10** | Stress ramp | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
-| **11** | Soak | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
-| **12** | **Configuration size** | Case 1, twice | Config only, **a small and a large bundle** | Full | How `syncDetails` cost scales with the number of entities a configuration defines |
+| # | Case | Tenants | Users | Dataset | Mode | What it answers |
+|---|---|---|---|---|---|---|
+| **1** | Training cohort | 1 | 100 field workers, first login within 15 min | Config only, **no field data** | Full | Reference-data sync and `syncDetails` cost, isolated from catchment volume |
+| **2** | Field worker steady state | 1 state | 500 | Day 180 | Incremental, 1% full | The common case |
+| **3** | Supervisor steady state | 1 state | 62 | Day 180 | Incremental, 1% full | Whether 3× the volume per device changes anything |
+| **4** | **Combined** | 1 state | 500 + 62 | Day 180 | Incremental, 1% full | **The realistic case.** Wide and frequent syncs competing for one pool |
+| **5** | **Separate infrastructure** | **10** | 1,504 + 188 | Day 180 | Incremental, 1% full | The customer's own load, with nobody else's data in the tables. **The baseline the next two are measured against** |
+| **6** | **Shared — co-tenant data** | **10 + 986** | 1,504 + 188 | Day 180 **plus production's organisations**, which sync nothing | Incremental, 1% full | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
+| **7** | **Shared — co-tenant load** | **10 + 986** | Case 6, plus production's own arrival rate | Same as case 6 | Incremental, 1% full | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
+| **8** | Growth comparison | 1 state | Case 4 | Day 60, 120, 180, **365** | Incremental, 1% full | The shape of the curve. A knee between points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
+| **9** | Reset storm | 1 state | 562, org-wide reset | Day 180 | **All full** | The heaviest real event (Q10 measured it at 130× a normal week) |
+| **10** | Stress ramp | **10** | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
+| **11** | Soak | 1 state | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
+| **12** | **Configuration size** | 1, twice | Case 1 | Config only, **a small and a large bundle** | Full | How `syncDetails` cost scales with the number of entities a configuration defines |
+
+**Tenant counts trace to the table under [the deployment](#the-deployment-being-modelled)**: a state
+tenant is 500 field workers and 62 supervisors, and the ten together are 1,504 and 188. The 986 in
+cases 6 and 7 is production's existing organisation count (Q12).
 
 **Every user count above comes from the tenant table** under *The deployment being modelled*. A state
 tenant is 500 field workers and 62 supervisors; the ten tenants together are 1,504 and 188.
@@ -119,7 +123,7 @@ theirs — ten tenants, 1,692 users, 1.5 million beneficiaries. **Where it runs 
 
 | Hosting | What is in the database | Cases |
 |---|---|---|
-| **Separate** | These 10 tenants only | 1–5, 8–12 |
+| **Separate** | The customer's tenants only | 1–5, 8–12 |
 | **Shared, co-tenants idle** | Plus production's 986 organisations | 6 |
 | **Shared, co-tenants active** | Plus their traffic | 7 |
 
