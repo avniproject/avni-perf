@@ -6,6 +6,10 @@ Everything [the sync simulation plan](sync-simulation-plan.md) and
 **This document holds the inputs only** — the questions someone has to answer before the tests can
 be designed, built or run. No amount of running will settle them. **Three remain.**
 
+Work is not a question, so it is not here. Anything outstanding that someone could simply go and do
+is a task in [the plan](sync-simulation-plan.md), and the status table at the top of that document
+says what has and has not been started.
+
 The questions the tests *answer* are a different kind and live in
 [the plan](sync-simulation-plan.md#what-the-tests-will-answer), because they are what the exercise is
 for rather than something it is waiting on. Conflating the two is how work like this goes wrong: an
@@ -87,20 +91,6 @@ section that uses them.
 |---|---|
 | **Q11 — fleet page size split** | **Not answerable.** `pageSize` is not recorded in `sync_telemetry`, so it needs a client change first (D8.3) |
 | **Locations per catchment in production** | **No query written.** The generator declares one location per catchment and real bundles carry three. Changes the mapping table's size and the expansion view's work, not what anyone syncs |
-
----
-
-## Waiting on something, not on an answer
-
-Not questions. Work that cannot proceed until something else exists, listed so it is not mistaken for
-an open decision.
-
-| What | Waiting on |
-|---|---|
-| **H5 steps 3–4**, the manual client check | A loaded dataset and a device. The automated half is built, and a dataset passing only that half is **loadable, not blessed** |
-| **The generator's column and metadata dumps** | A target database with a bundle loaded. `columns.sql` and `refs.sql` are written |
-| **Production's tenant skew** | A decision to build it. It is the second of the two tenant shapes decided below, and cases 6 and 7 cannot run without it |
-| **Q7c's index usage, re-read later** | Nothing — it has run. Worth repeating after any index change, since `idx_scan` counts only since the server last restarted |
 
 ---
 

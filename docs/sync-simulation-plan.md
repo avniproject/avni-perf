@@ -1435,13 +1435,15 @@ around it.
 | Load the implementation bundle | The generator reads its metadata ids back out |
 | Dump the target's columns and metadata ids | `columns.sql` and `refs.sql` — the generator projects rows onto the target's own schema rather than a committed list |
 | Generate and load the dataset | From a committed recipe (H). F5.1 — the long pole |
-| Run H5's gates | Statistical, then the manual client check. A dataset that passes only the first is loadable, not blessed |
-| Provision perf users and catchments | G5 below |
+| Users and catchments arrive with it | The generator emits them alongside the rows, so they cannot miss each other — see G5 |
 | Bootstrap per-user sync-status baselines | D1's bootstrap call — one `POST /v2/syncDetails` with `[]` per user |
+| **Run H5's gates** | Statistical, then the manual client check. **Both need the users above**, since the structural half is a sync |
 | Capture the pristine snapshot | This is what every subsequent run restores to |
 
-The last step matters: the reference snapshot must be taken **after** users and baselines exist, so
-restoring never destroys them.
+**Order matters twice here.** The snapshot comes last, after users and baselines exist, so restoring
+never destroys them. And **H5's gates come before the snapshot, not after**: a snapshot of an
+unblessed dataset propagates the problem into every run that restores it, and by then the cost of
+finding out has multiplied.
 
 ### G2 — Per run, before
 
@@ -1976,6 +1978,12 @@ server-side evaluates the rule. Device automation belongs to the Android plan.
 
 So a dataset passing the automated half is **loadable, not blessed**, and the verdict file records
 the two separately rather than letting one stand for the other.
+
+**It is a task, not a caveat.** Someone runs it once per dataset — four steps in the generator's
+README, needing a device or emulator and half an hour — and writes the result into the verdict file.
+It sits in G1 after the users exist — the structural half is a sync, so it cannot run before them —
+and before the pristine snapshot, because a snapshot of an unblessed dataset propagates the problem
+into every run that restores it.
 
 **Statistical.** *Built* — `tools/data-generator/validate.sql` produces the statistics and
 `validate.py` judges them against the measured profile, exiting non-zero so it can gate a run rather
