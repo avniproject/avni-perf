@@ -382,6 +382,44 @@ complete.
 counts and alter what is in them. `Manifest.differences()` reports a rebuild that diverges, and
 distinguishes "different row count" from "same count, different content".
 
+## Co-tenants, for the hosting comparison
+
+Test cases 6 and 7 put the customer's tenants on a database that also holds everyone else's data,
+and the delta against case 5 is the shared-versus-separate hosting decision. `co_tenants.py` builds
+that other half.
+
+**The shape is Q12's**: 986 organisations, **473 of them holding nothing**, the largest holding 21%
+of all subjects, the top ten 63%, the top fifty over 90%. The skew is the point — multi-tenancy costs
+scale with what is in the tables rather than with who is querying, so 986 equal organisations would
+misrepresent production about as badly as no co-tenants at all.
+
+**Sizes are interpolated through the measured ranks, not fitted.** A power law does not hold across
+the range: the exponent between ranks 1 and 10 is 0.84 and between 1 and 156 it is 1.57, so any
+single curve is wrong somewhere. Interpolating in log-log space through the ranks Q12 returned
+reproduces every share within two points.
+
+| | |
+|---|---|
+| Generated tenants | 513 |
+| Rows-only organisations | 473 |
+| Subjects | 2,548,061 |
+| Encounters at day 180 | 3,128,954 |
+| Villages | 1,259 |
+
+**Two things the build had to get right.**
+
+Empty organisations are **rows, not generated tenants** — half of production's are in this state, and
+generating a hierarchy, catchment and user for each would be work to model nothing. They still
+matter, because RLS predicates evaluate against the full organisation set and the planner's
+statistics span it, so `empty_rows()` emits them directly.
+
+And **villages hold the organisation's actual subjects rather than a standard 3,000**. The first
+version rounded every organisation up to at least one full village, which inflated production's
+513th organisation from one subject to three thousand and added a million subjects across the tail
+that the co-tenant set does not have.
+
+Loaded together, cases 6 and 7 carry about **1.8× case 5's rows**.
+
 ## Getting the column list
 
 The one step that needs a live database. Rows are projected onto the target's own columns, so dump

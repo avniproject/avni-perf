@@ -60,7 +60,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Injection profiles | one open ramp | defined as cases; **not yet implemented as Gatling profiles — E3** |
 | Multi-tenant load | single organisation | **Not started — E4** |
 | Co-tenant sync traffic | none | **Not started — E7**, and case 7 needs it |
-| Production's tenant skew | none | **Not started — H7**, and cases 6 and 7 need it |
+| Production's tenant skew | none | built — 513 tenants and 473 rows-only organisations, reproducing Q12's skew |
 | Configurations of differing size | one bundle | **Not started — H8**, and case 11 needs it |
 | **Test data** | | |
 | Dataset generation | none — runs hit whatever happened to be in the database | built: `tools/data-generator`, 195 tests · needs a target database to run against |
@@ -2018,8 +2018,16 @@ existing per-tenant path covers most of it. And the co-tenants **do not sync in 
 users exist only to make catchments resolvable — no feeder entry, no sync-status baseline.
 
 **Size it against production rather than against the customer.** Q7's row counts are the target:
-2.75 M subjects and 6.86 M program encounters across all organisations. That is roughly twice the
-customer's own day-180 dataset, so expect the co-tenant half to dominate load time and disk.
+2.75 M subjects and 6.86 M program encounters across all organisations.
+
+**Built** — `tools/data-generator/co_tenants.py`, with a recipe committed. 513 generated tenants
+holding 2,548,061 subjects and 3.1 M encounters at day 180, plus 473 organisations that exist as a
+row and nothing else. Sizes are interpolated through Q12's measured ranks rather than fitted, since
+no single power law holds across the range — the exponent is 0.84 between ranks 1 and 10 and 1.57
+between 1 and 156. Every share reproduces within two points.
+
+Loaded together, cases 6 and 7 carry about **1.8× case 5's rows**, so expect the co-tenant half to
+dominate load time and disk.
 
 ### H8 — Two configurations for the configuration-size case
 

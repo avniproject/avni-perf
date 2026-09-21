@@ -49,6 +49,10 @@ class TenantSpec:
     # filterChangedEntities runs (D1.1). A small config will not exercise that; a large one will.
     # None falls back to the deployment's bundle.
     bundle_path: str | None = None
+    # Co-tenants are sized by the data they hold rather than by a daily encounter rate, because
+    # their history is not being modelled -- only their weight in the tables. Set this and it
+    # replaces the rate derivation entirely.
+    total_encounters: int | None = None
 
     @property
     def villages(self) -> int:
@@ -59,6 +63,8 @@ class TenantSpec:
         return self.villages * self.beneficiaries_per_village
 
     def encounters(self, days: int) -> int:
+        if self.total_encounters is not None:
+            return self.total_encounters
         return self.field_workers * self.encounters_per_worker_per_day * days
 
 
