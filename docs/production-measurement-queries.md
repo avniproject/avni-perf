@@ -38,6 +38,15 @@ organisation names.
 > sizes, per-index scan counts, the complete hourly and weekly series — are recorded in the private
 > `avni-product-ops` repository, at `context/production-database-state-2026-09.md`.
 
+## What has run
+
+Fourteen of sixteen. The two outstanding are both recorded against their own entries below.
+
+| | State |
+|---|---|
+| **Q11** — fleet page size split | **Not answerable yet.** `pageSize` is not recorded in `sync_telemetry`, so it needs a client change first (D8.3) |
+| **Q16** — locations per catchment | **Written, not run.** Decides whether the generator's one-location default is right |
+
 ## Provenance
 
 Three runs against production: **2026-09-03**, **2026-09-17**, and a third the same day applying the
@@ -720,3 +729,29 @@ catchment is one high-level location look smaller than a field worker with five 
 Being a view over a function, it is the expensive half of this query. If it will not finish, fall
 back to `catchment_address_mapping` and read the result as a lower bound on the split rather than a
 measurement of it.
+
+**Q16 — How many locations does a catchment declare? (H, generator).** **Not yet run.**
+`catchment_address_mapping` is a many-to-many, and the generator declares one location per catchment
+by default while the bundles examined for this work carry three. The difference does not change what
+anyone syncs — the server expands each declared location down its own subtree either way — but it
+changes the size of the mapping table and the work the expansion view does, at 10 tenants and again
+at 986.
+
+```sql
+select locations_declared,
+       count(*) as catchments,
+       round(100.0 * count(*) / sum(count(*)) over (), 1) as pct
+from (
+  select c.id, count(m.addresslevel_id) as locations_declared
+  from catchment c
+  left join catchment_address_mapping m on m.catchment_id = c.id
+  where c.is_voided = false
+  group by c.id
+) t
+group by 1
+order by 1;
+```
+
+If most catchments declare one, the generator's default is right and this closes. If most declare
+several, `declare_leaves=True` is the better default and the mapping table is larger than the
+generator currently produces.

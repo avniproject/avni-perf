@@ -80,7 +80,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Assertions | commented out | zero-failure structural gate, plus rate and p95 bounds for a load run |
 | Calibration gate | none | **Not started — F7** |
 | **Grounding** | | |
-| Production measurement | none — every figure was an estimate | 14 of 15 queries run · only Q11 outstanding, and it needs a client change first |
+| Production measurement | none — every figure was an estimate | 14 of 16 queries run · Q11 needs a client change, Q16 is written and unrun |
 | Success criteria | empty | measured, one row left to fill |
 
 **The empty body row is the one that mattered most.** Posting an empty array made the server

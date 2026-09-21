@@ -6,9 +6,11 @@ Everything [the sync simulation plan](sync-simulation-plan.md) and
 **This document holds the inputs only** — the questions someone has to answer before the tests can
 be designed, built or run. No amount of running will settle them. **Three remain.**
 
-Work is not a question, so it is not here. Anything outstanding that someone could simply go and do
-is a task in [the plan](sync-simulation-plan.md), and the status table at the top of that document
-says what has and has not been started.
+Nothing else lives here. **Work** someone could simply go and do is a task in
+[the plan](sync-simulation-plan.md), whose status table says what has and has not been started.
+**Measurements** are tracked per query in
+[production-measurement-queries.md](production-measurement-queries.md), which records what each one
+returned or why it has not run.
 
 The questions the tests *answer* are a different kind and live in
 [the plan](sync-simulation-plan.md#what-the-tests-will-answer), because they are what the exercise is
@@ -81,19 +83,6 @@ write.
 
 ---
 
-## Measurements
-
-**Fourteen of fifteen appendix queries have run.** Results are recorded against each one in
-[production-measurement-queries.md](production-measurement-queries.md) and interpreted in the plan
-section that uses them.
-
-| What | State |
-|---|---|
-| **Q11 — fleet page size split** | **Not answerable.** `pageSize` is not recorded in `sync_telemetry`, so it needs a client change first (D8.3) |
-| **Locations per catchment in production** | **No query written.** The generator declares one location per catchment and real bundles carry three. Changes the mapping table's size and the expansion view's work, not what anyone syncs |
-
----
-
 ## Assumptions carried, that nobody is being asked about
 
 They would change conclusions if false, so they are listed rather than buried.
@@ -104,7 +93,7 @@ They would change conclusions if false, so they are listed rather than buried.
 | A generated dataset can stand in for production data | H6 | An anonymised clone is not available. Settled rather than open — but it makes H5's validation the only thing that will catch an unrealistic generator |
 | Sync is the whole exercise | Closed questions | State-wide search is explicitly out of scope. **A passing sync run is not clearance for search**, because search cost grows with tenant size where sync cost grows with catchment size |
 | The three growth datasets differ only in encounter count | [test-scenarios.md](test-scenarios.md) | Beneficiary population does not grow with programme activity |
-| A catchment is declared against one location | H · `tools/data-generator` | A generator default, not a platform constraint — the mapping table is many-to-many and real bundles carry three locations per catchment |
+| A catchment is declared against one location | H · `tools/data-generator` | A generator default, not a platform constraint — the mapping table is many-to-many and real bundles carry three. **Q16 will settle it** |
 
 ---
 
