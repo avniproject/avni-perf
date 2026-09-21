@@ -25,13 +25,20 @@ are parameters with a documented range, defaulted to their conservative end.
 | **4** | **Combined** | 1 state | 500 + 62 | Day 180 | Incremental, 1% full | **4 h** | **The realistic case.** Wide and frequent syncs competing for one pool |
 | **5** | **Separate infrastructure** | **10** | 1,504 + 188 | Day 180 | Incremental, 1% full | **2 h** | The customer's own load with nobody else's data in the tables. **The baseline the next two are measured against** |
 | **6** | **Shared — co-tenant data** | **10 + 986** | 1,504 + 188 | Day 180 **plus production's organisations**, which sync nothing | Incremental, 1% full | **2 h** | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
-| **7** | **Shared — co-tenant load** | **10 + 986** | Case 6, plus production's own arrival rate | Same as case 6 | Incremental, 1% full | **2 h** | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
+| **7** | **Shared — co-tenant load** | **10 + 986** | Case 6, plus `CO_TENANTS=on` at 792 syncs/hour | Same as case 6 | Incremental, 1% full | **2 h** | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
 | **8** | Growth comparison | 1 state | Case 4 | Day 60, 120, 180, **365** | Incremental, 1% full | **2 h × 4** | The shape of the curve. A knee between two points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
 | **9** | Stress ramp | **10** | Ramp past case 5 until failure | Day 180 | Incremental | **until it breaks** | Where the knee is, and which resource names it |
 | **10** | Soak | 1 state | Case 4 | Day 180 | Incremental | **12 h** | Leaks, pool exhaustion, autovacuum interaction over hours |
 | **11** | **Clustered — separate** | **10** | Case 5 | Day 180 | Incremental, 1% full | **1 h** | Case 5's day compressed into one hour |
 | **12** | **Clustered — co-tenant data** | **10 + 986** | Case 6 | Same as case 6 | Incremental, 1% full | **1 h** | Case 6 compressed: **6.6 syncs in flight against 0.55** |
 | **13** | **Clustered — co-tenant load** | **10 + 986** | Case 7 | Same as case 6 | Incremental, 1% full | **1 h** | Case 7 compressed: **9.7 in flight**, three times production's peak and the heaviest sustained load in the suite |
+
+**Cases 6 and 7 are the same run with one property changed**, which is what makes their difference
+readable: `CO_TENANTS=on` adds production's organisations as a second syncing population at Q4's
+busiest recorded hour. They push on the measured `production` profile and its media rate, not the
+customer's, and **every request is named with its population's prefix** — so the customer's
+percentiles stay separable, which is the case 7 result. Pooled, the answer would move with the mix
+of the two populations rather than with the server.
 
 **Cases 11 to 13 are 5 to 7 with the day's syncs compressed into one hour**, and they exist because
 the sync window is not confirmed — see [below](#how-much-of-that-depends-on-spreading-over-twelve-hours).

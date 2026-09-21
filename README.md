@@ -20,6 +20,9 @@ The csv expects the following columns:
 - `pushScale` — optional, default 1. Multiplies this user's push volume, so one file can carry
   field workers creating twenty encounters a day alongside supervisors creating almost none
 
+`co-tenant-users.csv` has the same shape and is only read under `CO_TENANTS=on` — see
+[Co-tenants](#co-tenants). Also untracked.
+
 ### Authentication
 
 `AUTH_MODE` selects how the simulation identifies users. Default is `none`.
@@ -146,6 +149,16 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
 `PUSH_ENCOUNTER_MODEL` `program` (default) or `general` — which table the customer's
 encounters land on
+
+`CO_TENANTS` `true` adds production's other organisations as a second syncing population — see below
+
+`CO_TENANT_SYNCS_PER_HOUR` default 792, Q4's busiest recorded hour
+
+`CO_TENANT_SECONDS` how long to sustain that rate, defaults to `RAMP_PERIOD`
+
+`CO_TENANT_USERS` their user file, default `co-tenant-users.csv`
+
+`CO_TENANT_MEDIA_PER_ENCOUNTER` default 0.0214, production-wide rather than the customer's bundle
 
 `PUSH_INDIVIDUALS` / `PUSH_ENROLMENTS` / `PUSH_PROGRAM_ENCOUNTERS` / `PUSH_ENCOUNTERS` override one
 entity's distribution, as `probability:[min:]p50:p95:max:mean`
@@ -289,6 +302,39 @@ encounter type is the common one, multiply by up to eleven.
 
 `MEDIA_MODEL=none` restores the old behaviour of charging nothing. The startup banner says which
 you have, because a run that skips the time starts its data push sooner than any real device could.
+
+## Co-tenants
+
+`CO_TENANTS=on` runs a second population alongside the customer's: production's other
+organisations, **syncing** rather than merely present. That distinction is the whole difference
+between test cases 6 and 7, and it separates a structural cost from a contention one.
+
+- **Case 6** — the co-tenant dataset loaded, `CO_TENANTS` off. What their *presence* costs: RLS
+  selectivity, planner statistics, table and index size.
+- **Case 7** — the same dataset, `CO_TENANTS=on`. What their *activity* costs on top: connection
+  pool, CPU, IO.
+
+The difference between those two runs is the pair of numbers the hosting decision needs.
+
+They arrive at a fixed rate rather than as a user count, because co-tenant load exists to occupy
+the pool and the CPU — how many distinct accounts produce it does not change what the server feels.
+They also push on the `production` profile and production's media rate, not the customer's: a
+co-tenant pushes 6.5 records across a third of its syncs and almost never photographs anything.
+
+> **Every request is named with its population's prefix**, so `Customer · Individual` and
+> `Co-tenant · Individual` are separate rows in the report. Case 7 asks what the customer's sync
+> costs *while* the platform is busy; pooling both into one distribution answers a different
+> question, and the answer would move with the mix rather than with the server.
+>
+> `forAll()` asserts the error budget per request name, so the two are independent there.
+> **`MAX_P95_MS` is not** — it uses `global()` and pools them. With co-tenants running, read the
+> customer's p95 off the `Customer · ` rows. The run warns about this at startup.
+
+Their user file is separate and untracked, the same as `sync-users.csv`:
+
+```
+cp src/gatling/resources/co-tenant-users-example.csv src/gatling/resources/co-tenant-users.csv
+```
 
 ## Run archiving
 

@@ -59,7 +59,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Test cases | none defined | **specified with numbers**, in [test-scenarios.md](test-scenarios.md) |
 | Injection profiles | one open ramp | defined as cases; **not yet implemented as Gatling profiles — E3** |
 | Multi-tenant load | single organisation | **Not started — E4** |
-| Co-tenant sync traffic | none | **Not started — E7**, and case 7 needs it |
+| Co-tenant sync traffic | none | `CO_TENANTS=on` drives a second population at production's measured arrival rate, named apart in the report |
 | Production's tenant skew | none | built — 513 tenants and 473 rows-only organisations, reproducing Q12's skew |
 | **Test data** | | |
 | Dataset generation | none — runs hit whatever happened to be in the database | built: `tools/data-generator`, 195 tests · needs a target database to run against |
@@ -1670,18 +1670,38 @@ If it does not, the simulation is not yet an instrument and its findings are not
 believing results, not producing them — run it after D6 and again after D7, and re-run it whenever
 the client changes something the simulation models.
 
-**E7 — Co-tenant sync traffic.** *Distinct from F5.4, which is the batch workloads.* Case 7 needs
-production's other organisations to be **syncing**, not merely present — that is the whole difference
-between it and case 6, and it is what separates a structural cost from a contention one.
+**E7 — Co-tenant sync traffic.** *Done.* *Distinct from F5.4, which is the batch workloads.* Case 7
+needs production's other organisations to be **syncing**, not merely present — that is the whole
+difference between it and case 6, and it is what separates a structural cost from a contention one.
 
-It needs a second scenario driving arrivals at production's own measured shape: **792 syncs in the
-busiest recorded hour** (Q4), against the co-tenant dataset H7 produces. Those users need feeder
-entries and sync-status baselines, which case 6's co-tenants do not.
+`CO_TENANTS=on` adds a second population at **792 syncs an hour** (Q4's busiest recorded hour, the
+right figure because the question is what the customer's sync feels like when the platform is as
+busy as it has ever been). Open injection at a fixed arrival rate, from its own user file.
 
-**Cheaper than it looks, and worth checking before building it properly.** The co-tenant load exists
-to occupy the connection pool, CPU and IO — it does not have to be faithful per user. A single
-scenario replaying a representative sync at the right arrival rate may be enough, and is a great deal
-less work than provisioning 986 organisations' worth of realistic users.
+**The cheap version was the right one.** The co-tenant load exists to occupy the pool, CPU and IO;
+it does not have to be faithful per user, so how many distinct accounts produce those 792 arrivals
+does not matter and 986 organisations' worth of realistic users was never needed.
+
+**What did have to be right is that the two populations differ.** They are not the same workload —
+a customer device pushes twenty encounters a sync and queues a photograph for half of them, a
+production co-tenant pushes 6.5 records across a third of its syncs and almost never touches media.
+A single global push profile could describe one or the other, which is exactly the run where both
+have to be true at once. So the volumes, the media rate and the feeder are properties of a
+`Workload`, and the simulation now builds one chain per population rather than one chain.
+
+> **And every request is named with its population's prefix, which is the part that makes case 7
+> readable at all.** The question is what the customer's sync costs *while* the platform is busy.
+> Pooling both into one distribution answers a question nobody asked, and would flatter or damn the
+> result depending only on the mix of the two. `Customer · Individual` and `Co-tenant · Individual`
+> are separate rows.
+>
+> One caveat the harness cannot fix: `forAll()` asserts the error budget per request name, so the
+> two are already independent there, but `MAX_P95_MS` uses `global()` and pools them. With
+> co-tenants running it is not the customer's p95, and the run says so at startup.
+
+**Case 6 is the same dataset with `CO_TENANTS` off.** The difference between the two runs is what
+co-tenant *activity* costs, on top of what their *presence* costs — which is the pair of numbers
+the hosting decision needs.
 
 ---
 
@@ -2491,7 +2511,7 @@ Ordering reflects dependencies, not estimates.
 | **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done, and tracked per query.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **D3 and D5.1 are done**; G4's restore mechanism is what remains, and it is now the gate rather than a deferral — a `PUSH=on` run cannot be repeated without it. Q17 replaces D3's guessed push volumes. |
-| **3 · Workload** | **D7** · E3, E5, **E7** · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5 no longer sits here - upload landed with D3 and viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
+| **3 · Workload** | **D7** · E3, E5 · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5 and E7 no longer sit here - media upload landed with D3, co-tenant traffic is built, and media viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
 | **4 · Operate** | A11 · F2, F3 · **A12** | Saturate, name the resource, fix, re-run. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
 **Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review.

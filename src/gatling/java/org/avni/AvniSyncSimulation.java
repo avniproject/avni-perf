@@ -14,6 +14,7 @@ import org.avni.models.PushSeed;
 import org.avni.models.PushProfiles;
 import org.avni.models.PushVolume;
 import org.avni.models.SyncDetail;
+import org.avni.models.Workload;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -191,6 +192,66 @@ public class AvniSyncSimulation extends Simulation {
         volumeFor("ProgramEncounter", "PUSH_PROGRAM_ENCOUNTERS");
     private static final PushVolume pushEncounters = volumeFor("Encounter", "PUSH_ENCOUNTERS");
 
+    /*
+     * E7 - production's other organisations, syncing rather than merely present.
+     *
+     * That distinction is the whole difference between cases 6 and 7, and it separates a
+     * structural cost from a contention one. Case 6 asks what the presence of 986 co-tenants costs
+     * in RLS selectivity, planner statistics and index size; case 7 adds their traffic and asks
+     * what their activity costs on top, in pool, CPU and IO.
+     *
+     * Off by default. Cases 1 to 6 and 11 to 12 do not want it, and it needs its own user file.
+     */
+    private static final boolean coTenants =
+        enabled(System.getProperty("CO_TENANTS", "false"));
+
+    /**
+     * Co-tenant arrival rate. 792 is Q4's busiest recorded hour across all of production, which is
+     * the right figure for case 7: the question is what the customer's sync feels like when the
+     * platform is as busy as it has ever been, not when it is average.
+     */
+    private static final int coTenantSyncsPerHour =
+        Integer.getInteger("CO_TENANT_SYNCS_PER_HOUR", 792);
+
+    /** How long to sustain that rate. Defaults to the customer ramp, so the two overlap. */
+    private static final int coTenantSeconds =
+        Integer.getInteger("CO_TENANT_SECONDS", rampPeriod);
+
+    private static final String coTenantFeeder =
+        System.getProperty("CO_TENANT_USERS", "co-tenant-users.csv");
+
+    /**
+     * Media per encounter for the co-tenants.
+     *
+     * Production-wide rather than the customer's bundle: 2.14% of program_encounter rows carry a
+     * media observation across 986 organisations, most of which photograph nothing. Applying the
+     * customer's screening rate here would invent an image-heavy platform and drown the signal
+     * case 7 exists to find.
+     */
+    private static final double coTenantMediaPerEncounter =
+        Double.parseDouble(System.getProperty("CO_TENANT_MEDIA_PER_ENCOUNTER", "0.0214"));
+
+    /**
+     * The customer's population. Unprefixed when it runs alone, so single-workload runs keep the
+     * request names every earlier report used.
+     */
+    private final Workload customerWorkload = new Workload(
+        coTenants ? "Customer" : "", "sync-users.csv",
+        pushVolumesWithOverrides(), mediaPerEncounter);
+
+    private final Workload coTenantWorkload = new Workload(
+        "Co-tenant", coTenantFeeder, PushProfiles.production(), coTenantMediaPerEncounter);
+
+    /** The active profile, with any per-entity system property applied. */
+    private static Map<String, PushVolume> pushVolumesWithOverrides() {
+        Map<String, PushVolume> m = new LinkedHashMap<>();
+        m.put("Individual", pushIndividuals);
+        m.put("ProgramEnrolment", pushEnrolments);
+        m.put("ProgramEncounter", pushProgramEncounters);
+        m.put("Encounter", pushEncounters);
+        return m;
+    }
+
     /**
      * Observations per pushed record, as a count of harvested rows to concatenate. One means the
      * pushed row carries the same observation set as a real one; higher inflates the jsonb and the
@@ -358,9 +419,9 @@ public class AvniSyncSimulation extends Simulation {
      * wasted request, not a wrong body, so it is left alone rather than locked - a lock in a
      * session function would stall the injector's event loop, which is a worse trade.
      */
-    ChainBuilder bootstrapChain =
-        doIf(session -> !userSyncStatuses.containsKey(session.getString("userName")))
-            .then(exec(http("Bootstrap sync statuses")
+    private static ChainBuilder bootstrapChain(Workload workload) {
+        return doIf(session -> !userSyncStatuses.containsKey(session.getString("userName")))
+            .then(exec(http(workload.request("Bootstrap sync statuses"))
                     .post(session -> "/v2/syncDetails?includeUserSubjectType=true&deviceId=" + deviceId)
                     .body(StringBody("[]")).asJson()
                     .check(status().is(200))
@@ -374,19 +435,20 @@ public class AvniSyncSimulation extends Simulation {
                     }
                     return session;
                 }));
+    }
 
-    ChainBuilder syncChainBuilder =
-        exec(authChainBuilder)
-            .exec(bootstrapChain)
-            .exec(seedChain())
+    private ChainBuilder syncChainFor(Workload workload) {
+        return exec(authChainBuilder)
+            .exec(bootstrapChain(workload))
+            .exec(seedChain(workload))
             .exec(session -> session.set("syncStartTime", java.time.Instant.now().toString()))
             // The client uploads before it asks what changed: dataServerSync runs pushData, then
             // the reset-sync check, then getSyncDetails. Pushing after the pull would measure a
             // different thing - the server's clock for the pull window is read after the upload
             // precisely so a device does not re-download what it just sent.
-            .exec(pushChain())
-            .exec(resetSyncChain())
-            .exec(http("Getting SyncDetails")
+            .exec(pushChain(workload))
+            .exec(resetSyncChain(workload))
+            .exec(http(workload.request("Getting SyncDetails"))
                 .post(session -> "/v2/syncDetails?includeUserSubjectType=true&deviceId=" + deviceId)
                 .body(StringBody(AvniSyncSimulation::syncStatusBody)).asJson()
                 .check(status().is(200))
@@ -396,13 +458,17 @@ public class AvniSyncSimulation extends Simulation {
                 // clock, and uses two different values - see windowEndFor.
                 .check(jsonPath("$.now").saveAs("serverNow"))
                 .check(jsonPath("$.nowMinus10Seconds").saveAs("serverNowMinus10Seconds")))
-            .exec(sync())
-            .exec(postSyncTelemetry());
-    ScenarioBuilder syncScenario = scenario("Sync " + syncMode)
-        .feed(feeder)
+            .exec(sync(workload))
+            .exec(postSyncTelemetry(workload));
+    }
+
+    private ScenarioBuilder scenarioFor(Workload workload) {
         // `lastModifiedDateTime` stays on the session for SYNC_MODE=csv, which reads it from the
         // feeder. Every other mode computes the window per entity in syncStatusBody.
-        .exec(syncChainBuilder);
+        return scenario(workload.name.isEmpty() ? "Sync " + syncMode : workload.name)
+            .feed(csv(workload.feederFile).circular())
+            .exec(syncChainFor(workload));
+    }
 
     {
         int feederRows = csv("sync-users.csv").recordsCount();
@@ -445,28 +511,23 @@ public class AvniSyncSimulation extends Simulation {
                 + "performance environment, or set PUSH_ALLOW_UNSAFE_TARGET=true if this really is "
                 + "intended.");
         } else {
-            double perSync = 0;
-            double mediaBearing = 0;
-            for (PushEntity pushEntity : PUSHABLE.values()) {
-                perSync += pushEntity.volume.perSync();
-                if (MEDIA_BEARING.contains(pushEntity.entityName)) {
-                    mediaBearing += pushEntity.volume.perSync();
-                }
-            }
-            double mediaFiles = mediaBearing * mediaPerEncounter;
+            double perSync = customerWorkload.recordsPerSync();
+            double mediaFiles = customerWorkload.encountersPerSync() * mediaPerEncounter;
             out.println(String.format("Push: ON | profile %s | %.1f records per sync on average",
                 customerProfile ? "CUSTOMER" : "PRODUCTION (Q17)", perSync));
-            for (PushEntity pushEntity : PUSHABLE.values()) {
-                PushVolume v = pushEntity.volume;
+            for (PushVolume v : customerWorkload.volumes.values()) {
+                if (v.probability <= 0) {
+                    continue;
+                }
                 out.println(String.format(
                     "    %-18s %4.0f%% of syncs | p50 %-4d p95 %-4d max %-4d | %.2f per sync",
-                    pushEntity.entityName, 100 * v.probability, v.p50, v.p95, v.max, v.perSync()));
+                    v.entityName, 100 * v.probability, v.p50, v.p95, v.max, v.perSync()));
             }
             out.println(String.format(
                 "  The client has no bulk endpoint, so a sync at p95 for every entity is %d "
                 + "sequential POSTs, each through the full filter chain and its own transaction.",
-                pushIndividuals.p95 + pushEnrolments.p95 + pushProgramEncounters.p95
-                    + pushEncounters.p95));
+                customerWorkload.volumes.values().stream()
+                    .filter(v -> v.probability > 0).mapToInt(v -> v.p95).sum()));
             if (customerProfile) {
                 out.println(String.format(
                     "  The customer's projection: 20 encounters per worker per day, as the median, "
@@ -519,6 +580,27 @@ public class AvniSyncSimulation extends Simulation {
                 "  This run WRITES. The database it measures is not the database the next run "
                 + "measures, and the dataset's H5 verdict no longer describes what is in the tables.");
         }
+        if (coTenants) {
+            int coTenantRows = csv(coTenantFeeder).recordsCount();
+            double inFlight = coTenantSyncsPerHour / 3600.0 * 14.1;
+            out.println(String.format(
+                "Co-tenants: ON | %d syncs/hour for %ds from %s (%d users) | ~%.1f of their syncs "
+                + "in flight at production's 14.1s median",
+                coTenantSyncsPerHour, coTenantSeconds, coTenantFeeder, coTenantRows, inFlight));
+            out.println(String.format(
+                "  They push on Q17's measured profile (%.1f records/sync) and media at %.4f per "
+                + "encounter, not the customer's. Both populations are named apart in the report, "
+                + "so the customer's percentiles stay separable - which is the case 7 result.",
+                coTenantWorkload.recordsPerSync(), coTenantMediaPerEncounter));
+            out.println(
+                "  792/hour is Q4's busiest recorded hour across all of production. This is case "
+                + "7, or 13 at a clustered window. Case 6 is the same dataset with CO_TENANTS off "
+                + "- the difference between the two runs is what their traffic costs.");
+        } else {
+            out.println(
+                "Co-tenants: OFF - the customer's load alone. Cases 7 and 13 need CO_TENANTS=on; "
+                + "a co-tenant dataset without their traffic is case 6.");
+        }
         if (structuralCheck) {
             out.println(
                 "STRUCTURAL CHECK: asserting zero failures. This is H5's gate on a generated "
@@ -536,9 +618,30 @@ public class AvniSyncSimulation extends Simulation {
         if (maxP95Millis != null) {
             assertions.add(global().responseTime().percentile(95.0)
                 .lte(Integer.parseInt(maxP95Millis)));
+            if (coTenants) {
+                // forAll() on failed requests asserts each request name separately, so the two
+                // populations are already held to the error budget independently. global() on
+                // response time does not: it pools them, and co-tenants outnumber the customer's
+                // users heavily enough to dominate the percentile either way.
+                out.println(
+                    "WARNING: MAX_P95_MS is a global assertion and pools both populations. With "
+                    + "co-tenants running it is not the customer's p95 - read that off the "
+                    + "'Customer · ' rows in the report, which is the number case 7 is asking for.");
+            }
         }
 
-        setUp(syncScenario.injectOpen(rampUsers(userCount).during(rampPeriod)))
+        List<PopulationBuilder> populations = new ArrayList<>();
+        populations.add(scenarioFor(customerWorkload)
+            .injectOpen(rampUsers(userCount).during(rampPeriod)));
+        if (coTenants) {
+            // An open model at a fixed arrival rate, not a user count. Co-tenant load exists to
+            // occupy the pool, CPU and IO at production's own rate; how many distinct accounts
+            // produce it does not matter, and provisioning 986 organisations' worth of realistic
+            // users to find out would be a great deal of work for no extra signal (E7).
+            populations.add(scenarioFor(coTenantWorkload).injectOpen(
+                constantUsersPerSec(coTenantSyncsPerHour / 3600.0).during(coTenantSeconds)));
+        }
+        setUp(populations.toArray(new PopulationBuilder[0]))
             .protocols(httpProtocol)
             .assertions(assertions.toArray(new Assertion[0]));
     }
@@ -663,7 +766,7 @@ public class AvniSyncSimulation extends Simulation {
      * The post-reset re-download itself is not modelled here. That is a scenario rather than a
      * request, and belongs with the spike profile in E3.
      */
-    private static ChainBuilder resetSyncChain() {
+    private static ChainBuilder resetSyncChain(Workload workload) {
         AvniEntity resetSync = entities.stream()
             .filter(e -> RESET_SYNC.equals(e.entityName))
             .findFirst()
@@ -673,8 +776,8 @@ public class AvniSyncSimulation extends Simulation {
         }
         return exec(session -> session.set("allPagesNotFetched", true))
             .asLongAs("#{allPagesNotFetched}", "index")
-            .on(group(RESET_SYNC).on(
-                exec(http(RESET_SYNC)
+            .on(group(workload.request(RESET_SYNC)).on(
+                exec(http(workload.request(RESET_SYNC))
                     .get(session -> "/" + resetSync.path
                         + "?lastModifiedDateTime=" + session.getString("lastModifiedDateTime")
                         + "&now=" + java.time.Instant.now()
@@ -694,8 +797,8 @@ public class AvniSyncSimulation extends Simulation {
      * The per-entity phase durations avni-client#2121 adds are not modelled here: the simulation does
      * not parse or persist anything, so it has no honest value to report for them. Counts are real.
      */
-    private static ChainBuilder postSyncTelemetry() {
-        return exec(http("Posting SyncTelemetry")
+    private static ChainBuilder postSyncTelemetry(Workload workload) {
+        return exec(http(workload.request("Posting SyncTelemetry"))
             .post("/syncTelemetry")
             .body(StringBody(AvniSyncSimulation::syncTelemetryBody)).asJson()
             .check(status().in(200, 201, 204)));
@@ -892,7 +995,7 @@ public class AvniSyncSimulation extends Simulation {
      * entity inside a foreach over every sync detail with a doIfEquals, which is entities x details
      * comparisons per virtual user per sync - several thousand, repeated every run.
      */
-    private static ChainBuilder sync() {
+    private static ChainBuilder sync(Workload workload) {
         ChainBuilder chain = exec(session -> session);
         for (AvniEntity entity : entities) {
             if (!entity.pullRequired || RESET_SYNC.equals(entity.entityName)) {
@@ -900,7 +1003,7 @@ public class AvniSyncSimulation extends Simulation {
             }
             chain = chain.exec(
                 foreach(session -> syncDetailsFor(session, entity.entityName), "syncDetail")
-                    .on(exec(getAndPaginate(entity))));
+                    .on(exec(getAndPaginate(workload, entity))));
         }
         return chain;
     }
@@ -963,11 +1066,11 @@ public class AvniSyncSimulation extends Simulation {
         return java.time.Duration.ofMillis(Math.max(0L, millis));
     }
 
-    private static ChainBuilder getAndPaginate(AvniEntity entity) {
+    private static ChainBuilder getAndPaginate(Workload workload, AvniEntity entity) {
         return exec(session -> session.set("allPagesNotFetched", true))
             .asLongAs("#{allPagesNotFetched}", "index")
-            .on(group(entity.entityName).on(
-                exec(http(requestName(entity))
+            .on(group(workload.request(entity.entityName)).on(
+                exec(http(workload.request(requestName(entity)))
                         .get(session -> url(entity, session))
                         .check(status().is(200))
                         // One parse per response. The previous shape called response.body().string()
@@ -1066,18 +1169,22 @@ public class AvniSyncSimulation extends Simulation {
     //    client's order changes.
     // ---------------------------------------------------------------------------------------
 
-    /** One pushable entity: its measured volume distribution, and how to build a record. */
+    /**
+     * One pushable entity: how to build a record, and whether this device can.
+     *
+     * No volume here. The same entity is pushed at different rates by different populations - a
+     * customer device and a production co-tenant both POST program encounters, twenty a sync
+     * against two - so volume belongs to the Workload and this to the entity.
+     */
     private static final class PushEntity {
         final String entityName;
-        final PushVolume volume;
         final BiFunction<Session, PushSeed, String> body;
         /** Whether this device holds what the body needs. */
         final java.util.function.Predicate<PushSeed> ready;
 
-        PushEntity(String entityName, PushVolume volume, java.util.function.Predicate<PushSeed> ready,
+        PushEntity(String entityName, java.util.function.Predicate<PushSeed> ready,
                    BiFunction<Session, PushSeed, String> body) {
             this.entityName = entityName;
-            this.volume = volume;
             this.ready = ready;
             this.body = body;
         }
@@ -1087,13 +1194,13 @@ public class AvniSyncSimulation extends Simulation {
 
     private static Map<String, PushEntity> pushable() {
         Map<String, PushEntity> m = new LinkedHashMap<>();
-        m.put("Individual", new PushEntity("Individual", pushIndividuals,
+        m.put("Individual", new PushEntity("Individual",
             PushSeed::canPushIndividual, AvniSyncSimulation::individualBody));
-        m.put("ProgramEnrolment", new PushEntity("ProgramEnrolment", pushEnrolments,
+        m.put("ProgramEnrolment", new PushEntity("ProgramEnrolment",
             PushSeed::canPushEnrolment, AvniSyncSimulation::enrolmentBody));
-        m.put("ProgramEncounter", new PushEntity("ProgramEncounter", pushProgramEncounters,
+        m.put("ProgramEncounter", new PushEntity("ProgramEncounter",
             PushSeed::canPushProgramEncounter, AvniSyncSimulation::programEncounterBody));
-        m.put("Encounter", new PushEntity("Encounter", pushEncounters,
+        m.put("Encounter", new PushEntity("Encounter",
             PushSeed::canPushEncounter, AvniSyncSimulation::encounterBody));
         return m;
     }
@@ -1106,7 +1213,7 @@ public class AvniSyncSimulation extends Simulation {
      * reaches a table, so counting it as load would measure the validation path and report a write
      * that never happened.
      */
-    private static ChainBuilder pushChain() {
+    private static ChainBuilder pushChain(Workload workload) {
         if (!pushEnabled) {
             return exec(session -> session);
         }
@@ -1117,18 +1224,21 @@ public class AvniSyncSimulation extends Simulation {
         // Volumes are drawn once per sync and carried on the session. They are random now that
         // Q17 has replaced the fixed counts, so evaluating them per predicate would let the guard,
         // the loop bound and the telemetry all disagree about what this sync pushed.
-        ChainBuilder chain = exec(AvniSyncSimulation::drawPushCounts).exec(mediaUploadChain());
+        ChainBuilder chain = exec(session -> drawPushCounts(session, workload))
+            .exec(mediaUploadChain(workload));
         for (AvniEntity entity : entities) {
             PushEntity pushEntity = PUSHABLE.get(entity.entityName);
-            if (pushEntity == null || !entity.pushRequired || pushEntity.volume.probability <= 0) {
+            PushVolume volume = workload.volumes.get(entity.entityName);
+            if (pushEntity == null || !entity.pushRequired || volume == null
+                    || volume.probability <= 0) {
                 continue;
             }
             String path = entity.pushPath;
             chain = chain.exec(
                 doIf(session -> pushCount(session, pushEntity) > 0)
-                    .then(group("Push " + entity.entityName).on(
+                    .then(group(workload.request("Push " + entity.entityName)).on(
                         repeat(session -> pushCount(session, pushEntity), "pushIndex")
-                            .on(exec(http("Push " + entity.entityName)
+                            .on(exec(http(workload.request("Push " + entity.entityName))
                                 .post("/" + path)
                                 .body(StringBody(session ->
                                     pushEntity.body.apply(session, seedFor(session))))
@@ -1145,23 +1255,24 @@ public class AvniSyncSimulation extends Simulation {
      * user whose catchment holds no enrolments has nothing to hang a program encounter off, and
      * the field equivalent of that user does not push one either.
      */
-    private static Session drawPushCounts(Session session) {
+    private static Session drawPushCounts(Session session, Workload workload) {
         PushSeed seed = seedFor(session);
         float scale = pushScale(session);
         Map<String, Integer> counts = new LinkedHashMap<>();
         int encounters = 0;
         for (Map.Entry<String, PushEntity> entry : PUSHABLE.entrySet()) {
-            PushEntity pushEntity = entry.getValue();
+            PushVolume volume = workload.volumes.get(entry.getKey());
             int count = 0;
-            if (seed != null && pushEntity.ready.test(seed)) {
-                count = Math.round(pushEntity.volume.draw() * scale);
+            if (seed != null && volume != null && entry.getValue().ready.test(seed)) {
+                count = Math.round(volume.draw() * scale);
             }
             counts.put(entry.getKey(), count);
             if (MEDIA_BEARING.contains(entry.getKey())) {
                 encounters += count;
             }
         }
-        return session.set("pushCounts", counts).set("mediaCalls", mediaCallCount(encounters));
+        return session.set("pushCounts", counts)
+            .set("mediaCalls", mediaCallCount(encounters, workload.mediaPerEncounter));
     }
 
     /** Entities whose records carry the media a device uploads. */
@@ -1206,14 +1317,14 @@ public class AvniSyncSimulation extends Simulation {
      * The fractional part is played out per sync rather than rounded, so a device pushing twenty
      * encounters makes a media call on roughly two syncs in five instead of never.
      */
-    private static ChainBuilder mediaUploadChain() {
-        if (mediaPerEncounter <= 0) {
+    private static ChainBuilder mediaUploadChain(Workload workload) {
+        if (workload.mediaPerEncounter <= 0) {
             return exec(session -> session);
         }
         return doIf(session -> session.getInt("mediaCalls") > 0)
-            .then(group("Push Media").on(
+            .then(group(workload.request("Push Media")).on(
                 repeat(session -> session.getInt("mediaCalls"), "mediaIndex")
-                    .on(exec(http("Media uploadUrl")
+                    .on(exec(http(workload.request("Media uploadUrl"))
                             .get(session -> "/media/uploadUrl/" + UUID.randomUUID() + ".jpg")
                             // A device with no media privilege gets a 4xx here and carries on; the
                             // request still costs the server the filter chain, which is the point.
@@ -1239,7 +1350,7 @@ public class AvniSyncSimulation extends Simulation {
         return java.time.Duration.ofMillis(Math.round(1000.0 * mediaFileKb / mediaUploadKbps));
     }
 
-    private static int mediaCallCount(int encounters) {
+    private static int mediaCallCount(int encounters, double mediaPerEncounter) {
         double expected = encounters * mediaPerEncounter;
         int whole = (int) expected;
         return ThreadLocalRandom.current().nextDouble() < (expected - whole) ? whole + 1 : whole;
@@ -1371,24 +1482,24 @@ public class AvniSyncSimulation extends Simulation {
      * can actually see - a subject outside the catchment would be rejected by the same access check
      * a real device would hit.
      */
-    private static ChainBuilder seedChain() {
+    private static ChainBuilder seedChain(Workload workload) {
         if (!pushEnabled) {
             return exec(session -> session);
         }
         return doIf(session -> !userPushSeeds.containsKey(session.getString("userName")))
-            .then(exec(seedRequest("Individual"))
-                .exec(seedRequest("ProgramEnrolment"))
-                .exec(seedRequest("ProgramEncounter"))
-                .exec(seedRequest("Encounter"))
+            .then(exec(seedRequest(workload, "Individual"))
+                .exec(seedRequest(workload, "ProgramEnrolment"))
+                .exec(seedRequest(workload, "ProgramEncounter"))
+                .exec(seedRequest(workload, "Encounter"))
                 .exec(AvniSyncSimulation::assembleSeed));
     }
 
-    private static ChainBuilder seedRequest(String entityName) {
+    private static ChainBuilder seedRequest(Workload workload, String entityName) {
         AvniEntity entity = entityByName(entityName);
         if (entity == null) {
             return exec(session -> session);
         }
-        return exec(http("Seed: " + entityName)
+        return exec(http(workload.request("Seed: " + entityName))
             .get(session -> seedUrl(entity, session))
             .check(status().is(200))
             // A device whose catchment holds none of this entity still gets a 200 with an empty

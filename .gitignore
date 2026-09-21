@@ -28,6 +28,7 @@ build
 /.idea/
 # Real user lists - never commit. Only sync-users-example.csv is tracked.
 /src/gatling/resources/sync-users.csv
+/src/gatling/resources/co-tenant-users.csv
 /src/gatling/resources/sync-users.*.csv
 !/gradle/wrapper/gradle-wrapper.jar
 tools/entity-metadata/node_modules
