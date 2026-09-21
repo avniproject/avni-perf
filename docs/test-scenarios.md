@@ -42,66 +42,25 @@ incremental sync costs about the same whether it carries 15 records or 500.
 
 | Case | Syncs/hour | **In flight** |
 |---|---|---|
-| 3 · supervisors, one tenant | 21 | **0.1** |
-| 2 · field workers, one tenant | 167 | **0.7** |
-| 4 · combined, one tenant | 187 | **0.7** |
-| 11 · soak, same load sustained | 187 | **0.7** |
-| 5 · all ten tenants | 564 | **2.2** |
-| 6, 7 · ten tenants plus production active | 1,356 | **5.3** |
+| 3 · supervisors, one tenant | 5 | **0.02** |
+| 2 · field workers, one tenant | 42 | **0.16** |
+| 4 · combined, one tenant | 47 | **0.18** |
+| 10 · soak, same load sustained | 47 | **0.18** |
+| 5 · all ten tenants | 141 | **0.55** |
+| 6, 7 · ten tenants plus production active | 933 | **3.65** |
 | 1 · training cohort, 100 logins in 15 min | — | **~3** |
 | 9 · stress ramp | — | unbounded by design |
 
-On the assumptions this document carries: four syncs per worker per working day, spread across the
-09:00–21:00 plateau. **Production's own busiest hour ever recorded works out at 3.1 in flight.**
+**Production's own busiest hour ever recorded is 3.1 in flight**, so only two cases here reach it —
+the training burst, and the one where production's traffic supplies most of the load.
 
-**Almost nothing here is a concurrency test.** Every steady-state case sits between 0.1 and 5.3
-syncs in flight — the whole ten-tenant deployment beside production's live traffic is under twice
-production's own peak. Those cases are measuring per-sync cost and tenancy, and a run that reports
-"no contention" from them has confirmed very little about contention.
+**This is not a concurrency exercise, and the numbers say so plainly.** The customer's entire
+deployment produces **under one sync in flight**; every single-tenant case runs at a fifth of that.
+What these cases measure is per-sync cost, data volume and tenancy.
 
-**The training cohort is the only case that bursts**, and even that reaches about 3 — the same as
-production's ordinary peak. Nothing here except the deliberate stress ramp asks the server to hold
-more than a handful of syncs at once.
-
-If [sync frequency](open-questions.md) turns out to be weekly rather than four a day, every
-steady-state figure above falls by a factor of 28, and **no case except the stress ramp has more than
-one sync in flight at any moment.**
-
-**Every user count above comes from the tenant table** under *The deployment being modelled*. A state
-tenant is 500 field workers and 62 supervisors; the ten tenants together are 1,504 and 188.
-
-**Build order: 1, 4, 8, then the rest.** Case 1 needs no generated data at all, so it can run before
-the generator exists. Case 4 is the one to answer first. Case 8 needs all four datasets, so it sets
-the generator's deadline.
-
-### What case 1 answers about configuration breadth
-
-`syncDetails` posts one row per tracked entity and the server runs a query per row, so a broader
-configuration costs more. It is worth knowing how much, and **worth knowing that case 1 already
-tells you** — no second case needed.
-
-`SyncDetailsService.getAllSyncableItems` builds the list in two parts. **Fifty-five entities are
-added flat**, one row each, including every metadata entity — `Concept`, `Form`, `FormElement`,
-`ConceptAnswer`, `EncounterType`. **So a configuration with 5,000 concepts posts exactly as many
-rows as one with 50.** Metadata volume never reaches the count. What does move it is the number of
-subject types, programmes and encounter types, because the rest of the list is keyed on form
-mappings. Q8's median of 79 is roughly 55 fixed and 24 variable.
-
-**The relationship is linear by construction** — the per-row checks are independent queries in a
-loop, with no threshold and nothing shared between them. So case 1's per-row cost multiplied by a
-configuration's form-mapping count answers the question, and a second run against a broader bundle
-would measure a slope it already has.
-
-**The size of the prize is small, which is the other reason.** Tripling the row count from 79 to an
-extreme 250 adds under a second at 5 ms a query — around 6% of one sync. **If case 1 comes back
-showing `syncDetails` is a large share of a config-only sync, say over 20%, a breadth variation
-earns its place.** Not before.
-
-> **The row count is per user, not per organisation.** Every branch is gated on
-> `groupPrivileges.hasPrivilege(...)`, so a user without `ViewSubject` on a subject type never
-> receives its rows. Two users in one organisation post different-sized bodies, which means
-> `syncDetails` cost varies by privilege — worth ruling out before attributing a difference between
-> users to anything else.
+The consequence is worth stating for whoever reads a green result: **cases 2, 3 and 4 passing tells
+you almost nothing about contention**, because at 0.18 syncs in flight there is nothing to contend
+with. Only cases 6, 7 and 9 put concurrent load on the server at all.
 
 ### Conditional on one open question
 
@@ -216,30 +175,23 @@ population does not grow with programme activity. **Three datasets are needed**,
 Full-sync client time at 9.19 ms/record: a field worker **2.1 min** at day 180 and **3.8** at year one;
 a supervisor **5.7** and **10.2**.
 
-### Sync frequency — the widest open number
+### Sync frequency
 
-Arrival rate needs a per-worker sync frequency, and three figures are in play across two orders of
-magnitude: **the requirement says once a week**, this document assumes **4 a working day**, and
-production measures a **median gap of 16 minutes** (Q2).
+**Confirmed: once per worker per working day**, spread across the 09:00–21:00 plateau Q4 measured.
+Not the four a day this document previously assumed, and not the once a week the requirement states
+— that reads as a floor rather than a description, and production's own 16-minute median gap as
+within-session behaviour.
 
-They are probably not in conflict — a weekly requirement reads as a floor rather than a description,
-and roughly 1% of production's real gaps already exceed a week. But the answer changes the arrival
-rate by a factor of forty, so it is
-[open question 2](open-questions.md). **Assumed here: 4 syncs per worker per working day**, spread
-across the 09:00–21:00 plateau Q4 measured in production.
-
-**Only the arrival rate moves with it.** A longer gap means more accumulated changes per sync, but
-not many — a weekly sync carries ~420 records for a field worker against 15 for a four-a-day one, and
-both sit far inside the light band where 98% of production's syncs already live.
-
-| At 4 syncs/worker/day | Syncs/day | Average hour | Peak hour |
+| | Syncs/day | Average hour | Peak hour |
 |---|---|---|---|
-| One state tenant (562 users) | 2,248 | 187 | ~232 |
-| Whole platform (1,692 users) | 6,768 | 564 | ~700 |
+| One state tenant (562 users) | 562 | 47 | ~58 |
+| Whole platform (1,692 users) | 1,692 | 141 | ~175 |
 
-For reference, production's busiest hour ever recorded was **792 syncs** (Q4). So the whole
-deployment at four syncs a day lands just under production's existing peak. **If the real figure is
-two or eight a day, halve or double every arrival rate in the table.**
+Production's busiest hour ever recorded was 792 syncs, so **the whole deployment runs at about a
+fifth of production's peak**.
+
+Each sync then carries a day's accumulation: 60 records for a field worker's village, 160 for a
+supervisor's sub-centre. Both sit far inside band 1, where 98% of production's syncs already live.
 
 ---
 

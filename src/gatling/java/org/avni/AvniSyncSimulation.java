@@ -98,8 +98,13 @@ public class AvniSyncSimulation extends Simulation {
      */
     private static final boolean structuralCheck =
         Boolean.parseBoolean(System.getProperty("STRUCTURAL_CHECK", "false"));
+    /**
+     * The customer's decision: 0.05%. At 81 requests a sync that permits roughly one sync in
+     * twenty-five losing a single request, so a run that breaches it has a fault rather than noise
+     * - which is the point of setting it this tight.
+     */
     private static final double maxFailedPercent =
-        Double.parseDouble(System.getProperty("MAX_FAILED_PERCENT", "1.0"));
+        Double.parseDouble(System.getProperty("MAX_FAILED_PERCENT", "0.05"));
     /**
      * p95 for a light sync, measured at 80.0s in production (Q5, success criteria). Band 1 carries
      * 98% of production's syncs, so this is the threshold the common case is held to. Asserted only

@@ -4,7 +4,7 @@ Everything [the sync simulation plan](sync-simulation-plan.md) and
 [the test scenarios](test-scenarios.md) are waiting on.
 
 **This document holds the inputs only** — the questions someone has to answer before the tests can
-be designed, built or run. No amount of running will settle them. **Three remain.**
+be designed, built or run. No amount of running will settle them. **One remains.**
 
 Nothing else lives here. **Work** someone could simply go and do is a task in
 [the plan](sync-simulation-plan.md), whose status table says what has and has not been started.
@@ -22,11 +22,9 @@ source of truth.
 
 ---
 
-## The questions
+## The question
 
-Ordered by how much turns on the answer.
-
-### 1. Which tier supervises?
+### Which tier supervises?
 
 **Assumed: an ANM at a sub-centre, covering 8 field workers.**
 Blocks test cases 3–8 and the generator's catchment sizing.
@@ -41,45 +39,6 @@ a supervisor holds 920,000, which is **3.5× that device**, and it becomes a tes
 | Sub-centre | 8 | 37,200 | 5.7 min | 0.14× |
 | PHC | 45 | 207,000 | 32 min | 0.78× |
 | Block | 200 | 920,000 | 141 min | 3.5× |
-
-### 2. How often does a worker sync?
-
-**Assumed: 4 times a working day.** Blocks every arrival rate in the test cases.
-
-**Three figures are in play and they span two orders of magnitude.**
-
-| Source | Frequency | Platform-wide, per hour |
-|---|---|---|
-| **The requirement** | **once a week** | ~20 syncs, 0.08 in flight |
-| This document's assumption | 4 a working day | ~564 syncs, 2.2 in flight |
-| Production today (Q2) | median gap of **16 minutes** | — |
-
-For scale, production's busiest hour ever recorded was 792 syncs.
-
-**The requirement and the measurement are probably not in conflict.** Once a week reads as a floor —
-the longest a device may go without syncing — rather than a description of what field workers do.
-Production's own p75 gap is 12.5 hours and its p99 is 8.2 days, so roughly 1% of real gaps exceed a
-week, which is about what a weekly minimum would produce.
-
-**If weekly is what the deployment expects, this exercise changes shape.** Arrival rate falls to
-around 20 syncs an hour across every tenant — a fortieth of production's peak — and **fewer than one
-sync is in flight at any moment**, so concurrency stops being worth testing at all. What remains is per-sync cost and tenancy, which cases 5, 6 and 7 already
-target.
-
-**The payload barely moves, which is the part worth knowing.** A longer gap means more accumulated
-changes per sync, but not many: a field worker's village produces 60 encounters a day, so a weekly
-sync carries around 420 records against 15 for a four-a-day one, and a supervisor 1,120 against 40.
-Both sit far inside the light band where 98% of production's syncs already live. **So frequency
-drives the arrival rate and almost nothing else** — which is why this needs an answer rather than a
-midpoint.
-
-### 3. What error rate is acceptable under load?
-
-Blocks the last unfilled row of the Success criteria table.
-
-**The only success criterion no query can supply** — everything else in that table is now measured.
-A6 is built and takes it as `MAX_FAILED_PERCENT`, so this is a number to choose rather than code to
-write.
 
 ---
 
@@ -151,6 +110,49 @@ problem nobody has yet. **The signal to revisit is the injector showing up in it
 saturated CPU on the load generator, or response times that rise with virtual user count while the
 server's own metrics stay flat. F7's calibration gate is where that would surface. Scope it then, not
 now.
+
+### Sync frequency: once a working day
+
+Confirmed. Not the four a day this work assumed, and not the once a week the requirement states —
+that reads as a floor, and production's own 16-minute median gap as within-session behaviour.
+
+**Every arrival rate divides by four, and the result is striking.**
+
+| Case | Syncs/hour | In flight | Was, at 4/day |
+|---|---|---|---|
+| 2 · field workers, one tenant | 42 | 0.16 | 0.7 |
+| 4 · combined, one tenant | 47 | 0.18 | 0.7 |
+| 5 · all ten tenants | 141 | **0.55** | 2.2 |
+| 6, 7 · ten tenants plus production active | 933 | 3.65 | 5.3 |
+
+**The customer's entire deployment produces under one sync in flight at any moment**, against
+production's own busiest hour ever recorded at 3.1. Every single-tenant case runs at a fifth of that.
+
+So this is unambiguously not a concurrency exercise. It measures per-sync cost, data volume and
+tenancy — and **the only case where the server sees meaningful simultaneous load is one where
+production's own traffic supplies most of it**. Worth saying plainly to whoever reads a green
+result: cases 2, 3 and 4 passing says almost nothing about contention, because there is none to
+contend with.
+
+A day's accumulation is what each sync carries: 60 records for a field worker's village, 160 for a
+supervisor's sub-centre. Both sit far inside band 1, where 98% of production's syncs already live.
+
+### Acceptable error rate: 0.05%
+
+Confirmed, and it fills the last measurable row of the Success criteria table. A6 takes it as
+`MAX_FAILED_PERCENT`, so it is the harness default rather than a number to remember.
+
+What it permits, at 81 requests a sync:
+
+| Case | Requests/hour | Failures allowed |
+|---|---|---|
+| 4 · combined | 3,794 | **1.9/hour** |
+| 5 · all ten tenants | 11,421 | **5.7/hour** |
+| 6, 7 · with production active | 75,573 | 37.8/hour |
+
+**At these volumes a single flapping entity breaches it**, which is the point: 0.05% against an
+81-request sync means roughly one sync in twenty-five may lose one request. A run that fails this
+has a fault, not noise.
 
 ### 500 workers is the pilot
 

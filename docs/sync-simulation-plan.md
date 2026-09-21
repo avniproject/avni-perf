@@ -114,15 +114,19 @@ later would change several decisions in this plan.
 |---|---|---|
 | p95 sync duration, light band (<5k records) | Q5 | **80.0 s** (p50 14.1 s) |
 | p95 sync duration, heavy band (~47.5k records) | Q5 | p50 **1,076 s**; p95 pending re-run |
-| Acceptable error rate under load | Product decision | *TBD* |
+| Acceptable error rate under load | Product decision | **0.05%** |
 | Concurrent-user target to design against | [test-scenarios.md](test-scenarios.md) | **1,000** workers across 8–10 tenants |
 | Heaviest single device to design against | [test-scenarios.md](test-scenarios.md) | **~125,000** records — a sub-centre supervisor at year 2 |
 | Peak-hour concurrency to reproduce | Q4 | **792 syncs/hour** (0.22/sec) peak; **267** distinct users; ~3 in flight |
 
-**One row remains open, and it is a product decision no query can supply:** what error rate is
-acceptable under load.
+**Every row is now filled.** The four measurable ones came from production; the acceptable error
+rate is the customer's decision, taken at **0.05%** — which at 81 requests a sync permits roughly
+one sync in twenty-five losing a single request, so a run that breaches it has a fault rather than
+noise.
 
-> **Concurrency is not the risk here; volume per device is.** Production's busiest hour ever recorded
+> **Concurrency is not the risk here; volume per device is** — and at the confirmed once-a-day sync
+> frequency the deployment produces **under one sync in flight**, so this is emphatic rather than
+> marginal. Production's busiest hour ever recorded
 > saw 267 distinct users across *every* organisation and roughly **3 syncs in flight**. The customer's
 > 1,000 workers is four times that user base — a real step up, but still a modest arrival rate. What
 > is new is the **mix**: a thousand workers across 8–10 tenants, with supervisors carrying an order of
@@ -2300,10 +2304,10 @@ Ordering reflects dependencies, not estimates.
 | **3 · Workload** | **D7** · E3, E5, **E7** · **H7** · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
 | **4 · Operate** | A11 · F2, F3 · **A12** | Saturate, name the resource, fix, re-run. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
-**Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review. Two
-assumptions in it remain open: that a worker syncs four times a working day — where the requirement
-says weekly and production measures a 16-minute median — and that supervision sits at sub-centre
-level, which changes per-device volume by an order of magnitude.
+**Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review. One
+assumption in it remains open: that supervision sits at sub-centre level, which changes per-device
+volume by an order of magnitude. Sync frequency is confirmed at once a working day, and the
+acceptable error rate at 0.05%.
 
 **Deliberately unscheduled.** **D8.2** (page size tuning) and **E4** (noisy neighbour) are
 finding-triggered — pull them forward when a result points at serialisation or at tenancy, not on a
@@ -2313,9 +2317,9 @@ calendar.
 
 ## Open questions
 
-**[open-questions.md](open-questions.md) is the list.** Three inputs remain: which tier supervises,
-how often a worker syncs, and what error rate is acceptable. The first decides whether this exercise
-tests volume or concurrency.
+**[open-questions.md](open-questions.md) is the list.** One input remains: **which tier
+supervises**, which decides whether this exercise tests volume or concurrency. Sync frequency and
+the acceptable error rate are both answered.
 
 Keeping a second copy here is what let the two drift apart, so this section now holds only what the
 plan itself decided. What the tests will *answer* is under **Measure before fixing** above.

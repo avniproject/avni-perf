@@ -128,7 +128,7 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
 `STRUCTURAL_CHECK` `true` asserts zero failures, for H5's gate on a generated dataset
 
-`MAX_FAILED_PERCENT` error budget for a load run, default 1.0
+`MAX_FAILED_PERCENT` error budget for a load run, default 0.05 — the customer's figure
 
 `MAX_P95_MS` asserts the 95th percentile when set. Production's light-band figure is 80,000
 
