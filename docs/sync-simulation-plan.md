@@ -59,6 +59,9 @@ work has been done on that item at all** — the "Before" column still describes
 | Test cases | none defined | **12 cases with numbers**, in [test-scenarios.md](test-scenarios.md) |
 | Injection profiles | one open ramp | defined as cases; **not yet implemented as Gatling profiles — E3** |
 | Multi-tenant load | single organisation | **Not started — E4** |
+| Co-tenant sync traffic | none | **Not started — E7**, and case 7 needs it |
+| Production's tenant skew | none | **Not started — H7**, and cases 6 and 7 need it |
+| Configurations of differing size | one bundle | **Not started — H8**, and case 12 needs it |
 | **Test data** | | |
 | Dataset generation | none — runs hit whatever happened to be in the database | built: `tools/data-generator`, 195 tests · needs a target database to run against |
 | User provisioning | hand-built CSV | generated with the dataset — catchments, users and a feeder spanning every tenant |
@@ -303,6 +306,11 @@ Three deliberate choices:
   `-DSERVER_BUILD` and `-DDATASET_ID` are passed, and the task says so on the console. A field that
   is quietly missing reads as "not applicable" later; one that says `unrecorded` reads as "nobody
   wrote it down".
+
+**`DATASET_ID` should now be a recipe name.** The generator emits a recipe, a manifest and an H5
+verdict per dataset, so a run can name which one it used and the three files say exactly what that
+was — inputs, row counts with content hashes, and whether it passed the gate. Without that the field
+records a string nobody can resolve later.
 - **A dirty working tree is flagged.** The run cannot be reproduced from the recorded SHA alone, and
   that is worth knowing before a result is quoted.
 - **The entity table source is captured** — `openchs-models@1.33.81` — so a change in what the
@@ -1397,6 +1405,19 @@ If it does not, the simulation is not yet an instrument and its findings are not
 believing results, not producing them — run it after D6 and again after D7, and re-run it whenever
 the client changes something the simulation models.
 
+**E7 — Co-tenant sync traffic.** *Distinct from F5.4, which is the batch workloads.* Case 7 needs
+production's other organisations to be **syncing**, not merely present — that is the whole difference
+between it and case 6, and it is what separates a structural cost from a contention one.
+
+It needs a second scenario driving arrivals at production's own measured shape: **792 syncs in the
+busiest recorded hour** (Q4), against the co-tenant dataset H7 produces. Those users need feeder
+entries and sync-status baselines, which case 6's co-tenants do not.
+
+**Cheaper than it looks, and worth checking before building it properly.** The co-tenant load exists
+to occupy the connection pool, CPU and IO — it does not have to be faithful per user. A single
+scenario replaying a representative sync at the right arrival rate may be enough, and is a great deal
+less work than provisioning 986 organisations' worth of realistic users.
+
 ---
 
 ## G. Anatomy of a test run
@@ -1410,7 +1431,10 @@ around it.
 | Step | Notes |
 |---|---|
 | Provision the environment | F4, F5.2 |
-| Load the dataset | F5.1 — the long pole |
+| Load the implementation bundle | The generator reads its metadata ids back out |
+| Dump the target's columns and metadata ids | `columns.sql` and `refs.sql` — the generator projects rows onto the target's own schema rather than a committed list |
+| Generate and load the dataset | From a committed recipe (H). F5.1 — the long pole |
+| Run H5's gates | Statistical, then the manual client check. A dataset that passes only the first is loadable, not blessed |
 | Provision perf users and catchments | G5 below |
 | Bootstrap per-user sync-status baselines | D1's bootstrap call — one `POST /v2/syncDetails` with `[]` per user |
 | Capture the pristine snapshot | This is what every subsequent run restores to |
@@ -1972,6 +1996,37 @@ One trap avoided: **per-organisation concept cardinality is compared against the
 reachable set, not against Q6's 5,623.** That figure spans all 986 organisations, and judging one
 generated tenant against it would fail a correct dataset.
 
+### H7 — Generate production's tenant skew
+
+**Cases 6 and 7 do not exist without this, so the hosting decision has no number behind it until it
+is built.** It is a second generation run against a different specification rather than a variation
+of the customer's: **986 organisations, 48% of them holding nothing, the largest holding 21% of all
+subjects** (Q12), with the location hierarchies and catchments to match.
+
+Three things make it cheaper than it sounds. Half the organisations are empty, so they cost a row in
+`organisation` and nothing else. The bulk sits in a handful of large ones, so the generator's
+existing per-tenant path covers most of it. And the co-tenants **do not sync in case 6**, so their
+users exist only to make catchments resolvable — no feeder entry, no sync-status baseline.
+
+**Size it against production rather than against the customer.** Q7's row counts are the target:
+2.75 M subjects and 6.86 M program encounters across all organisations. That is roughly twice the
+customer's own day-180 dataset, so expect the co-tenant half to dominate load time and disk.
+
+### H8 — Two configurations for the configuration-size case
+
+Test case 12 runs the training cohort against a small bundle and a large one, which is the only case
+that varies configuration size — and configuration size is what sets the `syncDetails` row count, so
+it drives D1.1's per-row queries directly.
+
+**The two bundles are an input the plan does not currently have.** Either select real implementation
+configurations at either end of the range, or scale one by duplicating concept trees and form
+mappings until it reaches a realistic large-org shape. H1 already allows both; case 12 is what makes
+choosing necessary.
+
+Record the entity count each produces, because that is the x-axis of the result. Q8 measured 79
+entities tracked per sync on production's own configurations, which is the point the curve has to
+pass through.
+
 ### H6 — Decided: no production clone
 
 **An anonymised production clone is not available.** Recorded here so it is not re-proposed: it would
@@ -2165,7 +2220,7 @@ Ordering reflects dependencies, not estimates.
 | **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done — 14 of 15 have run.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **G4's restore mechanism lands with D3** — until the simulation writes, runs are read-only and need no teardown at all, so this apparatus can be deferred to here rather than built up front. |
-| **3 · Workload** | **D7** · E3, E5 · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
+| **3 · Workload** | **D7** · E3, E5, **E7** · **H7**, **H8** · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
 | **4 · Operate** | A11 · F2, F3 · **A12** | Saturate, name the resource, fix, re-run. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
 **Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review. Two

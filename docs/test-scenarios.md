@@ -65,8 +65,9 @@ production's own peak. Those cases are measuring per-sync cost and tenancy, and 
 
 **The reset storm is the exception, by an order of magnitude**, and its number depends entirely on
 how fast the affected users come back. Spread over an hour it is 20; compressed into 15 minutes it is
-79. **That spread is worth measuring rather than assuming** — Q10 found a real week at 130× the
-normal reset rate, and nothing in the telemetry says how quickly those devices re-synced.
+79. **That spread is worth measuring rather than assuming**, and **Q16 now exists to measure it** — Q10
+found a real week at 130× the normal reset rate, but nothing yet says how quickly those devices came
+back.
 
 If [sync frequency](open-questions.md) turns out to be weekly rather than four a day, every
 steady-state figure above falls by a factor of 28 and the reset storm becomes the only case with

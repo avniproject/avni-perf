@@ -86,6 +86,7 @@ section that uses them.
 | What | State |
 |---|---|
 | **Q11 — fleet page size split** | **Not answerable.** `pageSize` is not recorded in `sync_telemetry`, so it needs a client change first (D8.3) |
+| **Q16 — how fast devices return after a reset** | **Written, not run.** Test case 9's concurrency is 20 in flight or 79 depending on the answer, and nothing measured says which |
 | **Locations per catchment in production** | **No query written.** The generator declares one location per catchment and real bundles carry three. Changes the mapping table's size and the expansion view's work, not what anyone syncs |
 
 ---

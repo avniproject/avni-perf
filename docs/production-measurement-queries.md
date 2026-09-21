@@ -718,3 +718,52 @@ catchment is one high-level location look smaller than a field worker with five 
 Being a view over a function, it is the expensive half of this query. If it will not finish, fall
 back to `catchment_address_mapping` and read the result as a lower bound on the split rather than a
 measurement of it.
+
+**Q16 — How fast do devices come back after a reset? (E3, test case 9).** **Not yet run.** The reset
+storm is the only case with concurrency an order of magnitude above the rest, and its figure turns
+entirely on this: 562 users returning over an hour is about 20 syncs in flight, the same users
+returning within fifteen minutes is about 79. Nothing measured says which.
+
+Q10 found a real week at 130× the normal reset rate, so the event is real. What is unknown is the
+shape of the return — whether devices re-sync immediately, at the next working day, or trickle back
+over a week.
+
+```sql
+-- For each reset, how long until that user's next completed sync.
+with resets as (
+  select user_id, created_date_time as reset_at
+  from reset_sync
+  where is_voided = false
+    and created_date_time > now() - interval '6 months'
+),
+returns as (
+  select r.user_id,
+         r.reset_at,
+         min(t.sync_start_time) filter (where t.sync_start_time > r.reset_at) as came_back_at
+  from resets r
+  left join sync_telemetry t
+    on t.user_id = r.user_id
+   and t.sync_start_time > r.reset_at
+   and t.sync_start_time < r.reset_at + interval '14 days'
+   and t.sync_source is distinct from 'avni-perf-simulation'
+   and t.sync_status = 'complete'
+  group by r.user_id, r.reset_at
+)
+select count(*)                                                    as resets,
+       count(came_back_at)                                          as returned_within_14_days,
+       percentile_cont(array[0.25, 0.5, 0.9]) within group (
+         order by extract(epoch from (came_back_at - reset_at)) / 60
+       ) as minutes_to_return_p25_p50_p90,
+       count(*) filter (where came_back_at < reset_at + interval '15 minutes') as within_15_min,
+       count(*) filter (where came_back_at < reset_at + interval '1 hour')     as within_1_hour,
+       count(*) filter (where came_back_at < reset_at + interval '1 day')      as within_1_day
+from returns;
+```
+
+**Read the p25 rather than the median.** A storm's peak concurrency is set by the devices that come
+back *soonest*, not by the typical one — if a quarter return inside fifteen minutes, that quarter is
+the load, whatever the rest do.
+
+Exclude the April 2026 week Q10 found, or run it twice with and without: 25,141 resets against a
+normal week's 194 will otherwise dominate every percentile, and that week was a defect rather than a
+workload.
