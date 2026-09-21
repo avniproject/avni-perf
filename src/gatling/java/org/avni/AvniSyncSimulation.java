@@ -159,13 +159,50 @@ public class AvniSyncSimulation extends Simulation {
     private static final int pushObservationMultiple = Integer.getInteger("PUSH_OBSERVATION_MULTIPLE", 1);
 
     /**
-     * D5.1 - media upload is sync-path load the simulation has never touched. Measured: 2.14% of
-     * program_encounter rows carry a media observation, so one presigned-URL call per fifty
-     * encounters. The bytes are never transferred (D5.2): S3 serves those directly and PUTting them
-     * would measure S3 rather than avni-server.
+     * D5.1 - media files an encounter queues, which is the media half of a sync.
+     *
+     * A per-deployment property, not a platform average. Production-wide, 2.14% of
+     * program_encounter rows carry a media observation - but that spans 986 organisations, most of
+     * which capture no images at all, and it is the wrong base rate for a screening programme. Read
+     * the deployment's own bundle instead: `make survey_bundle` reports files per filled form.
+     *
+     * The default is the customer bundle's figure, averaged over its encounter types and counting
+     * every media element. It is a floor twice over - a multi-select holds an unknown number of
+     * files, and weighting by real encounter frequency raises it wherever the media-bearing type is
+     * the common one.
      */
-    private static final int pushEncountersPerMediaFile =
-        Integer.getInteger("PUSH_ENCOUNTERS_PER_MEDIA_FILE", 50);
+    private static final double mediaPerEncounter =
+        Double.parseDouble(System.getProperty("PUSH_MEDIA_PER_ENCOUNTER", "0.5"));
+
+    /**
+     * D5.2 - whether the simulation spends the time a media upload really takes.
+     *
+     * `pause` (default) models the transfer as elapsed time; `none` charges nothing for it.
+     *
+     * The bytes are never actually transferred, and the reason is fidelity rather than economy.
+     * S3 serves those objects directly, so a PUT from the injector measures the injector's own
+     * network - a fat in-region pipe that uploads 500 KB in tens of milliseconds where a field
+     * device on rural 3G takes seconds. Transferring would reproduce neither the server's load nor
+     * the device's timing. A modelled pause reproduces the timing, which is the part that matters,
+     * and can be varied across bandwidths the way a real transfer cannot.
+     *
+     * What this does NOT cover: whether the presigned URL works end to end. That is a wiring
+     * check against a real bucket, not a load question, and it belongs in a smoke test.
+     */
+    private static final String mediaModel = System.getProperty("MEDIA_MODEL", "pause");
+
+    /**
+     * Upload size per file. The client captures at 1280x960, quality 1 (MediaV2FormElement), which
+     * is a full-quality 1.2 MP JPEG - a few hundred KB and up. Audio and video are larger.
+     */
+    private static final int mediaFileKb = Integer.getInteger("MEDIA_FILE_KB", 500);
+
+    /**
+     * Device upload bandwidth, in KB/s. 125 KB/s is about 1 Mbps: optimistic for rural 3G,
+     * pessimistic for a town on 4G. It is the single biggest lever on how long a media-bearing
+     * sync takes, so vary it rather than trusting the default.
+     */
+    private static final int mediaUploadKbps = Integer.getInteger("MEDIA_UPLOAD_KBPS", 125);
 
     /** How many rows to harvest per entity when seeding a device. Enough to vary, cheap to fetch. */
     private static final int pushSeedSize = Integer.getInteger("PUSH_SEED_SIZE", 20);
@@ -358,15 +395,39 @@ public class AvniSyncSimulation extends Simulation {
                 + "intended.");
         } else {
             int perSync = pushIndividuals + pushEnrolments + pushProgramEncounters + pushEncounters;
+            double mediaFiles = (pushProgramEncounters + pushEncounters) * mediaPerEncounter;
             out.println(String.format(
                 "Push: ON | %d records per sync (%d individual, %d enrolment, %d programEncounter, "
-                + "%d encounter) | 1 media call per %d encounters",
-                perSync, pushIndividuals, pushEnrolments, pushProgramEncounters, pushEncounters,
-                pushEncountersPerMediaFile));
+                + "%d encounter)",
+                perSync, pushIndividuals, pushEnrolments, pushProgramEncounters, pushEncounters));
             out.println(String.format(
                 "  The client has no bulk endpoint: that is %d sequential POSTs per sync, each "
                 + "through the full filter chain and its own transaction. Volumes are derived from "
                 + "20 encounters per worker per day, not measured - Q17 replaces them.", perSync));
+            if (mediaPerEncounter > 0) {
+                long transferMs = mediaTransfer().toMillis();
+                out.println(String.format(
+                    "Media: %.1f files per sync at %.2f per encounter | %d KB each at %d KB/s = "
+                    + "%.0fs of transfer, ahead of the first pushed record",
+                    mediaFiles, mediaPerEncounter, mediaFileKb, mediaUploadKbps,
+                    mediaFiles * transferMs / 1000.0));
+                if (!"pause".equals(mediaModel)) {
+                    out.println(
+                        "  MEDIA_MODEL=" + mediaModel + " - transfer time is NOT charged. The data "
+                        + "push then starts sooner than any real device could manage it, and sync "
+                        + "duration is understated by the figure above.");
+                } else {
+                    out.println(
+                        "  Bytes are not transferred: S3 serves them directly, so a PUT from here "
+                        + "would measure the injector's own bandwidth rather than a field link. "
+                        + "The time is charged, the request is not.");
+                }
+                out.println(String.format(
+                    "  That makes a sync take roughly %.0fs longer than its server work alone. "
+                    + "Those are syncs in progress, not requests in flight - during the transfer "
+                    + "the device asks avni-server for nothing.",
+                    mediaFiles * transferMs / 1000.0));
+            }
             out.println(
                 "  This run WRITES. The database it measures is not the database the next run "
                 + "measures, and the dataset's H5 verdict no longer describes what is in the tables.");
@@ -1032,7 +1093,7 @@ public class AvniSyncSimulation extends Simulation {
      * encounters makes a media call on roughly two syncs in five instead of never.
      */
     private static ChainBuilder mediaUploadChain() {
-        if (pushEncountersPerMediaFile <= 0) {
+        if (mediaPerEncounter <= 0) {
             return exec(session -> session);
         }
         return exec(session -> session.set("mediaCalls", mediaCallCount(session)))
@@ -1040,10 +1101,29 @@ public class AvniSyncSimulation extends Simulation {
             .then(group("Push Media").on(
                 repeat(session -> session.getInt("mediaCalls"), "mediaIndex")
                     .on(exec(http("Media uploadUrl")
-                        .get(session -> "/media/uploadUrl/" + UUID.randomUUID() + ".jpg")
-                        // A device with no media privilege gets a 4xx here and carries on; the
-                        // request still costs the server the filter chain, which is the point.
-                        .check(status().in(200, 201))))));
+                            .get(session -> "/media/uploadUrl/" + UUID.randomUUID() + ".jpg")
+                            // A device with no media privilege gets a 4xx here and carries on; the
+                            // request still costs the server the filter chain, which is the point.
+                            .check(status().in(200, 201)))
+                        // The PUT to S3 that follows each signed URL. Not issued - see mediaModel
+                        // - but the device spends the time, and spending it here is what keeps the
+                        // data push from arriving earlier than any real client could send it.
+                        .pause(mediaTransfer()))));
+    }
+
+    /**
+     * How long one file takes to reach S3 at the configured bandwidth.
+     *
+     * Serial, because PARALLEL_UPLOAD_COUNT is 1 in MediaQueueService: the chunking around it
+     * suggests otherwise, but each chunk holds one item, so files go up one at a time. And the
+     * whole queue drains before dataServerSync starts, so this time lands entirely ahead of the
+     * first pushed record.
+     */
+    private static java.time.Duration mediaTransfer() {
+        if (!"pause".equals(mediaModel) || mediaUploadKbps <= 0) {
+            return java.time.Duration.ZERO;
+        }
+        return java.time.Duration.ofMillis(Math.round(1000.0 * mediaFileKb / mediaUploadKbps));
     }
 
     private static int mediaCallCount(Session session) {
@@ -1051,10 +1131,10 @@ public class AvniSyncSimulation extends Simulation {
         if (seed == null) {
             return 0;
         }
-        float encounters = (pushProgramEncounters + pushEncounters) * pushScale(session);
-        float expected = encounters / pushEncountersPerMediaFile;
+        double encounters = (pushProgramEncounters + pushEncounters) * pushScale(session);
+        double expected = encounters * mediaPerEncounter;
         int whole = (int) expected;
-        return ThreadLocalRandom.current().nextFloat() < (expected - whole) ? whole + 1 : whole;
+        return ThreadLocalRandom.current().nextDouble() < (expected - whole) ? whole + 1 : whole;
     }
 
     // --- payload builders -------------------------------------------------------------------

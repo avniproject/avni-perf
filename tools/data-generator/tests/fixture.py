@@ -7,6 +7,7 @@ CODED = "c0000000-0000-0000-0000-000000000001"
 NUMERIC = "c0000000-0000-0000-0000-000000000002"
 TEXT = "c0000000-0000-0000-0000-000000000003"
 MEDIA = "c0000000-0000-0000-0000-000000000004"
+MEDIA_AUDIO = "c0000000-0000-0000-0000-000000000008"
 EMPTY_CODED = "c0000000-0000-0000-0000-000000000005"
 VOIDED = "c0000000-0000-0000-0000-000000000006"
 QGROUP = "c0000000-0000-0000-0000-000000000007"
@@ -31,7 +32,9 @@ def write(root: Path) -> Path:
         {"uuid": NUMERIC, "name": "Weight", "dataType": "Numeric",
          "lowAbsolute": 2.0, "highAbsolute": 8.0},
         {"uuid": TEXT, "name": "Remark", "dataType": "Text"},
-        {"uuid": MEDIA, "name": "Photo", "dataType": "Image"},
+        {"uuid": MEDIA, "name": "Photo", "dataType": "Image",
+         "keyValues": [{"key": "readOnly", "value": True}]},
+        {"uuid": MEDIA_AUDIO, "name": "Recording", "dataType": "Audio"},
         {"uuid": EMPTY_CODED, "name": "No Answers", "dataType": "Coded", "answers": []},
         {"uuid": VOIDED, "name": "Gone", "dataType": "Text", "voided": True},
         {"uuid": QGROUP, "name": "Group", "dataType": "QuestionGroup"},
@@ -45,6 +48,7 @@ def write(root: Path) -> Path:
             _el("e3", NUMERIC),
             _el("e4", TEXT),
             _el("e5", MEDIA),
+            _el("e5b", MEDIA_AUDIO, mandatory=True),
             _el("e6", EMPTY_CODED),
             _el("e7", VOIDED),
             _el("e8", QGROUP),

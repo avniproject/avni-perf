@@ -46,3 +46,33 @@ def test_absolute_range_comes_from_concepts_file_not_the_embedded_copy():
 
 def test_concept_uuids_spans_live_mappings_only():
     assert load().concept_uuids() == {fixture.CODED, fixture.NUMERIC, fixture.TEXT}
+
+
+def test_media_elements_are_counted_not_silently_dropped():
+    """They stay out of generated observations, but the count is what sizes media load (D5.1)."""
+    b = load()
+    got = {e.concept_name for e in b.media_for(b.mappings[0])}
+    assert got == {"Photo", "Recording"}
+    assert all(e.concept.uuid != fixture.MEDIA for e in b.elements_for(b.mappings[0]))
+
+
+def test_media_bounds_separate_mandatory_from_optional():
+    b = load()
+    mandatory, every = b.media_per_form_type()["IndividualProfile"]
+    assert (mandatory, every) == (1.0, 2.0)
+
+
+def test_read_only_is_read_off_the_concept_key_values():
+    """readOnly decides whether a media element is captured on the device at all, so it is the
+    difference between the reported figure and zero."""
+    b = load()
+    by_name = {e.concept_name: e for e in b.media_for(b.mappings[0])}
+    assert by_name["Photo"].read_only is True
+    assert by_name["Recording"].read_only is False
+
+
+def test_form_types_with_no_media_report_zero_rather_than_vanishing():
+    b = load()
+    per_type = b.media_per_form_type()
+    assert set(per_type) == {"IndividualProfile"}
+    assert per_type["IndividualProfile"][1] == 2.0

@@ -62,9 +62,12 @@ data, so those devices have nothing queued to push.
 
 Two consequences for the numbers on this page. **The 24 records a field worker queues per day go up
 as 24 separate POSTs** — the client has no bulk endpoint and waits for each — which adds one to two
-seconds to a 14.1-second sync and lifts every in-flight figure by roughly a tenth. And **the volumes
-themselves are arithmetic, not measurement**: 20 encounters per worker per day was the customer's
-figure, and Q17 is written to replace it from production's own telemetry.
+seconds to a 14.1-second sync. And **the volumes themselves are arithmetic, not measurement**: 20
+encounters per worker per day was the customer's figure, and Q17 is written to replace it from
+production's own telemetry.
+
+Media is the larger effect by far, and it lands on elapsed time rather than server load — see
+[what media does](#what-media-does-to-all-of-this).
 
 **Tenant counts trace to the table under [the deployment](#the-deployment-being-modelled)**: a state
 tenant is 500 field workers and 62 supervisors, and the ten together are 1,504 and 188. The 986 in
@@ -75,6 +78,13 @@ cases 6 and 7 is production's existing organisation count (Q12).
 Arrival rate times duration. Both sides are measured: a sync takes **14.1 seconds at p50** in
 production (Q5 band 1, where 98% of syncs sit), and the per-request overhead dominates it, so an
 incremental sync costs about the same whether it carries 15 records or 500.
+
+> **Two different numbers hide behind "in flight", and media splits them apart.** A device uploading
+> photos is mid-sync but is talking to S3, not to avni-server — so it holds a sync slot while asking
+> the server for nothing. Every figure in this section is **server-busy concurrency**: arrival rate
+> times the 14.1 seconds of server work. The count of *syncs in progress* is several times higher
+> once media is included, and is the number that matters for anything measuring elapsed sync time
+> rather than server load. [Media time](#what-media-does-to-all-of-this) sets them out side by side.
 
 | Case | Syncs/hour | **In flight** |
 |---|---|---|
@@ -113,6 +123,37 @@ cluster, if workers sync when they return to signal or at the end of a shift.
 **Compressed into one hour, case 6 reaches 6.6 in flight — about twice production's peak, and
 twelve times the spread figure.** So the conclusion that this is not a concurrency exercise holds
 for the assumed shape and **not for a clustered one**.
+
+#### What media does to all of this
+
+The customer's bundle puts **3 image elements plus a multi-select on its oral screening encounter**
+and an audio element on its mental health encounter — averaged across all 12 encounter types, half a
+file per encounter, and that average is a floor. A device pushing 22 records therefore queues around
+**11 files**, and `MediaQueueService` uploads them **one at a time, all of them before the first
+record is posted**.
+
+| Upload bandwidth | Media transfer | Sync duration | Syncs in progress, case 13 | Server-busy, case 13 |
+|---|---|---|---|---|
+| 0.3 Mbps | 138 s | 152 s | **105** | 9.7 |
+| 1 Mbps | 44 s | 58 s | **40** | 9.7 |
+| 3 Mbps | 15 s | 29 s | **20** | 9.7 |
+| 10 Mbps | 4 s | 18 s | 12 | 9.7 |
+
+**The right-hand column does not move, and that is the point.** Media stretches how long a sync
+takes without adding server work beyond the signing calls, so it changes the user's experience and
+the number of open sessions without changing contention on the database. Read a scary "105 in
+flight" as a statement about field bandwidth, not about the server.
+
+Two places it does bite. Sessions and connections are held far longer, so **anything with an idle
+timeout or a per-session resource sees the stretched figure, not the busy one**. And because the
+whole media queue drains first, the data pushes arrive tens of seconds later than they otherwise
+would — which spreads server load across the window rather than concentrating it, and is the
+opposite of what a run charging nothing for media would show.
+
+> **One open question sits under these numbers.** All five image elements in the bundle are
+> `readOnly`, so they are not captured through the ordinary media form element. Whether they still
+> queue a file depends on what populates them — it is the difference between the table above and
+> nothing at all, and it is a question for the customer.
 
 That makes the sync *window* worth asking about alongside the frequency, since the two together set
 the arrival rate and only one of them has been confirmed. **Cases 11 to 13 are the bracket**: the

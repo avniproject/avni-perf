@@ -12,8 +12,10 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-# Datatypes whose values are a reference to an S3 object. Generating them implies uploading
-# media, which section D5 puts out of scope, so form elements carrying them are skipped.
+# Datatypes whose values are a reference to an S3 object. The generator does not emit them - it
+# would have to produce the objects too - but it counts them, because how many media files an
+# encounter queues is what sets the media load on a sync (D5.1) and it is a property of the
+# configuration rather than something to guess at.
 MEDIA_DATATYPES = frozenset({"Image", "ImageV2", "Video", "Audio", "File"})
 
 # QuestionGroup nests a further set of elements inside one observation value. Supported shape,
@@ -29,6 +31,7 @@ class Concept:
     answer_uuids: tuple[str, ...] = ()
     low_absolute: float | None = None
     high_absolute: float | None = None
+    read_only: bool = False
 
     @property
     def generatable(self) -> bool:
@@ -50,6 +53,33 @@ class Element:
 
 
 @dataclass(frozen=True)
+class MediaElement:
+    """A form element whose value is a file the device uploads before it pushes any data.
+
+    Counted rather than generated. One of these on a form means every filled instance of that form
+    queues at least one `GET /media/uploadUrl` and one direct-to-S3 PUT, ahead of the data push -
+    so the count per encounter type, not a platform-wide average, is what sizes media load.
+    """
+    uuid: str
+    concept_name: str
+    data_type: str
+    multi_select: bool
+    mandatory: bool
+    read_only: bool
+
+    @property
+    def files(self) -> float:
+        """Files one filled instance of this element queues.
+
+        A multi-select holds an unknown number; counted as one so the figure stays a floor rather
+        than an invention. An optional element is not always filled, but how often is a question
+        about field behaviour that no bundle answers - so it counts as one too, and the pair of
+        bounds is reported instead of a single made-up mean.
+        """
+        return 1.0
+
+
+@dataclass(frozen=True)
 class FormMapping:
     form_uuid: str
     form_type: str
@@ -67,11 +97,41 @@ class Bundle:
     path: Path
     concepts: dict[str, Concept] = field(default_factory=dict)
     forms: dict[str, list[Element]] = field(default_factory=dict)
+    media: dict[str, list[MediaElement]] = field(default_factory=dict)
     mappings: list[FormMapping] = field(default_factory=list)
 
     def elements_for(self, mapping: FormMapping) -> list[Element]:
         """The elements a valid observation for this mapping may be keyed on."""
         return self.forms.get(mapping.form_uuid, [])
+
+    def media_for(self, mapping: FormMapping) -> list[MediaElement]:
+        """The media elements a filled instance of this mapping's form would queue."""
+        return self.media.get(mapping.form_uuid, [])
+
+    def media_per_form_type(self) -> dict[str, tuple[float, float]]:
+        """Files queued per filled form, by form type, as (mandatory only, every element).
+
+        Two numbers rather than one because the gap between them is a question about field
+        behaviour - how often an optional photo is actually taken - that the bundle cannot answer.
+        Averaged across the distinct mappings of each type, which assumes encounter types are
+        equally frequent. They are not: a screening programme's screening encounter dominates its
+        own mix, and weighting by real frequency moves this figure a long way. It is a starting
+        point to be overridden per deployment, not a measurement.
+        """
+        by_type: dict[str, list[tuple[float, float]]] = {}
+        seen: set[tuple[str, str]] = set()
+        for m in self.mappings:
+            if (m.form_type, m.form_uuid) in seen:
+                continue
+            seen.add((m.form_type, m.form_uuid))
+            elements = self.media_for(m)
+            mandatory = sum(e.files for e in elements if e.mandatory)
+            every = sum(e.files for e in elements)
+            by_type.setdefault(m.form_type, []).append((mandatory, every))
+        return {
+            t: (sum(a for a, _ in v) / len(v), sum(b for _, b in v) / len(v))
+            for t, v in by_type.items() if v
+        }
 
     def concept_uuids(self) -> set[str]:
         """Every concept reachable through a live form element, across all mappings."""
@@ -86,6 +146,15 @@ def _read(path: Path, name: str, default):
         return json.load(fh)
 
 
+def _key_value(raw: dict, key: str):
+    """One of a concept's or form element's keyValues, or None. Used for readOnly, which decides
+    whether a media element is captured on the device at all."""
+    for kv in raw.get("keyValues") or []:
+        if kv.get("key") == key:
+            return kv.get("value")
+    return None
+
+
 def _concept(raw: dict) -> Concept:
     answers = tuple(
         a["uuid"] for a in raw.get("answers") or []
@@ -98,6 +167,7 @@ def _concept(raw: dict) -> Concept:
         answer_uuids=answers,
         low_absolute=raw.get("lowAbsolute"),
         high_absolute=raw.get("highAbsolute"),
+        read_only=_key_value(raw, "readOnly") is True,
     )
 
 
@@ -127,6 +197,7 @@ def load(path: str | Path) -> Bundle:
             if form.get("voided") or not form.get("uuid"):
                 continue
             elements: list[Element] = []
+            media: list[MediaElement] = []
             for group in form.get("formElementGroups") or []:
                 if group.get("voided"):
                     continue
@@ -139,6 +210,21 @@ def load(path: str | Path) -> Bundle:
                     # The element embeds its concept, but concepts.json is the fuller record --
                     # it carries lowAbsolute/highAbsolute, which the embedded copy omits.
                     concept = bundle.concepts.get(raw_concept["uuid"]) or _concept(raw_concept)
+                    if concept.data_type in MEDIA_DATATYPES:
+                        media.append(MediaElement(
+                            uuid=el["uuid"],
+                            concept_name=concept.name,
+                            data_type=concept.data_type or "",
+                            multi_select=el.get("type") == "MultiSelect",
+                            mandatory=bool(el.get("mandatory")),
+                            # Either level can set it, and the element wins: it is the more
+                            # specific of the two. Read off concepts.json rather than the copy
+                            # embedded in the element, which is the fuller record - the same
+                            # reason lowAbsolute is taken from there.
+                            read_only=(_key_value(el, "readOnly") is True
+                                       or concept.read_only),
+                        ))
+                        continue
                     if not concept.generatable:
                         continue
                     elements.append(Element(
@@ -148,6 +234,7 @@ def load(path: str | Path) -> Bundle:
                         mandatory=bool(el.get("mandatory")),
                     ))
             bundle.forms[form["uuid"]] = elements
+            bundle.media[form["uuid"]] = media
 
     for raw in _read(p, "formMappings.json", []):
         if raw.get("voided") or not raw.get("formUUID"):

@@ -147,7 +147,13 @@ queued per sync, default 1 / 1 / 20 / 2
 
 `PUSH_OBSERVATION_MULTIPLE` harvested observation sets per pushed record, default 1
 
-`PUSH_ENCOUNTERS_PER_MEDIA_FILE` default 50; `0` disables the presigned-URL calls
+`PUSH_MEDIA_PER_ENCOUNTER` media files each encounter queues, default 0.5; `0` disables media
+
+`MEDIA_MODEL` `pause` (default) charges the upload time; `none` charges nothing — see below
+
+`MEDIA_FILE_KB` default 500, matching the client's 1280x960 quality-1 capture
+
+`MEDIA_UPLOAD_KBPS` device upload bandwidth, default 125 (about 1 Mbps)
 
 `PUSH_SEED_SIZE` rows harvested per entity when seeding a device, default 20
 
@@ -187,6 +193,40 @@ encounters per worker per day", not measurement — Q17 in
 [production-measurement-queries.md](docs/production-measurement-queries.md) replaces it. Per-user
 variation comes from an optional `pushScale` column in the user file: a supervisor pulls a wide
 catchment but creates few records, so case 3 wants a value well under 1.
+
+## Media
+
+Every queued media file costs one `GET /media/uploadUrl` against the server and one PUT straight to
+S3. `MediaQueueService` sends them **one at a time, and drains the whole queue before the first
+record is pushed** — `PARALLEL_UPLOAD_COUNT` is 1, despite the chunking around it.
+
+**Set the rate from the deployment's bundle, not from the default.** `make survey_bundle
+BUNDLE=/path/to/bundle` reports files per filled form, per form type. A platform-wide average is
+the wrong base rate for any one implementation: production sits at 0.02 files per encounter across
+986 organisations, while a screening bundle puts three images and a multi-select on its main
+encounter form.
+
+**The bytes are not transferred, but the time is charged.** S3 serves the objects directly, so a
+PUT from the injector would measure the injector's own network — an in-region pipe that moves
+500 KB in tens of milliseconds where a field device on rural 3G takes four seconds. Neither the
+server's load nor the device's timing. So `MEDIA_MODEL=pause` spends the elapsed time and skips the
+request, the same trade `STORAGE_MODEL=weighted` makes for parse-and-persist.
+
+| `MEDIA_UPLOAD_KBPS` | ~ | 11 files | Sync duration |
+|---|---|---|---|
+| 40 | 0.3 Mbps | 138 s | 152 s |
+| 125 (default) | 1 Mbps | 44 s | 58 s |
+| 375 | 3 Mbps | 15 s | 29 s |
+| 1250 | 10 Mbps | 4 s | 18 s |
+
+> **This inflates sync duration without adding server load.** During the transfer the device asks
+> avni-server for nothing, so *syncs in progress* rises several-fold while *server requests in
+> flight* does not move. Sweep `MEDIA_UPLOAD_KBPS` rather than trusting one value — it is the
+> largest single lever on how long a media-bearing sync takes, and it says nothing about the
+> server.
+
+`MEDIA_MODEL=none` restores the old behaviour of charging nothing. The startup banner says which
+you have, because a run that skips the time starts its data push sooner than any real device could.
 
 ## Run archiving
 

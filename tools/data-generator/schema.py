@@ -107,7 +107,7 @@ CONTRACTS: dict[str, Contract] = {
          "date_of_birth_verified", "first_name", "last_name", "observations"] + list(_SYNC),
         {"middle_name": "optional, and name fields are not indexed on the sync path",
          "gender_id": "not read by sync scope resolution",
-         "profile_picture": "media is out of scope (D5)",
+         "profile_picture": "generated rows carry no media objects; D5 models the upload calls, not the files",
          "registration_location": "no geospatial query under test",
          "legacy_id": "import provenance",
          "facility_id": "facility linkage not modelled",

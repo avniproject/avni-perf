@@ -74,10 +74,52 @@ def describe(path: str, seed: int, profile_path: str | None) -> int:
               f"{size:>7.0f}   {target.table} {p50:g}/{p95:g}"
               f"{'/' + str(target.mean_bytes) if target.mean_bytes else ''}{note}")
 
+    _report_media(b)
+
     print("\nConcept cardinality is a whole-platform property, not a per-org one. Production's "
           "5,623\ndistinct observation keys span every organisation, so total cardinality comes "
           "from tenant\ncount rather than from any single bundle. See H3.")
     return 0
+
+
+def _report_media(b) -> None:
+    """Media files a filled form queues, which is what sizes the media half of a sync (D5.1).
+
+    Not generated - the generator would have to produce the S3 objects too - but reported, because
+    a platform-wide average is the wrong base rate for any one deployment and this is the right
+    one. Every file costs a `GET /media/uploadUrl` against the server and a direct PUT to S3, and
+    the whole queue drains before the first data record is posted.
+    """
+    per_type = b.media_per_form_type()
+    if not any(every for _, every in per_type.values()):
+        print("\nNo media elements in this bundle: media adds nothing to a sync here.")
+        return
+
+    print("\nmedia files queued per filled form:")
+    print(f"  {'form type':<26} {'mandatory':>9} {'all':>6}")
+    for t, (mandatory, every) in sorted(per_type.items()):
+        if every:
+            print(f"  {t:<26} {mandatory:>9.2f} {every:>6.2f}")
+
+    elements = [e for els in b.media.values() for e in els]
+    multi = sum(1 for e in elements if e.multi_select)
+    read_only = sum(1 for e in elements if e.read_only)
+    kinds = collections.Counter(e.data_type for e in elements)
+    print(f"\n  {len(elements)} media element(s): "
+          + ", ".join(f"{n} {k}" for k, n in sorted(kinds.items())))
+
+    print("\n  Averaged over each form type's distinct mappings, which assumes its encounter types")
+    print("  are equally frequent. A screening programme's screening encounter dominates its own")
+    print("  mix, so weight these by real frequency before using them - the figure moves a lot.")
+
+    if multi:
+        print(f"\n  {multi} element(s) are multi-select and hold an unknown number of files. Each")
+        print("  counts as one here, so every figure above is a floor.")
+    if read_only:
+        print(f"\n  {read_only} element(s) are readOnly, so they are not captured through the normal")
+        print("  media form element. Whether they still queue a file depends on what populates")
+        print("  them - a rule writing a local path does, a server-side URL does not. Worth")
+        print("  settling per deployment: it is the difference between these figures and zero.")
 
 
 def main(argv: list[str]) -> int:

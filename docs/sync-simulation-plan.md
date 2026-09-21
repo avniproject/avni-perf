@@ -712,21 +712,75 @@ files makes N `GET /media/uploadUrl/{fileName}` calls before the data sync even 
 through the full authentication filter and organisation interceptor. This is genuine per-sync server
 load and the simulation did not touch it at all.
 
-Modelled as a rate against encounter volume rather than as a queue of its own, which is what the
-measurement below supports: one call per fifty encounters, with the fractional part played out per
-sync so a device pushing twenty encounters makes a call on roughly two syncs in five rather than
-never. `PUSH_ENCOUNTERS_PER_MEDIA_FILE=0` turns it off.
+**It is also strictly serial and strictly first.** `MediaQueueService.uploadMedia` chunks the queue
+by `PARALLEL_UPLOAD_COUNT`, which is **1** — the chunking machinery around it suggests concurrency
+that does not happen — and `sync()` runs `mediaSync` to completion before `dataServerSync` starts.
+So the whole media queue drains, one file at a time, before the first record is posted.
 
-**D5.2 — Do not transfer the bytes.** Since S3 serves the objects directly, having the injector PUT
-and GET real files measures S3 and consumes bandwidth without exercising avni-server. Model the
-presigned-URL requests; skip the transfers. This makes media cheap to include rather than a reason to
-exclude it.
+**The rate is a property of the bundle, not of the platform.** The first version of this used
+production's 2.14% of `program_encounter` rows carrying a media observation — one file per fifty
+encounters. That figure spans 986 organisations, most of which capture no images at all, and it is
+the wrong base rate for a screening programme. The customer's own bundle says otherwise:
 
-**Measured: 2.14% of `program_encounter` rows carry a media observation** (59 of 2,759 sampled).
-Against 6.86 million rows that is roughly 147,000 media-bearing encounters. Each costs a
-`GET /media/uploadUrl/{fileName}` on the push path, so media is a real but minor contributor — worth
-including in D5's push model at roughly one media call per fifty encounters, and not worth a scenario
-of its own.
+| | Files per filled form |
+|---|---|
+| Oral Screening Encounter | **3 image elements (2 mandatory) plus a multi-select** |
+| Mental Health Encounter | 1 audio, mandatory |
+| Clinician Review Form | 1 image, optional |
+| Averaged over all 12 encounter types | 0.25 mandatory, **0.50 counting every element** |
+
+**That is 25x the rate first modelled, and the 0.50 is a floor twice over** — the multi-select holds
+an unknown number of files and counts as one, and averaging across encounter types assumes they are
+equally frequent when a screening programme's screening encounter dominates its own mix. At half the
+encounters being oral screenings the figure is 2.0, which is 100x.
+
+`make survey_bundle BUNDLE=...` now reports this per form type, so it is read off the deployment
+rather than guessed. `bundle.py` counts media elements instead of silently discarding them.
+
+> **One thing the bundle cannot settle: all five image elements are `readOnly`.** They are therefore
+> not captured through the ordinary media form element, and whether they still queue a file depends
+> on what populates them — a rule writing a local path does, a server-side URL does not. It is the
+> difference between the figures above and zero, so it is an open question for the customer rather
+> than something to assume either way. The audio element is not readOnly and is mandatory.
+
+**D5.2 — Do not transfer the bytes, but do spend the time.** *Revised.* The original reasoning held
+that since S3 serves the objects directly, transferring them measures S3 and consumes bandwidth
+without exercising avni-server. That is true and still the conclusion — but it was used to justify
+charging **nothing** for media, and that is a much larger distortion than the one it avoided.
+
+A sync is not just its server requests. At the bundle's 0.5 files per encounter, a device pushing 22
+records queues **11 files**, and at 500 KB each — the client captures 1280x960 at quality 1 — that
+is real time on a field link:
+
+| Upload bandwidth | Transfer | Sync duration |
+|---|---|---|
+| 0.3 Mbps | 138 s | 152 s — **11x** |
+| 1 Mbps | 44 s | 58 s — **4x** |
+| 3 Mbps | 15 s | 29 s — 2x |
+| 10 Mbps | 4 s | 18 s — 1.3x |
+
+**So the fix is to model the time, not to send the bytes.** Transferring would reproduce the
+*injector's* network — a fat in-region pipe that moves 500 KB in tens of milliseconds — which is
+neither the server's load nor the device's timing. A pause reproduces the timing, which is the half
+that matters, and can be swept across bandwidths the way a real transfer cannot. This is the same
+trade D6 already makes for parse-and-persist: model the elapsed cost, do not perform the work.
+
+`MEDIA_MODEL=pause` is the default; `none` restores the old behaviour and says so loudly at startup.
+
+> **What this buys and what it does not.** It fixes sync duration, and it stops the data push
+> arriving sooner than any real device could send it — which matters because those POSTs are the
+> server load. It does **not** verify that a presigned URL works end to end. That is a wiring check
+> against a real bucket, not a load question, and belongs in a smoke test.
+
+**The consequence for every concurrency figure in this plan:** media time inflates *syncs in
+progress* without touching *server requests in flight*, because during the transfer the device asks
+avni-server for nothing. At case 13's arrival rate those diverge from 9.7 to 40. Both are true and
+they answer different questions — see [test-scenarios.md](test-scenarios.md).
+
+**Measured, and superseded as a default: 2.14% of `program_encounter` rows carry a media
+observation** (59 of 2,759 sampled). Against 6.86 million rows that is roughly 147,000 media-bearing
+encounters. It remains the right figure for *production as a whole* and the wrong one for any single
+deployment — see D5.1 for why the bundle replaced it.
 
 **D5.3 — On-demand viewing: out of scope.** *Decided.* `/media/signedUrl` traffic is driven by users
 browsing records rather than syncing, and this exercise is sync-focused. It is not modelled.
@@ -2352,7 +2406,7 @@ Ordering reflects dependencies, not estimates.
 | **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done — 14 of 17 have run.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **D3 and D5.1 are done**; G4's restore mechanism is what remains, and it is now the gate rather than a deferral — a `PUSH=on` run cannot be repeated without it. Q17 replaces D3's guessed push volumes. |
-| **3 · Workload** | **D7** · E3, E5, **E7** · **H7** · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
+| **3 · Workload** | **D7** · E3, E5, **E7** · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5 no longer sits here - upload landed with D3 and viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
 | **4 · Operate** | A11 · F2, F3 · **A12** | Saturate, name the resource, fix, re-run. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
 **Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review. Two

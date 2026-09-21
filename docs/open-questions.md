@@ -4,7 +4,7 @@ Everything [the sync simulation plan](sync-simulation-plan.md) and
 [the test scenarios](test-scenarios.md) are waiting on.
 
 **This document holds the inputs only** — the questions someone has to answer before the tests can
-be designed, built or run. No amount of running will settle them. **Two remain.**
+be designed, built or run. No amount of running will settle them. **Three remain.**
 
 Nothing else lives here. **Work** someone could simply go and do is a task in
 [the plan](sync-simulation-plan.md), whose status table says what has and has not been started.
@@ -64,6 +64,32 @@ production's peak**.
 Cheap to bracket rather than wait on, and already bracketed: **cases 11 to 13 run cases 5 to 7 at a
 one-hour window**, so the suite covers both ends for three extra hours. An answer would let three
 runs be dropped; it does not gate anything.
+
+### Do the bundle's readOnly image elements actually queue a file?
+
+**Assumed: yes, they upload like any other media.** Being asked of the customer. It is the
+difference between media dominating elapsed sync time and contributing nothing at all.
+
+The customer's bundle carries five image elements — three on the oral screening encounter, plus a
+multi-select and one on clinician review — and **every one of them is `readOnly`**. That means none
+is captured through the ordinary media form element, so what populates them decides whether a file
+exists on the device to upload: a rule or a custom capture writing a local path queues one, a
+server-side URL does not. The audio element on the mental health encounter is not readOnly and is
+mandatory, so that one queues regardless.
+
+| If they do queue | If they do not |
+|---|---|
+| ~11 files per sync, **44 s of upload at 1 Mbps** | ~1 file per sync, a few seconds |
+| Sync duration 4x its server work | Sync duration essentially unchanged |
+
+**It changes elapsed time, not server load** — the transfer goes to S3, and only the signing call
+touches avni-server. So it does not gate the hosting decision or any contention finding. It does
+decide whether "sync takes too long in the field" is a media problem or a data problem, which is
+worth knowing before anyone optimises the wrong half.
+
+A second, smaller part of the same question: **how often the optional elements are filled, and how
+many files the multi-select holds.** The bundle reports 0.25 mandatory against 0.50 counting every
+element, and the multi-select counts as one file when it may hold several.
 
 ---
 
