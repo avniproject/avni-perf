@@ -30,6 +30,16 @@ public class AvniEntity {
     /** The client's own relative weight for this entity. Not a measured cost - see the plan, D6.2. */
     public Integer syncWeight;
 
+    /**
+     * What a record of this entity costs the client to parse and persist, as a multiple of
+     * BASE_MS_PER_RECORD. Assigned by tier in the generator, so a new entity arrives with a weight
+     * rather than silently defaulting to one.
+     *
+     * Deliberately not syncWeight above. That is a progress-bar increment, is a per-entity total
+     * rather than a per-record cost, and has never been checked against a clock.
+     */
+    public double storageWeight = 1.0;
+
     public boolean pullRequired = true;
     public boolean pushRequired = true;
 

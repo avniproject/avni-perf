@@ -40,6 +40,25 @@ function staticParams(e) {
   return e.apiQueryParams && Object.keys(e.apiQueryParams).length ? e.apiQueryParams : null;
 }
 
+// Plan D6.2: what a page of this entity costs the client to parse and persist, as a multiple of
+// baseMsPerRecord. Three tiers deliberately — a finer split would be false precision on numbers
+// this soft, and D7 replaces the whole scheme with per-entity measurements.
+//
+// Tiering is by payload structure, because whether a row carries an observation set is the dominant
+// cost driver. It is judgement, not measurement.
+const LIGHT = new Set([
+  "Gender", "ProgramOutcome", "TaskStatus", "TaskType", "ApprovalStatus", "StandardReportCardType",
+  "LocationHierarchy", "Privilege", "Groups", "GroupPrivileges", "MyGroups", "GroupRole",
+  "MenuItem", "AddressLevel", "LocationMapping",
+]);
+const HEAVY = new Set(["Individual", "ProgramEnrolment", "ProgramEncounter", "Encounter"]);
+
+function storageWeight(entityName) {
+  if (LIGHT.has(entityName)) return 0.2;
+  if (HEAVY.has(entityName)) return 3.0;
+  return 1.0;
+}
+
 // getRefData and getTxData both reverse the model list before pulling, so the last entity declared
 // is fetched first. Emitting in pull order means the simulation does not have to know that.
 const entities = EntityMetaData.model()
@@ -52,6 +71,7 @@ const entities = EntityMetaData.model()
     entityTypeUuidParams: entityTypeUuidParams(e),
     staticParams: staticParams(e),
     syncWeight: e.syncWeight === undefined ? null : e.syncWeight,
+    storageWeight: storageWeight(e.entityName),
     pullRequired: e.syncPullRequired !== false,
     pushRequired: e.syncPushRequired !== false,
   }));
@@ -68,6 +88,17 @@ fs.writeFileSync(OUT, JSON.stringify(out, null, 2) + "\n");
 const ref = entities.filter((e) => e.type === "reference").length;
 const tx = entities.filter((e) => e.type === "tx").length;
 const noPull = entities.filter((e) => !e.pullRequired).length;
+const byWeight = entities.reduce((acc, e) => {
+  acc[e.storageWeight] = (acc[e.storageWeight] || 0) + 1;
+  return acc;
+}, {});
 console.log(`wrote ${entities.length} entities (${ref} reference, ${tx} tx) from openchs-models@${modelsVersion}`);
 console.log(`  ${noPull} are push-only (pullRequired false)`);
+console.log(
+  `  storage weights: ` +
+    Object.entries(byWeight)
+      .sort((a, b) => a[0] - b[0])
+      .map(([w, n]) => `${n} at ${w}x`)
+      .join(", ")
+);
 console.log(`  -> ${path.relative(process.cwd(), OUT)}`);

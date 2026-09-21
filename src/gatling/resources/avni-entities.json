@@ -10,6 +10,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 1,
+      "storageWeight": 1,
       "pullRequired": false,
       "pushRequired": true
     },
@@ -20,6 +21,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 1,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -30,6 +32,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -40,6 +43,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -52,6 +56,7 @@
       ],
       "staticParams": null,
       "syncWeight": 5,
+      "storageWeight": 3,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -64,6 +69,7 @@
       ],
       "staticParams": null,
       "syncWeight": 5,
+      "storageWeight": 3,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -76,6 +82,7 @@
       ],
       "staticParams": null,
       "syncWeight": 9,
+      "storageWeight": 3,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -88,6 +95,7 @@
         "deviceId": null
       },
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -100,6 +108,7 @@
       ],
       "staticParams": null,
       "syncWeight": 7,
+      "storageWeight": 3,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -112,6 +121,7 @@
       ],
       "staticParams": null,
       "syncWeight": 7,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -124,6 +134,7 @@
       ],
       "staticParams": null,
       "syncWeight": 8,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -136,6 +147,7 @@
       ],
       "staticParams": null,
       "syncWeight": 3,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -148,6 +160,7 @@
       ],
       "staticParams": null,
       "syncWeight": 3,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -160,6 +173,7 @@
       ],
       "staticParams": null,
       "syncWeight": 2,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -175,6 +189,7 @@
         "entityType": "ChecklistItem"
       },
       "syncWeight": 2,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": false
     },
@@ -190,6 +205,7 @@
         "entityType": "ProgramEnrolment"
       },
       "syncWeight": 2,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": false
     },
@@ -205,6 +221,7 @@
         "entityType": "ProgramEncounter"
       },
       "syncWeight": 2,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": false
     },
@@ -220,6 +237,7 @@
         "entityType": "Encounter"
       },
       "syncWeight": 2,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": false
     },
@@ -235,6 +253,7 @@
         "entityType": "Subject"
       },
       "syncWeight": 2,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": false
     },
@@ -245,6 +264,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 1,
+      "storageWeight": 1,
       "pullRequired": false,
       "pushRequired": true
     },
@@ -257,6 +277,7 @@
       ],
       "staticParams": null,
       "syncWeight": 1,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -269,6 +290,7 @@
       ],
       "staticParams": null,
       "syncWeight": 1,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -281,6 +303,7 @@
       ],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -291,6 +314,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": false,
       "pushRequired": true
     },
@@ -301,6 +325,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -313,6 +338,7 @@
       ],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -323,6 +349,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -333,6 +360,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -343,6 +371,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -355,6 +384,7 @@
       ],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -365,6 +395,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -375,6 +406,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": false,
       "pushRequired": true
     },
@@ -385,6 +417,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -395,6 +428,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -405,6 +439,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -415,6 +450,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -425,6 +461,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 4,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -435,6 +472,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 2,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -445,6 +483,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 1,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -455,6 +494,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 1,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -465,6 +505,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 1,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -475,6 +516,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 1,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -485,6 +527,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -495,6 +538,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 1,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -505,6 +549,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 3,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -515,6 +560,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 4,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -525,6 +571,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -535,6 +582,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -545,6 +593,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 4,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -555,6 +604,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 4,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -565,6 +615,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -575,6 +626,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -585,6 +637,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -595,6 +648,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -605,6 +659,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -615,6 +670,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -625,6 +681,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 4,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -635,6 +692,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 3,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -645,6 +703,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 5,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -655,6 +714,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 1,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -665,6 +725,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 3,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -675,6 +736,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 3,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -685,6 +747,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 3,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -695,6 +758,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 3,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -705,6 +769,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 3,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -715,6 +780,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 1,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -725,6 +791,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 3,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -735,6 +802,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -745,6 +813,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -755,6 +824,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -765,6 +835,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -775,6 +846,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -785,6 +857,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -795,6 +868,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -805,6 +879,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -815,6 +890,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -825,6 +901,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -835,6 +912,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 0.2,
       "pullRequired": true,
       "pushRequired": true
     },
@@ -845,6 +923,7 @@
       "entityTypeUuidParams": [],
       "staticParams": null,
       "syncWeight": 0,
+      "storageWeight": 1,
       "pullRequired": true,
       "pushRequired": true
     }

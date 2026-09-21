@@ -34,7 +34,46 @@ public class AvniSyncSimulation extends Simulation {
     // is mirrored here and must be updated if the client changes it. Older installs may still be on
     // 100; see the plan, D8.3.
     private static final Integer pageSize = Integer.getInteger("PAGE_SIZE", 1000);
-    private static final Integer maxPauseToSimulateRealmStorage = Integer.getInteger("MAX_REALM_STORAGE_PAUSE", 2);
+    /**
+     * A page costs a fixed amount plus a per-record amount. Both terms come from production.
+     *
+     * Anchoring the intercept at band 1's p50 - a sync that pulls almost nothing still costs
+     * 14.1s - makes the marginal term fall out consistently across bands 2 to 9 at 8.8 to 9.2
+     * ms/record, against free-intercept fits that gave -92s, +26.6s and +47.4s. All three are
+     * impossible inside a 14.1s median sync, which is how we know they were the wrong model.
+     *
+     * Both are calibration starting points, not measurements. F7 fits them by matching a simulated
+     * sync's duration against production's own: 14.1s + 8.85 ms x records.
+     */
+    private static final double baseMsPerRecord =
+        Double.parseDouble(System.getProperty("BASE_MS_PER_RECORD", "9.19"));
+    /**
+     * What a page costs before its first record: the client's transaction open and commit, its
+     * batched index maintenance, and the round trip.
+     *
+     * **This is the term that shapes load, and D6.2 originally dismissed it as negligible.** A
+     * production sync is 81 requests over 14.1s, so 174 ms a page - and for the 98% of syncs that
+     * pull few records it is essentially the whole cost. At 50 records the per-record term is 3%
+     * of the sync.
+     *
+     * It is also why a real device issues one request every 174 ms. On a LAN the round trip
+     * vanishes, so without this the simulation issues requests about four times faster per user
+     * than any device does, and manufactures contention rather than measuring it.
+     *
+     * Net out the server's own response time, which the simulation really incurs: pass
+     * 174 minus the server's median response, not 174.
+     */
+    private static final double msPerPage =
+        Double.parseDouble(System.getProperty("MS_PER_PAGE", "174"));
+    /**
+     * `weighted` applies the per-entity model. `zero` removes client cost entirely, for runs that
+     * are trying to saturate the server rather than reproduce a device.
+     *
+     * The old uniform pause is gone rather than kept as a third mode. No existing run results need
+     * preserving, and an unexercised config path rots the same way the hand-maintained entity table
+     * did.
+     */
+    private static final String storageModel = System.getProperty("STORAGE_MODEL", "weighted");
     // An override, not the default. Left unset, the window end comes from the syncDetails response
     // as the client does. Set it to pin the window across runs.
     private static final String nowOverride = System.getProperty("NOW");
@@ -186,6 +225,23 @@ public class AvniSyncSimulation extends Simulation {
         out.println(String.format(
             "Sync mode: %s | users: %d | feeder rows: %d | ramp: %ds | page size: %d | auth: %s",
             syncMode, userCount, feederRows, rampPeriod, pageSize, authMode));
+
+        if ("weighted".equals(storageModel)) {
+            out.println(String.format(
+                "Storage model: weighted | %.0f ms/page + %.2f ms/record | a full page costs "
+                + "%.1fs light, %.1fs medium, %.1fs heavy",
+                msPerPage, baseMsPerRecord,
+                (msPerPage + pageSize * 0.2 * baseMsPerRecord) / 1000.0,
+                (msPerPage + pageSize * 1.0 * baseMsPerRecord) / 1000.0,
+                (msPerPage + pageSize * 3.0 * baseMsPerRecord) / 1000.0));
+            out.println(
+                "  Both terms are calibration starting points, not measurements. MS_PER_PAGE "
+                + "should be 174 minus the server's own median response, since the simulation "
+                + "really incurs that. F7 fits them against production's 14.1s + 8.85ms x records.");
+        } else {
+            out.println("Storage model: zero - no client-side pause. Server saturation only; "
+                + "throughput here is not a rate any real fleet produces.");
+        }
         if (userCount > feederRows) {
             out.println(String.format(
                 "WARNING: USER_COUNT (%d) exceeds the user file (%d rows), so the same real user will "
@@ -537,6 +593,48 @@ public class AvniSyncSimulation extends Simulation {
         return matching;
     }
 
+    /**
+     * How many records the page carried, from the HAL `_embedded` collection.
+     *
+     * The resource name under `_embedded` varies per entity, and there is only ever one, so the
+     * first array found is it. A page with no `_embedded` is an empty page, not an error.
+     */
+    private static int countRecords(JsonNode root) {
+        JsonNode embedded = root.path("_embedded");
+        if (embedded.isMissingNode() || !embedded.isObject()) {
+            return 0;
+        }
+        for (JsonNode child : embedded) {
+            if (child.isArray()) {
+                return child.size();
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Carries the record count from the body check to the pause that follows it, within one
+     * virtual user's turn on the thread. A ThreadLocal because Gatling runs a session's steps on
+     * one thread at a time and the check completes before the pause is evaluated.
+     */
+    private static final ThreadLocal<Integer> lastPageRecordCount = ThreadLocal.withInitial(() -> 0);
+
+    /**
+     * What this page costs the client, per D6.2: a fixed term plus a per-record term.
+     *
+     * Writing a page is one transaction, so the incremental cost of record N sits well below the
+     * first record's. Modelling it as records x rate alone charges a 10-record page a tenth of a
+     * 100-record page, when in reality they cost nearly the same.
+     */
+    private static java.time.Duration storagePause(AvniEntity entity) {
+        if (!"weighted".equals(storageModel)) {
+            return java.time.Duration.ZERO;
+        }
+        long millis = Math.round(
+            msPerPage + lastPageRecordCount.get() * entity.storageWeight * baseMsPerRecord);
+        return java.time.Duration.ofMillis(Math.max(0L, millis));
+    }
+
     private static ChainBuilder getAndPaginate(AvniEntity entity) {
         return exec(session -> session.set("allPagesNotFetched", true))
             .asLongAs("#{allPagesNotFetched}", "index")
@@ -551,9 +649,11 @@ public class AvniSyncSimulation extends Simulation {
                             .transformWithSession(AvniSyncSimulation::hasMorePages)
                             .saveAs("allPagesNotFetched"))
                 )
-                    // Stands in for the time the client spends parsing and persisting the page.
-                    // See the plan, D6 - this constant is a placeholder, not a measurement.
-                    .pause(0, maxPauseToSimulateRealmStorage)
+                    // The time the client spends parsing and persisting this page: its record
+                    // count times the entity's tier times baseMsPerRecord (D6.2). A page of
+                    // observation-bearing rows costs fifteen times a page of lookup rows, which one
+                    // uniform constant could not express.
+                    .pause(session -> storagePause(entity))
             ));
     }
 
@@ -594,9 +694,17 @@ public class AvniSyncSimulation extends Simulation {
      * Paged responses carry page.totalPages; sliced ones carry slice.hasNext. Which shape comes back
      * depends on the endpoint, so both are handled - but the body is parsed once either way.
      */
+    /**
+     * Whether another page follows, and — as a side effect on the session — how many records this
+     * page carried.
+     *
+     * Both come out of one parse. Reading the body twice is what A4 removed: injector CPU spent
+     * inflating the latency being measured.
+     */
     private static boolean hasMorePages(String body, Session session) {
         try {
             JsonNode root = om.readTree(body);
+            lastPageRecordCount.set(countRecords(root));
             JsonNode page = root.path("page");
             if (!page.isMissingNode() && page.has("totalPages")) {
                 return page.get("totalPages").asInt() > session.getInt("index") + 1;

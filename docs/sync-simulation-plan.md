@@ -48,7 +48,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Auth | Cognito only | `AUTH_MODE` — username header or Cognito |
 | Telemetry | none | posted like a real client, tagged so production queries exclude it |
 | Reset sync | not requested at all | request modelled in the right order; no scenario needed — the storm was a defect |
-| Storage pause | uniform random, 0 to a constant | **Not started — D6** |
+| Storage pause | uniform random, 0 to a constant | per-entity weighted model at `BASE_MS_PER_RECORD`, with `STORAGE_MODEL=zero` to remove it |
 | Request timeouts | Gatling defaults | **Not started — D8.4** |
 | **Write path** | | |
 | Push / upload | none | **Not started — D3** |
@@ -937,7 +937,7 @@ Starting tiers, as multipliers of `baseMsPerRecord`:
 
 | Tier | × base | Entities |
 |---|---|---|
-| **Light** | 0.2 | Flat lookup rows: `Gender`, `ProgramOutcome`, `TaskStatus`, `TaskType`, `ApprovalStatus`, `StandardReportCardType`, `LocationHierarchy`, `Privilege`, `Groups`, `GroupPrivileges`, `MyGroups`, `GroupRole`, `MenuItem`, `AddressLevel`, `LocationMapping` |
+| **Light** | 0.2 | Flat lookup rows: `Gender`, `TaskStatus`, `TaskType`, `ApprovalStatus`, `StandardReportCardType`, `LocationHierarchy`, `Privilege`, `Groups`, `GroupPrivileges`, `MyGroups`, `GroupRole`, `MenuItem`, `AddressLevel`, `LocationMapping` |
 | **Medium** | 1.0 | Config and light transactional: `Concept`, `ConceptAnswer`, `Form*`, `OrganisationConfig`, `Translation`, `PlatformTranslation`, `Dashboard*`, `ReportCard`, `Documentation*`, `Rule*`, `Checklist*`, `IdentifierAssignment`, `Comment*`, `Task*`, `UserSubjectAssignment`, `SubjectMigration`, `EntityApprovalStatus`, `GroupSubject`, `SubjectProgramEligibility` |
 | **Heavy** | 3.0 | Observation-bearing: `Individual`, `ProgramEnrolment`, `ProgramEncounter`, `Encounter` |
 
@@ -945,16 +945,41 @@ Since `baseMsPerRecord` is the *observed fleet average* across a real entity mix
 weights around that average — they do not need to sum or normalise to anything, but they should
 straddle 1.0, which they do.
 
+**The heavy tier checks out against the data.** Band 10 pulls ~47,500 records in 1,076 s, and a sync
+that large is dominated by observation-bearing rows — so its implied **22.4 ms/record against the
+fleet's 8.85 is a ratio of 2.5**, near the 3.0 the tier assigns. The tiering was judgement, but it is
+judgement the measurements support.
+
+> **`ProgramOutcome` was in this list and is not in the model.** The generator assigns tiers by
+> name, so it would have been a silent no-op — 14 light entities where the plan claimed 15. Removed.
+
 > **These multipliers are judgement, not measurement.** The tiering reflects payload structure —
 > whether a row carries an observation set — which is the dominant cost driver. The ratios matter more
 > than precision within a tier, and D7 replaces the whole scheme with per-entity measurements. Three
 > tiers is deliberate: a finer split is false precision on numbers this soft.
 
-Per-page overhead (parse setup, transaction open/commit) is omitted from the model entirely. At a page
-size of 1000 it is negligible against the per-record term, and carrying a second constant that cannot
-be measured separately adds nothing.
+**The per-page term is not negligible — it is the dominant one, and this plan had it backwards.**
 
-**D6.3 — Implement.**
+An earlier version of this section omitted per-page overhead on the grounds that at a page size of
+1000 it was small against the per-record term. That reasoning only holds for full pages, and almost
+no page is full: **98% of production's syncs pull under 5,000 records across 81 requests**, so most
+pages carry a handful of rows and the fixed cost is nearly the whole cost. At 50 records the
+per-record term is **3% of the sync**.
+
+It can be measured, too. A production sync is **81 requests over 14.1 seconds — 174 ms a page**,
+made up of the server's response, the mobile round trip and the client's own per-request work.
+
+**And it is the term that shapes load.** A real device issues one request every 174 ms. On a LAN the
+round trip disappears, so a simulation without this term issues requests roughly **four times faster
+per user** than any device — which does not make the test conservative, it manufactures contention
+that cannot occur and invites chasing it. Pass `MS_PER_PAGE` as 174 minus the server's own median
+response, since the simulation genuinely incurs that part.
+
+Writing a page is also one transaction, so the incremental cost of record N sits well below the
+first record's. A pure `records × rate` model charges a 10-record page a tenth of a 100-record page
+when in practice they cost nearly the same.
+
+**D6.3 — Implement.** *Done.*
 
 - Add a `msPerRecord` field to the `AvniEntity` model (populated by the C1 generator, so new entities
   get a tier assignment rather than silently defaulting).
@@ -964,6 +989,26 @@ be measured separately adds nothing.
   saturation runs, client cost removed). Delete the uniform pause outright rather than keeping it as
   a third mode — no existing run results need preserving, and an unexercised config path rots the
   same way `AvniEntities.json` did.
+
+**Built**, as `msPerPage + records × tier × baseMsPerRecord`, with `STORAGE_MODEL=zero` to remove
+client cost entirely for saturation runs.
+
+**A warning added during the build was wrong and has been removed**, and the way it was wrong is
+worth keeping. It compared a full 1,000-record heavy page — 27.6 s — against the 14.1 s median sync,
+and concluded the coefficient must be too high. But a median sync is band 1 and pulls almost nothing;
+**a full heavy page only occurs in band 2 and above, where a sync runs 83 s to 1,076 s**, and 27.6 s
+inside an 82.9 s sync is unremarkable. Comparing a heavy page against a light sync compares two
+things that never co-occur.
+
+Re-deriving the coefficient properly is what settled it. Anchoring the intercept at band 1's p50
+gives **8.85 ms/record**, against Q1's 9.19 — a 4% difference, which is noise. The slope was never
+the problem; **the free intercept was**, and every unanchored fit returned a value that could not fit
+inside a 14.1 s sync.
+
+**`STORAGE_MODEL=zero` is not a neutral fallback**, which is worth stating because it looks like one.
+Removing the pause lets a virtual user issue its 81 requests back to back, bounded only by the
+server's response — at a 20 ms response that is **9× a real device's request rate, and 17× at 10 ms**.
+It is a deliberate over-drive for saturation runs, not a way to avoid choosing a coefficient.
 
 ### D7 — Measured cost model (Phase 3)
 

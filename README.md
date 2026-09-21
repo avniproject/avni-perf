@@ -73,6 +73,42 @@ entity name *and* type uuid. Without it every typed entity falls through to the 
 default and full-syncs whatever the mode says, which is most of the sync volume. The run warns on
 the console if it ever builds a body without one.
 
+### Client-side storage cost
+
+The simulation pauses after each page to stand in for the time a device spends parsing and
+persisting it. `STORAGE_MODEL=weighted` (default) computes that as
+
+```
+MS_PER_PAGE + records x entity tier x BASE_MS_PER_RECORD
+```
+
+**Both terms are needed — they dominate in different places.** The crossover is at 19 records a
+page. Below it the fixed term is most of the cost, and 98% of production's syncs are down there;
+above it the per-record term takes over, and that is where the heavy syncs live. Drop the per-record
+term and a full heavy page is understated 159x; drop the per-page term and a 3-record page is
+understated 7x.
+
+Three tiers, assigned by the entity generator so a new entity arrives with one: **0.2x** for flat
+lookup rows, **1.0x** for configuration and light transactional, **3.0x** for the
+observation-bearing four. A page of subjects therefore costs fifteen times a page of genders, which
+one uniform constant could not express.
+
+Defaults are **174 ms a page** and **9.19 ms a record**, both derived from production: a sync is 81
+requests over 14.1 seconds, and anchoring the intercept there makes the marginal term fall out
+consistently across bands at 8.8 to 9.2 ms.
+
+> **Both are calibration starting points, not measurements.** `MS_PER_PAGE` should be 174 minus the
+> server's own median response, since the simulation genuinely incurs that part. F7 fits both by
+> matching a simulated sync against production's `14.1s + 8.85ms x records`.
+
+> **`STORAGE_MODEL=zero` is not a neutral fallback.** Removing the pause lets a virtual user fire
+> its 81 requests back to back, bounded only by the server — at a 20 ms response that is **9x a real
+> device's request rate**, and 17x at 10 ms. It is a deliberate over-drive for saturation runs. Used
+> by accident it manufactures contention that cannot occur.
+>
+> The per-page term is what shapes load: a real device issues one request every 174 ms, and on a LAN
+> the round trip vanishes. Without it the simulation runs about four times too fast per user.
+
 ### Environment variables
 Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
@@ -95,6 +131,12 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 `MAX_FAILED_PERCENT` error budget for a load run, default 1.0
 
 `MAX_P95_MS` asserts the 95th percentile when set. Production's light-band figure is 80,000
+
+`STORAGE_MODEL` `weighted` (default) or `zero` — see above
+
+`BASE_MS_PER_RECORD` defaults to 9.19 — see above
+
+`MS_PER_PAGE` defaults to 174 — see above
 
 ## Run archiving
 
