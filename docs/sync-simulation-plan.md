@@ -1273,6 +1273,12 @@ Fold it in or delete it; maintaining two guarantees both drift.
 
 ### F4 — Deploying the server to the closed environment
 
+**Distributed injection is deferred.** One injector until something says otherwise — Gatling OSS has
+no orchestration, so multiple injectors mean merging logs by hand, which is real work for a problem
+nobody has yet. **The signal to revisit is the injector appearing in its own results**: saturated CPU
+on the load generator, or response times rising with virtual user count while the server's own
+metrics stay flat. F7's calibration gate is where that would surface.
+
 **Prerequisite for B1.** B1 requires the perf environment be unreachable from the internet. CircleCI
 deploys to it from the internet. That has to be resolved before the environment can be closed.
 
@@ -2158,8 +2164,7 @@ Ordering reflects dependencies, not estimates.
 **Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review. Two
 assumptions in it remain open: that a worker syncs four times a working day — where the requirement
 says weekly and production measures a 16-minute median — and that supervision sits at sub-centre
-level, which changes per-device volume by an order of magnitude. The "500 workers" reading is
-confirmed as field workers only.
+level, which changes per-device volume by an order of magnitude.
 
 **Deliberately unscheduled.** **D8.2** (page size tuning) and **E4** (noisy neighbour) are
 finding-triggered — pull them forward when a result points at serialisation or at tenancy, not on a
@@ -2195,7 +2200,7 @@ under **Measure before fixing** above.
   a smaller one, and that becomes a task rather than a question.
 - **~~Is on-demand media viewing in scope?~~** *Decided: no.* Browsing workload, not a sync one. See
   D5.3.
-- **Distributed injectors.** Gatling OSS has no orchestration; multiple injectors mean merging
+- **~~Distributed injectors.~~** *Deferred — one injector until F7 says otherwise.* Gatling OSS has no orchestration; multiple injectors mean merging
   `simulation.log` files by hand (`gatling.sh -ro`). Cannot be answered until the concurrent-user
   target in Success criteria exists — one large injector goes a long way.
 - **Over what period?** Ownership is settled — the dedicated Avni team for Tanuh. Sequencing here

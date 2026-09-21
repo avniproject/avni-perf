@@ -4,7 +4,7 @@ Everything [the sync simulation plan](sync-simulation-plan.md) and
 [the test scenarios](test-scenarios.md) are waiting on.
 
 **This document holds the inputs only** — the questions someone has to answer before the tests can
-be designed, built or run. No amount of running will settle them.
+be designed, built or run. No amount of running will settle them. **Four remain.**
 
 The questions the tests *answer* are a different kind and live in
 [the plan](sync-simulation-plan.md#what-the-tests-will-answer), because they are what the exercise is
@@ -83,27 +83,6 @@ A real state runs 165,000 ASHAs, so 500 is 0.3% of one. **Nothing in a 500-worke
 extrapolates upward** — tenant data volume grows with worker count, and sync cost follows it through
 index size and cache residency.
 
-### 5. Which organisation configuration(s) to run against?
-
-Blocks H1 and F5.1, though not building anything.
-
-The generator takes the bundle as a parameter and supports **one per tenant**, so the mechanism
-exists. What is open is the choice. Worth covering a range of sizes deliberately: configuration size
-drives the `syncDetails` row count and therefore D1.1's per-row queries, where Q8 measured 79
-entities tracked against 4 changed.
-
-### 6. Distributed injectors — needed, or not?
-
-Blocks F3.
-
-Gatling OSS has no orchestration, so multiple injectors mean merging logs by hand. One injector may
-well carry the whole deployment's load. Measure before building for it.
-
-### 7. Over what period?
-
-Blocks sequencing. Ownership is settled; the order in the Sequencing table reflects dependencies
-rather than a calendar.
-
 ---
 
 ## Measurements
@@ -128,7 +107,7 @@ an open decision.
 |---|---|
 | **H5 steps 3–4**, the manual client check | A loaded dataset and a device. The automated half is built, and a dataset passing only that half is **loadable, not blessed** |
 | **The generator's column and metadata dumps** | A target database with a bundle loaded. `columns.sql` and `refs.sql` are written |
-| **Production's tenant skew** | A decision to build it. Cases 6 and 7 need it, so the hosting comparison cannot run until it exists |
+| **Production's tenant skew** | A decision to build it. It is the second of the two tenant shapes decided below, and cases 6 and 7 cannot run without it |
 | **Q7c's index usage, re-read later** | Nothing — it has run. Worth repeating after any index change, since `idx_scan` counts only since the server last restarted |
 
 ---
@@ -144,6 +123,52 @@ They would change conclusions if false, so they are listed rather than buried.
 | Sync is the whole exercise | Closed questions | State-wide search is explicitly out of scope. **A passing sync run is not clearance for search**, because search cost grows with tenant size where sync cost grows with catchment size |
 | The three growth datasets differ only in encounter count | [test-scenarios.md](test-scenarios.md) | Beneficiary population does not grow with programme activity |
 | A catchment is declared against one location | H · `tools/data-generator` | A generator default, not a platform constraint — the mapping table is many-to-many and real bundles carry three locations per catchment |
+
+---
+
+## Decided, and why
+
+Answers rather than absences. Kept because each one shapes something downstream, and a decision with
+no visible reasoning gets relitigated.
+
+### Which organisation configurations to run against
+
+**Two shapes, matching the two hosting models the cases compare.**
+
+- **Separate hosting** — the customer's tenants, all on a **similar configuration and similar load**.
+  There is no reason to vary them: on their own infrastructure, nobody else's shape affects them.
+- **Shared hosting** — the same tenants, plus **production's existing organisation skew** as it
+  actually is: 986 organisations, 48% holding nothing, the largest holding 21% of all subjects
+  (Q12).
+
+That is not two settings of one dial; it is **two tenant-shape specifications the generator has to
+produce**. The first it already builds. The second is the outstanding generation run that cases 6
+and 7 wait on.
+
+The generator takes the bundle per tenant, so covering a range of configuration sizes stays available
+if a finding calls for it — configuration size drives the `syncDetails` row count and therefore
+D1.1's per-row queries, where Q8 measured 79 entities tracked against 4 changed. It is no longer a
+question blocking anything.
+
+### Distributed injectors
+
+**Deferred. One injector until something says otherwise.**
+
+Gatling OSS has no orchestration, so multiple injectors mean merging logs by hand — real work for a
+problem nobody has yet. **The signal to revisit is the injector showing up in its own results**:
+saturated CPU on the load generator, or response times that rise with virtual user count while the
+server's own metrics stay flat. F7's calibration gate is where that would surface. Scope it then, not
+now.
+
+### Over what period the work runs
+
+**Not an open question, and previously listed as one in error.** Ownership is settled and the
+Sequencing table orders by dependency, so nothing in the design, the build or the execution is
+waiting on a date.
+
+Worth separating from something it reads like: the **day 60, 120 and 180** datasets are *data ages*
+the tests run against, not a project calendar. All three exist at once, and they are compared in a
+single sitting rather than across six months.
 
 ---
 
