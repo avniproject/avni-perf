@@ -1,23 +1,163 @@
 # Test scenarios
 
-**For customer review, and for the generator to build against.** The deployment being modelled, and
-the eleven test cases derived from it with actual numbers.
+**For customer review, and for the generator to build against.** Eleven test cases with actual
+numbers, and the deployment they are derived from.
 
 Split out of [the sync simulation plan](sync-simulation-plan.md) because it has a different audience
 and a different lifecycle: the plan is how the instrument gets built, this is what it will be pointed
 at. Every figure here is either something the customer supplied or something derived from it, and the
 derivations say so.
 
-**Three assumptions are the ones to check first**, because each one moves the numbers, and one of
-them changes what the exercise is measuring. They are listed with the rest in
-[open-questions.md](open-questions.md).
+**Three assumptions move the numbers, and one of them changes what the exercise measures.** They are
+flagged where they appear and listed in [open-questions.md](open-questions.md).
 
 ---
 
-## The deployment
+## The cases
 
-Added after discussion with the customer, and it reorders parts of this section. Figures marked
-*TBC* are ones the customer has quoted and that are not yet recorded here.
+| # | Case | Users | Dataset | Mode | What it answers |
+|---|---|---|---|---|---|
+| **1** | Training cohort | 100 field workers, all first login within 15 min | Config only, **no field data** | Full | Reference-data sync and `syncDetails` cost, isolated from catchment volume |
+| **2** | Field worker steady state | 500 | Day 180, one state tenant | Incremental, 1% full | The common case |
+| **3** | Supervisor steady state | 62 | Day 180, one state tenant | Incremental, 1% full | Whether 3× the volume per device changes anything |
+| **4** | **Combined** | 500 + 62 | Day 180, one state tenant | Incremental, 1% full | **The realistic case.** Wide and frequent syncs competing for one pool |
+| **5** | **Separate infrastructure** | 1,504 + 188 | Day 180, these 10 tenants only | Incremental, 1% full | The customer's own load, with nobody else's data in the tables. **The baseline the next two are measured against** |
+| **6** | **Shared — co-tenant data** | 1,504 + 188 | Day 180 **plus production's 986 organisations**, which sync nothing | Incremental, 1% full | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
+| **7** | **Shared — co-tenant load** | Case 6, plus production's own arrival rate | Same as case 6 | Incremental, 1% full | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
+| **8** | Growth comparison | Case 4 | Day 60, then 120, then 180 | Incremental, 1% full | The shape of the curve. A knee between points is the finding |
+| **9** | Reset storm | 562, one tenant, org-wide reset | Day 180 | **All full** | The heaviest real event (Q10 measured it at 130× a normal week) |
+| **10** | Stress ramp | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
+| **11** | Soak | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
+
+**Build order: 1, 4, 8, then the rest.** Case 1 needs no generated data at all, so it can run before
+the generator exists. Case 4 is the one to answer first. Case 8 needs all three datasets, so it sets
+the generator's deadline.
+
+### Conditional on one open question
+
+Cases 3 to 8 assume **supervision at sub-centre level** — 8 field workers per supervisor. If it
+sits higher, per-device volume changes by roughly an order of magnitude and the cases above change
+with it:
+
+| Supervisor tier | Field workers each | Records at day 180 | Full sync | vs Q3's heaviest device |
+|---|---|---|---|---|
+| **Sub-centre** | 8 | 37,200 | 5.7 min | 0.14× |
+| PHC | 45 | 207,000 | 32 min | 0.78× |
+| Block | 200 | 920,000 | 141 min | 3.5× |
+
+**At sub-centre level no case here exceeds what production already carries, so this exercise tests
+concurrency and tenancy. At block level it tests volume as well.** That is a different exercise, and
+it is one answer away.
+
+---
+
+## Hosting is one of the cases, not a given
+
+These tenants could sit on the existing shared platform, beside the 986 organisations Q12 measured —
+48% of them empty, the largest holding 21% of all subjects — or on infrastructure of their own. **That
+is a decision with a cost attached either way, and it should be made on a number rather than on
+instinct.**
+
+Sharing is not free, and multi-tenancy is where the cost hides. Row-level security selects one
+tenant's rows out of tables holding every tenant's, planner statistics are computed across all of
+them, the connection interceptor runs `set role` on every borrow, and reference-table RLS walks
+organisation ancestors. None of that scales with *this* customer's data; all of it scales with the
+platform's.
+
+Separate infrastructure removes those costs and adds its own: a second environment to deploy,
+monitor, patch and pay for, and a tenant that cannot later be merged back without a migration.
+
+**Cases 5, 6 and 7 are the same load under three conditions, and the deltas between them are the
+answer.** Case 5 is the customer alone. Case 6 adds everyone else's *data* but none of their traffic,
+which isolates what mere presence costs — RLS selectivity, planner statistics, table and index size.
+Case 7 adds their *traffic* too, at production's measured arrival rate of 792 syncs in its busiest
+recorded hour (Q4), which is what actually competes for the connection pool, CPU and IO.
+
+**Separating 6 from 7 matters because the two have different remedies.** If the cost is in case 6,
+it is structural and follows the data wherever it sits — better indexes, better statistics, a cheaper
+RLS predicate. If it only appears in case 7, it is contention, and more capacity or a separate
+instance fixes it. Running them as one case would leave you unable to tell which you were looking at.
+
+Running only case 5 would leave the decision exactly where it started.
+
+---
+
+---
+
+## The deployment being modelled
+
+**Two things vary across the cases, and only one of them is the customer's.** The deployment below is
+theirs — ten tenants, 1,692 users, 1.5 million beneficiaries. **Where it runs is ours**, and cases 5,
+6 and 7 measure both answers rather than picking one:
+
+| Hosting | What is in the database | Cases |
+|---|---|---|
+| **Separate** | These 10 tenants only | 1–4, 5, 8–11 |
+| **Shared, co-tenants idle** | Plus production's 986 organisations | 6 |
+| **Shared, co-tenants active** | Plus their traffic | 7 |
+
+Every case except 5, 6 and 7 assumes separate hosting, because a single-tenant question does not need
+the other 986 organisations present to answer it. If the hosting comparison says sharing is free, the
+distinction stops mattering and the cases can all run on the shared platform.
+
+### The tenants
+
+| | ASHAs | ANMs | Villages | Beneficiaries | Encounters/day |
+|---|---|---|---|---|---|
+| State tenant (pilot) × 2 | 500 | 62 | 167 | 501,000 | 10,000 |
+| NGO tenant × 8 | 63 | 8 | 21 | 63,000 | 1,260 |
+| **Platform total** | **1,504** | **188** | **502** | **1,506,000** | **30,080** |
+
+Derived at 3 ASHAs per village, 3,000 beneficiaries per village, 8 ASHAs per sub-centre and 20
+encounters per ASHA per day — see **Where the numbers come from** below.
+
+**Assumption to confirm: the customer's "500 workers" is read as 500
+field workers, with supervisors added on top rather than counted within it.**
+
+### Dataset size at each growth point
+
+| | Encounters | Total rows | vs production today |
+|---|---|---|---|
+| Day 60 | 1,804,800 | 3,310,800 | 26% of its encounters |
+| Day 120 | 3,609,600 | 5,115,600 | 53% |
+| **Day 180** | **5,414,400** | **6,920,400** | **79%** |
+| Day 365 | 10,979,200 | 12,485,200 | 160% |
+
+Beneficiaries stay at 1,506,000 throughout — 55% of production's current subject count — because
+population does not grow with programme activity. **Three datasets are needed**, at day 60, 120 and
+180, each a G4 snapshot.
+
+### What each device holds
+
+| | Subjects | Day 60 | Day 120 | Day 180 | Year 1 |
+|---|---|---|---|---|---|
+| Field worker — 1 village | 3,000 | 3,600 | 7,200 | 10,800 | 21,900 |
+| Supervisor — 1 sub-centre | 8,400 | 9,600 | 19,200 | 28,800 | 58,400 |
+
+Full-sync client time at 9.19 ms/record: a field worker **2.1 min** at day 180 and **3.8** at year one;
+a supervisor **5.7** and **10.2**.
+
+### Sync frequency — the one number with no basis yet
+
+Arrival rate needs a per-worker sync frequency, and nothing measured or supplied gives one.
+**Assumed: 4 syncs per worker per working day**, spread across the 09:00–21:00 plateau Q4 measured in
+production.
+
+| At 4 syncs/worker/day | Syncs/day | Average hour | Peak hour |
+|---|---|---|---|
+| One state tenant (562 users) | 2,248 | 187 | ~232 |
+| Whole platform (1,692 users) | 6,768 | 564 | ~700 |
+
+For reference, production's busiest hour ever recorded was **792 syncs** (Q4). So the whole
+deployment at four syncs a day lands just under production's existing peak. **If the real figure is
+two or eight a day, halve or double every arrival rate in the table.**
+
+---
+
+## Where the numbers come from
+
+Everything above derives from this section: what the customer supplied, the real establishment figures
+they gave, and the arithmetic between the two. Read it when a number above looks wrong.
 
 **Two deployment shapes, not one.**
 
@@ -98,7 +238,7 @@ because the tenant's total data volume grows with worker count and sync cost dep
 index size and cache residency. **Worth confirming: is 500 the pilot, the first year, or the design
 target?**
 
-Per-device volumes, on the establishment table's figures. Encounter counts, not subject counts — a
+Per-device volumes, on the establishment table's figures (see the last section). Encounter counts, not subject counts — a
 shared catchment means every worker in a village pulls every encounter recorded there, including the
 ones they did not create, so a field worker's sync volume tracks the village's total activity rather
 than their own.
@@ -110,7 +250,7 @@ than their own.
 
 **Both sit inside what production already carries.** Q3's median device holds ~715 rows and its
 heaviest ~264,569; a supervisor at year two reaches 116,800, which is under half the existing p99. The
-volumes above are a real increase on the median but they are not new territory, and that is a
+per-device volumes are a real increase on the median but they are not new territory, and that is a
 different exercise from the one the 10-village figure implied.
 
 **The dataset target follows from the model.** Two state tenants plus eight NGO tenants come to
@@ -154,7 +294,7 @@ concurrency is the thing being tested.
 village 200 encounters daily against 3,000 beneficiaries, which implies **every beneficiary is seen
 about every 15 days**. If the real follow-up interval is monthly or quarterly, then either the
 per-worker encounter rate or the beneficiaries-per-village figure needs adjusting, and the tables
-above move with it.
+earlier move with it.
 
 **A shared catchment makes ten users read the same rows.** Confirmed by the customer: the ten workers
 in a village share its catchment rather than partitioning it. So village data is pulled ten times
@@ -184,7 +324,7 @@ unusually heavy one — the same mistake the catchment sampler already avoids fo
 which turned out to be two populations rather than one skewed one.
 
 **So sampling one distribution for every user is wrong.** The generator must model two user classes
-with their own catchment sizes and their own population ratio. The tables below give the catchment
+with their own catchment sizes and their own population ratio. The per-device tables give the catchment
 sizes; the ratio is the part still missing, since the customer supplied a supervisor's span rather
 than a count. **Q15 remains worth running** — not to size this deployment, which this document mostly
 does, but because the
@@ -203,129 +343,9 @@ to day 180.
 **One assumption to carry explicitly**, the customer's: all of their organisations behave alike, so
 one usage pattern covers them.
 
-### Shared or separate infrastructure is a question to measure, not to assume
-
-These tenants could sit on the existing shared platform, beside the 986 organisations Q12 measured —
-48% of them empty, the largest holding 21% of all subjects — or on infrastructure of their own. **That
-is a decision with a cost attached either way, and it should be made on a number rather than on
-instinct.**
-
-Sharing is not free, and multi-tenancy is where the cost hides. Row-level security selects one
-tenant's rows out of tables holding every tenant's, planner statistics are computed across all of
-them, the connection interceptor runs `set role` on every borrow, and reference-table RLS walks
-organisation ancestors. None of that scales with *this* customer's data; all of it scales with the
-platform's.
-
-Separate infrastructure removes those costs and adds its own: a second environment to deploy,
-monitor, patch and pay for, and a tenant that cannot later be merged back without a migration.
-
-**Cases 5, 6 and 7 are the same load under three conditions, and the deltas between them are the
-answer.** Case 5 is the customer alone. Case 6 adds everyone else's *data* but none of their traffic,
-which isolates what mere presence costs — RLS selectivity, planner statistics, table and index size.
-Case 7 adds their *traffic* too, at production's measured arrival rate of 792 syncs in its busiest
-recorded hour (Q4), which is what actually competes for the connection pool, CPU and IO.
-
-**Separating 6 from 7 matters because the two have different remedies.** If the cost is in case 6,
-it is structural and follows the data wherever it sits — better indexes, better statistics, a cheaper
-RLS predicate. If it only appears in case 7, it is contention, and more capacity or a separate
-instance fixes it. Running them as one case would leave you unable to tell which you were looking at.
-
-Running only case 5 would leave the decision exactly where it started.
-
 ---
 
-## Test cases
-
-Everything below derives from the establishment figures above. Where a number is an assumption
-rather than something supplied, it says so — those are the lines to check first.
-
-### At a glance
-
-| | ASHAs | ANMs | Villages | Beneficiaries | Encounters/day |
-|---|---|---|---|---|---|
-| State tenant (pilot) × 2 | 500 | 62 | 167 | 501,000 | 10,000 |
-| NGO tenant × 8 | 63 | 8 | 21 | 63,000 | 1,260 |
-| **Platform total** | **1,504** | **188** | **502** | **1,506,000** | **30,080** |
-
-Derived at 3 ASHAs per village, 3,000 beneficiaries per village, 8 ASHAs per sub-centre and 20
-encounters per ASHA per day — the figures in **The deployment** above. **Assumption to confirm: the customer's "500 workers" is read as 500
-field workers, with supervisors added on top rather than counted within it.**
-
-### Dataset size at each growth point
-
-| | Encounters | Total rows | vs production today |
-|---|---|---|---|
-| Day 60 | 1,804,800 | 3,310,800 | 26% of its encounters |
-| Day 120 | 3,609,600 | 5,115,600 | 53% |
-| **Day 180** | **5,414,400** | **6,920,400** | **79%** |
-| Day 365 | 10,979,200 | 12,485,200 | 160% |
-
-Beneficiaries stay at 1,506,000 throughout — 55% of production's current subject count — because
-population does not grow with programme activity. **Three datasets are needed**, at day 60, 120 and
-180, each a G4 snapshot.
-
-### What each device holds
-
-| | Subjects | Day 60 | Day 120 | Day 180 | Year 1 |
-|---|---|---|---|---|---|
-| Field worker — 1 village | 3,000 | 3,600 | 7,200 | 10,800 | 21,900 |
-| Supervisor — 1 sub-centre | 8,400 | 9,600 | 19,200 | 28,800 | 58,400 |
-
-Full-sync client time at 9.19 ms/record: a field worker **2.1 min** at day 180 and **3.8** at year one;
-a supervisor **5.7** and **10.2**.
-
-### Sync frequency — the one number with no basis yet
-
-Arrival rate needs a per-worker sync frequency, and nothing measured or supplied gives one.
-**Assumed: 4 syncs per worker per working day**, spread across the 09:00–21:00 plateau Q4 measured in
-production.
-
-| At 4 syncs/worker/day | Syncs/day | Average hour | Peak hour |
-|---|---|---|---|
-| One state tenant (562 users) | 2,248 | 187 | ~232 |
-| Whole platform (1,692 users) | 6,768 | 564 | ~700 |
-
-For reference, production's busiest hour ever recorded was **792 syncs** (Q4). So the whole
-deployment at four syncs a day lands just under production's existing peak. **If the real figure is
-two or eight a day, halve or double every arrival rate below.**
-
-### The ten cases
-
-| # | Case | Users | Dataset | Mode | What it answers |
-|---|---|---|---|---|---|
-| **1** | Training cohort | 100 field workers, all first login within 15 min | Config only, **no field data** | Full | Reference-data sync and `syncDetails` cost, isolated from catchment volume |
-| **2** | Field worker steady state | 500 | Day 180, one state tenant | Incremental, 1% full | The common case |
-| **3** | Supervisor steady state | 62 | Day 180, one state tenant | Incremental, 1% full | Whether 3× the volume per device changes anything |
-| **4** | **Combined** | 500 + 62 | Day 180, one state tenant | Incremental, 1% full | **The realistic case.** Wide and frequent syncs competing for one pool |
-| **5** | **Separate infrastructure** | 1,504 + 188 | Day 180, these 10 tenants only | Incremental, 1% full | The customer's own load, with nobody else's data in the tables. **The baseline the next two are measured against** |
-| **6** | **Shared — co-tenant data** | 1,504 + 188 | Day 180 **plus production's 986 organisations**, which sync nothing | Incremental, 1% full | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
-| **7** | **Shared — co-tenant load** | Case 6, plus production's own arrival rate | Same as case 6 | Incremental, 1% full | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
-| **8** | Growth comparison | Case 4 | Day 60, then 120, then 180 | Incremental, 1% full | The shape of the curve. A knee between points is the finding |
-| **9** | Reset storm | 562, one tenant, org-wide reset | Day 180 | **All full** | The heaviest real event (Q10 measured it at 130× a normal week) |
-| **10** | Stress ramp | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
-| **11** | Soak | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
-
-**Build order: 1, 4, 8, then the rest.** Case 1 needs no generated data at all, so it can run before
-the generator exists. Case 4 is the one to answer first. Case 8 needs all three datasets, so it sets
-the generator's deadline.
-
-### Conditional on one open question
-
-Cases 3 to 8 assume **supervision at sub-centre level** — 8 field workers per supervisor. If it
-sits higher, per-device volume changes by roughly an order of magnitude and the cases above change
-with it:
-
-| Supervisor tier | Field workers each | Records at day 180 | Full sync | vs Q3's heaviest device |
-|---|---|---|---|---|
-| **Sub-centre** | 8 | 37,200 | 5.7 min | 0.14× |
-| PHC | 45 | 207,000 | 32 min | 0.78× |
-| Block | 200 | 920,000 | 141 min | 3.5× |
-
-**At sub-centre level no case here exceeds what production already carries, so this exercise tests
-concurrency and tenancy. At block level it tests volume as well.** That is a different exercise, and
-it is one answer away.
-
-### What the generator has to produce
+## What the generator has to produce
 
 1. **Three datasets** — day 60, 120, 180 — differing only in encounter count.
 2. **Ten tenants**: 2 × 500 field workers, 8 × 63, each with its own location hierarchy and catchments.
