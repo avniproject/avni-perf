@@ -83,6 +83,26 @@ write.
 
 ---
 
+## Scope, and what expanding it would mean
+
+**The current scope is sync.** Not because sync is the only thing that matters, but because it is one
+coherent path that can be measured properly, and three others were set aside to keep it that way.
+Each is additive: the harness, the dataset and the environment all serve them too, so bringing one
+in is a new set of scenarios rather than a new exercise.
+
+| Out of scope | Why it was set aside | What bringing it in would need |
+|---|---|---|
+| **State-wide facility search** | Cost grows with total tenant size where sync's grows with catchment size, so it scales differently and would need its own sizing | Scenarios against `/web/*` search endpoints, and a dataset sized to the searchable set rather than to catchments |
+| **Webapp and API consumers** | Separate query paths — the webapp uses `/web/*` and touches only two sync-style endpoints, both reference data | Scenarios per endpoint. The same dataset serves them |
+| **On-demand media viewing** | A browsing workload driven by what users open, not by sync | A real bucket with objects in it, and a model of viewing behaviour that nothing currently measures |
+
+**One consequence travels with the boundary rather than with any one item.** A clean sync result says
+nothing about the three above, and search is the one where that matters most: its cost scales with
+the thing sync is insulated from. **A passing sync run is not clearance for search at state scale**,
+and the temptation to read it that way is exactly why the boundary is written down.
+
+---
+
 ## Assumptions carried, that nobody is being asked about
 
 They would change conclusions if false, so they are listed rather than buried.
@@ -91,7 +111,6 @@ They would change conclusions if false, so they are listed rather than buried.
 |---|---|---|
 | All of this customer's organisations behave alike, so one usage pattern covers them | [test-scenarios.md](test-scenarios.md) | The customer's own, recorded as theirs |
 | A generated dataset can stand in for production data | H6 | An anonymised clone is not available. Settled rather than open — but it makes H5's validation the only thing that will catch an unrealistic generator |
-| Sync is the whole exercise | Closed questions | State-wide search is explicitly out of scope. **A passing sync run is not clearance for search**, because search cost grows with tenant size where sync cost grows with catchment size |
 | The three growth datasets differ only in encounter count | [test-scenarios.md](test-scenarios.md) | Beneficiary population does not grow with programme activity |
 | A catchment is declared against one location | H · `tools/data-generator` | A generator default, not a platform constraint — the mapping table is many-to-many and real bundles carry three. **Q16 will settle it** |
 
@@ -177,13 +196,11 @@ single sitting rather than across six months.
 ## Closed
 
 Recorded briefly so none of it gets relitigated. Full reasoning is in the plan's own closed-questions
-list.
+list. What is out of scope is in **Scope** above rather than here, because scope is a boundary that
+can move rather than a question that was settled.
 
-- **Production statistics access** — granted; fifteen queries written, fourteen run.
-- **On-demand media viewing** — out of scope. A browsing workload, not a sync one.
+- **Production statistics access** — granted; sixteen queries written, fourteen run.
 - **Anonymised production clone** — not available. Generation is the path.
-- **State-wide facility search** — out of scope, with the caveat above.
-- **Webapp and API consumers** — separate query paths; keeping to sync is correct.
 - **Token expiry across a long sync** — a harness limitation only. The real client refreshes per
   request, so a multi-hour sync is fine for it.
 - **Perf environment isolation** — designed, not an unknown.

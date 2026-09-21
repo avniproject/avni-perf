@@ -2264,11 +2264,13 @@ plan itself decided. What the tests will *answer* is under **Measure before fixi
   whose `data_type` is a media type, so their creation rate per user is derivable directly.
 - **~~How often do resets happen?~~** *Answerable in SQL* — [measurement query](production-measurement-queries.md) **Q10** against the
   `reset_sync` table, which records every reset with user, subject type, organisation and timestamp.
-- **~~State-wide facility search?~~** *Out of scope, decided with the customer.* Facility staff are
-  expected to search across a whole state's beneficiaries. That is a `/web/*` query path whose cost
-  scales with total tenant size rather than with catchment size, which makes it both a different
-  exercise and the one thing a sync result cannot speak for. Recorded here so the exclusion is
-  traceable: **a passing sync run is not clearance for search at that scale.**
+- **~~State-wide facility search?~~** *Outside the current scope, decided with the customer.*
+  Facility staff are expected to search across a whole state's beneficiaries. That is a `/web/*`
+  query path whose cost scales with total tenant size rather than with catchment size, so it needs
+  its own sizing. **Additive rather than excluded** — the harness, dataset and environment all serve
+  it, so bringing it in later is a new set of scenarios rather than a new exercise
+  ([scope](open-questions.md)). Until then: **a passing sync run is not clearance for search at that
+  scale.**
 - **~~Sync only, or webapp and API consumers too?~~** *Answered: they are separate query paths.* The
   webapp uses `/web/*` endpoints (≈150 call sites in `avni-webapp/src`) and touches only two
   sync-style endpoints, both reference data (`rule`, `ruleDependency`). So mobile sync and the webapp
