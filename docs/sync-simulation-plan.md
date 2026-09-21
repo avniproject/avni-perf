@@ -2142,9 +2142,10 @@ calendar.
 
 ## Open questions
 
-**[open-questions.md](open-questions.md) collects these for review**, grouped by who can answer each
-one, with what it blocks and what changes if an assumption is wrong. The four customer questions at
-the top of that document are the ones that move numbers.
+**[open-questions.md](open-questions.md) collects these for review**, ordered by how much turns on
+the answer, with what each one blocks. The first two move the most: which tier supervises, which
+decides whether this exercise tests volume or concurrency, and shared versus separate hosting, which
+is now a measurement rather than an assumption.
 
 - **Which tier supervises?** The test cases assume an ANM at sub-centre level, covering 8 field workers.
   At PHC level a supervisor's day-180 catchment is 5.6× larger and at block level 25× — the difference
@@ -2209,9 +2210,8 @@ the top of that document are the ones that move numbers.
 - **[test-scenarios.md](test-scenarios.md)** — the deployment being modelled and eleven test cases
   with numbers, for customer review. Split out because it has a different audience: that is what the
   instrument gets pointed at, this is how it gets built.
-- **[open-questions.md](open-questions.md)** — everything this plan is waiting on, grouped by who can
-  answer it, with what each one blocks. Four customer questions move numbers; one product decision
-  fills the last success criterion.
+- **[open-questions.md](open-questions.md)** — everything this plan is waiting on, ordered by how
+  much turns on the answer.
 - **[production-measurement-queries.md](production-measurement-queries.md)** — the SQL behind every
   figure in this plan marked as measured, the caveats on running it, and the defects corrected across
   three runs against production. Findings live here, in the sections that use them: Success criteria,

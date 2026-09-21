@@ -106,6 +106,8 @@ where pulled > 0;
 `fit` before using the slope** — a low r² means duration is not linear in record count, and a single
 coefficient is then the wrong model, which is itself a finding.
 
+**Result:** 108,374 syncs · **9.188 ms/record** · intercept 26,533 ms · r² 0.187. Q5's volume bands give 10.0 ms independently, so two methods agree. Interpreted in plan section **D6.1**, including why the first run read as r² = 0.00001.
+
 > **Guard against device clock skew.** `sync_start_time` and `sync_end_time` come from the device, and
 > Q4's corrected run returned up to 38 distinct hour-buckets for a 30-day window where 31 is the
 > ceiling — so some rows fall outside the window entirely. Since duration is `end - start`, a skewed
@@ -218,6 +220,8 @@ Arrival rate is `peak_syncs / 3600`. Design the *Load* profile against `p95_sync
 profile against `peak_syncs` — the maximum over 30 days is one real hour that genuinely happened, but
 it is a single observation and a poor thing to size steady-state load against.
 
+**Result:** busiest hour ever recorded **792 syncs at 12:00 IST across 267 distinct users**; the busiest hour on average is 16:00 at 378. Activity holds above 200 an hour from 09:00 to 21:00 — a working-day plateau, not a start-of-day rush. Interpreted in plan section **E5**.
+
 **Q5 — Sync duration by volume band (F7, Success criteria).** The distribution the calibration gate
 compares against.
 
@@ -244,6 +248,8 @@ group by 1
 order by 1;
 ```
 
+**Result:** 108,688 syncs. **Band 1 holds 106,444 — 97.9% — at p50 14.1 s and p95 80.0 s**, which is the success criteria's threshold for the common case. The tail runs to p50 1,076 s at band 10. Interpreted in the **Success criteria** table and **D6.1**.
+
 **Q6 — Observation shape (H3, H5).** The numbers that determine whether generated data behaves like
 production. Repeat per entity table.
 
@@ -265,6 +271,8 @@ from (
   from program_encounter tablesample system (1)
 ) t;
 ```
+
+**Result:** `program_encounter` p50 12 keys / p95 34 / 878 bytes; `individual` 7 / 29 / 742; `encounter` 4 / 22 / 526; `program_enrolment` 2 / 20 / 360. **5,623 distinct concepts** appear as observation keys — across all 986 organisations, not one. Interpreted in plan section **H3**.
 
 **Q7 — Row counts and index sizes (H5).** The single most informative comparison against generated
 data — a GIN index an order of magnitude smaller than production's means the cardinality is wrong.
@@ -360,6 +368,8 @@ Read it as: **`avg_fraction_changed` near 0 means `syncDetails` is earning its c
 near 1 means it is mostly ceremony.** Validate the `todo`/`done` semantics against a sample row before
 trusting the numbers — the client pre-populates the array from entity metadata, so entries exist for
 entities that were never fetched.
+
+**Result:** 112,349 syncs. The client posts **79 tracked entities and 4 come back changed at p50**, 7 at p90 — an average changed fraction of 6.1%. Interpreted in plan section **D1.1**, which argues the endpoint is still a good trade.
 
 **Q9 — Media uploads per sync (D5.1).** Each media file costs a `GET /media/uploadUrl/{fileName}`
 call on the sync path, so the rate sets how much server load media contributes. `sync_telemetry` does
@@ -471,6 +481,8 @@ order by 1;
 `program_encounter` the same way scans 11.4 GB and is worth a separate off-peak run rather than
 bolting onto this one. **Run as a superuser**: under RLS an org-scoped role sees only its own rows,
 and the query silently returns one meaningful line.
+
+**Result:** **986 organisations.** The largest holds 21% of all subjects, the top 10 hold 63%, the top 50 over 90%, and **473 — 48% — hold none at all**. The largest by users ranks 71st by subjects, so the two axes are independent. Interpreted in plan section **H3**.
 
 **Q13 — Address hierarchy shape (H3, G5).** H3 lists it as driving "the scope-resolution queries
 behind catchment filtering", and it too had no query. `address_level.lineage` is an `ltree`, so depth
