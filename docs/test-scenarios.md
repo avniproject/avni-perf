@@ -46,37 +46,74 @@ incremental sync costs about the same whether it carries 15 records or 500.
 | 2 · field workers, one tenant | 42 | **0.16** |
 | 4 · combined, one tenant | 47 | **0.18** |
 | 10 · soak, same load sustained | 47 | **0.18** |
-| 5 · all ten tenants | 141 | **0.55** |
-| 6, 7 · ten tenants plus production active | 933 | **3.65** |
+| 5, 6 · all ten tenants | 141 | **0.55** |
+| 7 · ten tenants plus production's own traffic | 933 | **3.65** |
 | 1 · training cohort, 100 logins in 15 min | — | **~3** |
 | 9 · stress ramp | — | unbounded by design |
 
-**Production's own busiest hour ever recorded is 3.1 in flight**, so only two cases here reach it —
-the training burst, and the one where production's traffic supplies most of the load.
+**Case 6 sits with case 5, not with case 7.** Its co-tenants hold data but sync nothing — that is
+the whole difference between them — so its arrival rate is the customer's alone. Only case 7 adds
+production's 792 syncs an hour.
 
-**This is not a concurrency exercise, and the numbers say so plainly.** The customer's entire
-deployment produces **under one sync in flight**; every single-tenant case runs at a fifth of that.
-What these cases measure is per-sync cost, data volume and tenancy.
+**Production's own busiest hour ever recorded is 3.1 in flight**, so only two cases here reach it:
+the training burst, and case 7.
+
+#### How much of that depends on spreading over twelve hours
+
+All of it. The figures above assume a working-day plateau, which is what Q4 measured **of
+production's current mix** — not a property of this deployment. A once-a-day sync could easily
+cluster, if workers sync when they return to signal or at the end of a shift.
+
+| Sync window | Syncs/hour | Cases 5, 6 | Case 7 |
+|---|---|---|---|
+| 12 hours (assumed) | 141 | 0.55 | 3.65 |
+| 4 hours | 423 | 1.66 | 4.76 |
+| 2 hours | 846 | 3.31 | 6.42 |
+| **1 hour** | 1,692 | **6.63** | **9.73** |
+
+**Compressed into one hour, case 6 reaches 6.6 in flight — about twice production's peak, and
+twelve times the spread figure.** So the conclusion that this is not a concurrency exercise holds
+for the assumed shape and **not for a clustered one**.
+
+That makes the sync *window* worth asking about alongside the frequency, since the two together set
+the arrival rate and only one of them has been confirmed. Until it is, **running cases 5 to 7 at
+both a 12-hour and a 1-hour window costs one extra run and brackets the answer** — which is cheaper
+than assuming the plateau and being wrong about the only cases that carry concurrent load.
+
+**On the assumed shape this is not a concurrency exercise.** The customer's entire deployment
+produces **under one sync in flight**; every single-tenant case runs at a fifth of that. What these
+cases measure is per-sync cost, data volume and tenancy.
 
 The consequence is worth stating for whoever reads a green result: **cases 2, 3 and 4 passing tells
 you almost nothing about contention**, because at 0.18 syncs in flight there is nothing to contend
-with. Only cases 6, 7 and 9 put concurrent load on the server at all.
+with. Only cases 7 and 9 put concurrent load on the server — and case 6 only if the sync window
+turns out to be short.
 
-### Conditional on one open question
+### Conditional on two open questions
 
-Cases 3 to 8 assume **supervision at sub-centre level** — 8 field workers per supervisor. If it
-sits higher, per-device volume changes by roughly an order of magnitude and the cases above change
-with it:
+**How many supervisors sit above sub-centre, and at which tiers.** Cases 3 to 8 assume every
+supervisor is at a sub-centre covering 8 field workers. They can sit at any tier above it, and a
+real establishment probably has some at each — so what these cases need is a **count per tier**,
+not a single choice.
 
 | Supervisor tier | Field workers each | Records at day 180 | Full sync | vs Q3's heaviest device |
 |---|---|---|---|---|
 | **Sub-centre** | 8 | 37,200 | 5.7 min | 0.14× |
 | PHC | 45 | 207,000 | 32 min | 0.78× |
-| Block | 200 | 920,000 | 141 min | 3.5× |
+| Block | 200 | 920,000 | 141 min | **3.5×** |
 
-**At sub-centre level no case here exceeds what production already carries, so this exercise tests
-concurrency and tenancy. At block level it tests volume as well.** That is a different exercise, and
-it is one answer away.
+**With concurrency settled at under one sync in flight, this is now the only thing that changes what
+the exercise measures.** If everyone supervises at sub-centre, no case exceeds what production
+already carries and the runs confirm the server holds. If a handful supervise at block level, those
+few devices are individually heavier than anything production has measured, and they are the
+exercise.
+
+**A handful is enough.** These are not averages: one block-level supervisor carries 920,000 records
+whatever the rest do.
+
+**And over what window the daily syncs fall**, which sets the arrival rate — see the sensitivity
+table above. Unlike the tier question this one needs no answer to proceed: running cases 5 to 7 at
+both a 12-hour and a 1-hour window brackets it for one extra run.
 
 ---
 

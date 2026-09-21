@@ -2304,10 +2304,11 @@ Ordering reflects dependencies, not estimates.
 | **3 · Workload** | **D7** · E3, E5, **E7** · **H7** · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
 | **4 · Operate** | A11 · F2, F3 · **A12** | Saturate, name the resource, fix, re-run. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
-**Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review. One
-assumption in it remains open: that supervision sits at sub-centre level, which changes per-device
-volume by an order of magnitude. Sync frequency is confirmed at once a working day, and the
-acceptable error rate at 0.05%.
+**Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review. Two
+assumptions in it remain open: that every supervisor sits at sub-centre level, which changes
+per-device volume by an order of magnitude, and that the daily syncs spread over a working day
+rather than clustering. Sync frequency is confirmed at once a working day, and the acceptable error
+rate at 0.05%.
 
 **Deliberately unscheduled.** **D8.2** (page size tuning) and **E4** (noisy neighbour) are
 finding-triggered — pull them forward when a result points at serialisation or at tenancy, not on a
@@ -2317,9 +2318,11 @@ calendar.
 
 ## Open questions
 
-**[open-questions.md](open-questions.md) is the list.** One input remains: **which tier
-supervises**, which decides whether this exercise tests volume or concurrency. Sync frequency and
-the acceptable error rate are both answered.
+**[open-questions.md](open-questions.md) is the list.** Two inputs remain, both shaping load rather
+than blocking a build: **how many supervisors sit above sub-centre level and at which tiers**, which
+sets per-device volume and is now the only question that changes what the exercise measures; and
+**over what window the daily syncs fall**, which sets the arrival rate and can be bracketed with one
+extra run rather than waited on.
 
 Keeping a second copy here is what let the two drift apart, so this section now holds only what the
 plan itself decided. What the tests will *answer* is under **Measure before fixing** above.

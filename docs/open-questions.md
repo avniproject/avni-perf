@@ -4,7 +4,7 @@ Everything [the sync simulation plan](sync-simulation-plan.md) and
 [the test scenarios](test-scenarios.md) are waiting on.
 
 **This document holds the inputs only** — the questions someone has to answer before the tests can
-be designed, built or run. No amount of running will settle them. **One remains.**
+be designed, built or run. No amount of running will settle them. **Two remain.**
 
 Nothing else lives here. **Work** someone could simply go and do is a task in
 [the plan](sync-simulation-plan.md), whose status table says what has and has not been started.
@@ -22,23 +22,47 @@ source of truth.
 
 ---
 
-## The question
+## The questions
 
-### Which tier supervises?
+### How many supervisors sit above sub-centre level, and at which tiers?
 
-**Assumed: an ANM at a sub-centre, covering 8 field workers.**
+**Assumed: all of them at sub-centre, covering 8 field workers each.** Being asked of the customer.
 Blocks test cases 3–8 and the generator's catchment sizing.
 
-**This is the one that changes what the exercise measures.** At sub-centre level a supervisor holds
-37,200 records at day 180 — 0.14× the heaviest device production has already seen — so no case
-exceeds production's existing tail and this becomes a test of concurrency and tenancy. At block level
-a supervisor holds 920,000, which is **3.5× that device**, and it becomes a test of volume as well.
+**It is not one choice but a mix.** Supervision can sit at any level above the sub-centre, and a
+real establishment probably has some at each. What the cases need is how many at each tier, because
+per-device volume changes by an order of magnitude between them:
 
-| Tier | Field workers each | Records at day 180 | Full sync | vs production's heaviest |
+| Tier | Field workers each | Records at day 180 | Full sync | vs production's heaviest device |
 |---|---|---|---|---|
 | Sub-centre | 8 | 37,200 | 5.7 min | 0.14× |
 | PHC | 45 | 207,000 | 32 min | 0.78× |
-| Block | 200 | 920,000 | 141 min | 3.5× |
+| Block | 200 | 920,000 | 141 min | **3.5×** |
+| District | ~2,200 | — | — | far beyond |
+
+**This is now the only question that changes what the exercise measures.** With sync frequency
+confirmed at once a day, concurrency is settled — the deployment produces under one sync in flight
+— so volume per device is the whole risk, and this is the number that sets it. If everyone
+supervises at sub-centre, no case exceeds what production already carries and the exercise confirms
+the server holds. If a handful supervise at block level, those few devices are individually heavier
+than anything production has measured, and the exercise is about them.
+
+**A handful is enough to matter.** These are not averages over a population: one block-level
+supervisor carries 920,000 records whatever the rest do, so the answer needed is a count per tier,
+not a typical case.
+
+### Over what window do the daily syncs fall?
+
+**Assumed: spread across the 09:00–21:00 plateau.** Not confirmed, and it is the other half of the
+arrival rate.
+
+The plateau is what Q4 measured **of production's current mix**, not a property of this deployment.
+A once-a-day sync could cluster — workers syncing when they return to signal, or at the end of a
+shift. Compressed into one hour, **case 6 goes from 0.55 syncs in flight to 6.6, about twice
+production's peak**.
+
+Cheap to bracket rather than wait on: running cases 5 to 7 at both a 12-hour and a 1-hour window
+costs one extra run and covers both answers.
 
 ---
 
