@@ -61,8 +61,9 @@ A once-a-day sync could cluster — workers syncing when they return to signal, 
 shift. Compressed into one hour, **case 6 goes from 0.55 syncs in flight to 6.6, about twice
 production's peak**.
 
-Cheap to bracket rather than wait on: running cases 5 to 7 at both a 12-hour and a 1-hour window
-costs one extra run and covers both answers.
+Cheap to bracket rather than wait on, and already bracketed: **cases 11 to 13 run cases 5 to 7 at a
+one-hour window**, so the suite covers both ends for three extra hours. An answer would let three
+runs be dropped; it does not gate anything.
 
 ---
 

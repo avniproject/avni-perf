@@ -17,7 +17,7 @@ production RUM) is tracked separately.
 telemetry at the end. The entity list is generated from `openchs-models` rather than hand-maintained,
 and CI fails if it drifts.
 
-That is a faithful download-sync probe, production is measured, the ten test cases are specified
+That is a faithful download-sync probe, production is measured, the thirteen test cases are specified
 with numbers, and a dataset generator exists that reproduces them.
 
 **What is missing is everywhere those three meet a server.** No environment to run against, no
@@ -1187,7 +1187,7 @@ D3 first.
 ### Scenarios and test cases
 
 **Moved to [test-scenarios.md](test-scenarios.md)** — the deployment being modelled, the datasets at
-each growth point, and ten test cases with numbers, for customer review. Different audience and
+each growth point, and thirteen test cases with numbers, for customer review. Different audience and
 different lifecycle from this document: that one is what the instrument gets pointed at, this one is
 how it gets built.
 
@@ -2363,7 +2363,7 @@ plan itself decided. What the tests will *answer* is under **Measure before fixi
   which is private. **This repository is public and carries summarised findings only** — ratios,
   percentiles and the figures the plan reasons about. Per-organisation sizes, per-index scan counts
   and the full hourly and weekly series are recorded there.
-- **[test-scenarios.md](test-scenarios.md)** — the deployment being modelled and ten test cases
+- **[test-scenarios.md](test-scenarios.md)** — the deployment being modelled and thirteen test cases
   with numbers, for customer review. Split out because it has a different audience: that is what the
   instrument gets pointed at, this is how it gets built.
 - **[open-questions.md](open-questions.md)** — the inputs this plan is waiting on. What it will

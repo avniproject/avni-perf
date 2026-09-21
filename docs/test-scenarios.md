@@ -1,6 +1,6 @@
 # Test scenarios
 
-**For customer review, and for the generator to build against.** Ten test cases with actual
+**For customer review, and for the generator to build against.** Thirteen test cases with actual
 numbers, and the deployment they are derived from.
 
 Split out of [the sync simulation plan](sync-simulation-plan.md) because it has a different audience
@@ -17,18 +17,39 @@ a 16-minute median.
 
 ## The cases
 
-| # | Case | Tenants | Users | Dataset | Mode | What it answers |
-|---|---|---|---|---|---|---|
-| **1** | Training cohort | 1 | 100 field workers, first login within 15 min | Config only, **no field data** | Full | Reference-data sync and `syncDetails` cost, isolated from catchment volume. **Gives the per-row cost**, from which a broader configuration is arithmetic |
-| **2** | Field worker steady state | 1 state | 500 | Day 180 | Incremental, 1% full | The common case |
-| **3** | Supervisor steady state | 1 state | 62 | Day 180 | Incremental, 1% full | Whether 3× the volume per device changes anything |
-| **4** | **Combined** | 1 state | 500 + 62 | Day 180 | Incremental, 1% full | **The realistic case.** Wide and frequent syncs competing for one pool |
-| **5** | **Separate infrastructure** | **10** | 1,504 + 188 | Day 180 | Incremental, 1% full | The customer's own load, with nobody else's data in the tables. **The baseline the next two are measured against** |
-| **6** | **Shared — co-tenant data** | **10 + 986** | 1,504 + 188 | Day 180 **plus production's organisations**, which sync nothing | Incremental, 1% full | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
-| **7** | **Shared — co-tenant load** | **10 + 986** | Case 6, plus production's own arrival rate | Same as case 6 | Incremental, 1% full | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
-| **8** | Growth comparison | 1 state | Case 4 | Day 60, 120, 180, **365** | Incremental, 1% full | The shape of the curve. A knee between points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
-| **9** | Stress ramp | **10** | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
-| **10** | Soak | 1 state | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
+| # | Case | Tenants | Users | Dataset | Mode | Run for | What it answers |
+|---|---|---|---|---|---|---|---|
+| **1** | Training cohort | 1 | 100 field workers, first login within 15 min | Config only, **no field data** | Full | **30 min** | Reference-data sync and `syncDetails` cost, isolated from catchment volume. **Gives the per-row cost**, from which a wider configuration is arithmetic |
+| **2** | Field worker steady state | 1 state | 500 | Day 180 | Incremental, 1% full | **4 h** | The common case |
+| **3** | Supervisor steady state | 1 state | 62 | Day 180 | Incremental, 1% full | **2 h, driven** | Whether 3× the volume per device changes anything |
+| **4** | **Combined** | 1 state | 500 + 62 | Day 180 | Incremental, 1% full | **4 h** | **The realistic case.** Wide and frequent syncs competing for one pool |
+| **5** | **Separate infrastructure** | **10** | 1,504 + 188 | Day 180 | Incremental, 1% full | **2 h** | The customer's own load with nobody else's data in the tables. **The baseline the next two are measured against** |
+| **6** | **Shared — co-tenant data** | **10 + 986** | 1,504 + 188 | Day 180 **plus production's organisations**, which sync nothing | Incremental, 1% full | **2 h** | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
+| **7** | **Shared — co-tenant load** | **10 + 986** | Case 6, plus production's own arrival rate | Same as case 6 | Incremental, 1% full | **2 h** | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
+| **8** | Growth comparison | 1 state | Case 4 | Day 60, 120, 180, **365** | Incremental, 1% full | **2 h × 4** | The shape of the curve. A knee between two points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
+| **9** | Stress ramp | **10** | Ramp past case 5 until failure | Day 180 | Incremental | **until it breaks** | Where the knee is, and which resource names it |
+| **10** | Soak | 1 state | Case 4 | Day 180 | Incremental | **12 h** | Leaks, pool exhaustion, autovacuum interaction over hours |
+| **11** | **Clustered — separate** | **10** | Case 5 | Day 180 | Incremental, 1% full | **1 h** | Case 5's day compressed into one hour |
+| **12** | **Clustered — co-tenant data** | **10 + 986** | Case 6 | Same as case 6 | Incremental, 1% full | **1 h** | Case 6 compressed: **6.6 syncs in flight against 0.55** |
+| **13** | **Clustered — co-tenant load** | **10 + 986** | Case 7 | Same as case 6 | Incremental, 1% full | **1 h** | Case 7 compressed: **9.7 in flight**, three times production's peak and the heaviest sustained load in the suite |
+
+**Cases 11 to 13 are 5 to 7 with the day's syncs compressed into one hour**, and they exist because
+the sync window is not confirmed — see [below](#how-much-of-that-depends-on-spreading-over-twelve-hours).
+They cost three hours between them and remove the need to wait on the answer.
+
+**Run lengths come from sample counts rather than round numbers.** A p95 needs on the order of 100
+syncs: case 2 at 42 an hour reaches 168 in four hours, case 5 at 141 reaches 282 in two.
+
+> **Case 3 cannot get there at its natural rate, and the reason is the population rather than the
+> run length.** Sixty-two supervisors syncing once a day produce sixty-two syncs, and no duration
+> changes that. It is marked *driven* because it measures **per-sync cost, not system load** — so
+> drive those users faster than reality to gather samples, then read its durations as sound and its
+> throughput as meaningless. Every other case does measure behaviour under load, and must run at
+> the real arrival rate.
+
+**The suite is about 42 hours of running**, of which the soak is 12 and the growth comparison 8.
+That is several days once each run is set up, watched and its dataset loaded — worth knowing before
+the schedule is drawn, since the hosting decision alone (cases 5 to 7, plus 11 to 13) is 9 of them.
 
 **Tenant counts trace to the table under [the deployment](#the-deployment-being-modelled)**: a state
 tenant is 500 field workers and 62 supervisors, and the ten together are 1,504 and 188. The 986 in
@@ -49,14 +70,17 @@ incremental sync costs about the same whether it carries 15 records or 500.
 | 5, 6 · all ten tenants | 141 | **0.55** |
 | 7 · ten tenants plus production's own traffic | 933 | **3.65** |
 | 1 · training cohort, 100 logins in 15 min | — | **~3** |
+| 11 · ten tenants, clustered into one hour | 1,692 | **6.63** |
+| 12 · plus co-tenant data, clustered | 1,692 | **6.63** |
+| 13 · plus co-tenant load, clustered | 2,484 | **9.73** |
 | 9 · stress ramp | — | unbounded by design |
 
 **Case 6 sits with case 5, not with case 7.** Its co-tenants hold data but sync nothing — that is
 the whole difference between them — so its arrival rate is the customer's alone. Only case 7 adds
 production's 792 syncs an hour.
 
-**Production's own busiest hour ever recorded is 3.1 in flight**, so only two cases here reach it:
-the training burst, and case 7.
+**Production's own busiest hour ever recorded is 3.1 in flight.** Four cases pass it — the training
+burst, case 7, and all three clustered runs, the heaviest of which is three times that peak.
 
 #### How much of that depends on spreading over twelve hours
 
@@ -76,18 +100,19 @@ twelve times the spread figure.** So the conclusion that this is not a concurren
 for the assumed shape and **not for a clustered one**.
 
 That makes the sync *window* worth asking about alongside the frequency, since the two together set
-the arrival rate and only one of them has been confirmed. Until it is, **running cases 5 to 7 at
-both a 12-hour and a 1-hour window costs one extra run and brackets the answer** — which is cheaper
-than assuming the plateau and being wrong about the only cases that carry concurrent load.
+the arrival rate and only one of them has been confirmed. **Cases 11 to 13 are the bracket**: the
+same three tenancy shapes at the opposite extreme of the window. Running both ends costs three hours
+and is cheaper than assuming the plateau and being wrong about the only cases that carry concurrent
+load.
 
 **On the assumed shape this is not a concurrency exercise.** The customer's entire deployment
 produces **under one sync in flight**; every single-tenant case runs at a fifth of that. What these
-cases measure is per-sync cost, data volume and tenancy.
+cases measure is per-sync cost, data volume and tenancy. **Cases 11 to 13 are where that stops being
+true**, which is the reason to run them.
 
 The consequence is worth stating for whoever reads a green result: **cases 2, 3 and 4 passing tells
 you almost nothing about contention**, because at 0.18 syncs in flight there is nothing to contend
-with. Only cases 7 and 9 put concurrent load on the server — and case 6 only if the sync window
-turns out to be short.
+with. Concurrent load lives in cases 7, 9 and 11 to 13.
 
 ### Conditional on two open questions
 
@@ -112,8 +137,8 @@ exercise.
 whatever the rest do.
 
 **And over what window the daily syncs fall**, which sets the arrival rate — see the sensitivity
-table above. Unlike the tier question this one needs no answer to proceed: running cases 5 to 7 at
-both a 12-hour and a 1-hour window brackets it for one extra run.
+table above. Unlike the tier question this one needs no answer to proceed — **cases 11 to 13 are
+already the other end of the bracket**, and running both ends costs three hours.
 
 ---
 
@@ -158,9 +183,9 @@ theirs — ten tenants, 1,692 users, 1.5 million beneficiaries. **Where it runs 
 
 | Hosting | What is in the database | Cases |
 |---|---|---|
-| **Separate** | The customer's tenants only | 1–5, 8–10 |
-| **Shared, co-tenants idle** | Plus production's 986 organisations | 6 |
-| **Shared, co-tenants active** | Plus their traffic | 7 |
+| **Separate** | The customer's tenants only | 1–5, 8–11 |
+| **Shared, co-tenants idle** | Plus production's 986 organisations | 6, 12 |
+| **Shared, co-tenants active** | Plus their traffic | 7, 13 |
 
 Every case except 5, 6 and 7 assumes separate hosting, because a single-tenant question does not need
 the other 986 organisations present to answer it. If the hosting comparison says sharing is free, the
