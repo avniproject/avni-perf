@@ -3,23 +3,22 @@
 Everything [the sync simulation plan](sync-simulation-plan.md) and
 [the test scenarios](test-scenarios.md) are waiting on.
 
-**Two kinds, and conflating them is how an exercise like this goes wrong.** The first are *inputs* —
-someone has to answer them before the tests can be designed, built or run, and no amount of running
-will settle them. The second are *outputs* — the questions the tests exist to answer, where an answer
-asserted in advance is precisely what the exercise was built to replace.
+**This document holds the inputs only** — the questions someone has to answer before the tests can
+be designed, built or run. No amount of running will settle them.
 
-Shared versus separate infrastructure moved from the first list to the second, and that move was the
-point: it had been recorded as the customer's assumption, which decided it by assuming it.
+The questions the tests *answer* are a different kind and live in
+[the plan](sync-simulation-plan.md#what-the-tests-will-answer), because they are what the exercise is
+for rather than something it is waiting on. Conflating the two is how work like this goes wrong: an
+output answered in advance is precisely what the exercise was built to replace.
 
-Answering an input means editing the section named against it. This document is an index, not a
-second source of truth.
+Answering one means editing the section named against it. This document is an index, not a second
+source of truth.
 
 ---
 
-## Questions that block building or running the tests
+## The questions
 
-Inputs. Someone has to answer these; no amount of running will. Ordered by how much turns on the
-answer.
+Ordered by how much turns on the answer.
 
 ### 1. Which tier supervises?
 
@@ -89,32 +88,6 @@ Blocks sequencing. Ownership is settled; the order in the Sequencing table refle
 rather than a calendar.
 
 ---
-
-## Questions the tests exist to answer
-
-Outputs. Nobody should answer these in advance — that is what the runs are for, and an answer
-asserted now is the thing the exercise was built to replace.
-
-They are listed because **a test case that answers no question is a run nobody needs**, and because
-several of them already have a suspect attached from reading the code. Those suspects are
-**hypotheses, not findings**: every one gets a cost attached before anyone changes it, since a
-cheap-looking fix to something costing 0.3% burns review cycles while the real bottleneck stays
-hidden.
-
-| Question | Answered by | Suspect, if any |
-|---|---|---|
-| **Shared or separate infrastructure?** | Cases 5, 6, 7 — the deltas between them | Multi-tenancy costs scale with the platform, not with this customer: RLS selectivity, planner statistics across all tenants, `set role` on every borrow |
-| **Where are the choke points?** | The whole exercise; cases 4 and 10 most directly | Storage IO is the prime suspect — 19.4 GB of indexes against 933 MB of cache, on a fixed 3,000 IOPS |
-| **Does the server hold at this load at all?** | Cases 2, 3, 4 | Nothing yet. Per-device volumes sit inside what production already carries |
-| **Does volume growth show a knee?** | Case 8, across day 60/120/180 | Index size crossing cache residency is the shape to look for |
-| **What does a supervisor's catchment cost?** | Case 3 against case 2 | Depends entirely on question 1 above |
-| **What does the heaviest real event cost?** | Case 9, the reset storm | Q10 measured one week at 130× normal, all users forced onto the full-sync path |
-| **Is `syncDetails`' per-row cost material?** | Cases 1 and 4, with F1/F2 attribution | Q8 found 4 of 79 entities changed at p50, so 94% of the per-row queries prove nothing changed — but the endpoint saves 75 HTTP round trips, so the question is cost *relative to what it buys* |
-| **Does the organisation interceptor cost enough to matter?** | F2.1, under case 5 | Three Postgres round trips per connection borrow, plus `getMetaData()` evaluated for a TRACE log argument |
-| **Does ETL contention matter?** | The contended variant of case 4 | ETL shares the same IO ceiling on a 90-minute cycle |
-| **Where does it break, and which resource names it?** | Case 10, the stress ramp | Unknown by design — this is the one question with no useful prior |
-
-**None of these blocks anything.** They are the deliverable.
 
 ## Measurements
 

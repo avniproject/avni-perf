@@ -166,6 +166,32 @@ this expensive?" but "**is it expensive relative to what it buys?**"
 
 That second framing is the one to carry into every measurement below.
 
+### What the tests will answer
+
+Here are the suspects, against the cases that will cost them. Nobody should answer these in advance
+— that is what the runs are for, and an answer asserted now is the thing this exercise was built to
+replace.
+
+Worth reading in both directions. **A test case that answers no question is a run nobody needs**, and
+a question with no case against it will not get answered. Laying them side by side makes either gap
+visible.
+
+| Question | Answered by | Suspect, if any |
+|---|---|---|
+| **Shared or separate infrastructure?** | Cases 5, 6, 7 — the deltas between them | Multi-tenancy costs scale with the platform, not with this customer: RLS selectivity, planner statistics across all tenants, `set role` on every borrow |
+| **Where are the choke points?** | The whole exercise; cases 4 and 10 most directly | Storage IO is the prime suspect — 19.4 GB of indexes against 933 MB of cache, on a fixed 3,000 IOPS |
+| **Does the server hold at this load at all?** | Cases 2, 3, 4 | Nothing yet. Per-device volumes sit inside what production already carries |
+| **Does volume growth show a knee?** | Case 8, across day 60/120/180 | Index size crossing cache residency is the shape to look for |
+| **What does a supervisor's catchment cost?** | Case 3 against case 2 | Depends entirely on question 1 above |
+| **What does the heaviest real event cost?** | Case 9, the reset storm | Q10 measured one week at 130× normal, all users forced onto the full-sync path |
+| **Is `syncDetails`' per-row cost material?** | Cases 1 and 4, with F1/F2 attribution | Q8 found 4 of 79 entities changed at p50, so 94% of the per-row queries prove nothing changed — but the endpoint saves 75 HTTP round trips, so the question is cost *relative to what it buys* |
+| **Does the organisation interceptor cost enough to matter?** | F2.1, under case 5 | Three Postgres round trips per connection borrow, plus `getMetaData()` evaluated for a TRACE log argument |
+| **Does ETL contention matter?** | The contended variant of case 4 | ETL shares the same IO ceiling on a 90-minute cycle |
+| **Where does it break, and which resource names it?** | Case 10, the stress ramp | Unknown by design — this is the one question with no useful prior |
+
+**None of these blocks anything.** They are the deliverable — the
+[open questions](open-questions.md) are what blocks, and they are a separate list for that reason.
+
 ---
 
 ## A. Upgrade and harness hygiene
@@ -2142,11 +2168,10 @@ calendar.
 
 ## Open questions
 
-**[open-questions.md](open-questions.md) collects these for review**, split into the ones someone
-has to answer before the tests can be built and run, and the ones the tests exist to answer. **Which
-tier supervises** leads the first list, because it decides whether this exercise tests volume or
-concurrency. **Shared versus separate hosting** leads the second, having moved there from the first
-once it stopped being an assumption.
+**[open-questions.md](open-questions.md) collects these for review** — the inputs someone has to
+answer before the tests can be built and run. **Which tier supervises** leads it, because it decides
+whether this exercise tests volume or concurrency. What the tests will *answer* is a different list,
+under **Measure before fixing** above.
 
 - **Which tier supervises?** The test cases assume an ANM at sub-centre level, covering 8 field workers.
   At PHC level a supervisor's day-180 catchment is 5.6× larger and at block level 25× — the difference
@@ -2212,8 +2237,8 @@ once it stopped being an assumption.
 - **[test-scenarios.md](test-scenarios.md)** — the deployment being modelled and eleven test cases
   with numbers, for customer review. Split out because it has a different audience: that is what the
   instrument gets pointed at, this is how it gets built.
-- **[open-questions.md](open-questions.md)** — everything this plan is waiting on, split into
-  inputs someone must answer and outputs the tests will.
+- **[open-questions.md](open-questions.md)** — the inputs this plan is waiting on. What it will
+  answer is under *Measure before fixing*.
 - **[production-measurement-queries.md](production-measurement-queries.md)** — the SQL behind every
   figure in this plan marked as measured, the caveats on running it, and the defects corrected across
   three runs against production. Findings live here, in the sections that use them: Success criteria,
