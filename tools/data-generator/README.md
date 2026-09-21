@@ -115,7 +115,7 @@ python3 -m venv .venv && .venv/bin/pip install pytest
 
 ## Locations and catchments
 
-`hierarchy.py` builds a tenant's location tree from the real state establishment in plan section E0 —
+`hierarchy.py` builds a tenant's location tree from the real state establishment in the test scenarios —
 State, District, Block, PHC, Sub-Centre, Village — using its measured branching factors: 75 districts
 to a state, 11.3 blocks to a district, down to 2.8 villages per sub-centre.
 
@@ -148,7 +148,7 @@ write a different number of mapping rows: 227 against 334 for a pilot tenant. Wh
 uses has not been measured.
 
 A pilot state tenant at 167 villages comes out at **501 field workers and 60 supervisors**, against
-E6's 500 and 62.
+the scenarios' 500 and 62.
 
 ## What a bulk load bypasses, and what it does not
 
@@ -319,7 +319,7 @@ against 5,623 would fail a correct dataset.
 
 `deployment.py` turns the test scenarios into files a `COPY` can load. `pilot_deployment(days, ref)`
 gives the customer's pilot with its numbers as defaults — two state tenants of 500 field workers, eight NGO
-tenants sharing 500 — and reproduces E6's totals:
+tenants sharing 500 — and reproduces the scenarios' totals:
 
 | Day | Beneficiaries | Encounters | Total rows |
 |---|---|---|---|
@@ -481,7 +481,7 @@ which the first application insert after a load collides on the primary key.
 
 ## What is left
 
-- **Within-class catchment variation.** The two user classes are modelled, and E0's figures give
+- **Within-class catchment variation.** The two user classes are modelled, and the scenarios' figures give
   every village 3,000 beneficiaries uniformly. Q3 measured a 370× spread between the median device
   and the 99th percentile, and Q15 found catchment breadth and per-location density vary
   independently. Whether that variation matters here depends on the answer to "which tier
