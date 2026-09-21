@@ -35,7 +35,7 @@ def test_a_committed_recipe_rebuilds_the_deployment_it_describes(days):
 
 
 def test_the_committed_recipes_differ_only_in_growth_point():
-    """E6: only encounter volume grows between the three datasets."""
+    """Only encounter volume grows between the growth points."""
     rs = {d: recipe_mod.Recipe.load(DATASETS / f"pilot-day-{d}.json") for d in (60, 120, 180, 365)}
     assert {r.days for r in rs.values()} == {60, 120, 180, 365}
     assert len({json.dumps(r.tenants, sort_keys=True) for r in rs.values()}) == 1

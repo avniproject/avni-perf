@@ -17,7 +17,7 @@ REFERENCE = date(2026, 9, 18)
 
 
 def tiny():
-    """Two tenants of a few workers. The E6 shape at a size a test can run."""
+    """Two tenants of a few workers. The pilot shape at a size a test can run."""
     return dep.DeploymentSpec(
         tenants=(dep.TenantSpec(name="a", organisation_id=1, field_workers=6,
                                 beneficiaries_per_village=5),
@@ -41,7 +41,7 @@ def columns():
     return {t: sorted(c.accounted) for t, c in schema.CONTRACTS.items()}
 
 
-# --- E6's shape -------------------------------------------------------------
+# --- the pilot's shape -------------------------------------------------------------
 
 def test_the_default_deployment_matches_e6():
     d = dep.pilot_deployment(180, REFERENCE)
@@ -55,7 +55,7 @@ def test_the_default_deployment_matches_e6():
 
 @pytest.mark.parametrize("days,expected", [(60, 1_795_200), (120, 3_590_400), (180, 5_385_600)])
 def test_only_encounter_volume_grows_between_the_three_datasets(days, expected):
-    """Beneficiary population does not grow with programme activity (E6)."""
+    """Beneficiary population does not grow with programme activity (test scenarios)."""
     d = dep.pilot_deployment(days, REFERENCE)
     assert d.encounters == expected
     assert d.beneficiaries == 1_506_000

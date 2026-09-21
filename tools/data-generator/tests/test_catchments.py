@@ -17,7 +17,7 @@ def pilot():
 
 
 def test_the_pilot_tenant_lands_on_e6s_numbers():
-    """E6 specifies 500 field workers and 62 supervisors for a pilot state tenant."""
+    """The test scenarios specify 500 field workers and 62 supervisors for a pilot state tenant."""
     _, _, users = pilot()
     fw = [u for u in users if u.role == cat.FIELD_WORKER]
     sv = [u for u in users if u.role == cat.SUPERVISOR]
@@ -26,7 +26,7 @@ def test_the_pilot_tenant_lands_on_e6s_numbers():
 
 
 def test_field_workers_in_a_village_share_its_catchment():
-    """E0: three ASHAs to a village, all pulling the same rows. Not one catchment each."""
+    """The scenarios: three ASHAs to a village, all pulling the same rows. Not one catchment each."""
     _, _, users = pilot()
     per_catchment = Counter(u.catchment_id for u in users if u.role == cat.FIELD_WORKER)
     assert set(per_catchment.values()) == {3}
