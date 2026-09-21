@@ -20,17 +20,20 @@ a 16-minute median.
 | # | Case | Users | Dataset | Mode | What it answers |
 |---|---|---|---|---|---|
 | **1** | Training cohort | 100 field workers, all first login within 15 min | Config only, **no field data** | Full | Reference-data sync and `syncDetails` cost, isolated from catchment volume |
-| **2** | Field worker steady state | 500 | Day 180, one state tenant | Incremental, 1% full | The common case |
-| **3** | Supervisor steady state | 62 | Day 180, one state tenant | Incremental, 1% full | Whether 3× the volume per device changes anything |
-| **4** | **Combined** | 500 + 62 | Day 180, one state tenant | Incremental, 1% full | **The realistic case.** Wide and frequent syncs competing for one pool |
-| **5** | **Separate infrastructure** | 1,504 + 188 | Day 180, these 10 tenants only | Incremental, 1% full | The customer's own load, with nobody else's data in the tables. **The baseline the next two are measured against** |
-| **6** | **Shared — co-tenant data** | 1,504 + 188 | Day 180 **plus production's 986 organisations**, which sync nothing | Incremental, 1% full | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
+| **2** | Field worker steady state | 500 — one state tenant | Day 180, one state tenant | Incremental, 1% full | The common case |
+| **3** | Supervisor steady state | 62 — one state tenant | Day 180, one state tenant | Incremental, 1% full | Whether 3× the volume per device changes anything |
+| **4** | **Combined** | 500 + 62 — one state tenant | Day 180, one state tenant | Incremental, 1% full | **The realistic case.** Wide and frequent syncs competing for one pool |
+| **5** | **Separate infrastructure** | 1,504 + 188 — **all 10 tenants** | Day 180, these 10 tenants only | Incremental, 1% full | The customer's own load, with nobody else's data in the tables. **The baseline the next two are measured against** |
+| **6** | **Shared — co-tenant data** | 1,504 + 188 — **all 10 tenants** | Day 180 **plus production's 986 organisations**, which sync nothing | Incremental, 1% full | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
 | **7** | **Shared — co-tenant load** | Case 6, plus production's own arrival rate | Same as case 6 | Incremental, 1% full | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
-| **8** | Growth comparison | Case 4 | Day 60, 120, 180, **365** | Incremental, 1% full | The shape of the curve. A knee between points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
-| **9** | Reset storm | 562, one tenant, org-wide reset | Day 180 | **All full** | The heaviest real event (Q10 measured it at 130× a normal week) |
+| **8** | Growth comparison | Case 4 — one state tenant | Day 60, 120, 180, **365** | Incremental, 1% full | The shape of the curve. A knee between points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
+| **9** | Reset storm | 562 — one state tenant, org-wide reset | Day 180 | **All full** | The heaviest real event (Q10 measured it at 130× a normal week) |
 | **10** | Stress ramp | Ramp past case 5 until failure | Day 180 | Incremental | Where the knee is, and which resource names it |
 | **11** | Soak | Case 4 | Day 180 | Incremental | Leaks, pool exhaustion, autovacuum interaction over hours |
 | **12** | **Configuration size** | Case 1, twice | Config only, **a small and a large bundle** | Full | How `syncDetails` cost scales with the number of entities a configuration defines |
+
+**Every user count above comes from the tenant table** under *The deployment being modelled*. A state
+tenant is 500 field workers and 62 supervisors; the ten tenants together are 1,504 and 188.
 
 **Build order: 1, 12, 4, 8, then the rest.** Cases 1 and 12 need no generated data at all, so they can run before
 the generator exists — and 12 is only case 1 repeated against a second bundle. Case 4 is the one to answer first. Case 8 needs all four datasets, so it sets
@@ -126,14 +129,23 @@ distinction stops mattering and the cases can all run on the shared platform.
 
 ### The tenants
 
-| | ASHAs | ANMs | Villages | Beneficiaries | Encounters/day |
-|---|---|---|---|---|---|
-| State tenant (pilot) × 2 | 500 | 62 | 167 | 501,000 | 10,000 |
-| NGO tenant × 8 | 63 | 8 | 21 | 63,000 | 1,260 |
-| **Platform total** | **1,504** | **188** | **502** | **1,506,000** | **30,080** |
+**Ten tenants.** Every user count in the cases above comes from this table — the single-tenant cases
+use one state tenant's row, and cases 5, 6 and 7 use the platform total.
+
+| | Tenants | ASHAs each | ANMs each | Villages each | Beneficiaries each | Encounters/day |
+|---|---|---|---|---|---|---|
+| State tenant (pilot) | 2 | 500 | 62 | 167 | 501,000 | 10,000 |
+| NGO tenant | 8 | 63 | 8 | 21 | 63,000 | 1,260 |
+| **Platform total** | **10** | **1,504** | **188** | **502** | **1,506,000** | **30,080** |
 
 Derived at 3 ASHAs per village, 3,000 beneficiaries per village, 8 ASHAs per sub-centre and 20
 encounters per ASHA per day — see **Where the numbers come from** below.
+
+> **The generator lands a few users either side of these.** It builds the hierarchy upward from the
+> village count, so a tenant's villages round to whole numbers and its user counts follow: 1,506
+> field workers and 184 supervisors across the ten, against the 1,504 and 188 the arithmetic above
+> gives. The difference is under a quarter of a percent and it is the generator's figures that a run
+> will actually have. Worth knowing before someone treats a 2-user gap as a defect.
 
 **Confirmed with the customer: "500 workers" means 500 field
 workers, with supervisors added on top rather than counted within it.**
