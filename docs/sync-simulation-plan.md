@@ -2155,10 +2155,11 @@ Ordering reflects dependencies, not estimates.
 | **3 · Workload** | **D7** · E3, E5 · D5 (if scoped) | Shape and size the load from production telemetry, then push until something breaks. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
 | **4 · Operate** | A11 · F2, F3 · **A12** | Saturate, name the resource, fix, re-run. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
-**Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review. Three
-assumptions in it are the ones to check: that "500 workers" means 500 field workers with supervisors
-on top, that a worker syncs four times a working day, and that supervision sits at sub-centre level.
-The last changes per-device volume by an order of magnitude.
+**Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review. Two
+assumptions in it remain open: that a worker syncs four times a working day — where the requirement
+says weekly and production measures a 16-minute median — and that supervision sits at sub-centre
+level, which changes per-device volume by an order of magnitude. The "500 workers" reading is
+confirmed as field workers only.
 
 **Deliberately unscheduled.** **D8.2** (page size tuning) and **E4** (noisy neighbour) are
 finding-triggered — pull them forward when a result points at serialisation or at tenancy, not on a

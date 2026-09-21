@@ -36,12 +36,36 @@ a supervisor holds 920,000, which is **3.5× that device**, and it becomes a tes
 | PHC | 45 | 207,000 | 32 min | 0.78× |
 | Block | 200 | 920,000 | 141 min | 3.5× |
 
-### 2. How often does a worker sync per working day?
+### 2. How often does a worker sync?
 
-**Assumed: 4.** Blocks every arrival rate in the test cases.
+**Assumed: 4 times a working day.** Blocks every arrival rate in the test cases.
 
-Nothing measured or supplied gives a figure. **Every arrival rate scales linearly with it**: at 2 a
-day the platform peaks near 350 syncs an hour, at 8 near 1,400, against production's record of 792.
+**Three figures are in play and they span two orders of magnitude.**
+
+| Source | Frequency | Platform-wide, per hour |
+|---|---|---|
+| **The requirement** | **once a week** | ~20 |
+| This document's assumption | 4 a working day | ~564 |
+| Production today (Q2) | median gap of **16 minutes** | — |
+
+For scale, production's busiest hour ever recorded was 792 syncs.
+
+**The requirement and the measurement are probably not in conflict.** Once a week reads as a floor —
+the longest a device may go without syncing — rather than a description of what field workers do.
+Production's own p75 gap is 12.5 hours and its p99 is 8.2 days, so roughly 1% of real gaps exceed a
+week, which is about what a weekly minimum would produce.
+
+**If weekly is what the deployment expects, this exercise changes shape.** Arrival rate falls to
+around 20 syncs an hour across every tenant — a fortieth of production's peak — and concurrency stops
+being worth testing at all. What remains is per-sync cost and tenancy, which cases 5, 6 and 7 already
+target.
+
+**The payload barely moves, which is the part worth knowing.** A longer gap means more accumulated
+changes per sync, but not many: a field worker's village produces 60 encounters a day, so a weekly
+sync carries around 420 records against 15 for a four-a-day one, and a supervisor 1,120 against 40.
+Both sit far inside the light band where 98% of production's syncs already live. **So frequency
+drives the arrival rate and almost nothing else** — which is why this needs an answer rather than a
+midpoint.
 
 ### 3. What error rate is acceptable under load?
 
@@ -51,14 +75,7 @@ Blocks the last unfilled row of the Success criteria table.
 A6 is built and takes it as `MAX_FAILED_PERCENT`, so this is a number to choose rather than code to
 write.
 
-### 4. Is "500 workers" field workers only, or all users?
-
-**Assumed: field workers, with 62 supervisors added per state tenant on top.**
-Blocks the deployment table and user provisioning.
-
-If it is the total, the deployment is 11% smaller.
-
-### 5. Is 500 workers the pilot, the first year, or the design target?
+### 4. Is 500 workers the pilot, the first year, or the design target?
 
 **Assumed: a pilot.** Blocks the scope of every conclusion rather than the build.
 
@@ -66,7 +83,7 @@ A real state runs 165,000 ASHAs, so 500 is 0.3% of one. **Nothing in a 500-worke
 extrapolates upward** — tenant data volume grows with worker count, and sync cost follows it through
 index size and cache residency.
 
-### 6. Which organisation configuration(s) to run against?
+### 5. Which organisation configuration(s) to run against?
 
 Blocks H1 and F5.1, though not building anything.
 
@@ -75,14 +92,14 @@ exists. What is open is the choice. Worth covering a range of sizes deliberately
 drives the `syncDetails` row count and therefore D1.1's per-row queries, where Q8 measured 79
 entities tracked against 4 changed.
 
-### 7. Distributed injectors — needed, or not?
+### 6. Distributed injectors — needed, or not?
 
 Blocks F3.
 
 Gatling OSS has no orchestration, so multiple injectors mean merging logs by hand. One injector may
 well carry the whole deployment's load. Measure before building for it.
 
-### 8. Over what period?
+### 7. Over what period?
 
 Blocks sequencing. Ownership is settled; the order in the Sequencing table reflects dependencies
 rather than a calendar.
@@ -144,3 +161,5 @@ list.
   request, so a multi-hour sync is fine for it.
 - **Perf environment isolation** — designed, not an unknown.
 - **Rolling data** — year two accrues at year one's rate, with nothing ageing out.
+- **Is "500 workers" field workers only?** — **yes, field workers only.** Supervisors are added on
+  top, so a state tenant is 500 plus 62. The deployment table stands as written.

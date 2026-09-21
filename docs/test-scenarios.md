@@ -8,8 +8,10 @@ and a different lifecycle: the plan is how the instrument gets built, this is wh
 at. Every figure here is either something the customer supplied or something derived from it, and the
 derivations say so.
 
-**Three assumptions move the numbers, and one of them changes what the exercise measures.** They are
-flagged where they appear and listed in [open-questions.md](open-questions.md).
+**Two assumptions still move the numbers, and one of them changes what the exercise measures.** They
+are flagged where they appear and listed in [open-questions.md](open-questions.md): which tier
+supervises, and how often a worker syncs — where the requirement says weekly and production measures
+a 16-minute median.
 
 ---
 
@@ -111,8 +113,8 @@ distinction stops mattering and the cases can all run on the shared platform.
 Derived at 3 ASHAs per village, 3,000 beneficiaries per village, 8 ASHAs per sub-centre and 20
 encounters per ASHA per day — see **Where the numbers come from** below.
 
-**Assumption to confirm: the customer's "500 workers" is read as 500
-field workers, with supervisors added on top rather than counted within it.**
+**Confirmed with the customer: "500 workers" means 500 field
+workers, with supervisors added on top rather than counted within it.**
 
 ### Dataset size at each growth point
 
@@ -137,11 +139,21 @@ population does not grow with programme activity. **Three datasets are needed**,
 Full-sync client time at 9.19 ms/record: a field worker **2.1 min** at day 180 and **3.8** at year one;
 a supervisor **5.7** and **10.2**.
 
-### Sync frequency — the one number with no basis yet
+### Sync frequency — the widest open number
 
-Arrival rate needs a per-worker sync frequency, and nothing measured or supplied gives one.
-**Assumed: 4 syncs per worker per working day**, spread across the 09:00–21:00 plateau Q4 measured in
-production.
+Arrival rate needs a per-worker sync frequency, and three figures are in play across two orders of
+magnitude: **the requirement says once a week**, this document assumes **4 a working day**, and
+production measures a **median gap of 16 minutes** (Q2).
+
+They are probably not in conflict — a weekly requirement reads as a floor rather than a description,
+and roughly 1% of production's real gaps already exceed a week. But the answer changes the arrival
+rate by a factor of forty, so it is
+[open question 2](open-questions.md). **Assumed here: 4 syncs per worker per working day**, spread
+across the 09:00–21:00 plateau Q4 measured in production.
+
+**Only the arrival rate moves with it.** A longer gap means more accumulated changes per sync, but
+not many — a weekly sync carries ~420 records for a field worker against 15 for a four-a-day one, and
+both sit far inside the light band where 98% of production's syncs already live.
 
 | At 4 syncs/worker/day | Syncs/day | Average hour | Peak hour |
 |---|---|---|---|
