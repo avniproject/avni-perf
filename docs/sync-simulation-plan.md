@@ -53,6 +53,9 @@ work has been done on that item at all** — the "Before" column still describes
 | Behaviour on a failed page | **spun forever, reissuing the page** | the sync aborts and is recorded as failed — D8.5 |
 | Closed-port regression test | none | `make smoke_closed_port`, on every PR touching the simulation — D8.6 |
 | Failing-request logging | `DEBUG`, always on | `WARN`, opt-in via `HTTP_LOG_LEVEL` — D8.7 |
+| Page record count | `ThreadLocal` — per-thread, not per-user | on the session, one parse — D8.8 |
+| Bad `PUSH_*` override | clamped or unreachable, silently | throws or warns at startup — D8.9 |
+| Simulation unit tests | none — only the generator had any | 15 tests, `make unit_test`, in CI — D8.10 |
 | **Write path** | | |
 | Push / upload | none | modelled: one POST per record in the client's own order, seeded from the deployment. `PUSH=on`, off by default |
 | Media presigned URLs | none | upload signing modelled with the push (D5.1); on-demand viewing out of scope (D5.3) |
@@ -1452,6 +1455,69 @@ The check refuses to run if something is listening on the port, since that would
 wrong reason. **It was verified by reverting the fix**: with `.exitHereIfFailed()` removed it
 failed in 40 seconds having logged 5,247,074 lines, naming D8.5 and both loops. A regression test
 that has never failed is not evidence.
+
+**D8.8 — The page record count was per-thread, not per-user.** *Found reviewing the epic.*
+`lastPageRecordCount` was a `ThreadLocal`, written by the paging check and read by the storage
+pause. Gatling multiplexes hundreds of virtual users onto a handful of Netty event-loop threads,
+so per-thread is not per-user: it was correct only because the check and the pause happen to run
+in one synchronous continuation, which is an internal detail and not a contract.
+
+The exposure is not small if that ever stops holding. The storage pause is the **dominant term in
+a modelled sync** — up to 27.7 s for a heavy page against a 14.1 s median total — and D6's whole
+purpose is that it tracks *this user's* page size. Getting it from whichever page last parsed on
+the thread would break that correlation while leaving the aggregate plausible, which is the
+hardest kind of wrong to notice.
+
+Both values now come from one parse into a `PageInfo` carried on the **session**, which Gatling
+scopes per virtual user by construction. One parse was a deliberate earlier decision — two checks
+would have materialised every page twice — so the flag and the count travel together rather than
+being read separately.
+
+`exitHereIfFailed()` also moved **ahead of** the pause. On a failure the check never ran, so
+`pageInfo` still described the previous page, and the user paused as though persisting a page it
+never received.
+
+**D8.9 — `PushVolume` accepted bad input in silence.** *Found reviewing the epic.* Three ways, all
+now closed:
+
+- **The quantile clamp said nothing.** `p95 = Math.max(p50, p95)` and friends silently corrected a
+  transposed `-DPUSH_*` override into a different distribution from the one asked for.
+- **`fitTail` guarded one direction only.** It reported a tail that overshot the measured mean but
+  not one that undershot it — ask for a mean above `max` and the search converged at `k=1`, quietly
+  averaging low.
+- **`probability` was unchecked.** Above 1 made every sync push, at or below 0 none.
+
+Out-of-range probability now throws, since it can only be a typo. The other two accumulate
+warnings printed with the rest of the run's shape, because the run is still meaningful — just not
+quite the distribution requested, which has to be visible to be caught. Verified in all four
+directions, and the Q17 defaults produce **no** warnings.
+
+**D8.10 — Unit tests for the two fixes, and the first Java tests in the repo.** *Done.* Until now
+only the generator had tests; the simulation had none, which is part of why D8.5, D8.8 and D8.9
+were all found by reading rather than by a failing build.
+
+`make unit_test` (`./gradlew unitTest`) covers what can be tested without an injector: the push
+distribution's validation and maths, and page-metadata parsing. Both run in CI alongside the
+closed-port check.
+
+Two things had to move to make this possible, and both are improvements in their own right:
+
+- **`PageInfo` is now its own class** in `org.avni.models` rather than nested in the simulation.
+  Loading `AvniSyncSimulation` runs static initialisation that reads the entity table and the
+  user file, so nothing inside it could be unit-tested at all. The parsing logic never needed any
+  of that.
+- **The tests live in their own source set**, `src/unitTest/java`. The Gatling plugin puts the
+  `test` source set's output on the *gatling* compile classpath, so the obvious arrangement makes
+  the two circular.
+
+**Verified by mutation** rather than by watching them pass: an off-by-one in the page comparison,
+an unrecognised body looping instead of stopping (the D8.5 shape), dropping the probability
+validation, dropping the unreachable-mean warning, and breaking the tail fit — each was
+introduced in turn and each was caught.
+
+> These were ranked above their individual severity because of the pattern. **The spin (D8.5), the
+> feeder contract (E4.1) and these are the same failure**: a wrong input or state accepted without
+> a word. That is now three in one epic, which makes silence the thing to review for.
 
 **D8.7 — Failing-request logging is opt-in.** *Done.* `logback-test.xml` had
 `io.gatling.http.engine.response` at `DEBUG` — every failing request dumping a full

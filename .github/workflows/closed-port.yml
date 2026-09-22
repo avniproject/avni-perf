@@ -1,5 +1,8 @@
-name: Closed-port smoke
+name: Simulation checks
 
+# Two checks that need no server: the unit tests for the simulation's pure logic, and the
+# closed-port smoke.
+#
 # D8.5. The simulation must fail fast when the server does not answer.
 #
 # Both paged loops once cleared their continue-flag only from a check on a 200, so any failure
@@ -28,4 +31,5 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+      - run: make unit_test
       - run: make smoke_closed_port

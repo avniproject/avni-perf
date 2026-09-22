@@ -243,6 +243,10 @@ exactly when every user would otherwise start hammering it flat out.
 `make check_entities_current` regenerates the entity table from the pinned `openchs-models` and
 fails if the committed copy has drifted.
 
+`make unit_test` runs the simulation's unit tests — the push distribution's validation and maths,
+and page-metadata parsing. Only what can be tested without an injector; anything needing a running
+scenario is covered by the closed-port check above.
+
 `make test_data_generator` runs the generator's suite. Among other things it pins the generated
 `sync-users.csv` to the columns the simulation actually reads, checked against
 `sync-users-example.csv` — the two had drifted apart once, silently costing per-user push volume.

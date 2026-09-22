@@ -11,6 +11,7 @@ import io.gatling.javaapi.http.*;
 import org.avni.helper.CognitoHelper;
 import org.avni.models.AvniEntity;
 import org.avni.models.PushSeed;
+import org.avni.models.PageInfo;
 import org.avni.models.PushProfiles;
 import org.avni.models.PushVolume;
 import org.avni.models.SyncDetail;
@@ -649,6 +650,15 @@ public class AvniSyncSimulation extends Simulation {
                     + "what production pushes; ChecklistItem and AttendanceRecord are most of the "
                     + "rest but are unused by the organisations in scope - see D3.");
             }
+            // A PUSH_* override that had to be corrected, or a mean the quantiles cannot reach,
+            // is printed where the rest of the run's shape is printed. Collected rather than
+            // thrown because these are recoverable - the run is still meaningful, it just is not
+            // quite the distribution that was asked for, and that has to be visible to be caught.
+            for (PushVolume volume : customerWorkload.volumes.values()) {
+                for (String warning : volume.warnings) {
+                    out.println("  WARNING: " + warning);
+                }
+            }
             if (mediaPerEncounter > 0) {
                 long transferMs = mediaTransfer().toMillis();
                 out.println(String.format(
@@ -1078,8 +1088,8 @@ public class AvniSyncSimulation extends Simulation {
         if (resetSync == null) {
             return exec(session -> session);
         }
-        return exec(session -> session.set("allPagesNotFetched", true))
-            .asLongAs("#{allPagesNotFetched}", "index")
+        return exec(session -> session.set("pageInfo", PageInfo.FIRST))
+            .asLongAs(session -> pageInfo(session).hasMore, "index")
             .on(group(workload.request(RESET_SYNC)).on(
                 exec(http(workload.request(RESET_SYNC))
                     .get(session -> "/" + resetSync.path
@@ -1089,11 +1099,11 @@ public class AvniSyncSimulation extends Simulation {
                         + "&page=" + session.getInt("index"))
                     .check(status().is(200))
                     .check(bodyString()
-                        .transformWithSession(AvniSyncSimulation::hasMorePages)
-                        .saveAs("allPagesNotFetched")))
-                // Without this the loop spins. `allPagesNotFetched` is only ever cleared by a
-                // check on a 200, so any failure - refused connection, timeout, 5xx - leaves it
-                // true and the user re-requests the same page as fast as the event loop allows.
+                        .transformWithSession(AvniSyncSimulation::readPage)
+                        .saveAs("pageInfo")))
+                // Without this the loop spins. `pageInfo` is only ever replaced by a check on a
+                // 200, so any failure - refused connection, timeout, 5xx - leaves hasMore true and
+                // the user re-requests the same page as fast as the event loop allows.
                 // See the note on getAndPaginate; the real client aborts the sync instead.
                 .exitHereIfFailed()));
     }
@@ -1339,25 +1349,17 @@ public class AvniSyncSimulation extends Simulation {
      * The resource name under `_embedded` varies per entity, and there is only ever one, so the
      * first array found is it. A page with no `_embedded` is an empty page, not an error.
      */
-    private static int countRecords(JsonNode root) {
-        JsonNode embedded = root.path("_embedded");
-        if (embedded.isMissingNode() || !embedded.isObject()) {
-            return 0;
-        }
-        for (JsonNode child : embedded) {
-            if (child.isArray()) {
-                return child.size();
-            }
-        }
-        return 0;
-    }
 
     /**
      * Carries the record count from the body check to the pause that follows it, within one
      * virtual user's turn on the thread. A ThreadLocal because Gatling runs a session's steps on
      * one thread at a time and the check completes before the pause is evaluated.
      */
-    private static final ThreadLocal<Integer> lastPageRecordCount = ThreadLocal.withInitial(() -> 0);
+    /** This user's most recent page. See {@link PageInfo} for why it lives on the session. */
+    private static PageInfo pageInfo(Session session) {
+        Object v = session.get("pageInfo");
+        return v instanceof PageInfo ? (PageInfo) v : PageInfo.FIRST;
+    }
 
     /**
      * What this page costs the client, per D6.2: a fixed term plus a per-record term.
@@ -1366,52 +1368,57 @@ public class AvniSyncSimulation extends Simulation {
      * first record's. Modelling it as records x rate alone charges a 10-record page a tenth of a
      * 100-record page, when in reality they cost nearly the same.
      */
-    private static java.time.Duration storagePause(AvniEntity entity) {
+    private static java.time.Duration storagePause(AvniEntity entity, Session session) {
         if (!"weighted".equals(storageModel)) {
             return java.time.Duration.ZERO;
         }
         long millis = Math.round(
-            msPerPage + lastPageRecordCount.get() * entity.storageWeight * baseMsPerRecord);
+            msPerPage + pageInfo(session).recordCount * entity.storageWeight * baseMsPerRecord);
         return java.time.Duration.ofMillis(Math.max(0L, millis));
     }
 
     private static ChainBuilder getAndPaginate(Workload workload, AvniEntity entity) {
-        return exec(session -> session.set("allPagesNotFetched", true))
-            .asLongAs("#{allPagesNotFetched}", "index")
+        return exec(session -> session.set("pageInfo", PageInfo.FIRST))
+            .asLongAs(session -> pageInfo(session).hasMore, "index")
             .on(group(workload.request(entity.entityName)).on(
                 exec(http(workload.request(requestName(entity)))
                         .get(session -> url(entity, session))
                         .check(status().is(200))
-                        // One parse per response. The previous shape called response.body().string()
-                        // in two separate predicates, materialising every page twice just to test for
-                        // a substring - injector CPU spent inflating the latency being measured.
+                        // One parse per response, yielding both the continue-flag and the record
+                        // count. The shape before this called response.body().string() in two
+                        // separate predicates, materialising every page twice just to test for a
+                        // substring - injector CPU spent inflating the latency being measured.
                         .check(bodyString()
-                            .transformWithSession(AvniSyncSimulation::hasMorePages)
-                            .saveAs("allPagesNotFetched"))
+                            .transformWithSession(AvniSyncSimulation::readPage)
+                            .saveAs("pageInfo"))
                 )
-                    // The time the client spends parsing and persisting this page: its record
-                    // count times the entity's tier times baseMsPerRecord (D6.2). A page of
-                    // observation-bearing rows costs fifteen times a page of lookup rows, which one
-                    // uniform constant could not express.
-                    .pause(session -> storagePause(entity))
                     // A failed page ends the sync, which is both correct and load-bearing.
                     //
-                    // `allPagesNotFetched` is only cleared by a check that runs on a 200. Any
-                    // failure leaves it true, so without this the virtual user re-requests the
-                    // same page forever. It is not a slow leak: pointed at a closed port this
-                    // produced 23 million log lines and 1.4 GB in about two minutes.
+                    // `pageInfo` is only replaced by a check that runs on a 200, so any failure
+                    // leaves hasMore true and the virtual user re-requests the same page forever.
+                    // Not a slow leak: pointed at a closed port this produced 23 million log lines
+                    // and 1.4 GB in about two minutes, with no error and no termination.
                     //
                     // It also made D8.4's timeouts toothless here - the request would time out at
                     // 60s and the loop would immediately reissue it, so nothing was bounded.
                     //
                     // Worst where it matters most: case 9 ramps until the server stops answering,
                     // which is exactly the point every user in this loop would start hammering it
-                    // flat out. The injector's request rate would spike as the server weakened,
-                    // and the run would never end.
+                    // flat out. The injector's rate would spike as the server weakened, and the
+                    // run would never end.
                     //
                     // Aborting matches the client: requests.js rejects the page's fetch and the
                     // sync fails. One failed sync recorded as failed is the honest outcome.
+                    //
+                    // Placed *before* the pause deliberately. On a failure the check never ran, so
+                    // `pageInfo` still describes the previous page - pausing on it would model a
+                    // client persisting a page it never received.
                     .exitHereIfFailed()
+                    // The time the client spends parsing and persisting this page: its record
+                    // count times the entity's tier times baseMsPerRecord (D6.2). A page of
+                    // observation-bearing rows costs fifteen times a page of lookup rows, which one
+                    // uniform constant could not express.
+                    .pause(session -> storagePause(entity, session))
             ));
     }
 
@@ -1459,22 +1466,8 @@ public class AvniSyncSimulation extends Simulation {
      * Both come out of one parse. Reading the body twice is what A4 removed: injector CPU spent
      * inflating the latency being measured.
      */
-    private static boolean hasMorePages(String body, Session session) {
-        try {
-            JsonNode root = om.readTree(body);
-            lastPageRecordCount.set(countRecords(root));
-            JsonNode page = root.path("page");
-            if (!page.isMissingNode() && page.has("totalPages")) {
-                return page.get("totalPages").asInt() > session.getInt("index") + 1;
-            }
-            JsonNode slice = root.path("slice");
-            if (!slice.isMissingNode() && slice.has("hasNext")) {
-                return slice.get("hasNext").asBoolean();
-            }
-            return false;
-        } catch (IOException e) {
-            throw new UncheckedIOException("Could not parse page metadata", e);
-        }
+    private static PageInfo readPage(String body, Session session) {
+        return PageInfo.parse(body, session.getInt("index"));
     }
 
 

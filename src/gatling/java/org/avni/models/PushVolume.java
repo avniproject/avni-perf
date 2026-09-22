@@ -1,5 +1,7 @@
 package org.avni.models;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -40,6 +42,17 @@ public class PushVolume {
 
     private final double tailExponent;
 
+    /**
+     * Anything this instance had to correct or could not honour.
+     *
+     * These used to happen in silence. A typo in a `-DPUSH_*` override produced a different
+     * distribution from the one asked for and said nothing, which in a repository that has twice
+     * been bitten by silent defaults is the wrong default behaviour. Read and printed at startup
+     * by the simulation, so a bad override is visible in the same place as everything else that
+     * shapes a run.
+     */
+    public final List<String> warnings = new ArrayList<>();
+
     public PushVolume(String entityName, double probability, int p50, int p95, int max, double mean) {
         this(entityName, probability, 1, p50, p95, max, mean);
     }
@@ -47,13 +60,38 @@ public class PushVolume {
     public PushVolume(String entityName, double probability, int min, int p50, int p95, int max,
                       double mean) {
         this.entityName = entityName;
+        if (probability < 0 || probability > 1) {
+            throw new IllegalArgumentException("Push volume for " + entityName
+                + ": probability must be between 0 and 1, got " + probability
+                + ". Above 1 makes every sync push this entity and below 0 makes none, so it is a"
+                + " typo rather than an intent.");
+        }
         this.probability = probability;
         this.min = Math.max(1, min);
         this.p50 = Math.max(this.min, p50);
         this.p95 = Math.max(this.p50, p95);
         this.max = Math.max(this.p95, max);
         this.mean = mean;
+        if (this.min != min) {
+            warnings.add(clamped("min", min, this.min));
+        }
+        if (this.p50 != p50) {
+            warnings.add(clamped("p50", p50, this.p50));
+        }
+        if (this.p95 != p95) {
+            warnings.add(clamped("p95", p95, this.p95));
+        }
+        if (this.max != max) {
+            warnings.add(clamped("max", max, this.max));
+        }
         this.tailExponent = fitTail();
+    }
+
+    private String clamped(String name, int given, int used) {
+        return String.format(
+            "%s: %s was given as %d and raised to %d - the quantiles have to be non-decreasing, so"
+                + " this is not the distribution that was asked for",
+            entityName, name, given, used);
     }
 
     /**
@@ -105,10 +143,27 @@ public class PushVolume {
             return 1.0;
         }
         double lo = 1.0, hi = 1.0e4;
+        // modelMean decreases in k: a larger exponent pushes the tail's mass back towards p95.
+        // Both ends of the bracket are therefore reachable failures, and both are reported.
+        //
         // A very large exponent pins the tail at p95. If even that overshoots the measured mean,
         // the inputs are inconsistent - report the flattest tail rather than diverging.
         if (modelMean(hi) > mean) {
+            warnings.add(String.format(
+                "%s: mean %.2f is below what min/p50/p95/max can produce even with the tail pinned"
+                    + " at p95 (lowest reachable %.2f). Draws will average high.",
+                entityName, mean, modelMean(hi)));
             return hi;
+        }
+        // And the other direction, which used to pass in silence: with the fattest tail the model
+        // still cannot reach the stated mean, so the search converges at k=1 and the distribution
+        // quietly averages low. Reachable by asking for a mean above max.
+        if (modelMean(lo) < mean) {
+            warnings.add(String.format(
+                "%s: mean %.2f is above what min/p50/p95/max can produce even with the fattest"
+                    + " tail (highest reachable %.2f). Draws will average low.",
+                entityName, mean, modelMean(lo)));
+            return lo;
         }
         for (int i = 0; i < 60; i++) {
             double mid = Math.sqrt(lo * hi);

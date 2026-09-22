@@ -42,7 +42,41 @@ dependencies {
     gatling 'software.amazon.awssdk:regions'
     gatling 'software.amazon.awssdk:cognitoidentity'
     gatling 'software.amazon.awssdk:cognitoidentityprovider'
+
 }
+
+// Unit tests for the simulation's pure logic, in their own source set.
+//
+// Not `src/test/java`: the Gatling plugin puts the test source set's output on the *gatling*
+// compile classpath, so a test that also needs the gatling classes makes the two circular. A
+// separate source set sidesteps that without reconfiguring the plugin.
+//
+// Only what can be tested without an injector is covered: the push distribution's maths and
+// validation (D8.9), and page-metadata parsing (D8.8). Anything needing a running scenario is
+// covered by `make smoke_closed_port` instead.
+sourceSets {
+    unitTest {
+        java.srcDirs = ['src/unitTest/java']
+        compileClasspath += sourceSets.gatling.output + configurations.gatlingCompileClasspath
+        runtimeClasspath += sourceSets.gatling.output + configurations.gatlingRuntimeClasspath
+    }
+}
+
+dependencies {
+    unitTestImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    unitTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.register('unitTest', Test) {
+    description = 'Runs the simulation unit tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.unitTest.output.classesDirs
+    classpath = sourceSets.unitTest.runtimeClasspath
+    useJUnitPlatform()
+    testLogging { events 'failed', 'skipped' }
+}
+
+tasks.named('check') { dependsOn 'unitTest' }
 
 // A11. A simulation.log without provenance is not comparable to anything. This records what produced
 // each run, next to the run itself, so a result found months later can still be placed.

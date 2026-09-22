@@ -7,6 +7,9 @@ run_perf:
 run_perf_local:
 	./gradlew gatlingRun -DBASE_URL=http://localhost:8021
 
+unit_test: ## Unit tests for the simulation's pure logic - push distribution and page parsing
+	@./gradlew unitTest
+
 smoke_closed_port: ## D8.5: the simulation must fail fast against a port with nothing behind it
 	@./tools/closed-port-check.sh
 
