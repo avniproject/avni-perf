@@ -25,11 +25,14 @@ cd "$(dirname "$0")/.."
 PORT="${PORT:-9}"
 DEADLINE_SECONDS="${DEADLINE_SECONDS:-300}"
 MAX_REQUESTS="${MAX_REQUESTS:-100}"
-LOG="$(mktemp -t closed-port-check)"
+# GNU mktemp requires the XXXXXX; BSD does not. Without it this works on a developer's Mac
+# and fails on the CI runner, which is the one place it has to work unattended.
+LOG="$(mktemp "${TMPDIR:-/tmp}/closed-port-check.XXXXXX")"
 trap 'rm -f "$LOG"' EXIT
 
-# A port with something behind it would make this test pass for the wrong reason.
-if nc -z 127.0.0.1 "$PORT" 2>/dev/null; then
+# A port with something behind it would make this test pass for the wrong reason. Uses bash's
+# own /dev/tcp rather than nc, so a runner without netcat cannot silently skip the guard.
+if (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; then
   echo "FAIL: something is listening on 127.0.0.1:$PORT, so this check would not be testing"
   echo "      the closed-port path. Set PORT to a free port and re-run."
   exit 1
