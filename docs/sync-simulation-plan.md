@@ -292,10 +292,18 @@ run.
 
 **It has to be exercised or it rots**, which is the failure mode already seen three times in this
 repo: `AvniEntities.json`, the duplicate `avni-server/perf/gatling` harness, and the `legacy` storage
-mode dropped from D6.3. What keeps it honest is the **B2 run in the load-test environment**, which is
-an `AUTH_MODE=cognito` run by construction — so the exercise and the measurement are the same
-activity, and neither depends on pointing the harness at an environment this plan does not test
-against.
+mode dropped from D6.3.
+
+> **Deferring B2 removes the only thing that would have exercised it.** *Carried knowingly.* The
+> earlier position here was that B2 made the exercise and the measurement one activity. With B2
+> deferred by choice and `enable_cognito` off, **nothing runs `AUTH_MODE=cognito` at all** — it
+> compiles, and that is the whole of the assurance.
+>
+> That is the rot this paragraph names, and the honest consequence to accept is that *taking B2
+> later is not only a run but a repair*: the first `AUTH_MODE=cognito` invocation after a long gap
+> should be expected to fail on something unrelated to auth cost, and budgeted for. The
+> alternative — deleting the path and restoring it when needed — was already rejected in A10.1,
+> and deferring the measurement does not change that trade.
 
 A2 and A8 were folded in while the code was open — the token cache is now a `ConcurrentHashMap`, and
 `CognitoHelper` throws rather than calling `System.exit(1)`. **A3 is acknowledged, not fixed:** the
@@ -405,29 +413,34 @@ limits during ramp. A10.1 resolves A2 and A8 and makes A3 moot for the default p
 > the constraint — the earlier plan specified a private subnet, which was more than the requirement
 > needs. What remains is the SSH hop CI deploys over.
 
-**B2 — Measure the auth-cost offset.** *Available, not yet run.* The one thing B1 gives up is the
-per-request cost of `authenticateByToken`: JWT verification plus a user lookup.
+**B2 — Measure the auth-cost offset.** *Deferred by choice, measurable on demand.* The one thing
+B1 gives up is the per-request cost of `authenticateByToken`: JWT verification plus a user lookup.
 
-Cheap now that A10.1 kept the Cognito path behind `AUTH_MODE`: run the same simulation twice —
-`AUTH_MODE=none` and `AUTH_MODE=cognito` — and the delta is the number. No code to restore and no
-separate harness.
+**The capability is kept, the measurement is not scheduled.** A10.1 kept the Cognito path behind
+`AUTH_MODE`, so taking B2 is running the same simulation twice — `AUTH_MODE=none` and
+`AUTH_MODE=cognito` — and reading the delta. No code to restore and no separate harness. That is
+the whole of the work, which is why it does not need a slot: it can be taken whenever a finding
+makes the offset worth knowing.
 
-**It runs in the load-test environment, which means that environment needs a Cognito path.** *Decided.*
-Every test in this plan is measured here and nowhere else — staging and prerelease are not
-substitutes, because an offset measured on a different instance class against a different dataset is
-not the offset this environment's results need adjusting by. Two consequences to carry deliberately:
+**`enable_cognito` stays `false`.** *Decided.* Standing up a Cognito pool in the load-test
+environment would mean provisioning B2's users in it (G5) and carrying an authentication path the
+environment otherwise has no use for, to obtain a constant that adjusts results rather than
+changes them. Not worth the standing cost for a measurement nobody is currently waiting on.
 
-- **The Cognito pool has to exist here.** `avni-infra`'s module has `enable_cognito`, defaulting off
-  on the stated grounds that B2 was deferred and "the simulation strips Cognito entirely." **Both
-  halves of that are wrong**: `AUTH_MODE=cognito` is live in `AvniSyncSimulation`, and B2 is not
-  deferred. Set `enable_cognito = true`, and provision the B2 run's users in the pool (G5).
-- **The environment therefore does pass through an open posture**, which `avni-infra` deliberately
-  removed. B2 is a short run: take it once, early, immediately after F4's allowlist is in place and
-  before the `AVNI_IDP_TYPE=none` cutover, while the allowlist is the thing keeping the environment
-  closed. The allowlist — not the IdP — is what makes this safe, which was already true under B1.
+> **One thing `avni-infra` records as a reason is wrong, and should not be relied on if this is
+> ever revisited.** The stated grounds for defaulting it off include that "the simulation strips
+> Cognito entirely." It does not — `AUTH_MODE=cognito` is live in `AvniSyncSimulation` and A10.1
+> deliberately kept it. The default is right; that half of the justification is not. **B2 is
+> deferred by choice, not blocked by a missing capability.**
 
-Until it is taken, the recorded position is that the simulation under-counts per-request work by an
-unmeasured constant.
+**If it is taken, it runs here.** Staging and prerelease are not substitutes: an offset measured on
+a different instance class against a different dataset is not the offset this environment's results
+need adjusting by. That would mean turning `enable_cognito` on for the run, provisioning the users,
+and taking it while F4's allowlist — not the IdP — is what keeps the environment closed. Cheapest
+window is before the `AVNI_IDP_TYPE=none` cutover, but nothing forces it into that window.
+
+Until it is taken, the recorded position stands: the simulation under-counts per-request work by an
+unmeasured constant, and that belongs in F5.2's parity record alongside the other two deviations.
 
 **B3 — Fallback: refresh tokens off the hot path.** Only if a finding implicates auth.
 `AdminInitiateAuth` already returns a refresh token; refresh via `REFRESH_TOKEN_AUTH` on a background
@@ -1565,8 +1578,8 @@ pushScale`. Only two columns overlapped.
   supervisor's account, overstating the write load by the same factor it understates the read.
   The generator *knows* each user's role; it was emitting it in a column nothing read.
 - **`password|token` was missing**, so a generated feeder cannot be used with `AUTH_MODE=cognito`
-  at all. B1 makes that harmless for now; B2 needs cognito to measure the auth offset, so it would
-  have surfaced there.
+  at all. B1 makes that harmless, and B2 is deferred — but it would have surfaced the moment
+  anyone took B2, which is exactly when nobody would be looking for a feeder bug.
 - **`deviceId` was emitted and ignored.** The simulation sent one `DEVICE_ID` for every virtual
   user. It now reads the per-user value, falling back to the property.
 
@@ -1947,7 +1960,7 @@ read rather than merely what the environment costs:
 
 | Deviation | Effect on results |
 |---|---|
-| **Authentication off** (`AVNI_IDP_TYPE=none`, B1) | Removes `authenticateByToken` — JWT verification plus a user lookup — from every request. **B2 measures the offset**; until it runs, server-side latency is understated by an unmeasured per-request amount |
+| **Authentication off** (`AVNI_IDP_TYPE=none`, B1) | Removes `authenticateByToken` — JWT verification plus a user lookup — from every request. **B2 is deferred by choice**, so this is a standing deviation rather than a pending measurement: server-side latency is understated by an unmeasured per-request amount until someone chooses to take it |
 | **WAF rule set** (F4) | The rate rule is reproduced at 550 with the injector scope-down exempted, so per-request inspection cost is paid. But production's `Block_Known_Spammers` and `php-rule` are not reproduced and its anti-DDoS rule set is absent, while `AWSManagedRulesCommonRuleSet` — which production does not run — is in the path. **Record the rules evaluated, rule by rule.** This is the one deviation that can push latency either way |
 | **TLS** | Production terminates HTTPS at the ALB. The module falls back to a plain HTTP listener when `acm_certificate_arn` is null, which removes a measurable per-request cost. Supply a certificate, or record its absence per run |
 | **Fixed instance classes** | Production is burstable in unlimited mode; this environment is fixed, deliberately, to remove credit dynamics from every run. It also means this environment cannot reproduce a credit-exhaustion choke point, which production has actually hit on the database side — so that failure mode has to be reasoned about, not measured here |
@@ -2877,7 +2890,7 @@ Ordering reflects dependencies, not estimates.
 
 | Phase | Tasks | Why here |
 |---|---|---|
-| **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done, and tracked per query.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4's allowlist and SSH tunnel come first, then B2's short Cognito run, then B1 turns auth off.** F4 is one security group rule plus the tunnel CI already has most of, rather than a private subnet with NAT and a private hosted zone — but it does require `avni-infra`'s module to be made externally resolvable, which it currently is not. **B2 is not deferred and belongs before the cutover**: every test runs in this environment, so the auth-cost offset has to be measured here, which means `enable_cognito = true` and a Cognito run taken while the allowlist is what keeps the environment closed (see B). B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
+| **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done, and tracked per query.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4's allowlist and SSH tunnel come first, then B1 turns auth off.** F4 is one security group rule plus the tunnel CI already has most of, rather than a private subnet with NAT and a private hosted zone — but it does require `avni-infra`'s module to be made externally resolvable, which it currently is not. **B2 is deferred by choice and is not in the critical path**: `enable_cognito` stays `false`, and the auth-cost offset is taken on demand if a finding makes it worth knowing (see B). Its absence is carried as a known deviation in F5.2, not as outstanding work. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **D3 and D5.1 are done**; G4's restore mechanism is what remains, and it is now the gate rather than a deferral — a `PUSH=on` run cannot be repeated without it. Q17 replaces D3's guessed push volumes. |
 | **3 · Workload** | **D7** · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5, E3, E4, E5 and E7 no longer sit here - media upload landed with D3, injection profiles and co-tenant traffic are built, E4 and E5 are done, and media viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
