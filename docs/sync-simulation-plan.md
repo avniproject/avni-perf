@@ -69,13 +69,14 @@ work has been done on that item at all** — the "Before" column still describes
 | Dataset and environment parity | none | **Not started — F5** |
 | Run-to-run restore | none — nothing reset between runs | **Not started — G4 / F6** |
 | **Environment** | | |
-| Deploy path into the closed environment | none | **Not started — F4** |
+| Network isolation and deploy path | none | **Not started — F4**, now a security group allowlist plus the SSH tunnel CI is most of the way to |
 | Environment contract | undocumented | specified in section J; **Not started** to implement |
 | **Trustworthiness** | | |
 | Server APM | not provisioned for a load-test environment | **Not started — F1** |
 | Request-logging overhead | unmeasured | **Not started — F2** |
 | Second Gatling setup | unreconciled | **Not started — F3** |
 | Distributed injection | undecided | **Deferred** — one injector until F7 shows it saturating |
+| Injector position | undecided | local **and** EC2 both supported (F4's allowlist); not interchangeable for measurement, and recorded per run |
 | Assertions | commented out | zero-failure structural gate, plus rate and p95 bounds for a load run |
 | Calibration gate | none | **Not started — F7** |
 | **Grounding** | | |
@@ -348,7 +349,7 @@ and it is the only operator-facing documentation the repo has.
 
 - The `password` / `token` columns and the "requires AWS developer credentials on the machine
   executing the simulation" note both disappear under B1.
-- `BASE_URL` default `https://perf.avniproject.org` changes when the environment goes private (F4.4).
+- `BASE_URL` default `https://perf.avniproject.org` stays as it is — F4 keeps DNS public and restricts by security group.
 - `NOW` changes meaning once the window end comes from the server response (D2).
 
 *Missing and worth adding:*
@@ -390,8 +391,12 @@ limits during ramp. A10.1 resolves A2 and A8 and makes A3 moot for the default p
 > whatever username they put in a header. The perf environment must be network-isolated — security
 > group or VPN, never publicly reachable, never sharing a database with anything real.
 >
-> This breaks the existing CI deploy path, which reaches `perf.avniproject.org` over the public
-> internet. **F4 is a prerequisite for B1, not a follow-up.**
+> **This is about the authentication decision, not the data.** The dataset is generated (H6), so
+> there is no confidentiality argument; the door is open regardless of what is behind it.
+>
+> **F4 is a prerequisite, and a small one.** A security group allowlisting the injector satisfies
+> the constraint — the earlier plan specified a private subnet, which was more than the requirement
+> needs. What remains is the SSH hop CI deploys over.
 
 **B2 — Measure the auth-cost offset.** *Available, not yet run.* The one thing B1 gives up is the
 per-request cost of `authenticateByToken`: JWT verification plus a user lookup.
@@ -1573,16 +1578,40 @@ perf environment runs at.
 **F3 — Reconcile the second Gatling setup.** `avni-server/perf/gatling/` is a separate, older harness.
 Fold it in or delete it; maintaining two guarantees both drift.
 
-### F4 — Deploying the server to the closed environment
+### F4 — Network isolation and the deploy path
 
-**Distributed injection is deferred.** One injector until something says otherwise — Gatling OSS has
-no orchestration, so multiple injectors mean merging logs by hand, which is real work for a problem
-nobody has yet. **The signal to revisit is the injector appearing in its own results**: saturated CPU
-on the load generator, or response times rising with virtual user count while the server's own
-metrics stay flat. F7's calibration gate is where that would surface.
+**Decided: a security group allowlist, not a private subnet.** *Revised — the earlier version of
+this section specified full private-subnet isolation, and that was more than the requirement needs.*
 
-**Prerequisite for B1.** B1 requires the perf environment be unreachable from the internet. CircleCI
-deploys to it from the internet. That has to be resolved before the environment can be closed.
+**What the requirement actually is.** B1 runs the server with `AVNI_IDP_TYPE=none`, so anyone who
+can reach it is authenticated as whatever username they put in a header. That is an open door
+regardless of what is behind it: free compute, a pivot inside the AWS account, and the ability for
+anyone to write to the environment mid-run and corrupt a result without leaving a trace. B1's own
+wording is *"network-isolated — security group or VPN, never publicly reachable"*. **A security group
+allowlist satisfies that.**
+
+**What it is not.** The dataset is generated (H6), so there is no confidentiality argument here and
+never was. Isolation is required by the *authentication* decision, not by the data. That distinction
+matters because it sets how much isolation is enough.
+
+**So the application port is allowlisted to the injector, and that is the whole of it.** One
+security group rule. The instance can keep a public IP and sit in a public subnet, which incidentally
+removes two of the four sub-tasks this section used to carry:
+
+- **F4.3 — egress** falls away. A public subnet reaches the internet through the existing internet
+  gateway, so the apt, Maven and Docker pulls the deploy playbook makes at deploy time work without
+  a NAT gateway or VPC endpoints.
+- **F4.4 — DNS** falls away. `perf.avniproject.org` keeps resolving publicly; only the security group
+  restricts who can connect. Nothing to decide, and `BASE_URL` needs no change.
+
+> **This is what makes a local injector possible**, which the customer has asked for. An allowlist
+> takes a source address; a private subnet takes a tunnel. See the note under F7 on why the two
+> injector positions are not interchangeable for measurement even so.
+
+**The SSH hop for deploys is a separate problem, and it keeps F4.1.** CircleCI deploys from the
+internet, so the allowlist has to admit it somehow. Allowlisting CircleCI's published IP ranges
+remains rejected for the reasons below, which leaves the tunnel — and that is fine, because it is the
+smallest of the four sub-tasks and CI already uses EC2 Instance Connect under the same IAM model.
 
 **What exists today.** `avni-server/.circleci/config.yml` has a `PERF_deploy` job. It attaches the
 built zip from the workspace, downloads `avni-infra` from GitHub, decrypts the Ansible vault, and runs
@@ -1590,43 +1619,59 @@ built zip from the workspace, downloads `avni-infra` from GitHub, decrypts the A
 container** and pushes the artifact to the instance over SSH; `setup_server_access` supplies an
 ephemeral keypair via `aws ec2-instance-connect send-ssh-public-key`.
 
-The key is delivered through the AWS control plane and is already IAM-authenticated. **The only thing
-requiring a public path is the SSH connection itself** — a direct TCP hop to the instance, which today
-works because `perf.avniproject.org` resolves publicly. That single hop is the whole problem, and the
-whole fix.
+The key is already delivered through the AWS control plane and IAM-authenticated. **The only thing
+needing a network path is the SSH connection itself.**
 
-**F4.1 — Tunnel the SSH hop through the AWS API.** Two options, neither needing any inbound security
-group rule or public IP:
+**F4.1 — Tunnel the SSH hop through the AWS API.** *Still required.* Two options, neither needing any
+inbound security group rule:
 
 - *EC2 Instance Connect Endpoint* — `aws ec2-instance-connect open-tunnel` used as an SSH
   `ProxyCommand`. **Smallest change:** the job already uses EC2 Instance Connect under the same IAM
-  model, so this is a proxy command plus an endpoint resource in the VPC.
+  model, so this is a proxy command plus an endpoint resource in the VPC. Works for instances in
+  public and private subnets alike.
 - *SSM Session Manager* — `ProxyCommand` of
-  `aws ssm start-session --document-name AWS-StartSSHSession`. Needs the SSM agent, an instance role,
-  and NAT or VPC endpoints. More conventional, slightly more setup.
+  `aws ssm start-session --document-name AWS-StartSSHSession`. Needs the SSM agent and an instance
+  role. More conventional, slightly more setup.
 
 Both move authorisation from network position to IAM, which is a stronger control than any IP
-allowlist.
+allowlist — and the reason the SSH port gets the tunnel while the application port gets the
+allowlist. SSH is a permanent path used by CI; the application port is a deliberate, temporary
+opening to one known address for the duration of a run.
 
 > **Explicitly rejected: allowlisting CircleCI's IP ranges.** It is a paid add-on, the published list
 > changes, and it opens the environment to a large pool of shared CI infrastructure — defeating
 > precisely the isolation that made `AVNI_IDP_TYPE=none` acceptable in the first place. Do not trade
-> B1's safety property for CI convenience.
+> B1's safety property for CI convenience. **Note this is not what the injector allowlist does:**
+> one known address under the team's control is a different proposition from a shared CI pool.
 
-**F4.2 — Adapt the Ansible invocation.** Ansible itself barely changes: the tunnel is configured
-through `ansible_ssh_common_args` or an SSH config block, and the `avni-infra` make targets are
-otherwise untouched. The substantive change is that the inventory must address the host by **instance
-ID** rather than DNS name, since both transports target the instance through the AWS API rather than
-a resolvable hostname.
+**F4.2 — Adapt the Ansible invocation.** *Still required, with F4.1.* Ansible itself barely changes:
+the tunnel is configured through `ansible_ssh_common_args` or an SSH config block, and the
+`avni-infra` make targets are otherwise untouched. The substantive change is that the inventory must
+address the host by **instance ID** rather than DNS name, since both transports target the instance
+through the AWS API rather than a resolvable hostname.
 
-**F4.3 — Give the instance an egress path.** In a private subnet with no NAT gateway or VPC
-endpoints, any package the playbook fetches at deploy time — apt, Maven, Docker pulls — fails. This
-is the most common way a first closed-environment deploy breaks. Audit what the deploy playbook
-actually fetches and provision accordingly.
+**Rate limiting is disabled in this environment.** *Decided.* All load arrives from one source
+address, so a per-IP rate rule measures the rig rather than the server. `avni-infra` measured
+production's `rate-limit-rule` at **550 per five minutes — about 1.8 requests a second**, which makes
+an un-allowlisted run impossible rather than merely degraded, and the failure is quiet: blocked
+requests surface in the Gatling report as server errors or latency, not as a WAF decision.
 
-**F4.4 — Confirm DNS.** `perf.avniproject.org` currently resolves publicly. Decide whether it becomes
-a private hosted zone record or the deploy addresses the instance by ID only, and make sure the
-simulation's `BASE_URL` still resolves from inside the boundary.
+> **One consequence to record rather than discover.** Production evaluates a full web ACL on every
+> request — `Block_Known_Spammers`, a `php-rule`, and the managed anti-DDoS rule set alongside the
+> rate rule. Dropping the *rate* rule is clearly right here. Dropping the *whole* ACL additionally
+> removes a per-request inspection cost that production pays and this environment will not, which
+> understates server-side latency by an unmeasured but systematic amount.
+>
+> `avni-infra` reached the narrower conclusion — allowlist the injector ahead of the rate rule,
+> keeping the rest of the ACL in the evaluation path — which preserves that cost at no extra effort.
+> Either is defensible; **whichever is chosen belongs in F5.2's parity record**, and WAF
+> `BlockedRequests` and `CountedRequests` should be checked after the first run so throttling is
+> never mistaken for a server plateau.
+
+**Prerequisite for B1, but a much smaller one than before.** B1 still requires the environment be
+unreachable from the internet at large, and CircleCI still deploys to it. What has changed is the
+size of the fix: one security group rule plus the tunnel CI is already most of the way to, rather
+than a private subnet with NAT, VPC endpoints and a private hosted zone.
 
 ### F5 — Dataset and environment parity
 
@@ -1643,6 +1688,19 @@ observation model makes it substantially harder than "insert N rows".
 configuration, connection pool sizing, JVM flags, whether the database is shared or dedicated. Any
 deviation from production must be written down — every result carries an asterisk otherwise, and the
 asterisk needs to be legible when someone reads the findings months later.
+
+**Three deviations are already known and decided**, so they belong here from the start rather than
+being reconstructed later:
+
+| Deviation | Effect on results |
+|---|---|
+| **Authentication off** (`AVNI_IDP_TYPE=none`, B1) | Removes `authenticateByToken` — JWT verification plus a user lookup — from every request. **B2 measures the offset**; until it runs, server-side latency is understated by an unmeasured per-request amount |
+| **Rate limiting disabled** (F4) | Correct here, since all load comes from one address. If the *whole* web ACL is disabled rather than only the rate rule, production's per-request inspection cost goes missing too |
+| **Injector position** | Runs from different positions are not comparable: a sync is ~109 requests, so 25 ms of extra round trip adds 2.7 s to a 14.1 s median. Recorded per run in `run-metadata.json` (A11) |
+
+All three understate latency in the same direction, which is worth stating plainly: **a green result
+in this environment is not automatically a green result in production**, and the gap is the sum of
+these three plus whatever F7's calibration gate cannot close.
 
 **F5.3 — Suppress outbound side effects.** Anything that reaches a third party must be dead: SMS,
 notifications, and the Glific/flow integrations behind `MessageSenderJob`. Enforce at the
@@ -1694,6 +1752,29 @@ concrete, passable test rather than an aspiration:
 If it does not, the simulation is not yet an instrument and its findings are not evidence. This gates
 believing results, not producing them — run it after D6 and again after D7, and re-run it whenever
 the client changes something the simulation models.
+
+**Both injector positions are supported; they are not interchangeable.** The customer has asked to
+be able to run from a local machine, and F4's allowlist makes that possible. Worth being explicit
+about what it costs, because the obvious objection is the wrong one:
+
+- **Bandwidth is not the constraint.** The heaviest ordinary case needs about **0.3 Mbps** gzipped,
+  and 5 Mbps even if supervisors full-sync. Any office link carries it.
+- **Latency is, and it is a systematic offset rather than noise.** A sync is about **109 requests**
+  — 79 pull, 27 push, 3 control — so every millisecond of round trip is paid 109 times. An office in
+  India to `ap-south-1` at 25 ms adds **2.7 s to a 14.1 s median, 19%**; home broadband at 45 ms adds
+  4.9 s. `MS_PER_PAGE` models the *client's* parse-and-persist gap, not the injector's network, so
+  the same value is not correct for two positions and no amount of extra samples closes the gap.
+  **Region matters more than local-versus-EC2**: the same office to `us-east-1` adds 24 seconds.
+- **Two cases need an EC2 injector.** Case 9 ramps until something breaks and the finding is *what*
+  broke — a laptop's ceiling is unknown and shared with a browser and an IDE, which is exactly the
+  signal above. Case 10 runs twelve hours unattended, where sleep, wifi and OS updates make a laptop
+  a poor host.
+
+So: **local for development, smoke, debugging and exploring the single-tenant cases; EC2 for
+quotable runs, and required for 9 and 10.** What keeps this honest is that `run-metadata.json`
+records the injector's label, OS, CPU count and heap (A11), so two runs from different positions
+cannot be compared without it being visible. Per-position calibration of `MS_PER_PAGE` is not
+attempted yet.
 
 **E7 — Co-tenant sync traffic.** *Done.* *Distinct from F5.4, which is the batch workloads.* Case 7
 needs production's other organisations to be **syncing**, not merely present — that is the whole
@@ -2477,12 +2558,13 @@ means the harness does not require it, not that it is unnecessary.
 
 | Requirement | From |
 |---|---|
-| Not publicly reachable: no public IP and no inbound security group rule on the application host | B1 |
-| A deploy path that works with no inbound rule — EC2 Instance Connect Endpoint as an SSH `ProxyCommand` (preferred, since CI already uses EC2 Instance Connect under the same IAM model), or SSM Session Manager | F4.1 |
+| Not reachable from the internet at large: the application port allowlisted to the injector's address only | B1, F4 |
+| A deploy path needing no inbound rule — EC2 Instance Connect Endpoint as an SSH `ProxyCommand` (preferred, since CI already uses EC2 Instance Connect under the same IAM model), or SSM Session Manager. **Not** CircleCI IP allowlisting | F4.1 |
 | Hosts addressable by **instance ID**, because both transports target instances through the AWS API rather than a resolvable name | F4.2 |
-| An outbound path for deploy-time package fetches — NAT gateway or VPC endpoints. Without it the first Ansible run fails on apt, Maven and Docker pulls | F4.3 |
-| DNS resolved deliberately: a private hosted zone record or instance-ID addressing. Whichever is chosen, `BASE_URL` must resolve from wherever the injector runs | F4.4 |
-| A documented position for the load injector and a route from it to `BASE_URL`. Whether one injector suffices is an open question in this plan; providing somewhere to put it is an environment obligation | Open questions |
+| Egress for deploy-time package fetches — apt, Maven and Docker pulls. Satisfied by the internet gateway if the host sits in a public subnet; a NAT gateway or VPC endpoints only if it does not | F4 |
+| `BASE_URL` resolving from wherever the injector runs. Public DNS satisfies this; the security group is what restricts access | F4 |
+| A documented position for the load injector, its source address for the allowlist, and a route from it to `BASE_URL`. Both a local machine and an EC2 instance are supported; runs from different positions are not comparable and are distinguished in `run-metadata.json` | F4, A11 |
+| Per-IP rate limiting disabled, since all load arrives from one address. If the whole web ACL is disabled rather than only the rate rule, record it — production's per-request inspection cost then goes missing too | F4, F5.2 |
 
 ### I2 — Application configuration
 
@@ -2533,7 +2615,7 @@ Ordering reflects dependencies, not estimates.
 
 | Phase | Tasks | Why here |
 |---|---|---|
-| **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done, and tracked per query.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
+| **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done, and tracked per query.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4's allowlist and SSH tunnel come first, then B1 turns auth off.** F4 is now one security group rule plus the tunnel CI already has most of, rather than a private subnet with NAT and a private hosted zone. B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **D3 and D5.1 are done**; G4's restore mechanism is what remains, and it is now the gate rather than a deferral — a `PUSH=on` run cannot be repeated without it. Q17 replaces D3's guessed push volumes. |
 | **3 · Workload** | **D7** · E5 · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5, E3 and E7 no longer sit here - media upload landed with D3, injection profiles and co-tenant traffic are built, and media viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
@@ -2563,10 +2645,12 @@ plan itself decided. What the tests will *answer* is under **Measure before fixi
 
 ### Closed
 
-- **~~Perf environment isolation.~~** *No limitation.* The isolated deploy path is designed — an EC2
-  Instance Connect Endpoint tunnels SSH through the AWS API to an instance with no public IP and no
-  inbound rule, using the IAM model CI already relies on (F4.1). Nothing blocks `AVNI_IDP_TYPE=none`;
-  it is build work in the infrastructure plan, not an unknown.
+- **~~Perf environment isolation.~~** *No limitation, and smaller than first designed.* Isolation is
+  required by the authentication decision rather than by the data, which is generated — so a security
+  group allowlisting the injector satisfies it, and the application host can keep a public IP. The
+  SSH hop CI deploys over is tunnelled through the AWS API with an EC2 Instance Connect Endpoint,
+  using the IAM model CI already relies on (F4.1). Nothing blocks `AVNI_IDP_TYPE=none`; it is build
+  work in the infrastructure plan, not an unknown.
 - **~~Who does this?~~** *The dedicated Avni team for Tanuh.*
 - **~~How many media files does a typical sync upload?~~** *Answerable in SQL* — [measurement query](production-measurement-queries.md) **Q9**.
   `sync_telemetry` does not record media counts, but media observations do: they are keyed by concepts
