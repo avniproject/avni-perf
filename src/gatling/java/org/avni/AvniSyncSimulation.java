@@ -1049,7 +1049,12 @@ public class AvniSyncSimulation extends Simulation {
                     .check(status().is(200))
                     .check(bodyString()
                         .transformWithSession(AvniSyncSimulation::hasMorePages)
-                        .saveAs("allPagesNotFetched")))));
+                        .saveAs("allPagesNotFetched")))
+                // Without this the loop spins. `allPagesNotFetched` is only ever cleared by a
+                // check on a 200, so any failure - refused connection, timeout, 5xx - leaves it
+                // true and the user re-requests the same page as fast as the event loop allows.
+                // See the note on getAndPaginate; the real client aborts the sync instead.
+                .exitHereIfFailed()));
     }
 
     /**
@@ -1348,6 +1353,24 @@ public class AvniSyncSimulation extends Simulation {
                     // observation-bearing rows costs fifteen times a page of lookup rows, which one
                     // uniform constant could not express.
                     .pause(session -> storagePause(entity))
+                    // A failed page ends the sync, which is both correct and load-bearing.
+                    //
+                    // `allPagesNotFetched` is only cleared by a check that runs on a 200. Any
+                    // failure leaves it true, so without this the virtual user re-requests the
+                    // same page forever. It is not a slow leak: pointed at a closed port this
+                    // produced 23 million log lines and 1.4 GB in about two minutes.
+                    //
+                    // It also made D8.4's timeouts toothless here - the request would time out at
+                    // 60s and the loop would immediately reissue it, so nothing was bounded.
+                    //
+                    // Worst where it matters most: case 9 ramps until the server stops answering,
+                    // which is exactly the point every user in this loop would start hammering it
+                    // flat out. The injector's request rate would spike as the server weakened,
+                    // and the run would never end.
+                    //
+                    // Aborting matches the client: requests.js rejects the page's fetch and the
+                    // sync fails. One failed sync recorded as failed is the honest outcome.
+                    .exitHereIfFailed()
             ));
     }
 

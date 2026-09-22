@@ -189,6 +189,26 @@ entity's distribution, as `probability:[min:]p50:p95:max:mean`
 
 `PUSH_ALLOW_UNSAFE_TARGET` `true` lifts the protected-host guard
 
+`HTTP_LOG_LEVEL` detail for failing HTTP requests, default `WARN`. `DEBUG` logs every failing
+request with its full request/response block, `TRACE` every request. Off by default because a
+stress run fails by design, and left on it is injector CPU spent formatting strings about the
+latency being measured.
+
+## Checks
+
+`make smoke_closed_port` runs the smoke profile against a port with nothing behind it and requires
+that it fails fast: the run must terminate, issue only a handful of requests, and fail its
+assertions. CI runs it on every PR touching `src/gatling/**`.
+
+This guards a real defect (D8.5). Both paged loops once cleared their continue-flag only from a
+check on a 200, so any failure left it set and the virtual user reissued the same page forever —
+23 million log lines and 1.4 GB in two minutes, with no error and no termination. It matters most
+where the plan needs it most: `PROFILE=stress` ramps until the server stops answering, which is
+exactly when every user would otherwise start hammering it flat out.
+
+`make check_entities_current` regenerates the entity table from the pinned `openchs-models` and
+fails if the committed copy has drifted.
+
 ## Injection profiles
 
 `PROFILE` sets the arrival shape. **Arrival rate is derived, not configured** — one sync per user

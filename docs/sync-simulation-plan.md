@@ -49,7 +49,10 @@ work has been done on that item at all** — the "Before" column still describes
 | Telemetry | none | posted like a real client, tagged so production queries exclude it |
 | Reset sync | not requested at all | request modelled in the right order; no scenario needed — the storm was a defect |
 | Storage pause | uniform random, 0 to a constant | per-entity weighted model at `BASE_MS_PER_RECORD`, with `STORAGE_MODEL=zero` to remove it |
-| Request timeouts | Gatling defaults | **Not started — D8.4** |
+| Request timeouts | Gatling defaults, unchosen | explicit in `gatling.conf`, sized to the client's own 60s limit; idle-connection timeout raised to match okhttp |
+| Behaviour on a failed page | **spun forever, reissuing the page** | the sync aborts and is recorded as failed — D8.5 |
+| Closed-port regression test | none | `make smoke_closed_port`, on every PR touching the simulation — D8.6 |
+| Failing-request logging | `DEBUG`, always on | `WARN`, opt-in via `HTTP_LOG_LEVEL` — D8.7 |
 | **Write path** | | |
 | Push / upload | none | modelled: one POST per record in the client's own order, seeded from the deployment. `PUSH=on`, off by default |
 | Media presigned URLs | none | upload signing modelled with the push (D5.1); on-demand viewing out of scope (D5.3) |
@@ -1346,8 +1349,90 @@ on 100 — the fleet is probably mixed, and nothing currently records which. Add
 `sync_telemetry.app_info` alongside the per-entity durations D7 needs; both ride the same client
 release. Until then, treat the production split as unknown and test both sizes.
 
-**D8.4 — Set explicit request and response timeouts** in the simulation, sized for the largest
-plausible page.
+**D8.4 — Set explicit request and response timeouts.** *Done.* They live in
+`src/gatling/resources/gatling.conf`, which until now was the stock file with every value commented
+out — so every timeout was whatever Gatling happened to default to. **Most are now set to the same
+number, and that is the point**: an unchosen default is a hidden parameter, and A1 moved this
+project from Gatling 3.9.2 to 3.15.1.3, which is exactly the kind of event that silently moves one.
+
+**Sized against what the client tolerates, not against the largest plausible page** — which is how
+this task was originally framed, and the wrong frame. A response the client would already have
+abandoned is a failed sync in the field however fast the server eventually answers.
+
+> **The client gives up at 60 seconds.** `openchs-android/src/framework/http/requests.js:57` wraps
+> every fetch in a 60-second `Promise.race` and rejects with `syncTimeoutError`. It covers the whole
+> sync path: `getJSON` for the pull, `post` for the push, and the media `uploadUrl` call all reach
+> `fetchFactory` without the bypass. Gatling's default is the same number, so the value does not
+> change — its provenance does.
+
+**One value did change, and it is load-bearing.** `pooledConnectionIdleTimeout` went from 60 s to
+300 s, matching okhttp's default keep-alive. D5.2 made this matter: a device now pauses for the
+modelled media upload before pushing, and at the default bandwidth that pause runs to **136
+seconds**. At 60 s the injector would drop and re-establish a connection on nearly every
+media-bearing sync — TCP and TLS handshakes a real device never pays, charged to the server as
+connection churn the field does not produce.
+
+`data.leak.noActivityTimeout` went from 30 s to 600 s for the same reason: during a long media
+pause a single-population run legitimately issues nothing, and the default reports that as a
+suspected leak.
+
+**The file is committed**, so the commit in `run-metadata.json` (A11) pins these values for a run.
+Changing one changes what *failed* means and makes runs either side incomparable.
+
+**D8.5 — A failed page ends the sync.** *Done. Found by verifying D8.4, and it negated D8.4.*
+
+Both paged loops — `getAndPaginate`, which every one of the 79 entities uses, and the `ResetSync`
+loop — were written as `asLongAs("#{allPagesNotFetched}")`, where `allPagesNotFetched` is only ever
+cleared by a `check` that runs on a 200. **Any failure left it true**, so the virtual user reissued
+the same page as fast as the event loop allowed, forever.
+
+> Pointed at a closed port, a one-user smoke run produced **23,084,907 log lines and 1.4 GB in
+> about two minutes** before it was killed. With `.exitHereIfFailed()` on both loops the same run
+> is **110 lines, 12 KB, and fails in 7 seconds** with both assertions firing.
+
+Three reasons this mattered more than a noisy log:
+
+- **It made the timeouts I had just set meaningless.** A request would time out at 60 s and the
+  loop would immediately reissue it. Nothing was bounded, so D8.4 was not actually done.
+- **It is worst exactly where the plan needs it most.** Case 9 ramps until the server stops
+  answering. That is the moment every user in the loop would begin hammering it flat out, so the
+  injector's request rate would spike as the server weakened — the measurement corrupting itself
+  at the knee, which is the one point the case exists to find. And the run would never end.
+- **It was silent.** No error, no assertion, no termination — just a run that never finishes and a
+  log nobody would read to the bottom.
+
+Aborting is also the faithful model: `requests.js` rejects the page's fetch and the sync fails. One
+sync recorded as failed is the honest outcome, and the existing `MAX_FAILED_PERCENT` assertion then
+does its job.
+
+**D8.6 — A closed-port case in the smoke profile.** *Done.* This defect was not found by review;
+it was found by pointing the simulation at a port with nothing behind it, which is a cheap test
+the repo did not have. `make smoke_closed_port` (`tools/closed-port-check.sh`) now runs the smoke
+profile against a closed port on every PR touching `src/gatling/**`.
+
+Three assertions, in order of what they catch:
+
+1. **The run terminates.** This is the one that catches a spin, and it catches it whatever the log
+   level happens to be — which is why the check does not rely on log size.
+2. **The request count stays small.** A spin issues millions; a correct run issues two.
+3. **The build fails.** A green run against a closed port would mean the assertions are not wired
+   up, which is its own defect.
+
+The check refuses to run if something is listening on the port, since that would pass for the
+wrong reason. **It was verified by reverting the fix**: with `.exitHereIfFailed()` removed it
+failed in 40 seconds having logged 5,247,074 lines, naming D8.5 and both loops. A regression test
+that has never failed is not evidence.
+
+**D8.7 — Failing-request logging is opt-in.** *Done.* `logback-test.xml` had
+`io.gatling.http.engine.response` at `DEBUG` — every failing request dumping a full
+request/response block — directly under a comment saying to uncomment it if you want that. It was
+the other half of the 1.4 GB.
+
+A stress run produces failures in volume *by design*, so left on this is injector CPU spent
+formatting strings about the latency it is supposed to be measuring. That is the same class of
+cost as the `SetOrganisationJdbcInterceptor` TRACE logging in F2.1, on the other side of the wire.
+The default is now `WARN`, with `-DHTTP_LOG_LEVEL=DEBUG` (or `TRACE`) to get it back for
+debugging a run.
 
 ---
 

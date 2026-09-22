@@ -1,0 +1,31 @@
+name: Closed-port smoke
+
+# D8.5. The simulation must fail fast when the server does not answer.
+#
+# Both paged loops once cleared their continue-flag only from a check on a 200, so any failure
+# left it set and the virtual user reissued the same page forever - 23 million log lines and
+# 1.4 GB in two minutes, with no error and no termination. Review did not catch it; pointing the
+# thing at a closed port caught it immediately.
+#
+# This matters beyond tidiness: cases 9 and 10 ramp until the server stops answering, which is
+# precisely when every user would start hammering it flat out - the injector's request rate
+# spiking as the server weakens, corrupting the measurement at the knee the case exists to find.
+
+on:
+  pull_request:
+    paths:
+      - 'src/gatling/**'
+      - 'tools/closed-port-check.sh'
+      - 'build.gradle'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - run: make smoke_closed_port

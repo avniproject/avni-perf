@@ -8,9 +8,16 @@
 		<immediateFlush>false</immediateFlush>
 	</appender>
 
-	<!-- uncomment and set to DEBUG to log all failing HTTP requests -->
-	<!-- uncomment and set to TRACE to log all HTTP requests -->
-	<logger name="io.gatling.http.engine.response" level="DEBUG" />
+	<!-- Every failing request logs a full request/response block at DEBUG, and a stress run
+	     produces failures in volume by design. Left on, that is injector CPU spent formatting
+	     strings about the latency it is supposed to be measuring - the same class of cost as the
+	     TRACE logging noted in F2.1 - plus a log nobody can read. Pointed at a closed port with
+	     D8.5's spin present it reached 1.4 GB in two minutes.
+
+	     So the default is WARN and the detail is opt-in:
+	       -DHTTP_LOG_LEVEL=DEBUG   every failing HTTP request, for debugging a run
+	       -DHTTP_LOG_LEVEL=TRACE   every HTTP request -->
+	<logger name="io.gatling.http.engine.response" level="${HTTP_LOG_LEVEL:-WARN}" />
 
 	<root level="WARN">
 		<appender-ref ref="CONSOLE" />
