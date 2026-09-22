@@ -92,7 +92,12 @@ tasks.register('archiveRun') {
                 gatlingPlugin : '3.15.1.3'
             ],
             target    : [
-                baseUrl    : prop('BASE_URL', 'https://perf.avniproject.org'),
+                // Read from the simulation's own record. Restating the default here meant two
+                // copies of one value, and a rename that touched only one would have archived a
+                // hostname the run never used.
+                baseUrl    : (settings instanceof Map && settings.baseUrl)
+                    ? settings.baseUrl
+                    : prop('BASE_URL', 'unrecorded - the simulation did not write one'),
                 serverBuild: prop('SERVER_BUILD', 'unrecorded')
             ],
             settings  : settings,

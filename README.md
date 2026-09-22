@@ -151,7 +151,7 @@ reissued the same page forever. `make smoke_closed_port` guards it.
 ### Environment variables
 Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
-`BASE_URL` default https://perf.avniproject.org
+`BASE_URL` default https://loadtest.avniproject.org
 
 `USER_COUNT` defaults to number of rows in resources/sync-users.csv
 

@@ -286,14 +286,16 @@ Under `none` the simulation sends only the `USER-NAME` header and the auth chain
 uses, and the only one viable past the token lifetime.
 
 Under `cognito` the token path runs. Keeping it costs one conditional and four dependencies, and buys
-two things deleting would have forfeited: short runs against Cognito environments such as staging and
-prerelease — the only way to exercise that path once B1 closes the perf environment — and B2 as a flag
-flip rather than a code restoration.
+two things deleting would have forfeited: the B2 measurement as a flag flip rather than a code
+restoration, and a way to exercise the token path at all once B1 turns the IdP off for every other
+run.
 
 **It has to be exercised or it rots**, which is the failure mode already seen three times in this
 repo: `AvniEntities.json`, the duplicate `avni-server/perf/gatling` harness, and the `legacy` storage
-mode dropped from D6.3. An occasional smoke run under `AUTH_MODE=cognito` against staging is what
-keeps it honest.
+mode dropped from D6.3. What keeps it honest is the **B2 run in the load-test environment**, which is
+an `AUTH_MODE=cognito` run by construction — so the exercise and the measurement are the same
+activity, and neither depends on pointing the harness at an environment this plan does not test
+against.
 
 A2 and A8 were folded in while the code was open — the token cache is now a `ConcurrentHashMap`, and
 `CognitoHelper` throws rather than calling `System.exit(1)`. **A3 is acknowledged, not fixed:** the
@@ -354,7 +356,7 @@ and it is the only operator-facing documentation the repo has.
 
 - The `password` / `token` columns and the "requires AWS developer credentials on the machine
   executing the simulation" note both disappear under B1.
-- `BASE_URL` default `https://perf.avniproject.org` stays as it is — F4 keeps DNS public and restricts by security group.
+- `BASE_URL` default becomes `https://loadtest.avniproject.org` — the environment's name is `loadtest`, and F4 keeps DNS publicly resolvable while restricting access by security group.
 - `NOW` changes meaning once the window end comes from the server response (D2).
 
 *Missing and worth adding:*
@@ -393,7 +395,7 @@ completely — no minting, no expiry, no refresh, no AWS credentials on the runn
 limits during ramp. A10.1 resolves A2 and A8 and makes A3 moot for the default path.
 
 > **Hard constraint.** With `IdpType.none`, anyone who can reach the server is authenticated as
-> whatever username they put in a header. The perf environment must be network-isolated — security
+> whatever username they put in a header. The load-test environment must be network-isolated — security
 > group or VPN, never publicly reachable, never sharing a database with anything real.
 >
 > **This is about the authentication decision, not the data.** The dataset is generated (H6), so
@@ -406,13 +408,26 @@ limits during ramp. A10.1 resolves A2 and A8 and makes A3 moot for the default p
 **B2 — Measure the auth-cost offset.** *Available, not yet run.* The one thing B1 gives up is the
 per-request cost of `authenticateByToken`: JWT verification plus a user lookup.
 
-Cheap now that A10.1 kept the Cognito path behind `AUTH_MODE`. Run the same simulation twice against
-one Cognito environment — `AUTH_MODE=none` and `AUTH_MODE=cognito` — and the delta is the number. No
-code to restore, no separate rig, and it does **not** need the perf environment: staging or
-prerelease serves, since both run Cognito.
+Cheap now that A10.1 kept the Cognito path behind `AUTH_MODE`: run the same simulation twice —
+`AUTH_MODE=none` and `AUTH_MODE=cognito` — and the delta is the number. No code to restore and no
+separate harness.
 
-Worth taking once, early, while a Cognito environment is convenient. Until it is, the recorded
-position is that the simulation under-counts per-request work by an unmeasured constant.
+**It runs in the load-test environment, which means that environment needs a Cognito path.** *Decided.*
+Every test in this plan is measured here and nowhere else — staging and prerelease are not
+substitutes, because an offset measured on a different instance class against a different dataset is
+not the offset this environment's results need adjusting by. Two consequences to carry deliberately:
+
+- **The Cognito pool has to exist here.** `avni-infra`'s module has `enable_cognito`, defaulting off
+  on the stated grounds that B2 was deferred and "the simulation strips Cognito entirely." **Both
+  halves of that are wrong**: `AUTH_MODE=cognito` is live in `AvniSyncSimulation`, and B2 is not
+  deferred. Set `enable_cognito = true`, and provision the B2 run's users in the pool (G5).
+- **The environment therefore does pass through an open posture**, which `avni-infra` deliberately
+  removed. B2 is a short run: take it once, early, immediately after F4's allowlist is in place and
+  before the `AVNI_IDP_TYPE=none` cutover, while the allowlist is the thing keeping the environment
+  closed. The allowlist — not the IdP — is what makes this safe, which was already true under B1.
+
+Until it is taken, the recorded position is that the simulation under-counts per-request work by an
+unmeasured constant.
 
 **B3 — Fallback: refresh tokens off the hot path.** Only if a finding implicates auth.
 `AdminInitiateAuth` already returns a refresh token; refresh via `REFRESH_TOKEN_AUTH` on a background
@@ -1690,9 +1705,20 @@ properties and a `-javaagent`. So each item is set from `avni-infra` group_vars:
   `getMetaData()` evaluation. Measuring the cost is configuration; fixing it is code.
 - **F3** — deleting `avni-server/perf/gatling/`.
 
-**The gap:** `configure/group_vars/` has no perf or loadtest environment file at all — the
-environments are prod, staging, prerelease, rwb_*, onpremise, snapshot and vagrant. All of the above
-lands in a file that does not exist yet, which belongs with the environment work in F4/F5.
+**The gap is closed.** `avni-infra` now has `configure/group_vars/loadtest_vars.yml`, with the
+New Relic javaagent and `newrelic_environment`, production's exact heap, an explicit
+`spring.datasource.tomcat.max-active`, a deliberately chosen `logging.level.org.avni`, and
+`avni_idp_type: none`. There is also a `loadtest` dynamic inventory that discovers hosts by tag and
+addresses them by instance ID. **So F1 is largely done rather than blocked**, and what remains is
+verifying the agent reports and the pool gauges arrive — not building an environment file.
+
+> **Two values there are decisions, not defaults, and belong in F5.2's record.**
+> `loadtest_db_pool_max_active: 100` happens to be the Tomcat JDBC default, so "set explicitly
+> rather than left at the default" is satisfied in form while reproducing exactly the value
+> predicted to be the first choke point. That is defensible as parity, but if the pool is a suspect
+> it has to be *varied* across runs, not fixed once. And the RDS parameter group allows 200
+> connections against production's 122-130 peak, so the database's own ceiling will not be the
+> limiter first — the pool will.
 
 **F2.1 — The per-connection organisation interceptor costs three round trips per borrow.**
 *Verified in code, not speculation.* `application.properties:17` registers
@@ -1727,7 +1753,7 @@ reading is a hypothesis, not a finding.
 **F2 — Check request logging isn't itself the choke point.** `AuthenticationFilter` logs at INFO twice
 per request — on receipt, and on completion with timing — including the full query string. Under load
 that is a plausible bottleneck in its own right. Measure it, and decide deliberately what level the
-perf environment runs at.
+load-test environment runs at.
 
 **F3 — The second Gatling setup stays.** *Decided: keep both, deliberately.* `avni-server/perf/gatling/`
 is a separate, older harness, and the earlier instruction here was to fold it in or delete it on
@@ -1924,7 +1950,7 @@ read rather than merely what the environment costs:
 | **Authentication off** (`AVNI_IDP_TYPE=none`, B1) | Removes `authenticateByToken` — JWT verification plus a user lookup — from every request. **B2 measures the offset**; until it runs, server-side latency is understated by an unmeasured per-request amount |
 | **WAF rule set** (F4) | The rate rule is reproduced at 550 with the injector scope-down exempted, so per-request inspection cost is paid. But production's `Block_Known_Spammers` and `php-rule` are not reproduced and its anti-DDoS rule set is absent, while `AWSManagedRulesCommonRuleSet` — which production does not run — is in the path. **Record the rules evaluated, rule by rule.** This is the one deviation that can push latency either way |
 | **TLS** | Production terminates HTTPS at the ALB. The module falls back to a plain HTTP listener when `acm_certificate_arn` is null, which removes a measurable per-request cost. Supply a certificate, or record its absence per run |
-| **Fixed instance classes** | Production is burstable in unlimited mode; this environment is fixed, deliberately, to remove credit dynamics from every run. It also means this environment cannot reproduce a credit-exhaustion choke point — see the prod DB precedent |
+| **Fixed instance classes** | Production is burstable in unlimited mode; this environment is fixed, deliberately, to remove credit dynamics from every run. It also means this environment cannot reproduce a credit-exhaustion choke point, which production has actually hit on the database side — so that failure mode has to be reasoned about, not measured here |
 | **Pristine indexes** | Post-load indexes have no bloat; production's have accumulated it. Understates index scan and maintenance cost (G4) |
 | **Injector position** | Runs from different positions are not comparable: a sync is ~109 requests, so 25 ms of extra round trip adds 2.7 s to a 14.1 s median. Recorded per run in `run-metadata.json` (A11) |
 
@@ -2079,6 +2105,9 @@ finding out has multiplied.
   the collected data covers this run only.
 - **Generate the scenario's sync-status arrays** by rewriting `loadedSince` on the cached baselines
   per D1's distribution.
+- **Enrol the injector's public egress address** in both the ALB security group and the WAF IP set
+  (F4). It differs between a local run and the EC2 injector, and a run from an un-enrolled address
+  fails as server errors and latency rather than as an access decision.
 - **Record run metadata** (A11): simulation SHA, server build, dataset identity and row counts,
   injection profile, `STORAGE_MODEL`, `PAGE_SIZE`, cache policy.
 
@@ -2796,7 +2825,7 @@ means the harness does not require it, not that it is unnecessary.
 | Egress for deploy-time package fetches — apt, Maven and Docker pulls. Satisfied by the internet gateway if the host sits in a public subnet; a NAT gateway or VPC endpoints only if it does not | F4 |
 | `BASE_URL` resolving from wherever the injector runs. Public DNS satisfies this; the security group is what restricts access | F4 |
 | A documented position for the load injector, its source address for the allowlist, and a route from it to `BASE_URL`. Both a local machine and an EC2 instance are supported; runs from different positions are not comparable and are distinguished in `run-metadata.json` | F4, A11 |
-| Per-IP rate limiting disabled, since all load arrives from one address. If the whole web ACL is disabled rather than only the rate rule, record it — production's per-request inspection cost then goes missing too | F4, F5.2 |
+| A WAF that reproduces production's rate rule at 550 while exempting the injector by **scope-down statement** — never by an allow rule, which terminates evaluation and drops the rest of the ACL with it. Record the rules actually evaluated, rule by rule, and check each rule's own metric after the first run | F4, F5.2 |
 
 ### I2 — Application configuration
 
@@ -2835,9 +2864,10 @@ metrics, Tomcat JDBC pool gauges including waiting borrows, and per-endpoint p95
 must be able to explain *why* it slowed down, not only report that it did — without this the entire
 plan produces unactionable findings.
 
-Mostly satisfied by attaching the existing `newrelic` Ansible role and setting a few `-D` properties
-in `avni_server_opts`; see F1. The blocker is that **no perf or loadtest group_vars file exists**, so
-there is nowhere for that configuration to live yet.
+Satisfied by attaching the existing `newrelic` Ansible role and setting a few `-D` properties in
+`avni_server_opts`; see F1. **This is no longer blocked** — `configure/group_vars/loadtest_vars.yml`
+exists and already carries the agent, the heap, the pool size and the log level. What is left is
+confirming the metrics arrive.
 
 ---
 
@@ -2847,7 +2877,7 @@ Ordering reflects dependencies, not estimates.
 
 | Phase | Tasks | Why here |
 |---|---|---|
-| **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done, and tracked per query.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4's allowlist and SSH tunnel come first, then B1 turns auth off.** F4 is now one security group rule plus the tunnel CI already has most of, rather than a private subnet with NAT and a private hosted zone. B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
+| **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done, and tracked per query.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4's allowlist and SSH tunnel come first, then B2's short Cognito run, then B1 turns auth off.** F4 is one security group rule plus the tunnel CI already has most of, rather than a private subnet with NAT and a private hosted zone — but it does require `avni-infra`'s module to be made externally resolvable, which it currently is not. **B2 is not deferred and belongs before the cutover**: every test runs in this environment, so the auth-cost offset has to be measured here, which means `enable_cognito = true` and a Cognito run taken while the allowlist is what keeps the environment closed (see B). B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **D3 and D5.1 are done**; G4's restore mechanism is what remains, and it is now the gate rather than a deferral — a `PUSH=on` run cannot be repeated without it. Q17 replaces D3's guessed push volumes. |
 | **3 · Workload** | **D7** · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5, E3, E4, E5 and E7 no longer sit here - media upload landed with D3, injection profiles and co-tenant traffic are built, E4 and E5 are done, and media viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |

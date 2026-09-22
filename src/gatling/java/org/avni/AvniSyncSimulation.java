@@ -33,7 +33,7 @@ public class AvniSyncSimulation extends Simulation {
     // Declared first: loadEntities() runs in the static initialiser and needs it.
     private static final ObjectMapper om = new ObjectMapper();
 
-    private static final String baseUrl = System.getProperty("BASE_URL", "https://perf.avniproject.org");
+    private static final String baseUrl = System.getProperty("BASE_URL", "https://loadtest.avniproject.org");
     private static final Integer userCount = Integer.getInteger("USER_COUNT", csv("sync-users.csv").recordsCount());
     private static final Integer rampPeriod = Integer.getInteger("RAMP_PERIOD", csv("sync-users.csv").recordsCount() * 20);
     // The client ships pageSize 1000 (avni-client config/initialSettings.json). It cannot be read from
@@ -792,6 +792,11 @@ public class AvniSyncSimulation extends Simulation {
         injection.put("stressToSyncsPerHour", stressToSyncsPerHour);
         injection.put("rampPeriodSeconds", rampPeriod);
         settings.put("injection", injection);
+
+        // The target belongs with what the run used, not with what produced it: build.gradle
+        // restated this default once and the two could drift, which is the failure A11 fixed
+        // everywhere else in this file.
+        settings.put("baseUrl", baseUrl);
 
         Map<String, Object> sync = new LinkedHashMap<>();
         sync.put("syncMode", syncMode);
