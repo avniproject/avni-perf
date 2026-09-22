@@ -28,7 +28,6 @@ MAX_REQUESTS="${MAX_REQUESTS:-100}"
 # GNU mktemp requires the XXXXXX; BSD does not. Without it this works on a developer's Mac
 # and fails on the CI runner, which is the one place it has to work unattended.
 LOG="$(mktemp "${TMPDIR:-/tmp}/closed-port-check.XXXXXX")"
-trap 'rm -f "$LOG"' EXIT
 
 # A port with something behind it would make this test pass for the wrong reason. Uses bash's
 # own /dev/tcp rather than nc, so a runner without netcat cannot silently skip the guard.
@@ -37,6 +36,24 @@ if (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; then
   echo "      the closed-port path. Set PORT to a free port and re-run."
   exit 1
 fi
+
+# The user file holds credentials, so it is gitignored and a clean checkout does not have one -
+# which is exactly what CI is. The simulation reads it in a static initialiser, so without this
+# the run dies before Gatling starts and the check reports a broken build rather than a result.
+# Found by triggering the workflow: it had never run.
+USERS="src/gatling/resources/sync-users.csv"
+CREATED_USERS=""
+if [ ! -f "$USERS" ]; then
+  cp "src/gatling/resources/sync-users-example.csv" "$USERS"
+  CREATED_USERS="yes"
+  echo "No $USERS, so using the committed example for this check."
+fi
+# Only remove what this script created. Someone's real user file is not ours to delete.
+cleanup() {
+  rm -f "$LOG"
+  if [ -n "$CREATED_USERS" ]; then rm -f "$USERS"; fi
+}
+trap cleanup EXIT
 
 echo "Running the smoke profile against 127.0.0.1:$PORT (nothing listening)..."
 ./gradlew gatlingRun --simulation=org.avni.AvniSyncSimulation -q \

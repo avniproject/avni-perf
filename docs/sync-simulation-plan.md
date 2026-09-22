@@ -1452,7 +1452,15 @@ Three assertions, in order of what they catch:
    up, which is its own defect.
 
 The check refuses to run if something is listening on the port, since that would pass for the
-wrong reason. **It was verified by reverting the fix**: with `.exitHereIfFailed()` removed it
+wrong reason. It also provisions `sync-users.csv` from the committed example when there is none,
+and removes only what it created — the user file holds credentials so it is gitignored, and a
+clean checkout is exactly what CI is. The simulation reads it in a static initialiser, so without
+that the run dies before Gatling starts.
+
+> **Both of those were found by running the workflow rather than reading it.** It had never fired:
+> `mktemp -t` without the `XXXXXX` works on BSD and fails on GNU, and the missing user file only
+> appears on a checkout that has never been configured. A CI job that has not run is not a check,
+> it is an intention — and this one guards a defect whose whole character was passing silently. **It was verified by reverting the fix**: with `.exitHereIfFailed()` removed it
 failed in 40 seconds having logged 5,247,074 lines, naming D8.5 and both loops. A regression test
 that has never failed is not evidence.
 
