@@ -85,7 +85,43 @@ public class AvniSyncSimulation extends Simulation {
     // as the client does. Set it to pin the window across runs.
     private static final String nowOverride = System.getProperty("NOW");
     // The client sends its Android id; filterChangedEntities branches on it for device-aware entities.
-    private static final String deviceId = System.getProperty("DEVICE_ID", "avni-perf-simulation");
+    private static final String defaultDeviceId = System.getProperty("DEVICE_ID", "avni-perf-simulation");
+
+    /**
+     * E4 - one device id per user, from the feeder, falling back to the run-wide default.
+     *
+     * The generator has emitted a per-user `deviceId` since G5, and until now the simulation
+     * ignored it and sent one string for every virtual user. The server does not treat this as
+     * decoration: `filterChangedEntities` calls `isSyncRequiredForDevice(lastModified, deviceId)`
+     * on the syncDetails path D1.1 is about, and that both generates identifier assignments when
+     * none exist and then queries them filtered by device. Identifier assignment is keyed on
+     * (user, device), so a shared id does not collapse rows across users - the effect is not that
+     * the pull got cheaper. What it does cost is the ability to tell devices apart at all: every
+     * `sync_telemetry` row a run writes carries the same device, and a user with two devices
+     * cannot be modelled.
+     */
+    /** Whether the user file carries per-user device ids, for the metadata and the banner. */
+    private static boolean feederHasColumn(String file, String column) {
+        try (java.io.InputStream in = AvniSyncSimulation.class.getClassLoader().getResourceAsStream(file)) {
+            if (in == null) return false;
+            String header = new java.io.BufferedReader(
+                new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).readLine();
+            if (header == null) return false;
+            for (String h : header.replace("\uFEFF", "").split(",")) {
+                if (h.trim().equals(column)) return true;
+            }
+            return false;
+        } catch (java.io.IOException e) {
+            return false;
+        }
+    }
+
+    private static final boolean feederHasDeviceIds = feederHasColumn("sync-users.csv", "deviceId");
+
+    private static String deviceIdOf(Session session) {
+        String fromFeeder = session.getString("deviceId");
+        return fromFeeder == null || fromFeeder.isEmpty() ? defaultDeviceId : fromFeeder;
+    }
 
     // E2. Which sync is being simulated. "csv" takes lastModifiedDateTime from the feeder file;
     // "full" forces a first sync; "incremental" forces a recent window. A run should say which of
@@ -487,7 +523,7 @@ public class AvniSyncSimulation extends Simulation {
     private static ChainBuilder bootstrapChain(Workload workload) {
         return doIf(session -> !userSyncStatuses.containsKey(session.getString("userName")))
             .then(exec(http(workload.request("Bootstrap sync statuses"))
-                    .post(session -> "/v2/syncDetails?includeUserSubjectType=true&deviceId=" + deviceId)
+                    .post(session -> "/v2/syncDetails?includeUserSubjectType=true&deviceId=" + deviceIdOf(session))
                     .body(StringBody("[]")).asJson()
                     .check(status().is(200))
                     .check(jsonPath("$.syncDetails").transform(AvniSyncSimulation::parseSyncDetails)
@@ -514,7 +550,7 @@ public class AvniSyncSimulation extends Simulation {
             .exec(pushChain(workload))
             .exec(resetSyncChain(workload))
             .exec(http(workload.request("Getting SyncDetails"))
-                .post(session -> "/v2/syncDetails?includeUserSubjectType=true&deviceId=" + deviceId)
+                .post(session -> "/v2/syncDetails?includeUserSubjectType=true&deviceId=" + deviceIdOf(session))
                 .body(StringBody(AvniSyncSimulation::syncStatusBody)).asJson()
                 .check(status().is(200))
                 .check(jsonPath("$.syncDetails")
@@ -763,7 +799,7 @@ public class AvniSyncSimulation extends Simulation {
         sync.put("pageSize", pageSize);
         sync.put("incrementalSinceHours", incrementalSinceHours);
         sync.put("nowOverride", nowOverride == null ? "from server response" : nowOverride);
-        sync.put("deviceId", deviceId);
+        sync.put("deviceId", feederHasDeviceIds ? "per-user, from the feeder" : defaultDeviceId);
         settings.put("sync", sync);
 
         Map<String, Object> storage = new LinkedHashMap<>();
@@ -1096,7 +1132,7 @@ public class AvniSyncSimulation extends Simulation {
         body.put("entityStatus", entityStatus);
         body.put("appVersion", "avni-perf");
         body.put("androidVersion", "simulated");
-        body.put("deviceName", deviceId);
+        body.put("deviceName", deviceIdOf(session));
         body.put("deviceInfo", Collections.singletonMap("simulated", true));
         body.put("appInfo", Collections.singletonMap("simulated", true));
         body.put("syncSource", "avni-perf-simulation");
@@ -1396,7 +1432,7 @@ public class AvniSyncSimulation extends Simulation {
         }
         if (entity.staticParams != null) {
             for (Map.Entry<String, String> param : entity.staticParams.entrySet()) {
-                String value = param.getValue() == null ? deviceIdFor(param.getKey()) : param.getValue();
+                String value = param.getValue() == null ? deviceIdFor(param.getKey(), session) : param.getValue();
                 sb.append(param.getKey()).append("=").append(value).append("&");
             }
         }
@@ -1811,7 +1847,7 @@ public class AvniSyncSimulation extends Simulation {
         }
         if (entity.staticParams != null) {
             for (Map.Entry<String, String> param : entity.staticParams.entrySet()) {
-                String value = param.getValue() == null ? deviceIdFor(param.getKey()) : param.getValue();
+                String value = param.getValue() == null ? deviceIdFor(param.getKey(), session) : param.getValue();
                 sb.append(param.getKey()).append("=").append(value).append("&");
             }
         }
@@ -1957,7 +1993,7 @@ public class AvniSyncSimulation extends Simulation {
     }
 
     /** A null static param value means the client fills it in per device; deviceId is the only one today. */
-    private static String deviceIdFor(String key) {
-        return "deviceId".equals(key) ? deviceId : "";
+    private static String deviceIdFor(String key, Session session) {
+        return "deviceId".equals(key) ? deviceIdOf(session) : "";
     }
 }

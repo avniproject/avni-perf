@@ -172,6 +172,52 @@ def test_the_feeder_spans_every_tenant():
     assert text.count("field_worker") > text.count("supervisor")
 
 
+def test_the_feeder_carries_every_column_the_simulation_reads():
+    """The columns are a contract with the simulation, and it drifted once already.
+
+    `feeder_csv` used to emit deviceId/role/organisationUUID and omit `password|token` and
+    `pushScale`. Nothing checked, so a generated feeder silently gave every user the default
+    push volume -- the exact failure the pushScale column exists to prevent -- and could not
+    be used with AUTH_MODE=cognito at all.
+
+    The committed example file is the documented contract, so this pins the generator to it
+    rather than to a list that would have to be remembered separately.
+    """
+    import csv as _csv
+    example = (Path(__file__).resolve().parents[3]
+               / "src/gatling/resources/sync-users-example.csv")
+    required = set(next(_csv.reader(example.open(encoding="utf-8-sig"))))
+
+    out = Path(tempfile.mkdtemp()) / "sync-users.csv"
+    dep.feeder_csv(tiny(), out)
+    produced = set(next(_csv.reader(out.open())))
+
+    missing = required - produced
+    assert not missing, f"generated feeder is missing {sorted(missing)}"
+
+
+def test_supervisors_are_not_silently_given_a_field_workers_push_volume():
+    """The default is unscaled, and that is deliberate -- no measurement supports a number yet.
+
+    What must not happen is the column going missing again, which would make the distinction
+    unexpressable rather than merely unset.
+    """
+    out = Path(tempfile.mkdtemp()) / "sync-users.csv"
+    dep.feeder_csv(tiny(), out, supervisor_push_scale=0.1)
+    rows = list(csv_rows(out))
+    supervisors = [r for r in rows if r["role"] == "supervisor"]
+    workers = [r for r in rows if r["role"] == "field_worker"]
+    assert supervisors and workers
+    assert all(float(r["pushScale"]) == 0.1 for r in supervisors)
+    assert all(float(r["pushScale"]) == 1.0 for r in workers)
+
+
+def csv_rows(path):
+    import csv as _csv
+    with Path(path).open() as fh:
+        yield from _csv.DictReader(fh)
+
+
 def test_encounters_reference_only_their_own_tenants_subjects():
     """A shared catchment means a village's workers record against that village's population.
     An encounter pointing at another tenant's subject would break RLS and sync scope alike."""

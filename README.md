@@ -18,7 +18,20 @@ The csv expects the following columns:
 - `password` — only under `AUTH_MODE=cognito`
 - `token` — only under `AUTH_MODE=cognito`; skips minting if supplied
 - `pushScale` — optional, default 1. Multiplies this user's push volume, so one file can carry
-  field workers creating twenty encounters a day alongside supervisors creating almost none
+  field workers creating twenty encounters a day alongside supervisors creating almost none.
+  **Default 1 is not neutral**: the base distribution is a field worker's twenty a day, so
+  leaving a supervisor at 1 makes them push like a field worker. Case 3 runs supervisors alone
+  and needs this set
+- `deviceId` — optional, defaults to `-DDEVICE_ID` (itself defaulting to `avni-perf-simulation`)
+  for every user. Supply it per user to model one device each: the server keys identifier
+  assignment on (user, device), and `sync_telemetry` records it, so a single shared id makes the
+  rows from a run indistinguishable by device
+
+Unknown columns are ignored, so `role` and `organisationUUID` can be carried for legibility.
+
+**The data generator writes this file** — `deployment.feeder_csv()` emits one `sync-users.csv`
+spanning every tenant, with these columns. A test pins it against `sync-users-example.csv`, so the
+two cannot drift apart again.
 
 `co-tenant-users.csv` has the same shape and is only read under `CO_TENANTS=on` — see
 [Co-tenants](#co-tenants). Also untracked.

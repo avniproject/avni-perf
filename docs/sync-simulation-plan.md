@@ -61,7 +61,8 @@ work has been done on that item at all** — the "Before" column still describes
 | Full vs incremental | full only, every run | `SYNC_MODE`; incremental stays partial until D1 |
 | Test cases | none defined | **specified with numbers**, in [test-scenarios.md](test-scenarios.md) |
 | Injection profiles | one open ramp | `PROFILE` — steady, burst, stress, smoke, ramp; arrival rate derived from users and sync window |
-| Multi-tenant load | single organisation | **Not started — E4** |
+| Multi-tenant load | single organisation | **Done — E4.** Generator builds the ten-tenant deployment; the feeder spans every tenant |
+| Device identity | one id for the whole run | per-user, from the feeder — E4.1 |
 | Co-tenant sync traffic | none | `CO_TENANTS=on` drives a second population at production's measured arrival rate, named apart in the report |
 | Production's tenant skew | none | built — 513 tenants and 473 rows-only organisations, reproducing Q12's skew |
 | **Test data** | | |
@@ -1531,6 +1532,65 @@ each alongside ~8 NGO tenants sharing ~500. That is a realistic spread and large
 ones at once, so noisy-neighbour effects are not a separate run. Start at 2 tenants, then 5, then the
 full set.
 
+*Done.* `deployment.pilot_deployment()` builds exactly that shape — `state_tenants=2`,
+`ngo_tenants=8`, `state_workers=500`, `ngo_workers_total=500` — and "start at 2, then 5, then the
+full set" is those parameters rather than separate code. `deployment.feeder_csv()` writes one
+`sync-users.csv` spanning every tenant, and the simulation's `circular()` feeder draws across all
+of them, so the mix is controlled by how many users each tenant contributes.
+
+**E4.1 — The feeder's columns are a contract, and the two halves had drifted.** *Found by this
+audit, now fixed and tested.* The generator wrote `userName, deviceId, role, organisationUUID,
+lastModifiedDateTime`. The simulation reads `userName, lastModifiedDateTime, password|token,
+pushScale`. Only two columns overlapped.
+
+- **`pushScale` was missing, and its absence is silent** — `pushScale()` returns 1.0 for a null
+  column. So a generated feeder gave every user the same push volume, which is precisely the
+  failure that column exists to prevent: case 3 would push a field worker's queue from a
+  supervisor's account, overstating the write load by the same factor it understates the read.
+  The generator *knows* each user's role; it was emitting it in a column nothing read.
+- **`password|token` was missing**, so a generated feeder cannot be used with `AUTH_MODE=cognito`
+  at all. B1 makes that harmless for now; B2 needs cognito to measure the auth offset, so it would
+  have surfaced there.
+- **`deviceId` was emitted and ignored.** The simulation sent one `DEVICE_ID` for every virtual
+  user. It now reads the per-user value, falling back to the property.
+
+> **On the device id, the honest size of it.** `filterChangedEntities` — D1.1's per-row path —
+> calls `isSyncRequiredForDevice(lastModified, deviceId)`, which generates identifier assignments
+> when none exist and then queries them. That sounds alarming, but the queries are keyed on
+> **(user, device)** and the user was already varying, so a shared device id does not collapse
+> rows across users and the pull was not being measured as cheaper than it is. What it did cost is
+> the ability to tell devices apart: every `sync_telemetry` row a run writes carried the same
+> device, and a user with two devices could not be modelled.
+
+The contract is now pinned by a test that reads the committed `sync-users-example.csv` and asserts
+the generator produces at least its columns, so the next change to either side has to update both.
+**Verified by breaking it:** removing `pushScale` from the writer fails two tests by name.
+
+> **Proposed open question, for approval rather than assumption: what is a supervisor's push
+> volume relative to a field worker's?**
+>
+> `supervisor_push_scale` defaults to **1.0**, and that default is *not neutral*. `pushScale`
+> multiplies the drawn record count, and the customer profile's base distribution is a field
+> worker's twenty encounters a day (`theTwentyADay`, `PushProfiles.customer`). **So 1.0 makes
+> every supervisor push exactly as much as a field worker** — which the deployment says is wrong
+> in a known direction, since a supervisor pulls a wide catchment and creates almost nothing.
+>
+> It is left at 1.0 only because nothing measures the right value: Q17 gives platform-wide push
+> distributions, not a per-role split, and test-scenarios.md fixes supervisors' *pull* volumes
+> only. A guess would be just as fabricated while looking more authoritative.
+>
+> **The size of the error is known even though the value is not.** Supervisors are 62 of 562
+> users in a tenant, so the mixed cases — 4 through 8 — overstate total write load by roughly
+> **11%**. Case 3 runs supervisors alone, so **its entire push load is fabricated**; it is the
+> case the README already says wants a value well under one, and it should not be quoted until
+> this is set.
+>
+> **This is answerable from production rather than by asking.** `sync_telemetry` records
+> per-entity push counts per user, and a user's catchment breadth distinguishes supervisors from
+> field workers. A query splitting push volume on that would settle it the way Q17 settled the
+> platform-wide shape — proposed for [production-measurement-queries.md](production-measurement-queries.md),
+> not written or run here.
+
 **Whether those tenants sit beside production's existing 986 organisations is a question the cases
 answer rather than assume.** Test cases 5, 6 and 7 run the same load with the customer alone, with
 everyone else's data present, and with everyone else's traffic on top. The deltas say whether sharing
@@ -1539,9 +1599,17 @@ Those have different remedies, so running them as one case would leave the findi
 shared connection pool plus per-borrow `set role` churn make cross-tenant contention a distinct
 failure mode from anything a single tenant produces.
 
-**E5 — Size everything from `sync_telemetry`.** Production already records per-sync duration,
-per-entity push/pull counts, local data volumes, device and connection type. Take user counts, data
-volumes and push volumes from that table rather than inventing them.
+**E5 — Size everything from `sync_telemetry`.** *Done.* Production already records per-sync
+duration, per-entity push/pull counts, local data volumes, device and connection type. User counts,
+data volumes and push volumes come from that table rather than being invented.
+
+**The test is not whether the numbers are written down here — it is whether the code's defaults are
+those numbers**, and they are: push volumes from Q17 over 105,718 completed syncs
+(`PushProfiles.production()`), the co-tenant arrival rate from Q4's busiest recorded hour
+(`CO_TENANT_SYNCS_PER_HOUR=792`), the storage model's coefficients from Q1
+(174 ms/page + 9.19 ms/record), and the co-tenant media rate from the production-wide 2.14%.
+The customer's own arrival rate is deliberately *not* production's 792 — it is derived from the
+modelled deployment, one sync per worker per working day across `SYNC_WINDOW_HOURS`.
 
 **Measured, per real hour (Q4):**
 
@@ -1660,8 +1728,19 @@ per request — on receipt, and on completion with timing — including the full
 that is a plausible bottleneck in its own right. Measure it, and decide deliberately what level the
 perf environment runs at.
 
-**F3 — Reconcile the second Gatling setup.** `avni-server/perf/gatling/` is a separate, older harness.
-Fold it in or delete it; maintaining two guarantees both drift.
+**F3 — The second Gatling setup stays.** *Decided: keep both, deliberately.* `avni-server/perf/gatling/`
+is a separate, older harness, and the earlier instruction here was to fold it in or delete it on
+the grounds that maintaining two guarantees both drift.
+
+**That was the wrong call.** The two answer different questions and the division of labour is
+clean: `avni-server/perf/gatling/` is for simple, in-repo checks a server developer runs against
+an endpoint they are working on; **this repository is the full load-test suite** — the entity
+table generated from the client, the measured storage model, injection profiles, the push path,
+media, co-tenants and the calibration gate.
+
+Drift between them is therefore not a defect to prevent. Nothing here depends on that harness and
+it makes no claim to model a sync. The cost of merging — dragging a deliberately simple tool into
+this one's dataset, feeder and metadata requirements — buys nothing.
 
 ### F4 — Network isolation and the deploy path
 

@@ -317,21 +317,46 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
     return counts
 
 
-def feeder_csv(deployment: DeploymentSpec, path: str | Path) -> int:
-    """The simulation's `sync-users.csv`, spanning every tenant (E4)."""
+def feeder_csv(deployment: DeploymentSpec, path: str | Path, *,
+               supervisor_push_scale: float = 1.0) -> int:
+    """The simulation's `sync-users.csv`, spanning every tenant (E4).
+
+    **The columns are the simulation's contract, not this module's convenience.** It reads
+    `userName`, `lastModifiedDateTime`, `password|token` and `pushScale`; anything else is
+    ignored. An earlier version of this function emitted `deviceId`, `role` and
+    `organisationUUID` and omitted the last two, so a generated feeder silently lost per-user
+    push volume and could not be used with `AUTH_MODE=cognito` at all. `role` and
+    `organisationUUID` are kept because they are useful when reading the file by hand, and the
+    simulation ignores unknown columns.
+
+    **`supervisor_push_scale=1.0` is not a neutral default and should not be read as one.**
+    `pushScale` multiplies the drawn record count, and the customer profile's base distribution is
+    a field worker's twenty encounters a day. So 1.0 makes every supervisor push exactly as much
+    as a field worker, which the deployment says is wrong in a known direction: a supervisor pulls
+    a wide catchment and creates almost nothing.
+
+    It is left at 1.0 only because no measurement supports a better number, and a guess would be
+    just as fabricated while looking more authoritative. Callers should set it. The overstatement
+    is about 11% of total write load in the mixed cases, where supervisors are 62 of 562 users,
+    and **all** of it in case 3, which runs supervisors alone.
+    """
     import csv
     bases = plan_ids(deployment)
     path = Path(path)
     with path.open("w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=["userName", "deviceId", "role",
-                                           "organisationUUID", "lastModifiedDateTime"])
+        w = csv.DictWriter(fh, fieldnames=["userName", "lastModifiedDateTime", "password|token",
+                                           "pushScale", "deviceId", "role", "organisationUUID"])
         w.writeheader()
         n = 0
         for spec in deployment.tenants:
             build = build_tenant(spec, bases[spec.organisation_id])
             for u in build.users:
-                w.writerow({"userName": u.username, "deviceId": u.device_id, "role": u.role,
-                            "organisationUUID": f"org-{spec.organisation_id}",
-                            "lastModifiedDateTime": "1900-01-01T00:00:00.000Z"})
+                w.writerow({"userName": u.username,
+                            "lastModifiedDateTime": "1900-01-01T00:00:00.000Z",
+                            "password|token": "",
+                            "pushScale": (supervisor_push_scale
+                                          if u.role == cat.SUPERVISOR else 1.0),
+                            "deviceId": u.device_id, "role": u.role,
+                            "organisationUUID": f"org-{spec.organisation_id}"})
                 n += 1
     return n
