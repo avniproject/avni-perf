@@ -295,10 +295,27 @@ Cognito call still blocks inside a session function and stalls the injector's ev
 why it is confined to the opt-in path. Fixing it properly means pre-minting off the virtual-user
 path — disproportionate for a second-class mode, and recorded here rather than hidden.
 
-**A11 — Archive runs with their metadata.** *Done.* Gatling already keeps `simulation.log` in each
-report directory; what was missing was any record of what produced it. An `archiveRun` task now
-finalizes every `gatlingRun` and writes `run-metadata.json` beside it: simulation commit, target,
-injection profile, entity table source, dataset and server build.
+**A11 — Archive runs with their metadata.** *Done, and since repaired.* Gatling already keeps
+`simulation.log` in each report directory; what was missing was any record of what produced it. An
+`archiveRun` task now finalizes every `gatlingRun` and writes `run-metadata.json` beside it.
+
+**The first version hand-maintained its own copy of the property list, and drifted.** It recorded
+`MAX_REALM_STORAGE_PAUSE` long after that property was removed, and knew nothing of the push path,
+media, co-tenants or injection profiles — so a run was not reconstructable from its own archive, and
+two runs with entirely different workloads were indistinguishable in their metadata. That is the
+same failure the entity list had before C1, and it has the same fix: **one source, read rather than
+restated.**
+
+The simulation now writes what it *ran with* — resolved values, so a default nobody passed is
+recorded as the number that actually applied — and `archiveRun` folds that in beside what
+*produced* the run: commit, target, dataset, server build, entity table. The settings file is
+consumed on read, so a later archive cannot silently attach a previous run's configuration, and a
+missing one is reported rather than passed over.
+
+**It also records the injector**: label, OS, JVM, CPU count and heap. Runs from different injector
+positions are not comparable — a sync is about 109 requests, so 25 ms of extra round trip adds 2.7 s
+to a 14.1 second median — and CPU and heap are what F7 needs to tell an injector that saturated from
+a server that did.
 
 Three deliberate choices:
 

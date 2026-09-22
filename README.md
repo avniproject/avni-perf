@@ -377,9 +377,26 @@ cp src/gatling/resources/co-tenant-users-example.csv src/gatling/resources/co-te
 
 ## Run archiving
 
-Every `gatlingRun` writes `run-metadata.json` next to the report's `simulation.log`, recording what
-produced the run: simulation commit (and whether the tree was dirty), target, injection profile,
-entity table source, dataset and server build.
+Every `gatlingRun` writes `run-metadata.json` next to the report's `simulation.log`. It has two
+halves: **what produced the run** — simulation commit and whether the tree was dirty, target,
+server build, dataset, entity table source — and **what it ran with**, which the simulation writes
+itself.
+
+That second half is read from the simulation rather than restated in the build file, because the
+first version restated it and drifted: it recorded a property that had been removed and none of
+push, media, co-tenants or injection profiles. Values are the ones that actually applied, so a
+default nobody passed is recorded as its number rather than as a blank.
+
+It also records the **injector** — label, OS, JVM, CPU count and heap. Pass `-DINJECTOR=<label>`;
+it falls back to the hostname.
+
+> **Runs from different injector positions are not comparable.** A sync is about 109 requests, so
+> 25 ms of extra round trip adds 2.7 s to a 14.1-second median — a constant offset on every sync,
+> not noise that averages out. CPU and heap are recorded because they are what tells an injector
+> that saturated from a server that did.
+
+`-DDATASET_ID` and `-DSERVER_BUILD` are not discoverable — the server exposes only `/ping` — so
+they are written as `unrecorded` unless passed, and the task says so.
 
 Two of those cannot be discovered and must be passed, or they are recorded as `unrecorded`:
 

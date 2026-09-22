@@ -715,6 +715,130 @@ public class AvniSyncSimulation extends Simulation {
         setUp(populations.toArray(new PopulationBuilder[0]))
             .protocols(httpProtocol)
             .assertions(assertions.toArray(new Assertion[0]));
+
+        writeRunSettings();
+    }
+
+
+    /**
+     * Write what this run actually resolved to, for archiveRun to fold into run-metadata.json.
+     *
+     * Emitted by the simulation rather than listed in the build file, and that is the whole point.
+     * The previous metadata block hand-maintained its own copy of the property list and drifted:
+     * it recorded `MAX_REALM_STORAGE_PAUSE`, which had not existed for some time, and knew nothing
+     * of the push path, media, co-tenants or injection profiles. A run was not reconstructable
+     * from its own archive. Same failure the entity list had before C1 generated it, and the same
+     * fix - one source, read rather than restated.
+     *
+     * Resolved values, not raw property strings, so a default that was never passed is recorded as
+     * the number that actually applied.
+     */
+    private void writeRunSettings() {
+        Map<String, Object> settings = new LinkedHashMap<>();
+
+        Map<String, Object> injector = new LinkedHashMap<>();
+        injector.put("label", System.getProperty("INJECTOR", hostName()));
+        injector.put("os", System.getProperty("os.name") + " " + System.getProperty("os.arch"));
+        injector.put("java", System.getProperty("java.version"));
+        // What decides whether the injector is the bottleneck rather than the server - F7's
+        // signal is response times rising with virtual user count while the server stays flat.
+        injector.put("cpus", Runtime.getRuntime().availableProcessors());
+        injector.put("maxHeapMb", Runtime.getRuntime().maxMemory() / (1024 * 1024));
+        settings.put("injector", injector);
+
+        Map<String, Object> injection = new LinkedHashMap<>();
+        injection.put("profile", profile);
+        injection.put("userCount", userCount);
+        injection.put("syncWindowHours", syncWindowHours);
+        injection.put("syncsPerHour", syncsPerHour);
+        injection.put("durationMinutes", durationMinutes);
+        injection.put("burstMinutes", burstMinutes);
+        injection.put("stressToSyncsPerHour", stressToSyncsPerHour);
+        injection.put("rampPeriodSeconds", rampPeriod);
+        settings.put("injection", injection);
+
+        Map<String, Object> sync = new LinkedHashMap<>();
+        sync.put("syncMode", syncMode);
+        sync.put("authMode", authMode);
+        sync.put("pageSize", pageSize);
+        sync.put("incrementalSinceHours", incrementalSinceHours);
+        sync.put("nowOverride", nowOverride == null ? "from server response" : nowOverride);
+        sync.put("deviceId", deviceId);
+        settings.put("sync", sync);
+
+        Map<String, Object> storage = new LinkedHashMap<>();
+        storage.put("model", storageModel);
+        storage.put("baseMsPerRecord", baseMsPerRecord);
+        storage.put("msPerPage", msPerPage);
+        settings.put("storage", storage);
+
+        Map<String, Object> push = new LinkedHashMap<>();
+        push.put("enabled", pushEnabled);
+        if (pushEnabled) {
+            push.put("volumeProfile", customerProfile ? "customer" : "production");
+            push.put("encounterModel", encountersAreProgramEncounters ? "program" : "general");
+            push.put("recordsPerSync", round(customerWorkload.recordsPerSync()));
+            Map<String, Object> volumes = new LinkedHashMap<>();
+            for (PushVolume v : customerWorkload.volumes.values()) {
+                volumes.put(v.entityName, v.probability <= 0 ? "none"
+                    : String.format("%.4f:%d:%d:%d:%d:%.2f",
+                        v.probability, v.min, v.p50, v.p95, v.max, v.mean));
+            }
+            push.put("volumes", volumes);
+            push.put("observationMultiple", pushObservationMultiple);
+            push.put("seedSize", pushSeedSize);
+        }
+        settings.put("push", push);
+
+        Map<String, Object> media = new LinkedHashMap<>();
+        media.put("perEncounter", mediaPerEncounter);
+        media.put("model", mediaModel);
+        media.put("fileKb", mediaFileKb);
+        media.put("uploadKbps", mediaUploadKbps);
+        settings.put("media", media);
+
+        Map<String, Object> co = new LinkedHashMap<>();
+        co.put("enabled", coTenants);
+        if (coTenants) {
+            co.put("syncsPerHour", coTenantSyncsPerHour);
+            co.put("seconds", coTenantSeconds);
+            co.put("feeder", coTenantFeeder);
+            co.put("mediaPerEncounter", coTenantMediaPerEncounter);
+            co.put("recordsPerSync", round(coTenantWorkload.recordsPerSync()));
+        }
+        settings.put("coTenants", co);
+
+        Map<String, Object> gates = new LinkedHashMap<>();
+        gates.put("structuralCheck", structuralCheck);
+        gates.put("maxFailedPercent", maxFailedPercent);
+        gates.put("maxP95Millis", maxP95Millis == null ? "unset" : maxP95Millis);
+        settings.put("gates", gates);
+
+        String path = System.getProperty("RUN_SETTINGS_FILE", "build/last-run-settings.json");
+        try {
+            java.io.File out = new java.io.File(path);
+            if (out.getParentFile() != null) {
+                out.getParentFile().mkdirs();
+            }
+            om.writerWithDefaultPrettyPrinter().writeValue(out, settings);
+        } catch (IOException e) {
+            // A run that produced numbers but could not write its own settings is still a run.
+            // Losing it is bad; failing the run over it is worse.
+            out.println("WARNING: could not write run settings to " + path + " - " + e.getMessage()
+                + ". This run will be archived without them.");
+        }
+    }
+
+    private static double round(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    private static String hostName() {
+        try {
+            return java.net.InetAddress.getLocalHost().getHostName();
+        } catch (Exception e) {
+            return "unrecorded";
+        }
     }
 
     /** One line saying what shape this run drives, and what it implies. */
