@@ -64,6 +64,19 @@ because 62 supervisors syncing once a day produce 62 syncs in a whole window and
 changes that. `SYNCS_PER_HOUR` has to be set well above the derived figure — which is sound,
 because the case measures per-sync cost rather than system load.
 
+> **Case 3's write load is not yet meaningful, and its read load is.** The simulation scales a
+> user's push volume by a `pushScale` column whose default is 1, and the base distribution it
+> multiplies is a *field worker's* twenty encounters a day. So every supervisor in this case
+> currently pushes like a field worker, which the deployment says is wrong: a supervisor covers a
+> wide catchment and records almost nothing.
+>
+> Nothing has measured the right figure — the platform-wide push distributions do not split by
+> role — so it is left at 1 rather than guessed. **Quote case 3's pull numbers; do not quote its
+> push numbers until a supervisor's real write volume is known.** The other multi-role cases
+> carry the same bias at about a tenth of the size, since supervisors are 62 of 562 users there.
+>
+> This is the one open input that affects a case's headline result rather than its shape.
+
 **Cases 11 to 13 are 5 to 7 with the day's syncs compressed into one hour**, and they exist because
 the sync window is not confirmed — see [below](#how-much-of-that-depends-on-spreading-over-twelve-hours).
 They cost three hours between them and remove the need to wait on the answer.
@@ -594,7 +607,7 @@ the fingerprint a rebuild is checked against) and H5's verdict. All four dataset
 Storing the output instead would discard the generator's schema guard, and the durable artefact for
 run-to-run comparability is G4's database snapshot rather than a file in git.
 
-**Six of the seven are built** — `tools/data-generator`, 195 tests. It reproduces these totals exactly
+**Six of the seven are built** — `tools/data-generator`, 231 tests. It reproduces these totals exactly
 (1,506,000 beneficiaries; 5.4 M encounters at day 180) at about **41,000 rows/sec**, so a full
 day-180 dataset generates in roughly three minutes and lands around 2 GB on disk.
 

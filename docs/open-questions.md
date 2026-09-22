@@ -218,7 +218,10 @@ can move rather than a question that was settled.
 - **Anonymised production clone** — not available. Generation is the path.
 - **Token expiry across a long sync** — a harness limitation only. The real client refreshes per
   request, so a multi-hour sync is fine for it.
-- **Perf environment isolation** — designed, not an unknown.
+- **Perf environment isolation** — designed, not an unknown, and smaller than first thought. A
+  security group allowlisting the injector satisfies it; the requirement comes from running with
+  authentication off, not from the data, which is generated. The SSH hop CI deploys over is
+  tunnelled through the AWS API.
 - **Rolling data** — year two accrues at year one's rate, with nothing ageing out.
 - **Reset storm** — **not modelled.** The week Q10 found at 130× the normal rate is
   `avni-client#2115`, a reset that re-arms itself when the following sync does not complete. Testing

@@ -127,6 +127,27 @@ consistently across bands at 8.8 to 9.2 ms.
 > The per-page term is what shapes load: a real device issues one request every 174 ms, and on a LAN
 > the round trip vanishes. Without it the simulation runs about four times too fast per user.
 
+### Timeouts
+
+Set explicitly in `src/gatling/resources/gatling.conf`, not left at Gatling's defaults. Most are
+the same number Gatling would have used — the point is that they are chosen, since an unchosen
+default is a hidden parameter and a Gatling upgrade can move one.
+
+| Setting | Value | Why |
+|---|---|---|
+| `http.requestTimeout` | 60 s | **The client's own limit.** `openchs-android` wraps every fetch in a 60-second race and rejects with `syncTimeoutError`, across pull, push and media signing. A response slower than this is a failed sync in the field however fast the server eventually answers |
+| `http.pooledConnectionIdleTimeout` | 300 s | Matches okhttp's keep-alive. At Gatling's 60 s the injector would reconnect after every media pause — handshakes a real device never pays |
+| `socket.connectTimeout` | 10 s | A slower connect means the accept queue is full, which is a finding, not something to wait out |
+| `ssl.handshakeTimeout` | 10 s | Separate from connect, so a TLS stall is distinguishable behind a load balancer |
+| `http.dns.queryTimeout` | 5 s | DNS should never be inside the measurement |
+
+The file is committed, so the commit in `run-metadata.json` pins these for a run. Changing one
+changes what *failed* means and makes runs either side incomparable.
+
+**A failed page ends the sync** rather than being retried. Both paged loops carry
+`exitHereIfFailed()`; without it a failure left the continue-flag set and the virtual user
+reissued the same page forever. `make smoke_closed_port` guards it.
+
 ### Environment variables
 Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
@@ -221,6 +242,10 @@ exactly when every user would otherwise start hammering it flat out.
 
 `make check_entities_current` regenerates the entity table from the pinned `openchs-models` and
 fails if the committed copy has drifted.
+
+`make test_data_generator` runs the generator's suite. Among other things it pins the generated
+`sync-users.csv` to the columns the simulation actually reads, checked against
+`sync-users-example.csv` — the two had drifted apart once, silently costing per-user push volume.
 
 ## Injection profiles
 

@@ -60,14 +60,15 @@ work has been done on that item at all** — the "Before" column still describes
 | Feeder | `random()`, drawing with replacement | `circular()`, warns when oversubscribed |
 | Full vs incremental | full only, every run | `SYNC_MODE`; incremental stays partial until D1 |
 | Test cases | none defined | **specified with numbers**, in [test-scenarios.md](test-scenarios.md) |
+| Load sizing | invented | **Done — E5.** Every default traced to a measurement: push volumes from Q17, co-tenant arrival from Q4, storage coefficients from Q1 |
 | Injection profiles | one open ramp | `PROFILE` — steady, burst, stress, smoke, ramp; arrival rate derived from users and sync window |
 | Multi-tenant load | single organisation | **Done — E4.** Generator builds the ten-tenant deployment; the feeder spans every tenant |
 | Device identity | one id for the whole run | per-user, from the feeder — E4.1 |
 | Co-tenant sync traffic | none | `CO_TENANTS=on` drives a second population at production's measured arrival rate, named apart in the report |
 | Production's tenant skew | none | built — 513 tenants and 473 rows-only organisations, reproducing Q12's skew |
 | **Test data** | | |
-| Dataset generation | none — runs hit whatever happened to be in the database | built: `tools/data-generator`, 195 tests · needs a target database to run against |
-| User provisioning | hand-built CSV | generated with the dataset — catchments, users and a feeder spanning every tenant |
+| Dataset generation | none — runs hit whatever happened to be in the database | built: `tools/data-generator`, 231 tests · needs a target database to run against |
+| User provisioning | hand-built CSV | generated with the dataset — catchments, users and a feeder spanning every tenant, carrying the columns the simulation actually reads (E4.1), pinned by a test |
 | Dataset gate (H5) | none | statistical gate built; the client half of the structural check is manual |
 | Schema drift | nothing to drift against | generation refuses on any column the contract has not accounted for |
 | Dataset and environment parity | none | **Not started — F5** |
@@ -78,7 +79,7 @@ work has been done on that item at all** — the "Before" column still describes
 | **Trustworthiness** | | |
 | Server APM | not provisioned for a load-test environment | **Not started — F1** |
 | Request-logging overhead | unmeasured | **Not started — F2** |
-| Second Gatling setup | unreconciled | **Not started — F3** |
+| Second Gatling setup | unreconciled | **Kept, deliberately — F3.** Simple in-repo checks there, the full suite here |
 | Distributed injection | undecided | **Deferred** — one injector until F7 shows it saturating |
 | Injector position | undecided | local **and** EC2 both supported (F4's allowlist); not interchangeable for measurement, and recorded per run |
 | Assertions | commented out | zero-failure structural gate, plus rate and p95 bounds for a load run |
@@ -1525,14 +1526,14 @@ day produce ten syncs in a two-hour window. The case measures per-sync cost rath
 so `SYNCS_PER_HOUR` has to be set well above the derived figure — which the scenarios already said in
 words and now say in a command.
 
-**E4 — Multi-tenant load.** *First-class, not finding-triggered — see section I.* The feeder and
+**E4 — Multi-tenant load.** *Done.* *First-class, not finding-triggered — see section I.* The feeder and
 user provisioning must be able to span organisations with a controllable mix.
 **[test-scenarios.md](test-scenarios.md) fixes the shape:** two state-level tenants of ~500 workers
 each alongside ~8 NGO tenants sharing ~500. That is a realistic spread and large tenants beside small
 ones at once, so noisy-neighbour effects are not a separate run. Start at 2 tenants, then 5, then the
 full set.
 
-*Done.* `deployment.pilot_deployment()` builds exactly that shape — `state_tenants=2`,
+`deployment.pilot_deployment()` builds exactly that shape — `state_tenants=2`,
 `ngo_tenants=8`, `state_workers=500`, `ngo_workers_total=500` — and "start at 2, then 5, then the
 full set" is those parameters rather than separate code. `deployment.feeder_csv()` writes one
 `sync-users.csv` spanning every tenant, and the simulation's `circular()` feeder draws across all
@@ -1765,12 +1766,31 @@ removes two of the four sub-tasks this section used to carry:
 - **F4.3 — egress** falls away. A public subnet reaches the internet through the existing internet
   gateway, so the apt, Maven and Docker pulls the deploy playbook makes at deploy time work without
   a NAT gateway or VPC endpoints.
-- **F4.4 — DNS** falls away. `perf.avniproject.org` keeps resolving publicly; only the security group
-  restricts who can connect. Nothing to decide, and `BASE_URL` needs no change.
+- **F4.4 — DNS** falls away. `loadtest.avniproject.org` resolves publicly; only the security group
+  restricts who can connect. Nothing to decide, and `BASE_URL` changes only to match the
+  environment's name.
 
 > **This is what makes a local injector possible**, which the customer has asked for. An allowlist
 > takes a source address; a private subnet takes a tunnel. See the note under F7 on why the two
 > injector positions are not interchangeable for measurement even so.
+
+> **This has to be reconciled with what `avni-infra` has already built, which is the other posture.**
+> The OpenTofu module in `provision/tofu/modules/avni-env/` stands the environment up fully private:
+> `aws_lb.this` is `internal = true`, the hosts have no public IP, and `loadtest.avniproject.org`
+> resolves in a **private** hosted zone that only answers inside the VPC. The injector is an in-VPC
+> instance, because that posture leaves no other option. **A local injector cannot reach an internal
+> ALB**, so F4 as decided above and the module as written cannot both stand.
+>
+> **The decision is F4's: externally resolvable, access controlled by security group.** The
+> environment keeps the name `loadtest`. What that costs on the infrastructure side is an
+> internet-facing ALB, a public record for `loadtest.avniproject.org`, an ingress rule on the ALB
+> security group sourced from the enrolled injector addresses rather than from the injector's
+> security group, and the WAF IP set repopulated with those same public addresses instead of the
+> VPC's private CIDRs. Everything else in the module — the Instance Connect deploy path, the
+> parity report, the IAM denies that make F5.3 structural — is unaffected and worth keeping.
+>
+> **The in-VPC injector stays, and is still the right host for the quotable runs.** Making the ALB
+> reachable from outside adds a position; it does not remove one. F7's split stands.
 
 **The SSH hop for deploys is a separate problem, and it keeps F4.1.** CircleCI deploys from the
 internet, so the allowlist has to admit it somehow. Allowlisting CircleCI's published IP ranges
@@ -1814,23 +1834,59 @@ the tunnel is configured through `ansible_ssh_common_args` or an SSH config bloc
 address the host by **instance ID** rather than DNS name, since both transports target the instance
 through the AWS API rather than a resolvable hostname.
 
-**Rate limiting is disabled in this environment.** *Decided.* All load arrives from one source
-address, so a per-IP rate rule measures the rig rather than the server. `avni-infra` measured
-production's `rate-limit-rule` at **550 per five minutes — about 1.8 requests a second**, which makes
-an un-allowlisted run impossible rather than merely degraded, and the failure is quiet: blocked
-requests surface in the Gatling report as server errors or latency, not as a WAF decision.
+**The rate-limit rule is reproduced, and the injector is exempted from it.** *Revised — this
+reverses an earlier "rate limiting is disabled in this environment" decision, which no longer
+describes what `avni-infra` builds.* `avni-infra` measured production's `rate-limit-rule` at **550
+per five minutes — about 1.8 requests a second**, which makes an un-allowlisted run impossible
+rather than merely degraded, and the failure is quiet: blocked requests surface in the Gatling
+report as server errors or latency, not as a WAF decision.
+`provision/tofu/modules/avni-env/loadbalancer.tf` keeps the rule at production's limit and exempts
+the injector, so the rig is not throttled *and* production's per-request inspection cost is still
+paid. Disabling the rule would have given up the second for no gain on the first.
 
-> **One consequence to record rather than discover.** Production evaluates a full web ACL on every
-> request — `Block_Known_Spammers`, a `php-rule`, and the managed anti-DDoS rule set alongside the
-> rate rule. Dropping the *rate* rule is clearly right here. Dropping the *whole* ACL additionally
-> removes a per-request inspection cost that production pays and this environment will not, which
-> understates server-side latency by an unmeasured but systematic amount.
+**The exemption has to be a scope-down statement, not an allow rule.** This is not a stylistic
+preference. In WAFv2 an `allow` action **terminates** rule evaluation, so an allow rule for the
+injector placed ahead of the rate rule would skip every *subsequent* rule as well — losing exactly
+the inspection cost that was the reason to keep a WAF here at all. A `not_statement` wrapping an
+`ip_set_reference_statement`, used as the rate rule's scope-down, excludes the injector from *this*
+rule's counting and leaves all the others in the evaluation path. `avni-infra` implements it that
+way. The earlier text here offered "allowlist the injector ahead of the rate rule, keeping the rest
+of the ACL in the evaluation path" and "drop the rate rule" as two defensible options; the first
+described something WAF cannot do, so there was only ever one.
+
+> **The exempted address depends on where the injector runs, which makes it a run parameter.** An
+> externally resolvable ALB sees the client's real address, so the IP set must hold **the injector's
+> public egress address** — the office NAT address for a local run, the EC2 injector's elastic IP
+> for a quotable one. The module currently populates it with the VPC's private CIDRs, which matches
+> neither once the ALB is internet-facing. A run from an un-enrolled address fails in the quiet way
+> described above, so enrolling the address belongs in G2's pre-run checklist rather than in
+> someone's memory, and it is the same list of addresses the security group allowlist needs.
+
+> **The real parity gap is the rest of the ACL, and it now cuts in both directions.** Production's
+> web ACL is `Block_Known_Spammers`, a `php-rule`, `AWS-AWSManagedRulesAntiDDoSRuleSet` and the rate
+> rule. The module's default managed set is `["AWSManagedRulesCommonRuleSet"]`. So neither custom
+> rule is reproduced — their statements were never captured, only their names — the one managed
+> group production *does* run is absent, and a managed group production does *not* run sits in the
+> request path.
 >
-> `avni-infra` reached the narrower conclusion — allowlist the injector ahead of the rate rule,
-> keeping the rest of the ACL in the evaluation path — which preserves that cost at no extra effort.
-> Either is defensible; **whichever is chosen belongs in F5.2's parity record**, and WAF
-> `BlockedRequests` and `CountedRequests` should be checked after the first run so throttling is
-> never mistaken for a server plateau.
+> **`AWSManagedRulesCommonRuleSet` is a hazard, not neutral padding.** Its `SizeRestrictions_BODY`
+> rule blocks request bodies over 8 KB. The first request of every simulated sync is a `syncDetails`
+> POST that round-trips the whole status array — one row per (`entityName`, `entityTypeUuid`) across
+> ~79 entities — which lands close to that threshold, and D3's per-record pushes are the other
+> candidate. A block in either place reads as a server error. **Measure the largest body the
+> simulation sends before trusting a run.** `NoUserAgent_HEADER` is *not* a risk: `baseProtocol`
+> sets `okhttp/5.0.0-alpha.11`.
+>
+> **Reproducing `AWSManagedRulesAntiDDoSRuleSet` may not be a one-line variable change.** It takes a
+> `managed_rule_group_configs` client-side action config that the module's generic rule loop does
+> not emit, and it carries a standing monthly charge. Verify it against the account rather than
+> assuming the existing variable is the knob.
+>
+> **So the post-run check is per-rule metrics, not the ACL-level counters.** With the injector
+> scope-down in place the rate rule cannot fire, so `BlockedRequests` and `CountedRequests` on the
+> web ACL read clean while `CommonRuleSet` blocks. Check each rule's own CloudWatch metric after the
+> first run, so throttling is never mistaken for a server plateau. **The rule set actually evaluated
+> belongs in F5.2's parity record**, named rule by rule against production's.
 
 **Prerequisite for B1, but a much smaller one than before.** B1 still requires the environment be
 unreachable from the internet at large, and CircleCI still deploys to it. What has changed is the
@@ -1853,18 +1909,30 @@ configuration, connection pool sizing, JVM flags, whether the database is shared
 deviation from production must be written down — every result carries an asterisk otherwise, and the
 asterisk needs to be legible when someone reads the findings months later.
 
-**Three deviations are already known and decided**, so they belong here from the start rather than
-being reconstructed later:
+**Most of the AWS layer is already rendered, not to be written by hand.** The OpenTofu module emits
+`parity-report.md` on every apply — compute, storage and IOPS, edge, and database parameters, each
+against production's measured values. F5.2 owns the application-side half of that document (JVM
+flags, pool size, log level, IdP type, tenancy, whether a run had a concurrent ETL cycle) and owns
+reading the generated half rather than duplicating it, because a hand-maintained copy will drift
+from the infrastructure within a week.
+
+**These deviations are known and decided**, and they are the ones that change how a result should be
+read rather than merely what the environment costs:
 
 | Deviation | Effect on results |
 |---|---|
 | **Authentication off** (`AVNI_IDP_TYPE=none`, B1) | Removes `authenticateByToken` — JWT verification plus a user lookup — from every request. **B2 measures the offset**; until it runs, server-side latency is understated by an unmeasured per-request amount |
-| **Rate limiting disabled** (F4) | Correct here, since all load comes from one address. If the *whole* web ACL is disabled rather than only the rate rule, production's per-request inspection cost goes missing too |
+| **WAF rule set** (F4) | The rate rule is reproduced at 550 with the injector scope-down exempted, so per-request inspection cost is paid. But production's `Block_Known_Spammers` and `php-rule` are not reproduced and its anti-DDoS rule set is absent, while `AWSManagedRulesCommonRuleSet` — which production does not run — is in the path. **Record the rules evaluated, rule by rule.** This is the one deviation that can push latency either way |
+| **TLS** | Production terminates HTTPS at the ALB. The module falls back to a plain HTTP listener when `acm_certificate_arn` is null, which removes a measurable per-request cost. Supply a certificate, or record its absence per run |
+| **Fixed instance classes** | Production is burstable in unlimited mode; this environment is fixed, deliberately, to remove credit dynamics from every run. It also means this environment cannot reproduce a credit-exhaustion choke point — see the prod DB precedent |
+| **Pristine indexes** | Post-load indexes have no bloat; production's have accumulated it. Understates index scan and maintenance cost (G4) |
 | **Injector position** | Runs from different positions are not comparable: a sync is ~109 requests, so 25 ms of extra round trip adds 2.7 s to a 14.1 s median. Recorded per run in `run-metadata.json` (A11) |
 
-All three understate latency in the same direction, which is worth stating plainly: **a green result
-in this environment is not automatically a green result in production**, and the gap is the sum of
-these three plus whatever F7's calibration gate cannot close.
+**Most of these understate latency, which is worth stating plainly: a green result in this
+environment is not automatically a green result in production.** The exception is the WAF rule set,
+which now differs from production in both directions at once — so the gap is not a simple sum, and
+the rule-by-rule record is what makes it interpretable at all. Add whatever F7's calibration gate
+cannot close.
 
 **F5.3 — Suppress outbound side effects.** Anything that reaches a third party must be dead: SMS,
 notifications, and the Glific/flow integrations behind `MessageSenderJob`. Enforce at the
@@ -2782,8 +2850,8 @@ Ordering reflects dependencies, not estimates.
 | **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done, and tracked per query.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4's allowlist and SSH tunnel come first, then B1 turns auth off.** F4 is now one security group rule plus the tunnel CI already has most of, rather than a private subnet with NAT and a private hosted zone. B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **D3 and D5.1 are done**; G4's restore mechanism is what remains, and it is now the gate rather than a deferral — a `PUSH=on` run cannot be repeated without it. Q17 replaces D3's guessed push volumes. |
-| **3 · Workload** | **D7** · E5 · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5, E3 and E7 no longer sit here - media upload landed with D3, injection profiles and co-tenant traffic are built, and media viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
-| **4 · Operate** | A11 · F2, F3 · **A12** | Saturate, name the resource, fix, re-run. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
+| **3 · Workload** | **D7** · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5, E3, E4, E5 and E7 no longer sit here - media upload landed with D3, injection profiles and co-tenant traffic are built, E4 and E5 are done, and media viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
+| **4 · Operate** | A11 · F2 · **A12** | Saturate, name the resource, fix, re-run. F3 has left this row: the second harness is kept deliberately, not reconciled. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
 **Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review.
 Still open in them: that every supervisor sits at sub-centre level, which changes per-device volume
