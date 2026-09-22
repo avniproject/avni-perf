@@ -57,7 +57,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Feeder | `random()`, drawing with replacement | `circular()`, warns when oversubscribed |
 | Full vs incremental | full only, every run | `SYNC_MODE`; incremental stays partial until D1 |
 | Test cases | none defined | **specified with numbers**, in [test-scenarios.md](test-scenarios.md) |
-| Injection profiles | one open ramp | defined as cases; **not yet implemented as Gatling profiles — E3** |
+| Injection profiles | one open ramp | `PROFILE` — steady, burst, stress, smoke, ramp; arrival rate derived from users and sync window |
 | Multi-tenant load | single organisation | **Not started — E4** |
 | Co-tenant sync traffic | none | `CO_TENANTS=on` drives a second population at production's measured arrival rate, named apart in the report |
 | Production's tenant skew | none | built — 513 tenants and 473 rows-only organisations, reproducing Q12's skew |
@@ -1379,35 +1379,43 @@ tests. **Ten workers share a village catchment**, so the same rows are read seve
 And **fresh sync is 1% of syncs daily**, which is the mix E2 was missing.
 
 
-**E3 — Named injection profiles.** The first four are the customer's scenarios and come before the
-rest; the remainder are the instrument's own.
+**E3 — Named injection profiles.** *Done, and smaller than specified.* The original list named ten
+profiles. Checked against the thirteen test cases, **most of them are not injection shapes at all**:
+what separates *field worker sync* from *supervisor sync* is which users are in the feeder, case 5
+from case 11 is the sync window, and case 6 from case 7 is whether co-tenants sync. All three are
+already properties. *Growth comparison* is the same profile against four datasets, and *contended* is
+the same profile beside a batch job (F5.4).
 
-- *Field worker sync* — one catchment. The common case, and the one the 1% fresh-sync mix applies to
-- *Supervisor sync* — the union of many field workers' catchments. Expected to be the heavy case, and
-  probably what Q3's 99th percentile has been measuring all along
-- *Combined* — both roles concurrently, in their real population ratio. **This is the realistic one**,
-  and running either role alone will understate contention: supervisors pull wide while field workers
-  pull often, and they compete for the same connection pool
-- *Training and onboarding* — **50 to 100** new field workers first-syncing together from one
-  location, against an organisation holding **configuration only and no field data**. Every device
-  starts empty, so every sync is a full pull of the same reference data at the same moment. That makes
-  it a reference-data and `syncDetails` test with catchment volume removed entirely, which is both the
-  cheapest scenario to build — a bundle load, no generation — and the cleanest isolation of the
-  per-row `filterChangedEntities` cost in D1.1. **Build this one first**
-- *Growth comparison* — the same profile replayed against the day 60, day 120 and day 180 datasets.
-  The finding is the shape of the curve between them, not any single run
-- *Smoke* — one user, CI-gated
-- *Load* — expected peak
-- *Stress* — ramp to the knee
-- *Spike* — a burst above the working-day plateau. **Not a start-of-day herd:** Q4 shows arrivals
-  ramping into a broad plateau from 10:00 to 17:00 IST, peaking at 16:00 rather than at the start of
-  the day — 09:00 carries barely half the 16:00 volume. (The *shape* holds regardless of the Q4
-  bucketing defect, which scaled every hour equally; the absolute rates come from the re-run.) Whatever this profile spikes *from*,
-  the baseline it returns to is a sustained plateau, and the plateau is the more valuable case to run
-  because it is where production actually lives
-- *Soak* — multi-hour; the case that raised the auth question
-- *Contended* — sync against a concurrent ETL cycle, export, or bulk import (F5.4). The delta against
-  the equivalent uncontended profile is the finding
+Strip those out and the cases need **three shapes between them**, plus two utilities:
+
+| Profile | Shape | Used by |
+|---|---|---|
+| `steady` | constant arrival for a fixed duration | cases 2–8, 10–13 |
+| `burst` | N devices arriving inside a short window | case 1, the training cohort |
+| `stress` | arrival rate climbing until something breaks | case 9 |
+| `smoke` | one sync | CI |
+| `ramp` | every user in the file syncs once — **the default** | the H5 structural check |
+
+**Arrival rate is derived rather than configured**: one sync per user per day over
+`SYNC_WINDOW_HOURS`. 500 workers over twelve hours is 42 an hour, which reproduces every figure in
+[test-scenarios.md](test-scenarios.md) — 141 for the ten tenants, 1,692 clustered, 0.55 and 6.63 in
+flight. It also makes cases 11 to 13 **one property** away from 5 to 7, which is how the documents
+describe them and now how they run.
+
+> **`ramp` stays the default because it is the wrong shape for a load run and the right one for the
+> structural check.** Each virtual user syncs once and exits, so it cannot express "42 syncs an hour
+> for four hours" — but H5 has to touch *every* user in the file, and a rate-based profile syncs a
+> sample. An unreadable row belonging to a user the run never reached would pass silently. The
+> simulation warns when `STRUCTURAL_CHECK` is set with any other profile.
+
+**Injection is open throughout**, because these are arrivals rather than sessions: a sync is a short
+visit and the server sees a rate. A closed model would hold in-flight syncs constant, which is the
+one thing that has to be free to move when the server slows down.
+
+**What this exposed: case 3 cannot be run at its natural rate.** Sixty-two supervisors syncing once a
+day produce ten syncs in a two-hour window. The case measures per-sync cost rather than system load,
+so `SYNCS_PER_HOUR` has to be set well above the derived figure — which the scenarios already said in
+words and now say in a command.
 
 **E4 — Multi-tenant load.** *First-class, not finding-triggered — see section I.* The feeder and
 user provisioning must be able to span organisations with a controllable mix.
@@ -2511,7 +2519,7 @@ Ordering reflects dependencies, not estimates.
 | **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done, and tracked per query.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4 opens the deploy path, then B1 closes the environment.** B2 is deferred (see B), so nothing now has to happen before the cutover. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **D3 and D5.1 are done**; G4's restore mechanism is what remains, and it is now the gate rather than a deferral — a `PUSH=on` run cannot be repeated without it. Q17 replaces D3's guessed push volumes. |
-| **3 · Workload** | **D7** · E3, E5 · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5 and E7 no longer sit here - media upload landed with D3, co-tenant traffic is built, and media viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
+| **3 · Workload** | **D7** · E5 · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5, E3 and E7 no longer sit here - media upload landed with D3, injection profiles and co-tenant traffic are built, and media viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
 | **4 · Operate** | A11 · F2, F3 · **A12** | Saturate, name the resource, fix, re-run. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
 **Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review.

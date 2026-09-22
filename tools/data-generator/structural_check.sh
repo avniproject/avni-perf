@@ -57,7 +57,12 @@ set +e
     -DSYNC_MODE=full \
     -DSTRUCTURAL_CHECK=true \
     -DUSER_COUNT="$COUNT" \
-    -DRAMP_PERIOD=1 )
+    -DRAMP_PERIOD=1 \
+    `# Stated rather than inherited: the check must sync every user in the file, and a` \
+    `# rate-based profile syncs a sample - an unreadable row belonging to a user it never` \
+    `# reached would pass silently. Relying on ramp being the default would make that a` \
+    `# one-line change away.` \
+    -DPROFILE=ramp )
 STATUS=$?
 set -e
 

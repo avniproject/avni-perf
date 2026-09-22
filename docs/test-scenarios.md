@@ -40,6 +40,30 @@ customer's, and **every request is named with its population's prefix** — so t
 percentiles stay separable, which is the case 7 result. Pooled, the answer would move with the mix
 of the two populations rather than with the server.
 
+### How to run each one
+
+Arrival rate is derived, not configured: one sync per user per day spread over `SYNC_WINDOW_HOURS`.
+That is what makes cases 11 to 13 a single property away from 5 to 7.
+
+| # | Properties beyond the dataset and user file | Syncs/hour | Syncs collected |
+|---|---|---|---|
+| **1** | `PROFILE=burst -DUSER_COUNT=100 -DBURST_MINUTES=15` | — | 100 |
+| **2** | `PROFILE=steady -DUSER_COUNT=500 -DDURATION_MINUTES=240` | 42 | 167 |
+| **3** | `PROFILE=steady -DUSER_COUNT=62 -DSYNCS_PER_HOUR=…` | 5 natural | **10** — see below |
+| **4** | `PROFILE=steady -DUSER_COUNT=562 -DDURATION_MINUTES=240` | 47 | 187 |
+| **5** | `PROFILE=steady -DUSER_COUNT=1692 -DDURATION_MINUTES=120` | 141 | 282 |
+| **6** | case 5, against the co-tenant dataset | 141 | 282 |
+| **7** | case 6 plus `-DCO_TENANTS=on` | 141 + 792 | 282 |
+| **8** | case 4 at `-DDURATION_MINUTES=120`, once per dataset | 47 | 94 each |
+| **9** | `PROFILE=stress -DUSER_COUNT=1692 -DSTRESS_TO_SYNCS_PER_HOUR=…` | 141 → up | — |
+| **10** | case 4 at `-DDURATION_MINUTES=720` | 47 | 562 |
+| **11–13** | cases 5–7 plus `-DSYNC_WINDOW_HOURS=1 -DDURATION_MINUTES=60` | **1,692** | 1,692 |
+
+**Case 3 is the one this table exposes.** At its natural rate it collects ten syncs in two hours,
+because 62 supervisors syncing once a day produce 62 syncs in a whole window and no duration
+changes that. `SYNCS_PER_HOUR` has to be set well above the derived figure — which is sound,
+because the case measures per-sync cost rather than system load.
+
 **Cases 11 to 13 are 5 to 7 with the day's syncs compressed into one hour**, and they exist because
 the sync window is not confirmed — see [below](#how-much-of-that-depends-on-spreading-over-twelve-hours).
 They cost three hours between them and remove the need to wait on the answer.

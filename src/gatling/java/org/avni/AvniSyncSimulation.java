@@ -217,6 +217,71 @@ public class AvniSyncSimulation extends Simulation {
     private static final int coTenantSeconds =
         Integer.getInteger("CO_TENANT_SECONDS", rampPeriod);
 
+    /*
+     * E3 - injection profiles.
+     *
+     * The plan listed ten named profiles. Checked against the thirteen test cases, most of them
+     * are not injection shapes at all: what separates "field worker sync" from "supervisor sync"
+     * is which users are in the feeder, case 5 from case 11 is the sync window, and case 6 from
+     * case 7 is whether co-tenants sync. Those are already properties. Strip them out and the
+     * cases need three shapes between them - eleven want `steady`, one `burst`, one `stress`.
+     *
+     *   steady  constant arrival for a fixed duration. Cases 2-8 and 10-13
+     *   burst   N devices arriving inside a short window. Case 1, the training cohort
+     *   stress  arrival rate climbing until something breaks. Case 9
+     *   smoke   a single sync, for CI
+     *   ramp    every user in the file syncs exactly once. The default, and what the H5
+     *           structural check needs - it has to touch every user, not a sample of them
+     *
+     * `ramp` stays the default because it is what runs today and what the structural check
+     * requires. It is the wrong shape for a load run: each virtual user syncs once and exits, so
+     * it cannot express "42 syncs an hour for four hours", which is how every case is specified.
+     */
+    private static final List<String> PROFILES =
+        Arrays.asList("ramp", "steady", "burst", "stress", "smoke");
+    private static final String profile = validProfile(
+        System.getProperty("PROFILE", "ramp").toLowerCase());
+
+    /** Rejected at startup rather than at injection, so a typo fails before anything is reported. */
+    private static String validProfile(String name) {
+        if (!PROFILES.contains(name)) {
+            throw new IllegalArgumentException(
+                "Unknown PROFILE '" + name + "'. One of: " + String.join(", ", PROFILES));
+        }
+        return name;
+    }
+
+    /**
+     * Hours over which a day's syncs arrive.
+     *
+     * The single property separating cases 5 to 7 from 11 to 13. Q4 measured production's arrivals
+     * spread over a 09:00-21:00 plateau, but that is production's current mix rather than a
+     * property of this deployment - a once-a-day sync could cluster when workers return to signal.
+     * Running both ends brackets it.
+     */
+    private static final double syncWindowHours =
+        Double.parseDouble(System.getProperty("SYNC_WINDOW_HOURS", "12"));
+
+    /**
+     * Arrival rate for the customer's population.
+     *
+     * Derived rather than configured by default: one sync per user per day, spread over the
+     * window. 500 field workers over twelve hours is 42 an hour, which is the figure the test
+     * cases are written against.
+     */
+    private static final double syncsPerHour = Double.parseDouble(
+        System.getProperty("SYNCS_PER_HOUR", String.valueOf(userCount / syncWindowHours)));
+
+    /** How long to hold that rate. Two hours covers most cases; the soak wants twelve. */
+    private static final int durationMinutes = Integer.getInteger("DURATION_MINUTES", 120);
+
+    /** `burst` only: how long the cohort takes to arrive. Case 1 is 100 devices in 15 minutes. */
+    private static final int burstMinutes = Integer.getInteger("BURST_MINUTES", 15);
+
+    /** `stress` only: the rate to climb to. Ten times the starting rate unless told otherwise. */
+    private static final double stressToSyncsPerHour = Double.parseDouble(
+        System.getProperty("STRESS_TO_SYNCS_PER_HOUR", String.valueOf(syncsPerHour * 10)));
+
     private static final String coTenantFeeder =
         System.getProperty("CO_TENANT_USERS", "co-tenant-users.csv");
 
@@ -473,8 +538,9 @@ public class AvniSyncSimulation extends Simulation {
     {
         int feederRows = csv("sync-users.csv").recordsCount();
         out.println(String.format(
-            "Sync mode: %s | users: %d | feeder rows: %d | ramp: %ds | page size: %d | auth: %s",
-            syncMode, userCount, feederRows, rampPeriod, pageSize, authMode));
+            "Sync mode: %s | users: %d | feeder rows: %d | page size: %d | auth: %s",
+            syncMode, userCount, feederRows, pageSize, authMode));
+        out.println(describeInjection());
 
         if ("weighted".equals(storageModel)) {
             out.println(String.format(
@@ -601,6 +667,12 @@ public class AvniSyncSimulation extends Simulation {
                 "Co-tenants: OFF - the customer's load alone. Cases 7 and 13 need CO_TENANTS=on; "
                 + "a co-tenant dataset without their traffic is case 6.");
         }
+        if (structuralCheck && !"ramp".equals(profile)) {
+            out.println(String.format(
+                "WARNING: STRUCTURAL_CHECK with PROFILE=%s. The check has to touch every user in "
+                + "the file - a rate-based profile syncs a sample, so an unreadable row belonging "
+                + "to a user it never reached passes silently. Use PROFILE=ramp.", profile));
+        }
         if (structuralCheck) {
             out.println(
                 "STRUCTURAL CHECK: asserting zero failures. This is H5's gate on a generated "
@@ -631,8 +703,7 @@ public class AvniSyncSimulation extends Simulation {
         }
 
         List<PopulationBuilder> populations = new ArrayList<>();
-        populations.add(scenarioFor(customerWorkload)
-            .injectOpen(rampUsers(userCount).during(rampPeriod)));
+        populations.add(scenarioFor(customerWorkload).injectOpen(customerInjection()));
         if (coTenants) {
             // An open model at a fixed arrival rate, not a user count. Co-tenant load exists to
             // occupy the pool, CPU and IO at production's own rate; how many distinct accounts
@@ -644,6 +715,74 @@ public class AvniSyncSimulation extends Simulation {
         setUp(populations.toArray(new PopulationBuilder[0]))
             .protocols(httpProtocol)
             .assertions(assertions.toArray(new Assertion[0]));
+    }
+
+    /** One line saying what shape this run drives, and what it implies. */
+    private String describeInjection() {
+        switch (profile) {
+            case "smoke":
+                return "Profile: smoke | one sync. CI gate, not a measurement.";
+            case "steady":
+                return String.format(
+                    "Profile: steady | %.0f syncs/hour for %d min = %.0f syncs, ~%.2f in flight at "
+                    + "production's 14.1s median | %d users over a %.0fh window",
+                    syncsPerHour, durationMinutes, syncsPerHour * durationMinutes / 60.0,
+                    syncsPerHour / 3600.0 * 14.1, userCount, syncWindowHours);
+            case "burst":
+                return String.format(
+                    "Profile: burst | %d devices arriving over %d min. Case 1's training cohort: "
+                    + "every device starts empty, so every sync is a full pull of the same "
+                    + "reference data at the same moment.", userCount, burstMinutes);
+            case "stress":
+                return String.format(
+                    "Profile: stress | %.0f to %.0f syncs/hour over %d min. No steady state by "
+                    + "design - the knee and the resource that names it are the finding.",
+                    syncsPerHour, stressToSyncsPerHour, durationMinutes);
+            case "ramp":
+            default:
+                return String.format(
+                    "Profile: ramp | %d users over %ds, one sync each. This is the structural "
+                    + "check's shape, not a load shape: it cannot express an arrival rate, which "
+                    + "is how every test case is specified. PROFILE=steady for those.",
+                    userCount, rampPeriod);
+        }
+    }
+
+    /**
+     * The customer population's arrival shape - see E3.
+     *
+     * Open injection throughout, because these are arrivals rather than a fixed set of concurrent
+     * devices: a sync is a short visit, not a session, and the server sees a rate. A closed model
+     * would hold the number of in-flight syncs constant, which is the one thing that must be
+     * allowed to move when the server slows down.
+     */
+    private OpenInjectionStep[] customerInjection() {
+        java.time.Duration duration = java.time.Duration.ofMinutes(durationMinutes);
+        switch (profile) {
+            case "smoke":
+                return new OpenInjectionStep[]{atOnceUsers(1)};
+
+            case "steady":
+                return new OpenInjectionStep[]{
+                    constantUsersPerSec(syncsPerHour / 3600.0).during(duration)};
+
+            case "burst":
+                // Case 1: a training cohort logging in together. Every device starts empty, so
+                // every sync is a full pull of the same reference data at the same moment.
+                return new OpenInjectionStep[]{
+                    rampUsers(userCount).during(java.time.Duration.ofMinutes(burstMinutes))};
+
+            case "stress":
+                // Case 9: climb until something breaks. The knee and the resource that names it
+                // are the finding, so this deliberately has no steady state to settle into.
+                return new OpenInjectionStep[]{
+                    rampUsersPerSec(syncsPerHour / 3600.0)
+                        .to(stressToSyncsPerHour / 3600.0).during(duration)};
+
+            case "ramp":
+            default:
+                return new OpenInjectionStep[]{rampUsers(userCount).during(rampPeriod)};
+        }
     }
 
     /**

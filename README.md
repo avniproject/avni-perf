@@ -121,7 +121,19 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
 `USER_COUNT` defaults to number of rows in resources/sync-users.csv
 
-`RAMP_PERIOD` defaults to number of rows in resources/sync-users.csv * 20
+`RAMP_PERIOD` defaults to number of rows in resources/sync-users.csv * 20 — `PROFILE=ramp` only
+
+`PROFILE` `ramp` (default), `steady`, `burst`, `stress` or `smoke` — see below
+
+`SYNC_WINDOW_HOURS` default 12; hours over which a day's syncs arrive
+
+`SYNCS_PER_HOUR` defaults to `USER_COUNT / SYNC_WINDOW_HOURS`
+
+`DURATION_MINUTES` default 120 — `steady` and `stress`
+
+`BURST_MINUTES` default 15 — `burst` only
+
+`STRESS_TO_SYNCS_PER_HOUR` defaults to ten times the starting rate — `stress` only
 
 `PAGE_SIZE` defaults to 1000, matching the client
 
@@ -176,6 +188,33 @@ entity's distribution, as `probability:[min:]p50:p95:max:mean`
 `PUSH_SEED_SIZE` rows harvested per entity when seeding a device, default 20
 
 `PUSH_ALLOW_UNSAFE_TARGET` `true` lifts the protected-host guard
+
+## Injection profiles
+
+`PROFILE` sets the arrival shape. **Arrival rate is derived, not configured** — one sync per user
+per day over `SYNC_WINDOW_HOURS` — so 500 workers over twelve hours is 42 an hour.
+
+| Profile | Shape | For |
+|---|---|---|
+| `ramp` **(default)** | every user in the file syncs once, then exits | the H5 structural check |
+| `steady` | constant arrival for `DURATION_MINUTES` | most test cases |
+| `burst` | `USER_COUNT` devices arriving over `BURST_MINUTES` | a training cohort |
+| `stress` | rate climbing to `STRESS_TO_SYNCS_PER_HOUR` | finding the knee |
+| `smoke` | one sync | CI |
+
+> **The default is the wrong shape for a load run, deliberately.** `ramp` gives each virtual user
+> one sync and then exits, so it cannot express "42 syncs an hour for four hours" — which is how
+> every test case is specified. It is kept as the default because it is what runs today and what
+> the structural check needs: H5 has to touch **every** user in the file, and a rate-based profile
+> syncs a sample, so an unreadable row belonging to a user it never reached would pass silently.
+> The run warns if `STRUCTURAL_CHECK` is set with any other profile.
+
+Injection is open in every profile: a sync is a short visit, not a session, so the server sees a
+rate. A closed model would hold in-flight syncs constant, which is the one thing that has to be
+free to move when the server slows down.
+
+`SYNC_WINDOW_HOURS=1` compresses a day's syncs into one hour — the single property separating the
+clustered test cases from the spread ones.
 
 ## The push path
 
