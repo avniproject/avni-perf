@@ -13,6 +13,7 @@ import org.avni.models.AvniEntity;
 import org.avni.models.PushSeed;
 import org.avni.models.PageInfo;
 import org.avni.models.PushProfiles;
+import org.avni.models.StorageModel;
 import org.avni.models.PushVolume;
 import org.avni.models.SyncDetail;
 import org.avni.models.Workload;
@@ -87,9 +88,49 @@ public class AvniSyncSimulation extends Simulation {
      *
      * Both are calibration starting points, not measurements. F7 fits them by matching a simulated
      * sync's duration against production's own: 14.1s + 8.85 ms x records.
+     *
+     * **The default is 0.61, not Q1's 9.19, and the difference is not a disagreement with Q1.**
+     * Q1 measured the marginal cost of a record across a *whole sync* — server time, network and
+     * client parse-and-persist together — and its own result block says so: "duration measured on
+     * the client includes network and server time, so the slope is an upper bound on client-side
+     * parse-and-persist... do not use it as baseMsPerRecord unmodified." It was being used
+     * unmodified.
+     *
+     * That double-counts, because the simulation makes the request for real and therefore already
+     * pays the server and network share. Only the client's own persist cost belongs in a pause.
+     * The same argument is already made for `msPerPage` a few lines below; it simply had not been
+     * carried across to the per-record term.
+     *
+     * The size of the error was the giveaway: at 9.19 a heavy 1000-record page modelled **27.7
+     * seconds** of client work, or 27.7 ms to write one row. No device persists that slowly, and
+     * a single page cannot cost twice a whole median sync. Q1's r-squared of 0.187 says the slope
+     * was never a strong fit either.
+     *
+     * 0.60 is derived from the ceiling rather than measured: it puts the heaviest page a device
+     * can pull — 1000 records on a 3x entity — at 1.97s, just under `MAX_STORAGE_PAUSE_MS`. Just
+     * under rather than exactly on it, so the cap does not bind on an ordinary run and its
+     * warning stays meaningful. **That makes it a
+     * deliberate upper bound rather than an estimate**, which is the honest status for a number
+     * nothing has measured. F7 replaces it with a fitted value, and D7 with a measured one.
      */
     private static final double baseMsPerRecord =
-        Double.parseDouble(System.getProperty("BASE_MS_PER_RECORD", "9.19"));
+        Double.parseDouble(System.getProperty("BASE_MS_PER_RECORD", "0.60"));
+
+    /**
+     * Ceiling on a single page's modelled client cost.
+     *
+     * A belt to `baseMsPerRecord`'s braces. The default per-record figure is already chosen so the
+     * heaviest possible page lands on this number rather than being clipped by it, so in normal
+     * running the cap never binds — it is here so that raising `BASE_MS_PER_RECORD` cannot
+     * silently reintroduce a half-minute pause.
+     *
+     * **A cap is a poor primary mechanism and deliberately is not one.** Once it binds, page size
+     * stops affecting the pause, and the relationship between volume and duration is exactly what
+     * D6 exists to model and F7 exists to fit. At the old 9.19 ms/record this cap would have bound
+     * above 66 records on a heavy entity, flattening 93% of a full page's range into one value.
+     */
+    private static final double maxStoragePauseMs =
+        Double.parseDouble(System.getProperty("MAX_STORAGE_PAUSE_MS", "2000"));
     /**
      * What a page costs before its first record: the client's transaction open and commit, its
      * batched index maintenance, and the round trip.
@@ -632,13 +673,27 @@ public class AvniSyncSimulation extends Simulation {
                 "Storage model: weighted | %.0f ms/page + %.2f ms/record | a full page costs "
                 + "%.1fs light, %.1fs medium, %.1fs heavy",
                 msPerPage, baseMsPerRecord,
-                (msPerPage + pageSize * 0.2 * baseMsPerRecord) / 1000.0,
-                (msPerPage + pageSize * 1.0 * baseMsPerRecord) / 1000.0,
-                (msPerPage + pageSize * 3.0 * baseMsPerRecord) / 1000.0));
-            out.println(
-                "  Both terms are calibration starting points, not measurements. MS_PER_PAGE "
-                + "should be 174 minus the server's own median response, since the simulation "
-                + "really incurs that. F7 fits them against production's 14.1s + 8.85ms x records.");
+                StorageModel.pauseMillis(msPerPage, pageSize, 0.2, baseMsPerRecord, maxStoragePauseMs) / 1000.0,
+                StorageModel.pauseMillis(msPerPage, pageSize, 1.0, baseMsPerRecord, maxStoragePauseMs) / 1000.0,
+                StorageModel.pauseMillis(msPerPage, pageSize, 3.0, baseMsPerRecord, maxStoragePauseMs) / 1000.0));
+            out.println(String.format(
+                "  Both terms are calibration starting points, not measurements, and neither is "
+                + "Q1's raw slope. BASE_MS_PER_RECORD is set so the heaviest page a device can "
+                + "pull lands on the %.1fs ceiling; Q1's 9.19 is a whole-sync figure including "
+                + "server and network, which this simulation already pays for real. MS_PER_PAGE "
+                + "wants the same treatment - 174 minus the server's median response. F7 fits "
+                + "both against production's 14.1s + 8.85ms x records.",
+                maxStoragePauseMs / 1000.0));
+            double heaviest = msPerPage + pageSize * 3.0 * baseMsPerRecord;
+            if (heaviest > maxStoragePauseMs) {
+                out.println(String.format(
+                    "  WARNING: the ceiling is binding. A heavy page models %.1fs before the cap "
+                    + "and %.1fs after, so above %.0f records page size stops changing the pause "
+                    + "at all - which is the relationship D6 exists to model and F7 to fit. "
+                    + "Lower BASE_MS_PER_RECORD rather than relying on the cap.",
+                    heaviest / 1000.0, maxStoragePauseMs / 1000.0,
+                    (maxStoragePauseMs - msPerPage) / (3.0 * baseMsPerRecord)));
+            }
         } else {
             out.println("Storage model: zero - no client-side pause. Server saturation only; "
                 + "throughput here is not a rate any real fleet produces.");
@@ -871,6 +926,7 @@ public class AvniSyncSimulation extends Simulation {
         storage.put("model", storageModel);
         storage.put("baseMsPerRecord", baseMsPerRecord);
         storage.put("msPerPage", msPerPage);
+        storage.put("maxPauseMs", maxStoragePauseMs);
         settings.put("storage", storage);
 
         Map<String, Object> push = new LinkedHashMap<>();
@@ -1422,9 +1478,9 @@ public class AvniSyncSimulation extends Simulation {
         if (!"weighted".equals(storageModel)) {
             return java.time.Duration.ZERO;
         }
-        long millis = Math.round(
-            msPerPage + pageInfo(session).recordCount * entity.storageWeight * baseMsPerRecord);
-        return java.time.Duration.ofMillis(Math.max(0L, millis));
+        return java.time.Duration.ofMillis(StorageModel.pauseMillis(
+            msPerPage, pageInfo(session).recordCount, entity.storageWeight,
+            baseMsPerRecord, maxStoragePauseMs));
     }
 
     private static ChainBuilder getAndPaginate(Workload workload, AvniEntity entity) {
