@@ -111,13 +111,29 @@ lookup rows, **1.0x** for configuration and light transactional, **3.0x** for th
 observation-bearing four. A page of subjects therefore costs fifteen times a page of genders, which
 one uniform constant could not express.
 
-Defaults are **174 ms a page** and **9.19 ms a record**, both derived from production: a sync is 81
-requests over 14.1 seconds, and anchoring the intercept there makes the marginal term fall out
-consistently across bands at 8.8 to 9.2 ms.
+Defaults are **174 ms a page** and **0.60 ms a record**, and a page is capped at
+`MAX_STORAGE_PAUSE_MS`, **2000 ms**. A full 1000-record page therefore costs 0.3 s light, 0.8 s
+medium and 2.0 s heavy.
 
-> **Both are calibration starting points, not measurements.** `MS_PER_PAGE` should be 174 minus the
-> server's own median response, since the simulation genuinely incurs that part. F7 fits both by
-> matching a simulated sync against production's `14.1s + 8.85ms x records`.
+> **The per-page term is a floor, not a maximum.** It is added to every page whatever its size,
+> and the per-record term accumulates on top. The two are equal at about 290 records on a 1× entity.
+
+> **0.60 is not Q1's 9.19, and that is deliberate.** Q1 measured the marginal cost of a record
+> across a *whole sync* — server, network and client together — and its own result says so: the
+> slope is "an upper bound on client-side parse-and-persist… do not use it as `baseMsPerRecord`
+> unmodified". Using it unmodified double-counts, because the simulation makes the request for real
+> and already pays the server and network share. At 9.19 a heavy page modelled **27.7 seconds**,
+> which is 27.7 ms to write one row and twice a whole median sync in a single page.
+>
+> 0.60 is derived from the ceiling rather than measured: it puts the heaviest page a device can
+> pull at 1.97 s, just under the cap. **A deliberate upper bound, not an estimate.** `MS_PER_PAGE`
+> wants the same treatment — 174 minus the server's median response, since the simulation genuinely
+> incurs that part. F7 fits both against production's `14.1s + 8.85ms x records`.
+
+> **The cap is a guard, not the mechanism.** Once it binds, page size stops changing the pause,
+> and that relationship is the whole point of the model. The defaults are chosen so it never binds;
+> the banner warns if it does, and names the record count where it starts. Lower
+> `BASE_MS_PER_RECORD` rather than leaning on the cap.
 
 > **`STORAGE_MODEL=zero` is not a neutral fallback.** Removing the pause lets a virtual user fire
 > its 81 requests back to back, bounded only by the server — at a 20 ms response that is **9x a real
@@ -185,7 +201,9 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
 `STORAGE_MODEL` `weighted` (default) or `zero` — see above
 
-`BASE_MS_PER_RECORD` defaults to 9.19 — see above
+`BASE_MS_PER_RECORD` defaults to 0.60 — see above
+
+`MAX_STORAGE_PAUSE_MS` caps one page's modelled client cost, default 2000 — see above
 
 `MS_PER_PAGE` defaults to 174 — see above
 

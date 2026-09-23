@@ -48,7 +48,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Auth | Cognito only | `AUTH_MODE` — username header or Cognito |
 | Telemetry | none | posted like a real client, tagged so production queries exclude it |
 | Reset sync | not requested at all | request modelled in the right order; no scenario needed — the storm was a defect |
-| Storage pause | uniform random, 0 to a constant | per-entity weighted model at `BASE_MS_PER_RECORD`, with `STORAGE_MODEL=zero` to remove it. Coefficients stay estimates — D7 is deferred on fleet rollout of 17.3, and F7 is the check |
+| Storage pause | uniform random, 0 to a constant, no ceiling | per-entity weighted model, capped at `MAX_STORAGE_PAUSE_MS` (2 s), with `STORAGE_MODEL=zero` to remove it. Coefficients stay estimates — D7 is deferred on fleet rollout of 17.3, and F7 is the check |
 | Request timeouts | Gatling defaults, unchosen | explicit in `gatling.conf`, sized to the client's own 60s limit; idle-connection timeout raised to match okhttp |
 | Behaviour on a failed page | **spun forever, reissuing the page** | the sync aborts and is recorded as failed — D8.5 |
 | Closed-port regression test | none | `make smoke_closed_port`, on every PR touching the simulation — D8.6 |
@@ -1297,7 +1297,9 @@ Do the first to unblock; do the second because it is the number you will trust.
 >
 > **What this costs in the meantime is stated rather than hidden.** D6's weight table stays in
 > place, and its multipliers remain judgement-based: `MS_PER_PAGE` at 174 and `BASE_MS_PER_RECORD`
-> at 9.19 are calibration starting points, not measurements. **F7 is what compensates** — it fits
+> at 0.60 are calibration starting points, not measurements — the latter now a deliberate upper
+> bound derived from the 2 s page ceiling rather than Q1's raw whole-sync slope, which
+> double-counted the server the simulation really pays. **F7 is what compensates** — it fits
 > the simulation against production's observed sync durations, so a wrong coefficient shows up as
 > a failed calibration rather than as a quietly wrong result. That is the argument for proceeding
 > without D7, and it only holds as long as F7 actually runs.
@@ -1772,7 +1774,8 @@ data volumes and push volumes come from that table rather than being invented.
 those numbers**, and they are: push volumes from Q17 over 105,718 completed syncs
 (`PushProfiles.production()`), the co-tenant arrival rate from Q4's busiest recorded hour
 (`CO_TENANT_SYNCS_PER_HOUR=792`), the storage model's coefficients from Q1
-(174 ms/page + 9.19 ms/record), and the co-tenant media rate from the production-wide 2.14%.
+(174 ms/page, with the per-record term netted down to 0.60 so it does not double-count the
+server), and the co-tenant media rate from the production-wide 2.14%.
 The customer's own arrival rate is deliberately *not* production's 792 — it is derived from the
 modelled deployment, one sync per worker per working day across `SYNC_WINDOW_HOURS`.
 
