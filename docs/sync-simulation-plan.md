@@ -110,9 +110,13 @@ limits as the server's.
 
 ## Success criteria
 
-**Partly filled; still blocks A6.** Three of the five numbers below are now measured against
-production. The two that remain are not derivable from the codebase or from telemetry — they are
-product decisions, and A6 cannot be implemented until someone makes them.
+**Filled, bar one re-run; no longer blocks A6.** Every number below is settled except the heavy
+band's p95, and that is a **measurement** rather than a decision — Q5 reported band 10's p50 at
+1,076 s and needs re-running for the percentile.
+
+The acceptable error rate is **decided at 0.05%** and is the harness default (`MAX_FAILED_PERCENT`),
+so **A6 is done** rather than blocked. An earlier version of this paragraph said two product
+decisions were outstanding; neither is.
 
 **What this work is for.** Finding choke points in the current server. Not capacity certification, not
 regression gating — those are different exercises with different designs, and adopting either goal
@@ -123,10 +127,10 @@ later would change several decisions in this plan.
 | Target | Source | Value |
 |---|---|---|
 | p95 sync duration, light band (<5k records) | Q5 | **80.0 s** (p50 14.1 s) |
-| p95 sync duration, heavy band (~47.5k records) | Q5 | p50 **1,076 s**; p95 pending re-run |
-| Acceptable error rate under load | Product decision | **0.05%** |
+| p95 sync duration, heavy band (~47.5k records) | Q5 | p50 **1,076 s**; **p95 pending a Q5 re-run** — the one number still outstanding, and a measurement rather than a decision |
+| Acceptable error rate under load | Product decision, made | **0.05%** — the harness default, see A6 |
 | Concurrent-user target to design against | [test-scenarios.md](test-scenarios.md) | **1,000** workers across 8–10 tenants |
-| Heaviest single device to design against | [test-scenarios.md](test-scenarios.md) | **~125,000** records — a sub-centre supervisor at year 2 |
+| Heaviest single device to design against | [test-scenarios.md](test-scenarios.md) | **119,000 to 300,000** records — a sub-centre supervisor at year 2, across the 8-to-20 span. **The top of that range is 1.13× Q3's heaviest real device**, so the widest span at year 2 is the one point where this exercise leaves what production has already carried |
 | Peak-hour concurrency to reproduce | Q4 | **792 syncs/hour** (0.22/sec) peak; **267** distinct users; ~3 in flight |
 
 **Every row is now filled.** The four measurable ones came from production; the acceptable error
@@ -2128,6 +2132,20 @@ run time.
 | **Messaging** | `MessageSenderJob`, fixed-delay poll | Continuous, low volume | **Leave running**, outbound suppressed per F5.3 |
 | **Storage management** | `StorageManagementJob`, cron | Periodic | **Leave running** |
 | **Metabase** | BI users | Points at the **read replica** (`avni.read.database.server`), not the primary | **Out of scope** |
+
+> **With ETL deferred, this section is down to one cheap measurement.** *Decided.* ETL was the only
+> load here guaranteed to coincide with sync — Quartz every 90 minutes is scheduled and recurring,
+> so the overlap is certain and needed no measuring. Export and bulk import are **user-triggered**,
+> which means nobody knows whether they ever land on the sync peak.
+>
+> So the contended scenarios are **not cancelled, they are conditional**, and the condition is the
+> measurement immediately below. If exports and imports turn out never to coincide with peak sync,
+> there is no contended scenario left to run while ETL is deferred, and the whole of F5.4 reduces
+> to the background loads that just keep running. If they do coincide, the case for modelling them
+> is made by the data rather than assumed.
+>
+> Same shape as Q18 and ETL: **the measurement is cheap and the modelling is not**, so it goes
+> first.
 
 **Before modelling any of this, find out which ones actually coincide with peak sync.** Export and
 import runs are recorded — `AvniJobRepository`, `ExportJobParametersRepository`, `JobStatus` — so
