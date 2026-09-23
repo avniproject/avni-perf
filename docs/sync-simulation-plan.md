@@ -71,7 +71,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Co-tenant sync traffic | none | `CO_TENANTS=on` drives a second population at production's measured arrival rate, named apart in the report |
 | Production's tenant skew | none | built — 513 tenants and 473 rows-only organisations, reproducing Q12's skew |
 | **Test data** | | |
-| Dataset generation | none — runs hit whatever happened to be in the database | built: `tools/data-generator`, 231 tests · needs a target database to run against |
+| Dataset generation | none — runs hit whatever happened to be in the database | built: `tools/data-generator`, 235 tests · needs a target database to run against · ETL schemas deferred |
 | User provisioning | hand-built CSV | generated with the dataset — catchments, users and a feeder spanning every tenant, carrying the columns the simulation actually reads (E4.1), pinned by a test |
 | Dataset gate (H5) | none | statistical gate built; the client half of the structural check is manual |
 | Schema drift | nothing to drift against | generation refuses on any column the contract has not accounted for |
@@ -209,7 +209,7 @@ visible.
 | **Is `syncDetails`' per-row cost material?** | Cases 1 and 4, with F1/F2 attribution | Q8 found 4 of 79 entities changed at p50, so 94% of the per-row queries prove nothing changed — but the endpoint saves 75 HTTP round trips, so the question is cost *relative to what it buys* |
 | **What does `Page`'s `count(*)` cost?** | Any case run twice, `PAGING=page` against `PAGING=slice` | Spring's `Page` runs a `count(*)` over the whole matching set to report `totalPages`; `Slice` fetches `size + 1` rows and reports `hasNext` instead. Under RLS, on `program_encounter`'s 11.4 GB with GIN indexes, that count is a plausible choke point in its own right. The server already exposes both — 22 of the 75 pulled entities have a `/v2` slice endpoint, and they are the transactional ones |
 | **Does the organisation interceptor cost enough to matter?** | F2.1, under case 5 | Three Postgres round trips per connection borrow, plus `getMetaData()` evaluated for a TRACE log argument |
-| **Does ETL contention matter?** | The contended variant of case 4 | ETL shares the same IO ceiling on a 90-minute cycle |
+| **Does ETL contention matter?** | *Deferred.* Q18 first, which measures how much ETL there actually is; the contended variant of case 4 only if it says so | ETL shares the same IO ceiling on a 90-minute cycle |
 | **Where does it break, and which resource names it?** | Case 10, the stress ramp | Unknown by design — this is the one question with no useful prior |
 
 **None of these blocks anything.** They are the deliverable — the
@@ -2072,6 +2072,7 @@ read rather than merely what the environment costs:
 | **TLS** | Production terminates HTTPS at the ALB. The module falls back to a plain HTTP listener when `acm_certificate_arn` is null, which removes a measurable per-request cost. Supply a certificate, or record its absence per run |
 | **Fixed instance classes** | Production is burstable in unlimited mode; this environment is fixed, deliberately, to remove credit dynamics from every run. It also means this environment cannot reproduce a credit-exhaustion choke point, which production has actually hit on the database side — so that failure mode has to be reasoned about, not measured here |
 | **Pristine indexes** | Post-load indexes have no bloat; production's have accumulated it. Understates index scan and maintenance cost (G4) |
+| **No batch load** (ETL deferred) | Production runs an ETL cycle every 90 minutes against the same IOPS ceiling, plus exports and imports. None of it runs here, so the server has more of itself than it ever does in production. Unbounded until Q18 measures how much ETL there actually is |
 | **Injector position** | Runs from different positions are not comparable: a sync is ~109 requests, so 25 ms of extra round trip adds 2.7 s to a 14.1 s median. Recorded per run in `run-metadata.json` (A11) |
 
 **Most of these understate latency, which is worth stating plainly: a green result in this
@@ -2085,9 +2086,10 @@ notifications, and the Glific/flow integrations behind `MessageSenderJob`. Enfor
 infrastructure boundary, not in application config alone, so a configuration mistake cannot cause an
 incident.
 
-**F5.4 — Run the co-tenant workloads deliberately.** Sync does not have the server to itself. Every
-load below shares the same instance, the same connection pool and the same fixed 3,000 IOPS (G4), so
-suppressing them produces a server that is quieter than any real one. **Model the significant ones as
+**F5.4 — Run the co-tenant workloads deliberately.** *ETL deferred; the rest stand.* Sync does not
+have the server to itself. Every load below shares the same instance, the same connection pool and
+the same fixed 3,000 IOPS (G4), so suppressing them produces a server that is quieter than any
+real one. **Model the significant ones as
 scenarios and treat the delta against sync-alone as a finding**, rather than deciding case by case at
 run time.
 
@@ -2686,10 +2688,25 @@ impact:
   of the 70 GB schema, and **21× the instance's 933 MB `shared_buffers`**. A generator that reproduces
   row counts but not index bulk will show a cache hit ratio production cannot achieve, which makes it
   the single easiest way to produce optimistic numbers. Reproduce index definitions exactly (G4).
-- **The ETL-enabled fraction is a generator parameter.** ETL is not enabled for every organisation,
-  so its storage and IO contribution depends on how many generated orgs have it. Enable it on none
-  and the ETL-contention scenario disappears; enable it on all and both storage and IO contention
-  exceed production's.
+- **The ETL-enabled fraction is a generator parameter.** *Deferred — see below.* ETL is not enabled
+  for every organisation, so its storage and IO contribution depends on how many generated orgs
+  have it. Enable it on none and the ETL-contention scenario disappears; enable it on all and both
+  storage and IO contention exceed production's.
+
+> **ETL modelling is deferred, and Q18 is what decides when to pick it up.** *Decided.* The scope
+> here is sync, and ETL is the largest thing adjacent to it that is not sync. Generating ETL
+> schemas and running the contended variant of case 4 is real work — a per-org multiplier applied
+> across the tenant set, plus a scenario — and none of it makes a sync finding sharper on its own.
+>
+> **[Q18](production-measurement-queries.md) is still worth running, and is not blocked**: it
+> measures the enabled fraction and the per-enabled-org multiplier, which is precisely what says
+> how urgent this is. A small fraction at a modest multiplier makes ETL a footnote; most orgs at
+> over 1× makes it the next thing after sync. **The measurement is cheap and the modelling is not**,
+> which is the whole reason to do them in that order.
+>
+> Until then the position to state plainly is that **runs here have the server more to themselves
+> than production ever does** — no ETL cycle, no export, no import — so results are optimistic by
+> an amount nobody has bounded. That belongs in F5.2's parity record beside the other three.
 
 > **The GIN indexes make observation cardinality a first-class concern.**
 > `V1_03__AddGinIndexForObservations.sql` creates `GIN (observations jsonb_path_ops)` on `individual`,
