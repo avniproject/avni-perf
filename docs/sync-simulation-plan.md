@@ -213,7 +213,7 @@ visible.
 | **Is `syncDetails`' per-row cost material?** | Cases 1 and 4, with F1/F2 attribution | Q8 found 4 of 79 entities changed at p50, so 94% of the per-row queries prove nothing changed — but the endpoint saves 75 HTTP round trips, so the question is cost *relative to what it buys* |
 | **What does `Page`'s `count(*)` cost?** | Any case run twice, `PAGING=page` against `PAGING=slice` | Spring's `Page` runs a `count(*)` over the whole matching set to report `totalPages`; `Slice` fetches `size + 1` rows and reports `hasNext` instead. Under RLS, on `program_encounter`'s 11.4 GB with GIN indexes, that count is a plausible choke point in its own right. The server already exposes both — 22 of the 75 pulled entities have a `/v2` slice endpoint, and they are the transactional ones |
 | **Does the organisation interceptor cost enough to matter?** | F2.1, under case 5 | Three Postgres round trips per connection borrow, plus `getMetaData()` evaluated for a TRACE log argument |
-| **Does ETL contention matter?** | *Deferred.* Q18 first, which measures how much ETL there actually is; the contended variant of case 4 only if it says so | ETL shares the same IO ceiling on a 90-minute cycle |
+| **Does contention from non-sync load matter?** | *Deferred — nothing non-sync is driven for now.* ETL, export, import and webapp traffic all share the instance in production and none of them runs here, so every result is optimistic by an unbounded amount. Q18 measures how much ETL there is, for whenever this is picked up | ETL shares the same IO ceiling on a 90-minute cycle |
 | **Where does it break, and which resource names it?** | Case 10, the stress ramp | Unknown by design — this is the one question with no useful prior |
 
 **None of these blocks anything.** They are the deliverable — the
@@ -2101,7 +2101,7 @@ read rather than merely what the environment costs:
 | **TLS** | Production terminates HTTPS at the ALB. The module falls back to a plain HTTP listener when `acm_certificate_arn` is null, which removes a measurable per-request cost. Supply a certificate, or record its absence per run |
 | **Fixed instance classes** | Production is burstable in unlimited mode; this environment is fixed, deliberately, to remove credit dynamics from every run. It also means this environment cannot reproduce a credit-exhaustion choke point, which production has actually hit on the database side — so that failure mode has to be reasoned about, not measured here |
 | **Pristine indexes** | Post-load indexes have no bloat; production's have accumulated it. Understates index scan and maintenance cost (G4) |
-| **No batch load** (ETL deferred) | Production runs an ETL cycle every 90 minutes against the same IOPS ceiling, plus exports and imports. None of it runs here, so the server has more of itself than it ever does in production. Unbounded until Q18 measures how much ETL there actually is |
+| **No non-sync load at all** (F5.4 deferred) | **The largest asterisk on the exercise.** Production shares the instance, the pool and the 3,000 IOPS between sync, an ETL cycle every 90 minutes, user-triggered exports and imports, and a webapp with people on it. Here only sync runs. Exports and imports *can* coincide with the sync peak — that is taken as given rather than measured — so the gap is real and its size is unbounded |
 | **Injector position** | Runs from different positions are not comparable: a sync is ~109 requests, so 25 ms of extra round trip adds 2.7 s to a 14.1 s median. Recorded per run in `run-metadata.json` (A11) |
 
 **Most of these understate latency, which is worth stating plainly: a green result in this
@@ -2133,22 +2133,31 @@ run time.
 | **Storage management** | `StorageManagementJob`, cron | Periodic | **Leave running** |
 | **Metabase** | BI users | Points at the **read replica** (`avni.read.database.server`), not the primary | **Out of scope** |
 
-> **With ETL deferred, this section is down to one cheap measurement.** *Decided.* ETL was the only
-> load here guaranteed to coincide with sync — Quartz every 90 minutes is scheduled and recurring,
-> so the overlap is certain and needed no measuring. Export and bulk import are **user-triggered**,
-> which means nobody knows whether they ever land on the sync peak.
+> **All of it is deferred. The scope is sync.** *Decided.* No non-sync load is driven as part of a
+> scenario for now — not ETL, not longitudinal export, not bulk import, not webapp or reporting
+> traffic. Whatever the server runs on its own account, such as the messaging poll and the storage
+> cron, keeps running; nothing here is suppressed that was not already suppressed by F5.3.
 >
-> So the contended scenarios are **not cancelled, they are conditional**, and the condition is the
-> measurement immediately below. If exports and imports turn out never to coincide with peak sync,
-> there is no contended scenario left to run while ETL is deferred, and the whole of F5.4 reduces
-> to the background loads that just keep running. If they do coincide, the case for modelling them
-> is made by the data rather than assumed.
+> **This is a scope decision, not a finding that these loads do not matter.** Export and bulk
+> import are user-triggered and *can* land on the sync peak — that is taken as given rather than
+> measured, which is why the correlation against `AvniJobRepository` and friends described below
+> is **not needed and not planned**. Knowing they can coincide is enough to know the gap is real;
+> measuring how often would only refine a number nobody is going to act on while the modelling is
+> deferred.
 >
-> Same shape as Q18 and ETL: **the measurement is cheap and the modelling is not**, so it goes
-> first.
+> **The consequence is the honest part, and it is larger than the ETL deferral alone.** Runs here
+> have the server almost entirely to themselves. Production never does: an ETL cycle every ninety
+> minutes, exports and imports whenever someone triggers one, and a webapp with people on it, all
+> against the same instance, the same pool and the same 3,000 IOPS. **Every result from this
+> exercise is therefore optimistic by an unbounded amount**, and that belongs in F5.2's parity
+> record rather than in anyone's memory. It is the single largest asterisk on the whole exercise.
+>
+> Pick this up when sync itself is understood and something makes contention the next question.
 
-**Before modelling any of this, find out which ones actually coincide with peak sync.** Export and
-import runs are recorded — `AvniJobRepository`, `ExportJobParametersRepository`, `JobStatus` — so
+*The paragraph below is retained as the method for whenever this is picked up, not as work
+queued now.* **Before modelling any of this, find out which ones actually coincide with peak
+sync.** Export and import runs are recorded — `AvniJobRepository`, `ExportJobParametersRepository`,
+`JobStatus` — so
 their timestamps can be correlated against observed load peaks the same way `sync_telemetry` can. A
 co-tenant workload that never overlaps the sync herd is not worth a scenario; one that routinely does
 is arguably more important than anything in the sync path itself.
@@ -2199,7 +2208,7 @@ records the injector's label, OS, CPU count and heap (A11), so two runs from dif
 cannot be compared without it being visible. Per-position calibration of `MS_PER_PAGE` is not
 attempted yet.
 
-**E7 — Co-tenant sync traffic.** *Done.* *Distinct from F5.4, which is the batch workloads.* Case 7
+**E7 — Co-tenant sync traffic.** *Done, and unaffected by F5.4's deferral.* *Distinct from F5.4, which is the batch workloads* — this is other organisations **syncing**, which is sync load and stays in scope. Case 7
 needs production's other organisations to be **syncing**, not merely present — that is the whole
 difference between it and case 6, and it is what separates a structural cost from a contention one.
 
