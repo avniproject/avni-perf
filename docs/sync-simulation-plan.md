@@ -48,7 +48,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Auth | Cognito only | `AUTH_MODE` — username header or Cognito |
 | Telemetry | none | posted like a real client, tagged so production queries exclude it |
 | Reset sync | not requested at all | request modelled in the right order; no scenario needed — the storm was a defect |
-| Storage pause | uniform random, 0 to a constant | per-entity weighted model at `BASE_MS_PER_RECORD`, with `STORAGE_MODEL=zero` to remove it |
+| Storage pause | uniform random, 0 to a constant | per-entity weighted model at `BASE_MS_PER_RECORD`, with `STORAGE_MODEL=zero` to remove it. Coefficients stay estimates — D7 is deferred on fleet rollout of 17.3, and F7 is the check |
 | Request timeouts | Gatling defaults, unchosen | explicit in `gatling.conf`, sized to the client's own 60s limit; idle-connection timeout raised to match okhttp |
 | Behaviour on a failed page | **spun forever, reissuing the page** | the sync aborts and is recorded as failed — D8.5 |
 | Closed-port regression test | none | `make smoke_closed_port`, on every PR touching the simulation — D8.6 |
@@ -995,8 +995,9 @@ sync at `PARALLEL_DOWNLOAD_COUNT = 1`) are signed or direct.
 **D6 — Interim weighted storage pause.** Replace the uniform constant with a per-entity weight table
 scaled by page record count. Concrete task, detailed below.
 
-**D7 — Measured storage cost model.** Replace the weight table's estimates with measured coefficients.
-Detailed below.
+**D7 — Measured storage cost model.** *Shipped upstream, deferred here.* Replace the weight table's
+estimates with measured coefficients. Detailed below — **the telemetry it needs is in avni-client
+17.3**, so this is now waiting on fleet rollout and data accumulation rather than on anyone's work.
 
 **D8 — Page size is wrong by 10×.** The client ships `pageSize: 1000`
 (`packages/openchs-android/config/initialSettings.json`); the simulation defaults `PAGE_SIZE` to 100.
@@ -1281,6 +1282,25 @@ Two sources, in order of how fast you can get them:
 
 Do the first to unblock; do the second because it is the number you will trust.
 
+> **The second has shipped: per-entity durations are in avni-client 17.3.** *Deferred, to be picked
+> up if required.* That moves D7 from blocked-on-a-change to blocked-on-time, which is a different
+> kind of wait and wants a different response.
+>
+> **Neither the release nor the data is instant.** A client release reaches the fleet gradually,
+> and the coefficients are only worth fitting once enough devices across enough network conditions
+> have reported — that is the whole reason for preferring this source over a one-device debug
+> build. So there is no date to plan against, and nothing here should wait on one.
+>
+> **What this costs in the meantime is stated rather than hidden.** D6's weight table stays in
+> place, and its multipliers remain judgement-based: `MS_PER_PAGE` at 174 and `BASE_MS_PER_RECORD`
+> at 9.19 are calibration starting points, not measurements. **F7 is what compensates** — it fits
+> the simulation against production's observed sync durations, so a wrong coefficient shows up as
+> a failed calibration rather than as a quietly wrong result. That is the argument for proceeding
+> without D7, and it only holds as long as F7 actually runs.
+>
+> **Pick it up when the data is there and something needs it** — most likely when F7 cannot be
+> made to pass with the current coefficients, which is exactly the signal that they are wrong.
+
 **Step 2 — Apply as a computed pause, not a constant.** Capture the record count from each page
 response, then pause a duration derived from it:
 
@@ -1383,7 +1403,12 @@ experiment is cheap when it is warranted.
 when a stored `pageSize` is `0`, `undefined` or `null`, so installs predating the change may still be
 on 100 — the fleet is probably mixed, and nothing currently records which. Add `pageSize` to
 `sync_telemetry.app_info` alongside the per-entity durations D7 needs; both ride the same client
-release. Until then, treat the production split as unknown and test both sizes.
+release, **which is 17.3**.
+
+*Deferred with D7, and for the same reason:* the change has shipped but the fleet has not rolled
+over and the data has not accumulated. **Until it has, treat the production split as unknown and
+test both sizes** — which is cheap, because `PAGE_SIZE` is already a property and the simulation
+defaults to the client's 1000.
 
 **D8.4 — Set explicit request and response timeouts.** *Done.* They live in
 `src/gatling/resources/gatling.conf`, which until now was the stock file with every value commented
@@ -3019,7 +3044,7 @@ Ordering reflects dependencies, not estimates.
 | **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done, and tracked per query.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4's allowlist and SSH tunnel come first, then B1 turns auth off.** F4 is one security group rule plus the tunnel CI already has most of, rather than a private subnet with NAT and a private hosted zone — but it does require `avni-infra`'s module to be made externally resolvable, which it currently is not. **B2 is deferred by choice and is not in the critical path**: `enable_cognito` stays `false`, and the auth-cost offset is taken on demand if a finding makes it worth knowing (see B). Its absence is carried as a known deviation in F5.2, not as outstanding work. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
 | **1 · Fidelity** | **D8.1** → C1, C2, C3 · D1, D2, **D6**, D9 · A4, A5, A6, A7 | Make the read path match the client and the harness trustworthy. D8.1 first — cheapest correction in the plan, and every prior run is invalid until it lands. D1 is the highest-value change: it likely alters which server code path is exercised at all. D6.1 and D8.3's SQL have no dependencies and can start immediately. Run **F7** at the end of this phase. |
 | **2 · Coverage** | D3, D4 · **G4** · E1, E2 | Add the write path. New bottleneck class, and the one most likely to hold a surprise. **D3 and D5.1 are done**; G4's restore mechanism is what remains, and it is now the gate rather than a deferral — a `PUSH=on` run cannot be repeated without it. Q17 replaces D3's guessed push volumes. |
-| **3 · Workload** | **D7** · **H7** | Shape and size the load from production telemetry, then push until something breaks. D5, E3, E4, E5 and E7 no longer sit here - media upload landed with D3, injection profiles and co-tenant traffic are built, E4 and E5 are done, and media viewing is out of scope. D7 needs the per-entity durations added to `sync_telemetry`, so it trails a client release — as does D8.3, which rides the same release. Re-run **F7** after D7. |
+| **3 · Workload** | **H7** | Shape and size the load from production telemetry, then push until something breaks. D5, E3, E4, E5, E7 and now D7 no longer sit here - media upload landed with D3, injection profiles and co-tenant traffic are built, E4 and E5 are done, media viewing is out of scope, and **D7's telemetry shipped in avni-client 17.3 but the fleet has not rolled over**, so it is deferred with D8.3 rather than scheduled. D6's estimated coefficients stand in the meantime and **F7 is what keeps that honest**. Re-run F7 if D7 is ever picked up. |
 | **4 · Operate** | A11 · F2 · **A12** | Saturate, name the resource, fix, re-run. F3 has left this row: the second harness is kept deliberately, not reconciled. Expect four to six iterations — each fix reveals the next bottleneck. A12 is a backstop sweep only — README changes ride with the task that causes them, and the two items already wrong today can be fixed in Phase 0. |
 
 **Test cases with numbers are in [test-scenarios.md](test-scenarios.md)**, ready for customer review.
