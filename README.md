@@ -223,6 +223,20 @@ entity's distribution, as `probability:[min:]p50:p95:max:mean`
 
 `PUSH_ALLOW_UNSAFE_TARGET` `true` lifts the protected-host guard
 
+`PAGING` `page` (default) or `slice`. Which form to request where the server offers both.
+
+`page` is what the client calls — it reads `page.totalPages` from the first response and
+enumerates the rest — so it is the fidelity baseline and the default.
+
+`slice` requests the server's `/v2` variants instead. Spring's `Page` runs a `count(*)` over the
+whole matching set to report `totalPages`; `Slice` fetches `size + 1` rows and reports `hasNext`,
+with no count. **Run the same case twice, changing only this, and the delta is what that count
+costs.** 22 of the 75 pulled entities have a slice endpoint — the transactional ones, where it is
+expensive — and the rest fall back to the paged path, which the banner reports.
+
+The request pattern is identical either way: the client fetches pages strictly sequentially
+(`ChainedRequests.fire()` reduces over `.then`), which is what the simulation already does.
+
 `HTTP_LOG_LEVEL` detail for failing HTTP requests, default `WARN`. `DEBUG` logs every failing
 request with its full request/response block, `TRACE` every request. Off by default because a
 stress run fails by design, and left on it is injector CPU spent formatting strings about the

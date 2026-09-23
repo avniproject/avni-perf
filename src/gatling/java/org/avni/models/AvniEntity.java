@@ -18,6 +18,20 @@ public class AvniEntity {
     public String path;
 
     /**
+     * The same endpoint's `Slice` variant, or null where the server has none.
+     *
+     * A `Page` has to run a `count(*)` over the whole matching set to report `totalPages`; a
+     * `Slice` fetches `size + 1` rows and reports `hasNext` instead. The client calls the paged
+     * form, so that is the default and the fidelity baseline — this exists so `PAGING=slice` can
+     * measure what the count costs, which on the large transactional tables is a choke-point
+     * candidate rather than a micro-optimisation.
+     *
+     * Only 22 of the 75 pulled entities have one, and they are the transactional ones where it
+     * matters. See `tools/entity-metadata/generate.js` for where the list comes from.
+     */
+    public String slicePath;
+
+    /**
      * Query parameters carrying the sync detail's entityTypeUuid. The client sets privilegeParam and
      * apiQueryParamKey to the same value where both are declared, so this can hold more than one.
      * Empty when the entity is not split by type.

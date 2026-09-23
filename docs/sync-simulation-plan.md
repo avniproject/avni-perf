@@ -54,6 +54,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Closed-port regression test | none | `make smoke_closed_port`, on every PR touching the simulation — D8.6 |
 | Failing-request logging | `DEBUG`, always on | `WARN`, opt-in via `HTTP_LOG_LEVEL` — D8.7 |
 | Page record count | `ThreadLocal` — per-thread, not per-user | on the session, one parse — D8.8 |
+| Paging form | paged endpoints only | `PAGING=page` (default, the client's shape) or `slice` — D8.11 |
 | Bad `PUSH_*` override | clamped or unreachable, silently | throws or warns at startup — D8.9 |
 | Simulation unit tests | none — only the generator had any | 15 tests, `make unit_test`, in CI — D8.10 |
 | **Write path** | | |
@@ -205,6 +206,7 @@ visible.
 | **Does volume growth show a knee?** | Case 8, across day 60/120/180/365 | Index size crossing cache residency is the shape to look for. **The only evidence this exercise gives about scale beyond the pilot** |
 | **What does a supervisor's catchment cost?** | Case 3 against case 2 | Depends entirely on question 1 above |
 | **Is `syncDetails`' per-row cost material?** | Cases 1 and 4, with F1/F2 attribution | Q8 found 4 of 79 entities changed at p50, so 94% of the per-row queries prove nothing changed — but the endpoint saves 75 HTTP round trips, so the question is cost *relative to what it buys* |
+| **What does `Page`'s `count(*)` cost?** | Any case run twice, `PAGING=page` against `PAGING=slice` | Spring's `Page` runs a `count(*)` over the whole matching set to report `totalPages`; `Slice` fetches `size + 1` rows and reports `hasNext` instead. Under RLS, on `program_encounter`'s 11.4 GB with GIN indexes, that count is a plausible choke point in its own right. The server already exposes both — 22 of the 75 pulled entities have a `/v2` slice endpoint, and they are the transactional ones |
 | **Does the organisation interceptor cost enough to matter?** | F2.1, under case 5 | Three Postgres round trips per connection borrow, plus `getMetaData()` evaluated for a TRACE log argument |
 | **Does ETL contention matter?** | The contended variant of case 4 | ETL shares the same IO ceiling on a 90-minute cycle |
 | **Where does it break, and which resource names it?** | Case 10, the stress ramp | Unknown by design — this is the one question with no useful prior |
@@ -1526,6 +1528,35 @@ introduced in turn and each was caught.
 > These were ranked above their individual severity because of the pattern. **The spin (D8.5), the
 > feeder contract (E4.1) and these are the same failure**: a wrong input or state accepted without
 > a word. That is now three in one epic, which makes silence the thing to review for.
+
+**D8.11 — Drive the slice endpoints as well as the paged ones.** *Done.* `PAGING=slice` switches
+the pull to the server's `/v2` slice variants where they exist; `PAGING=page` is the default.
+
+**`page` is the fidelity baseline and stays the default**, because it is what the client calls:
+`ConventionalRestClient` reads `page.totalPages` from the first response and enumerates the rest.
+A run meant to reproduce production has to use it.
+
+**`slice` exists to price one suspicion.** Spring's `Page` runs a `count(*)` over the whole
+matching set to populate `totalPages`. `Slice` fetches `size + 1` rows and reports `hasNext`, with
+no count at all. Under row-level security, against `program_encounter` at 11.4 GB with GIN indexes,
+that count is a candidate choke point rather than a rounding error — and the delta between two runs
+differing only in this is what decides.
+
+> **The request *pattern* does not change, which is what makes the comparison clean.** The client's
+> `ChainedRequests.fire()` reduces over `.then`, so pages are fetched strictly sequentially — which
+> is already what the simulation does. Only the URL and the response's paging metadata differ, and
+> `PageInfo` has understood both shapes since D8.8.
+
+**22 of the 75 pulled entities have a slice variant**, and they are the transactional ones where
+the count is expensive. The other 53 fall back to the paged path, and the banner says how many did
+rather than leaving it to be inferred. An unrecognised `PAGING` value throws: a typo would
+otherwise run the default while the operator believed they had a comparison, and a run under the
+wrong one is worse than no run.
+
+> **The sliced-path list cannot be derived from `openchs-models`** — the client does not call these
+> endpoints, so nothing in the model knows they exist. It is copied from the server into
+> `tools/entity-metadata/generate.js`, with the `grep` that re-derives it recorded beside it. That
+> is a drift risk C1 does not cover, so a unit test pins the shape and the count.
 
 **D8.7 — Failing-request logging is opt-in.** *Done.* `logback-test.xml` had
 `io.gatling.http.engine.response` at `DEBUG` — every failing request dumping a full

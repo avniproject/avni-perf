@@ -42,6 +42,41 @@ public class AvniSyncSimulation extends Simulation {
     // is mirrored here and must be updated if the client changes it. Older installs may still be on
     // 100; see the plan, D8.3.
     private static final Integer pageSize = Integer.getInteger("PAGE_SIZE", 1000);
+
+    /**
+     * `page` (default) or `slice`. Which paging form to request where the server offers both.
+     *
+     * **`page` is the fidelity baseline** because it is what the client calls: `ConventionalRestClient`
+     * reads `page.totalPages` from the first response and enumerates the rest, so a run meant to
+     * reproduce production must use it.
+     *
+     * `slice` exists to measure a specific suspicion. Spring's `Page` runs a `count(*)` over the
+     * whole matching set to populate `totalPages`; `Slice` fetches `size + 1` rows and reports
+     * `hasNext`. Under row-level security, on `program_encounter` at 11.4 GB with GIN indexes,
+     * that count is a candidate choke point — and the delta between two runs that differ only in
+     * this is what says whether it is one.
+     *
+     * The request *pattern* is unchanged: the client's `ChainedRequests.fire()` reduces over
+     * `.then`, so pages are fetched strictly sequentially, which is what this simulation already
+     * does. Only the URL and the response's paging metadata differ.
+     */
+    private static final String paging = System.getProperty("PAGING", "page");
+
+    private static final boolean slicing = validatedPaging();
+
+    private static boolean validatedPaging() {
+        if ("page".equals(paging)) {
+            return false;
+        }
+        if ("slice".equals(paging)) {
+            return true;
+        }
+        // A typo here would otherwise pick the default silently and the report would say `page`
+        // while the operator believed they had run a slice comparison - the delta between the two
+        // is the entire point, so a run under the wrong one is worse than no run.
+        throw new IllegalArgumentException(
+            "PAGING must be 'page' or 'slice', got '" + paging + "'");
+    }
     /**
      * A page costs a fixed amount plus a per-record amount. Both terms come from production.
      *
@@ -578,6 +613,19 @@ public class AvniSyncSimulation extends Simulation {
             "Sync mode: %s | users: %d | feeder rows: %d | page size: %d | auth: %s",
             syncMode, userCount, feederRows, pageSize, authMode));
         out.println(describeInjection());
+        if (slicing) {
+            long sliced = slicedEntityCount();
+            long pulled = entities.stream().filter(e -> e.pullRequired).count();
+            out.println(String.format(
+                "Paging: SLICE - %d of %d pulled entities have a /v2 slice endpoint; the other %d "
+                + "fall back to the paged path. Not the client's shape: it calls the paged form and "
+                + "reads page.totalPages, so this is a comparison run, not a fidelity run.",
+                sliced, pulled, pulled - sliced));
+            out.println(
+                "  The delta against an otherwise identical PAGING=page run is the cost of the "
+                + "count(*) that Page runs to populate totalPages. Change nothing else between "
+                + "the two.");
+        }
 
         if ("weighted".equals(storageModel)) {
             out.println(String.format(
@@ -809,6 +857,8 @@ public class AvniSyncSimulation extends Simulation {
         settings.put("baseUrl", baseUrl);
 
         Map<String, Object> sync = new LinkedHashMap<>();
+        sync.put("paging", paging);
+        sync.put("slicedEntities", slicedEntityCount());
         sync.put("syncMode", syncMode);
         sync.put("authMode", authMode);
         sync.put("pageSize", pageSize);
@@ -1433,8 +1483,21 @@ public class AvniSyncSimulation extends Simulation {
     }
 
     /** Built the way ConventionalRestClient builds it, so the simulation requests what the client requests. */
+    /**
+     * The path this run pulls from: the slice variant under `PAGING=slice` where one exists, the
+     * client's own paged path otherwise. Entities without a slice variant fall back rather than
+     * failing, and the banner says how many did.
+     */
+    private static long slicedEntityCount() {
+        return entities.stream().filter(e -> e.pullRequired && e.slicePath != null).count();
+    }
+
+    private static String pullPath(AvniEntity entity) {
+        return slicing && entity.slicePath != null ? entity.slicePath : entity.path;
+    }
+
     private static String url(AvniEntity entity, Session session) {
-        StringBuilder sb = new StringBuilder("/").append(entity.path).append("?");
+        StringBuilder sb = new StringBuilder("/").append(pullPath(entity)).append("?");
         if (entity.entityTypeUuidParams != null && !entity.entityTypeUuidParams.isEmpty()) {
             SyncDetail detail = (SyncDetail) session.get("syncDetail");
             String uuid = detail.entityTypeUuid == null ? "" : detail.entityTypeUuid;

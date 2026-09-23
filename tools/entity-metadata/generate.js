@@ -26,6 +26,47 @@ function resourcePath(e) {
     .join("/");
 }
 
+// Endpoints that also exist as a Spring `Slice` under the same path plus `/v2`.
+//
+// **Not derivable from openchs-models** - the client does not call them, so nothing in the model
+// knows they exist. This list comes from the server, and the way to re-derive it is:
+//
+//   grep -rn "SlicedResources<" -B 8 avni-server-api/src/main/java/org/avni/server/web \
+//     | grep -oE '(value = )?"/[a-zA-Z/]+v2"' | sort -u
+//
+// Three sliced paths the server exposes are deliberately absent here because no pull entity uses
+// them: attendanceRecord, individual and session, each under `search/lastModified`.
+//
+// Why it matters: a `Page` has to run a `count(*)` over the whole matching set to report
+// `totalPages`. A `Slice` fetches `size + 1` rows and reports `hasNext`, with no count at all. On
+// `program_encounter` - 11.4 GB with GIN indexes and row-level security on every query - that
+// count is a candidate choke point in its own right, which is the whole reason the simulation
+// needs to be able to drive both.
+const SLICED_PATHS = new Set([
+  "comment",
+  "commentThread",
+  "encounter",
+  "entityApprovalStatus",
+  "groupSubject",
+  "identifierAssignment",
+  "individual",
+  "individualRelationship",
+  "news",
+  "programEncounter",
+  "programEnrolment",
+  "subjectMigrations",
+  "subjectProgramEligibility",
+  "task",
+  "taskUnAssignments",
+  "txNewChecklistEntity",
+  "txNewChecklistItemEntity",
+  "userSubjectAssignment",
+]);
+
+function slicePath(resource) {
+  return SLICED_PATHS.has(resource) ? `${resource}/v2` : null;
+}
+
 // ConventionalRestClient sets privilegeParam AND apiQueryParamKey, each to the same entityTypeUuid -
 // they are not alternatives. The five EntityApprovalStatus entities declare both, and the server's
 // endpoint reads entityTypeUuid (the apiQueryParamKey), so emitting only one drops the parameter
@@ -78,6 +119,7 @@ const entities = EntityMetaData.model()
     entityName: e.entityName,
     type: e.type,
     path: resourcePath(e),
+    slicePath: slicePath(resourcePath(e)),
     pushPath: e.type === "tx" ? pushPath(e) : null,
     entityTypeUuidParams: entityTypeUuidParams(e),
     staticParams: staticParams(e),
