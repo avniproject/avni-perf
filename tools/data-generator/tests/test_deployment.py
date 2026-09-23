@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pytest
 
 import bundle as bundle_mod
+import catchments as cat
 import deployment as dep
 import fixture
 import profile as profile_mod
@@ -293,3 +294,45 @@ def test_a_tenant_spec_records_its_own_bundle():
     t = dep.TenantSpec(name="a", organisation_id=1, field_workers=3, bundle_path="/tmp/x")
     assert t.bundle_path == "/tmp/x"
     assert dep.TenantSpec(name="b", organisation_id=2, field_workers=3).bundle_path is None
+
+
+def test_supervisor_span_trades_count_against_catchment_size():
+    """The 8-to-20 range is a sweep because it moves two things in opposite directions.
+
+    Widening the span means fewer supervisors, each covering more. Total supervisor-pulled volume
+    barely changes; its distribution goes from many light syncs to few heavy ones, and a p95
+    target only notices the second. If this ever stops holding, the scenarios' user counts and
+    per-device tables are both wrong.
+    """
+    def shape(span):
+        spec = dep.TenantSpec(name="s", organisation_id=1, field_workers=500,
+                              workers_per_supervisor=span)
+        b = dep.build_tenant(spec, 0)
+        leaf = b.hierarchy.levels[-1].name
+        sups = [c for c in b.catchments if c.role == cat.SUPERVISOR]
+        scope = [len([d for d in b.hierarchy.descendants(c.locations[0])
+                      if d.level_name == leaf]) for c in sups]
+        return len(sups), sum(scope) / len(scope)
+
+    narrow_count, narrow_scope = shape(8)
+    wide_count, wide_scope = shape(20)
+
+    assert narrow_count > wide_count, "a wider span must mean fewer supervisors"
+    assert wide_scope > narrow_scope, "a wider span must mean a larger catchment each"
+    # Villages covered overall stays put -- the same workers are supervised either way.
+    assert narrow_count * narrow_scope == pytest.approx(wide_count * wide_scope, rel=0.10)
+    # And the span is actually what was asked for, in field workers.
+    assert narrow_scope * 3 == pytest.approx(8, abs=0.5)
+    assert wide_scope * 3 == pytest.approx(20, abs=0.5)
+
+
+def test_the_default_span_is_the_measured_establishment():
+    """None must leave the tree exactly as it was before the parameter existed."""
+    plain = dep.build_tenant(dep.TenantSpec(name="s", organisation_id=1, field_workers=500), 0)
+    explicit = dep.build_tenant(
+        dep.TenantSpec(name="s", organisation_id=1, field_workers=500,
+                       workers_per_supervisor=None), 0)
+    assert len(plain.hierarchy.locations) == len(explicit.hierarchy.locations)
+    sups = len([c for c in plain.catchments if c.role == cat.SUPERVISOR])
+    # 2.8 villages to a sub-centre at three workers each is about 8.4, so roughly 60 of them.
+    assert 55 <= sups <= 65, f"measured establishment should give about 60 supervisors, got {sups}"

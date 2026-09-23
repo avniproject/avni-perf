@@ -28,6 +28,39 @@ ESTABLISHMENT = (
 )
 
 
+def with_supervisor_span(workers_per_supervisor: float,
+                         field_workers_per_village: int,
+                         establishment=ESTABLISHMENT):
+    """An establishment whose sub-centres carry `workers_per_supervisor` field workers each.
+
+    **Supervisors are not counted, they are derived.** `catchments.plan` creates one supervisor per
+    sub-centre, so a supervisor's span is whatever the tree gives it: villages per sub-centre times
+    field workers per village. The measured establishment's 2.8 villages per sub-centre, with three
+    workers in each, is where the scenarios' figure of roughly eight comes from.
+
+    So changing the span means changing the branching, not adding a ratio somewhere else -- and it
+    changes two things at once, which is the point rather than a side effect. Doubling the span
+    halves the number of supervisors *and* doubles each one's catchment. Total supervisor-pulled
+    volume barely moves; its distribution changes completely, from many light syncs to few heavy
+    ones. The heavy end is what a p95 target notices.
+    """
+    if workers_per_supervisor <= 0:
+        raise ValueError("workers_per_supervisor must be positive, got "
+                         f"{workers_per_supervisor}")
+    if field_workers_per_village <= 0:
+        raise ValueError("field_workers_per_village must be positive, got "
+                         f"{field_workers_per_village}")
+    villages_per_subcentre = workers_per_supervisor / field_workers_per_village
+    if villages_per_subcentre < 1:
+        raise ValueError(
+            f"{workers_per_supervisor} workers per supervisor with "
+            f"{field_workers_per_village} per village needs "
+            f"{villages_per_subcentre:.2f} villages per sub-centre. Below one there are more "
+            "sub-centres than villages, so supervisors would outnumber the places they supervise.")
+    return tuple((name, villages_per_subcentre if name == "Village" else branching)
+                 for name, branching in establishment)
+
+
 @dataclass(frozen=True)
 class LevelSpec:
     name: str

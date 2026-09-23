@@ -135,3 +135,24 @@ def test_catchment_expansion_matches_what_the_database_view_computes():
         as_view = {l.id for l in h.locations
                    if {int(x) for x in h.lineage(l).split(".")} & declared[c.id]}
         assert {l.id for l in cat.expanded_locations(h, c)} == as_view, c.name
+
+
+def test_supervisor_span_sets_branching_not_a_ratio():
+    """Supervisors are derived from the tree, so the span has to come from the tree.
+
+    `catchments.plan` makes one supervisor per sub-centre. There is no ratio to set anywhere
+    else -- the only way to widen a span is to put more villages under each sub-centre.
+    """
+    est = hy.with_supervisor_span(20, field_workers_per_village=3)
+    village = dict((name, b) for name, b in est)["Village"]
+    assert village == pytest.approx(20 / 3)
+    # Every other level is untouched, so the shape above sub-centre stays the measured one.
+    assert dict(est)["Block"] == dict(hy.ESTABLISHMENT)["Block"]
+
+
+def test_a_span_narrower_than_a_village_is_refused():
+    """Below one village per sub-centre there would be more supervisors than villages."""
+    with pytest.raises(ValueError, match="villages per sub-centre"):
+        hy.with_supervisor_span(2, field_workers_per_village=3)
+    with pytest.raises(ValueError, match="must be positive"):
+        hy.with_supervisor_span(0, field_workers_per_village=3)

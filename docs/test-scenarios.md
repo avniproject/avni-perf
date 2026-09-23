@@ -21,8 +21,8 @@ are parameters with a documented range, defaulted to their conservative end.
 |---|---|---|---|---|---|---|---|
 | **1** | Training cohort | 1 | 100 field workers, first login within 15 min | Config only, **no field data** | Full | **30 min** | Reference-data sync and `syncDetails` cost, isolated from catchment volume. **Gives the per-row cost**, from which a wider configuration is arithmetic |
 | **2** | Field worker steady state | 1 state | 500 | Day 180 | Incremental, 1% full | **4 h** | The common case |
-| **3** | Supervisor steady state | 1 state | 62 | Day 180 | Incremental, 1% full | **2 h, driven** | Whether 3× the volume per device changes anything |
-| **4** | **Combined** | 1 state | 500 + 62 | Day 180 | Incremental, 1% full | **4 h** | **The realistic case.** Wide and frequent syncs competing for one pool |
+| **3** | Supervisor steady state | 1 state | 25–63 | Day 180 | Incremental, 1% full | **2 h, driven** | Whether 3× the volume per device changes anything |
+| **4** | **Combined** | 1 state | 500 + 25–63 | Day 180 | Incremental, 1% full | **4 h** | **The realistic case.** Wide and frequent syncs competing for one pool |
 | **5** | **Separate infrastructure** | **10** | 1,504 + 188 | Day 180 | Incremental, 1% full | **2 h** | The customer's own load with nobody else's data in the tables. **The baseline the next two are measured against** |
 | **6** | **Shared — co-tenant data** | **10 + 986** | 1,504 + 188 | Day 180 **plus production's organisations**, which sync nothing | Incremental, 1% full | **2 h** | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
 | **7** | **Shared — co-tenant load** | **10 + 986** | Case 6, plus `CO_TENANTS=on` at 792 syncs/hour | Same as case 6 | Incremental, 1% full | **2 h** | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
@@ -49,9 +49,9 @@ That is what makes cases 11 to 13 a single property away from 5 to 7.
 |---|---|---|---|
 | **1** | `PROFILE=burst -DUSER_COUNT=100 -DBURST_MINUTES=15` | — | 100 |
 | **2** | `PROFILE=steady -DUSER_COUNT=500 -DDURATION_MINUTES=240` | 42 | 167 |
-| **3** | `PROFILE=steady -DUSER_COUNT=62 -DSYNCS_PER_HOUR=…` | 5 natural | **10** — see below |
-| **4** | `PROFILE=steady -DUSER_COUNT=562 -DDURATION_MINUTES=240` | 47 | 187 |
-| **5** | `PROFILE=steady -DUSER_COUNT=1692 -DDURATION_MINUTES=120` | 141 | 282 |
+| **3** | `PROFILE=steady -DUSER_COUNT=63 -DSYNCS_PER_HOUR=…` at span 8, `-DUSER_COUNT=25` at span 20 | 5 natural | **10** — see below |
+| **4** | `PROFILE=steady -DUSER_COUNT=563 -DDURATION_MINUTES=240` at span 8, `-DUSER_COUNT=525` at span 20 | 47 | 187 |
+| **5** | `PROFILE=steady -DUSER_COUNT=1692 -DDURATION_MINUTES=120` at span 8, `-DUSER_COUNT=1579` at span 20 | 141 | 282 |
 | **6** | case 5, against the co-tenant dataset | 141 | 282 |
 | **7** | case 6 plus `-DCO_TENANTS=on` | 141 + 792 | 282 |
 | **8** | case 4 at `-DDURATION_MINUTES=120`, once per dataset | 47 | 94 each |
@@ -60,7 +60,7 @@ That is what makes cases 11 to 13 a single property away from 5 to 7.
 | **11–13** | cases 5–7 plus `-DSYNC_WINDOW_HOURS=1 -DDURATION_MINUTES=60` | **1,692** | 1,692 |
 
 **Case 3 is the one this table exposes.** At its natural rate it collects ten syncs in two hours,
-because 62 supervisors syncing once a day produce 62 syncs in a whole window and no duration
+because 25 to 63 supervisors syncing once a day produce that many syncs in a whole window and no duration
 changes that. `SYNCS_PER_HOUR` has to be set well above the derived figure — which is sound,
 because the case measures per-sync cost rather than system load.
 
@@ -73,7 +73,7 @@ because the case measures per-sync cost rather than system load.
 > Nothing has measured the right figure — the platform-wide push distributions do not split by
 > role — so it is left at 1 rather than guessed. **Quote case 3's pull numbers; do not quote its
 > push numbers until a supervisor's real write volume is known.** The other multi-role cases
-> carry the same bias at about a tenth of the size, since supervisors are 62 of 562 users there.
+> carry the same bias at roughly a twentieth to a tenth of the size, since supervisors are 25 to 63 of 525 to 563 users there.
 >
 > This is the one open input that affects a case's headline result rather than its shape.
 
@@ -129,7 +129,7 @@ Media is the larger effect by an order of magnitude, and it lands on elapsed tim
 server load — see [below](#media-dominates-sync-time-and-it-is-not-close).
 
 **Tenant counts trace to the table under [the deployment](#the-deployment-being-modelled)**: a state
-tenant is 500 field workers and 62 supervisors, and the ten together are 1,504 and 188. The 986 in
+tenant is 500 field workers and 25 to 63 supervisors depending on the span, and the ten together are 1,504 and 75 to 188. The 986 in
 cases 6 and 7 is production's existing organisation count (Q12).
 
 ### How many syncs are in flight at once
@@ -246,25 +246,34 @@ with. Concurrent load lives in cases 7, 9 and 11 to 13.
 
 ### What the cases assume
 
-**How many supervisors sit above sub-centre, and at which tiers.** Cases 3 to 8 assume every
-supervisor is at a sub-centre covering 8 field workers. They can sit at any tier above it, and a
-real establishment probably has some at each — so what these cases need is a **count per tier**,
-not a single choice.
+**Supervisors sit one level above the field worker, covering 8 to 20 of them.** *Settled.* They are
+at sub-centre, immediately above the village where field workers sit, and no tier above that is in
+scope. The earlier version of this section treated PHC and block supervisors as live possibilities
+and they are not.
 
-| Supervisor tier | Field workers each | Records at day 180 | Full sync | vs Q3's heaviest device |
-|---|---|---|---|---|
-| **Sub-centre** | 8 | 37,200 | 5.7 min | 0.14× |
-| PHC | 45 | 207,000 | 32 min | 0.78× |
-| Block | 200 | 920,000 | 141 min | **3.5×** |
+**What is left is a range, not an unknown**, and the range is worth sweeping rather than averaging:
 
-**With concurrency settled at under one sync in flight, this is what decides what the exercise
-measures.** If everyone supervises at sub-centre, no case exceeds what production
-already carries and the runs confirm the server holds. If a handful supervise at block level, those
-few devices are individually heavier than anything production has measured, and they are the
-exercise.
+| Workers per supervisor | Supervisors per 500-worker tenant | Subjects each | Records at day 180 | Full sync | vs Q3's heaviest device |
+|---|---|---|---|---|---|
+| **8** (low end) | **63** | 7,950 | 35,400 | 5.4 min | 0.13× |
+| 8.4 (the measured establishment) | 60 | 8,400 | 37,200 | 5.7 min | 0.14× |
+| 12 | 42 | 11,900 | 53,100 | 8.1 min | 0.20× |
+| 16 | 31 | 16,200 | 71,900 | 11.0 min | 0.27× |
+| **20** (high end) | **25** | 20,000 | 89,200 | 13.7 min | **0.34×** |
 
-**A handful is enough.** These are not averages: one block-level supervisor carries 920,000 records
-whatever the rest do.
+**The span moves two things in opposite directions, which is why it is a sweep and not a guess.**
+Doubling it halves the number of supervisors and doubles each one's catchment. Total
+supervisor-pulled volume barely moves; its *distribution* changes completely, from many light syncs
+to few heavy ones. A p95 target notices the second and not the first.
+
+**The reassuring part: even the high end stays inside what production carries.** At 20 workers a
+supervisor holds a third of Q3's heaviest real device. Nothing in this range produces a device
+heavier than something already in the field, which is what the old PHC and block rows would have
+done at 0.78× and 3.5×.
+
+**So the span changes the user counts, not the verdict.** Case 3 runs 25 to 63 users rather than 62;
+case 4 runs 525 to 563; the ten tenants together are 1,579 to 1,692. Run the ends, not the middle —
+the low end is the most concurrent and the high end holds the heaviest device.
 
 **And over what window the daily syncs fall**, which sets the arrival rate — see the sensitivity
 table above. Unlike the tier question this one needs no answer to proceed — **cases 11 to 13 are
@@ -328,7 +337,7 @@ use one state tenant's row, and cases 5, 6 and 7 use the platform total.
 
 | | Tenants | ASHAs each | ANMs each | Villages each | Beneficiaries each | Encounters/day |
 |---|---|---|---|---|---|---|
-| State tenant (pilot) | 2 | 500 | 62 | 167 | 501,000 | 10,000 |
+| State tenant (pilot) | 2 | 500 | 25–63 | 167 | 501,000 | 10,000 |
 | NGO tenant | 8 | 63 | 8 | 21 | 63,000 | 1,260 |
 | **Platform total** | **10** | **1,504** | **188** | **502** | **1,506,000** | **30,080** |
 
@@ -362,10 +371,13 @@ population does not grow with programme activity. **Three datasets are needed**,
 | | Subjects | Day 60 | Day 120 | Day 180 | Year 1 |
 |---|---|---|---|---|---|
 | Field worker — 1 village | 3,000 | 3,600 | 7,200 | 10,800 | 21,900 |
-| Supervisor — 1 sub-centre | 8,400 | 9,600 | 19,200 | 28,800 | 58,400 |
+| Supervisor — 8 workers | 7,950 | 9,100 | 18,300 | 27,400 | 55,600 |
+| Supervisor — 8.4, the measured shape | 8,400 | 9,600 | 19,200 | 28,800 | 58,400 |
+| Supervisor — 20 workers | 20,000 | 23,000 | 46,100 | 69,100 | 140,000 |
 
-Full-sync client time at 9.19 ms/record: a field worker **2.1 min** at day 180 and **3.8** at year one;
-a supervisor **5.7** and **10.2**.
+Full-sync client time at 9.19 ms/record: a field worker **2.1 min** at day 180 and **3.8** at year
+one. A supervisor is **5.4 to 13.7 min** at day 180 and **9.7 to 24.5** at year one, depending
+where in the 8-to-20 range their span falls.
 
 ### Sync frequency
 
@@ -376,7 +388,7 @@ within-session behaviour.
 
 | | Syncs/day | Average hour | Peak hour |
 |---|---|---|---|
-| One state tenant (562 users) | 562 | 47 | ~58 |
+| One state tenant (525–563 users) | 525–563 | 44–47 | ~55–58 |
 | Whole platform (1,692 users) | 1,692 | 141 | ~175 |
 
 Production's busiest hour ever recorded was 792 syncs, so **the whole deployment runs at about a

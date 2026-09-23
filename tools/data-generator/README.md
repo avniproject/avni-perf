@@ -148,7 +148,30 @@ write a different number of mapping rows: 227 against 334 for a pilot tenant. Wh
 uses has not been measured.
 
 A pilot state tenant at 167 villages comes out at **501 field workers and 60 supervisors**, against
-the scenarios' 500 and 62.
+the scenarios' 500 and the 8.4-workers-per-supervisor shape the measured establishment gives.
+
+**`workers_per_supervisor` on `TenantSpec` moves that span.** Supervisors are not counted, they are
+derived — one per sub-centre — so the only way to widen a span is to put more villages under each
+sub-centre, which `hierarchy.with_supervisor_span` does. `None` keeps the measured establishment's
+2.8 villages per sub-centre, or about 8.4 workers each.
+
+The customer's range is **8 to 20**, and it is worth sweeping rather than averaging because it
+moves two things in opposite directions:
+
+| `workers_per_supervisor` | Supervisors | Villages each | Subjects each |
+|---|---|---|---|
+| 8 | 63 | 2.65 | 7,950 |
+| `None` (measured, 8.4) | 60 | 2.78 | 8,350 |
+| 12 | 42 | 3.98 | 11,900 |
+| 16 | 31 | 5.39 | 16,200 |
+| 20 | 25 | 6.68 | 20,000 |
+
+Total supervisor-pulled volume barely changes across that range; its distribution goes from many
+light syncs to few heavy ones. A span narrower than one village per sub-centre is refused, since
+supervisors would outnumber the places they supervise.
+
+Recipes get the parameter for free — `Recipe.deployment()` splats each tenant dict into
+`TenantSpec`, so adding `workers_per_supervisor` to a recipe's tenant entry is enough.
 
 ## What a bulk load bypasses, and what it does not
 

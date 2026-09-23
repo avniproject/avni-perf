@@ -142,9 +142,10 @@ noise.
 > is new is the **mix**: a thousand workers across 8–10 tenants, with supervisors carrying an order of
 > magnitude more than field workers, on infrastructure also holding production's existing tenant skew.
 > Per-device volume stays inside what production already carries (Q3's p99 is 264,569 rows against a
-> supervisor's ~125,000 at year two), so this exercise is about concurrency and tenancy rather than
-> about finding a volume ceiling — unless supervision sits above the sub-centre, which would put
-> volume back at the centre.
+> supervisor's ~160,000 at year one on the widest span), so this exercise is about concurrency and
+> tenancy rather than about finding a volume ceiling. **That is now settled rather than assumed**:
+> supervision sits one level above the field worker, covering 8 to 20 of them, and even the widest
+> span holds a third of Q3's heaviest real device.
 
 **There is no separate incremental figure, and there cannot be one from this table.** `sync_telemetry`
 does not record whether a sync ran full or incremental. The light band is the closest available proxy
@@ -204,7 +205,7 @@ visible.
 | **Where are the choke points?** | The whole exercise; cases 4 and 10 most directly | Storage IO is the prime suspect — 19.4 GB of indexes against 933 MB of cache, on a fixed 3,000 IOPS |
 | **Does the server hold at this load at all?** | Cases 2, 3, 4 | Nothing yet. Per-device volumes sit inside what production already carries, and these cases run under one sync in flight |
 | **Does volume growth show a knee?** | Case 8, across day 60/120/180/365 | Index size crossing cache residency is the shape to look for. **The only evidence this exercise gives about scale beyond the pilot** |
-| **What does a supervisor's catchment cost?** | Case 3 against case 2 | Depends entirely on question 1 above |
+| **What does a supervisor's catchment cost?** | Case 3 against case 2, run at both ends of the 8–20 span | Depends on question 1 above. The span itself is settled as a range: 8 workers gives 63 light supervisors, 20 gives 25 heavy ones, and the same total volume arrives in a different shape |
 | **Is `syncDetails`' per-row cost material?** | Cases 1 and 4, with F1/F2 attribution | Q8 found 4 of 79 entities changed at p50, so 94% of the per-row queries prove nothing changed — but the endpoint saves 75 HTTP round trips, so the question is cost *relative to what it buys* |
 | **What does `Page`'s `count(*)` cost?** | Any case run twice, `PAGING=page` against `PAGING=slice` | Spring's `Page` runs a `count(*)` over the whole matching set to report `totalPages`; `Slice` fetches `size + 1` rows and reports `hasNext` instead. Under RLS, on `program_encounter`'s 11.4 GB with GIN indexes, that count is a plausible choke point in its own right. The server already exposes both — 22 of the 75 pulled entities have a `/v2` slice endpoint, and they are the transactional ones |
 | **Does the organisation interceptor cost enough to matter?** | F2.1, under case 5 | Three Postgres round trips per connection borrow, plus `getMetaData()` evaluated for a TRACE log argument |
@@ -1615,9 +1616,10 @@ each growth point, and the test cases with numbers, for customer review. Differe
 different lifecycle from this document: that one is what the instrument gets pointed at, this one is
 how it gets built.
 
-Three things from it bear on the sections below. **Supervision is assumed at sub-centre level** — if
-it sits higher, per-device volume changes by an order of magnitude and so does what this exercise
-tests. **Ten workers share a village catchment**, so the same rows are read several times over.
+Three things from it bear on the sections below. **Supervision is settled at sub-centre level** —
+one tier above the field worker, covering 8 to 20 of them, with nothing above that in scope. The
+span is a range to sweep rather than an unknown: it sets how many supervisors exist and how heavy
+each one's sync is, in opposite directions. **Ten workers share a village catchment**, so the same rows are read several times over.
 And **fresh sync is 1% of syncs daily**, which is the mix E2 was missing.
 
 
@@ -1654,8 +1656,8 @@ describe them and now how they run.
 visit and the server sees a rate. A closed model would hold in-flight syncs constant, which is the
 one thing that has to be free to move when the server slows down.
 
-**What this exposed: case 3 cannot be run at its natural rate.** Sixty-two supervisors syncing once a
-day produce ten syncs in a two-hour window. The case measures per-sync cost rather than system load,
+**What this exposed: case 3 cannot be run at its natural rate.** Twenty-five to sixty-three
+supervisors syncing once a day produce about ten syncs in a two-hour window. The case measures per-sync cost rather than system load,
 so `SYNCS_PER_HOUR` has to be set well above the derived figure — which the scenarios already said in
 words and now say in a command.
 

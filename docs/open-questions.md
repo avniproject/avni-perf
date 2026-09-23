@@ -24,34 +24,16 @@ source of truth.
 
 ## The questions
 
-### How many supervisors sit above sub-centre level, and at which tiers?
+**None outstanding.** The last one — how many supervisors sit above sub-centre and at which tiers —
+was settled on 23 Sep 2026 and moved to *Decided* below.
 
-**Assumed: all of them at sub-centre, covering 8 field workers each.** Being asked of the customer.
-Blocks test cases 3–8 and the generator's catchment sizing.
-
-**It is not one choice but a mix.** Supervision can sit at any level above the sub-centre, and a
-real establishment probably has some at each. What the cases need is how many at each tier, because
-per-device volume changes by an order of magnitude between them:
-
-| Tier | Field workers each | Records at day 180 | Full sync | vs production's heaviest device |
-|---|---|---|---|---|
-| Sub-centre | 8 | 37,200 | 5.7 min | 0.14× |
-| PHC | 45 | 207,000 | 32 min | 0.78× |
-| Block | 200 | 920,000 | 141 min | **3.5×** |
-| District | ~2,200 | — | — | far beyond |
-
-**Volume per device is the risk this sets.** With sync frequency confirmed at once a day,
-concurrency is settled — the deployment produces under one sync in flight — so how much any single
-device carries is what is left, and this is the number that decides it. If everyone supervises at
-sub-centre, no case exceeds what production already carries and the exercise confirms the server
-holds. If a handful supervise at block level, those few devices are individually heavier
-than anything production has measured, and the exercise is about them.
-
-**A handful is enough to matter.** These are not averages over a population: one block-level
-supervisor carries 920,000 records whatever the rest do, so the answer needed is a count per tier,
-not a typical case.
-
----
+That is worth reading carefully rather than as good news. **It means nothing is blocked on an
+answer from anyone**, so what remains is work and measurement, both tracked elsewhere: tasks in
+[the plan](sync-simulation-plan.md)'s status table, measurements per query in
+[production-measurement-queries.md](production-measurement-queries.md). Two things sit just outside
+this document's remit and are easy to mistake for questions — the acceptable error rate is a number
+to *choose* rather than discover (it is in *Decided*), and a supervisor's push volume relative to a
+field worker's is answerable from `sync_telemetry` rather than by asking, so it is a measurement.
 
 ## Scope, and what expanding it would mean
 
@@ -122,6 +104,31 @@ problem nobody has yet. **The signal to revisit is the injector showing up in it
 saturated CPU on the load generator, or response times that rise with virtual user count while the
 server's own metrics stay flat. F7's calibration gate is where that would surface. Scope it then, not
 now.
+
+### Supervision: one level above the field worker, 8 to 20 each
+
+**Settled.** Supervisors sit at sub-centre, immediately above the village where field workers sit.
+Nothing above that tier is in scope — the earlier version of this question treated PHC and block
+supervision as live possibilities, and they are not.
+
+What remains is a range rather than an unknown, and it is swept rather than averaged:
+
+| Workers per supervisor | Supervisors per 500-worker tenant | Records at day 180 | Full sync | vs Q3's heaviest device |
+|---|---|---|---|---|
+| **8** | 63 | 35,400 | 5.4 min | 0.13× |
+| 8.4 — the measured establishment | 60 | 37,200 | 5.7 min | 0.14× |
+| **20** | 25 | 89,200 | 13.7 min | **0.34×** |
+
+**The span moves two things in opposite directions.** Doubling it halves the supervisor count and
+doubles each catchment, so total supervisor-pulled volume barely changes while its distribution
+changes completely — many light syncs at one end, few heavy ones at the other. A p95 target
+notices the second.
+
+**This closes the volume risk the question carried.** Even at 20 workers a supervisor holds a third
+of Q3's heaviest real device, so no case in range produces a device heavier than something already
+in the field. The block-level row that would have been 3.5× is gone.
+
+The generator takes it as `workers_per_supervisor`; `None` keeps the measured establishment's 8.4.
 
 ### Sync frequency: once a working day
 

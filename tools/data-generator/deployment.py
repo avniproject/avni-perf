@@ -43,6 +43,11 @@ class TenantSpec:
     beneficiaries_per_village: int = 3000
     encounters_per_worker_per_day: int = 20
     supervisor_level: str = "Sub-Centre"
+    # Field workers under one supervisor. None uses the measured establishment -- 2.8 villages to
+    # a sub-centre, so about 8.4 workers each. The customer's range is 8 to 20; sweeping it is the
+    # point, because the span sets both how many supervisors exist and how heavy each one's sync
+    # is. See hierarchy.with_supervisor_span.
+    workers_per_supervisor: float | None = None
     # Each tenant may carry its own implementation bundle. H1 makes organisation complexity a load
     # variable in its own right: the number of entities a config defines is the number of rows the
     # client posts to syncDetails, and therefore the number of per-row queries
@@ -131,7 +136,11 @@ class TenantBuild:
 
 
 def build_tenant(spec: TenantSpec, id_base: int) -> TenantBuild:
-    h = hy.build(spec.organisation_id, spec.villages, first_id=id_base + 1)
+    establishment = (hy.ESTABLISHMENT if spec.workers_per_supervisor is None
+                     else hy.with_supervisor_span(spec.workers_per_supervisor,
+                                                  spec.field_workers_per_village))
+    h = hy.build(spec.organisation_id, spec.villages, first_id=id_base + 1,
+                 establishment=establishment)
     cs, us = cat.plan(h, field_workers_per_leaf=spec.field_workers_per_village,
                       supervisor_level=spec.supervisor_level,
                       first_catchment_id=id_base + 1, first_user_id=id_base + 1,
