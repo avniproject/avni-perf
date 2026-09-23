@@ -876,3 +876,88 @@ an update rewrites the `observations` jsonb and its GIN entries without adding a
 > minutes of uninterrupted POSTing from one device. **Neither is used by the organisations in
 > scope**, so neither is modelled. Recorded because if the write path has a worst case anywhere on
 > this platform, it is here rather than in the encounter tables — see D3.
+
+**Q18 — Which organisations actually run ETL, and what it costs each of them (H, #12).**
+*Written, not yet run.* Two of #12's open items are the same measurement.
+
+**Storage is 62 GB of org schemas against 70 GB of `public`, and that 0.9× is misleading** — it
+divides ETL-enabled orgs' output by *all* orgs' transactional data. The generator needs the
+per-enabled-org multiplier, because the ETL-enabled fraction is a parameter: set it to none and the
+ETL-contention scenario disappears, set it to all and both storage and IO contention exceed
+production's.
+
+**`organisation.schema_name` is not an enablement flag** — it is populated for every organisation
+regardless, and ETL is invoked per organisation externally. The only empirical signal is which org
+schemas actually contain relations.
+
+```sql
+-- Part A: which schemas exist, are populated, and how large. This alone gives the enabled fraction.
+with etl as (
+  select o.id as org_id,
+         count(c.oid) filter (where c.relkind in ('r', 'p'))            as tables,
+         count(c.oid) filter (where c.relkind = 'm')                    as matviews,
+         coalesce(sum(pg_total_relation_size(c.oid)), 0)                as etl_bytes
+  from organisation o
+  join pg_namespace n on n.nspname = o.schema_name
+  left join pg_class c on c.relnamespace = n.oid and c.relkind in ('r', 'p', 'm')
+  group by o.id
+),
+-- Part B: each org's share of the transactional tables that dominate the 70 GB.
+--
+-- Public tables hold every tenant's rows, so per-org bytes cannot come from
+-- pg_total_relation_size. Approximated as the org's row count times the table's mean bytes per
+-- row. Rough, but the multiplier only has to be good enough to set a generator parameter.
+--
+-- Voided rows are deliberately NOT filtered: ETL's passthrough tables carry them, so excluding
+-- them here would flatter the ratio.
+sizes as (
+  select c.relname::text as tbl,
+         case when c.reltuples > 0
+              then pg_total_relation_size(c.oid) / c.reltuples
+              else 0 end as bytes_per_row
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public'
+    and c.relname in ('individual', 'program_enrolment', 'program_encounter', 'encounter')
+),
+counts as (
+  select organisation_id, 'individual'        as tbl, count(*) as n from individual        group by 1
+  union all
+  select organisation_id, 'program_enrolment',        count(*) from program_enrolment         group by 1
+  union all
+  select organisation_id, 'program_encounter',        count(*) from program_encounter         group by 1
+  union all
+  select organisation_id, 'encounter',                count(*) from encounter                 group by 1
+),
+txn as (
+  select c.organisation_id as org_id,
+         sum(c.n * s.bytes_per_row)::bigint as txn_bytes
+  from counts c join sizes s on s.tbl = c.tbl
+  group by 1
+)
+select row_number() over (order by e.etl_bytes desc)        as rank,
+       e.org_id,
+       e.tables,
+       e.matviews,
+       pg_size_pretty(e.etl_bytes)                          as etl_size,
+       pg_size_pretty(coalesce(t.txn_bytes, 0))             as txn_size_approx,
+       round(e.etl_bytes::numeric
+             / nullif(t.txn_bytes, 0), 2)                   as multiplier
+from etl e
+left join txn t on t.org_id = e.org_id
+where e.tables > 0 or e.matviews > 0
+order by 1;
+```
+
+**Read it as:** the row count is the enabled fraction (against Q12's 986), and the `multiplier`
+column is the figure the generator needs. Organisation identity is left out for the same reason as
+Q12 — rank and size are what the generator wants, and the name is not.
+
+> **Sample at a consistent point in the cycle.** Materialised views are dropped and recreated at the
+> end of every ETL run, which is every 90 minutes, so schema size swings depending on when you
+> look. The `matviews` column is there to make that visible: a row reporting zero matviews was
+> caught mid-rebuild, and its `etl_bytes` understates. Worth running twice, an hour apart.
+
+**Run as a superuser** — under RLS an org-scoped role sees only its own rows and the per-org counts
+come back meaningless. **Run off-peak**: the four `count(*)` scans cover `program_encounter`'s
+11.4 GB and `individual`'s 2.7 GB of indexes.

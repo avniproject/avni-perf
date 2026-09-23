@@ -2361,8 +2361,10 @@ recreated at the end of every run**. A Quartz job runs it **every 90 minutes**.
 
 **Storage.** ETL is 62 GB against public's 70 GB — but that aggregate ratio is misleading, because
 **ETL is not enabled for every organisation**. The meaningful figure is the multiplier for orgs that
-have it, and their transactional data is some subset of the 70 GB. Still to be measured; the ratio
-could comfortably exceed 1× per enabled org.
+have it, and their transactional data is some subset of the 70 GB. The ratio could comfortably
+exceed 1× per enabled org. **[Q18](production-measurement-queries.md) is written and unrun**, and
+answers both halves at once: the row count is the enabled fraction, the `multiplier` column is the
+per-org figure the generator needs.
 
 > `organisation.schema_name` is populated regardless and is **not** an enablement flag — ETL is
 > invoked per organisation externally. The empirical signal is which org schemas actually contain
