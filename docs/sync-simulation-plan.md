@@ -6,24 +6,38 @@ finding choke points in the Avni server.
 **Scope:** server-side, sync only. Client-side performance (device profiling, Maestro/Flashlight,
 production RUM) is tracked separately.
 
-**Status:** planning draft, September 2026.
+**Status:** 24 September 2026. The harness is built; the environment is not.
 
 ---
 
 ## Where it stands
 
 `AvniSyncSimulation` authenticates under a selectable mode, posts a full 79-entity status array to
-`/v2/syncDetails`, walks every entity the response marks changed, paginates each one, and posts sync
-telemetry at the end. The entity list is generated from `openchs-models` rather than hand-maintained,
-and CI fails if it drifts.
+`/v2/syncDetails`, walks every entity the response marks changed, paginates each one — by page or
+by slice — pushes records in the client's own order, models media upload and client-side storage
+cost, drives co-tenant traffic beside the customer's, and posts sync telemetry at the end. The
+entity list is generated from `openchs-models` rather than hand-maintained, and CI fails if it
+drifts.
 
-That is a faithful download-sync probe, production is measured, the test cases are specified
-with numbers, and a dataset generator exists that reproduces them.
+**Five of the seven workstreams are closed**: the harness (A), the entity list (C), read-path
+fidelity (D), scenario and workload design (E), and test data generation (H). Production is
+measured — 14 of 16 queries run — the test cases are specified with numbers, and a dataset
+generator reproduces them exactly. Three gates run without a server: unit tests, a closed-port
+check, and the generator's own suite.
 
-**What is missing is everywhere those three meet a server.** No environment to run against, no
-instrumentation on it, no write path, and no restore between runs — so **no run has yet happened
-against generated data**, and the generator's own output has never been loaded. That is the next
-boundary, and most of what remains sits behind it.
+**What is left is almost entirely the environment.** No environment to run against, no
+instrumentation on it, and no restore between runs — so **no run has yet happened against generated
+data**, and the generator's own output has never been loaded.
+
+> **The honest reading of "the harness is done".** It has never been pointed at a real server with
+> a real dataset. Every coefficient in the storage model is a deliberate upper bound rather than a
+> measurement; the paging, push and media models follow the client's code but have not been checked
+> against its behaviour; and **F7, the calibration gate that would catch all of that, is itself
+> behind the environment**. What exists is an instrument that is internally consistent and
+> unvalidated. Until F7 passes, a result from it is not evidence.
+
+**What unblocks the rest is F4**, and it is now one security group rule plus the SSH tunnel CI
+already mostly has. Everything in section G, F1, F5 and F7 sits behind it.
 
 The table below covers the whole plan rather than just the harness. **A `Not started` cell means no
 work has been done on that item at all** — the "Before" column still describes it today.

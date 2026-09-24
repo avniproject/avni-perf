@@ -20,7 +20,9 @@
       "beneficiaries_per_village": 3004,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 700917
     },
     {
       "name": "co-002",
@@ -30,7 +32,9 @@
       "beneficiaries_per_village": 2989,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 231259
     },
     {
       "name": "co-003",
@@ -40,7 +44,9 @@
       "beneficiaries_per_village": 2988,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 194454
     },
     {
       "name": "co-004",
@@ -50,7 +56,9 @@
       "beneficiaries_per_village": 2979,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 171949
     },
     {
       "name": "co-005",
@@ -60,7 +68,9 @@
       "beneficiaries_per_village": 3031,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 156304
     },
     {
       "name": "co-006",
@@ -70,7 +80,9 @@
       "beneficiaries_per_village": 2982,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 139158
     },
     {
       "name": "co-007",
@@ -80,7 +92,9 @@
       "beneficiaries_per_village": 3021,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 126138
     },
     {
       "name": "co-008",
@@ -90,7 +104,9 @@
       "beneficiaries_per_village": 3043,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 115848
     },
     {
       "name": "co-009",
@@ -100,7 +116,9 @@
       "beneficiaries_per_village": 3018,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 107471
     },
     {
       "name": "co-010",
@@ -110,7 +128,9 @@
       "beneficiaries_per_village": 3031,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 100491
     },
     {
       "name": "co-011",
@@ -120,7 +140,9 @@
       "beneficiaries_per_village": 2983,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 84236
     },
     {
       "name": "co-012",
@@ -130,7 +152,9 @@
       "beneficiaries_per_village": 3073,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 71703
     },
     {
       "name": "co-013",
@@ -140,7 +164,9 @@
       "beneficiaries_per_village": 2962,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 61828
     },
     {
       "name": "co-014",
@@ -150,7 +176,9 @@
       "beneficiaries_per_village": 2926,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 53902
     },
     {
       "name": "co-015",
@@ -160,7 +188,9 @@
       "beneficiaries_per_village": 2972,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 47439
     },
     {
       "name": "co-016",
@@ -170,7 +200,9 @@
       "beneficiaries_per_village": 3117,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 42096
     },
     {
       "name": "co-017",
@@ -180,7 +212,9 @@
       "beneficiaries_per_village": 3064,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 37628
     },
     {
       "name": "co-018",
@@ -190,7 +224,9 @@
       "beneficiaries_per_village": 3063,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 33850
     },
     {
       "name": "co-019",
@@ -200,7 +236,9 @@
       "beneficiaries_per_village": 3118,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 30625
     },
     {
       "name": "co-020",
@@ -210,7 +248,9 @@
       "beneficiaries_per_village": 2835,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 27851
     },
     {
       "name": "co-021",
@@ -220,7 +260,9 @@
       "beneficiaries_per_village": 3004,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 25820
     },
     {
       "name": "co-022",
@@ -230,7 +272,9 @@
       "beneficiaries_per_village": 2795,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 24021
     },
     {
       "name": "co-023",
@@ -240,7 +284,9 @@
       "beneficiaries_per_village": 3043,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 22420
     },
     {
       "name": "co-024",
@@ -250,7 +296,9 @@
       "beneficiaries_per_village": 2848,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 20987
     },
     {
       "name": "co-025",
@@ -260,7 +308,9 @@
       "beneficiaries_per_village": 3208,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 19699
     },
     {
       "name": "co-026",
@@ -270,7 +320,9 @@
       "beneficiaries_per_village": 3019,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 18536
     },
     {
       "name": "co-027",
@@ -280,7 +332,9 @@
       "beneficiaries_per_village": 2847,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 17481
     },
     {
       "name": "co-028",
@@ -290,7 +344,9 @@
       "beneficiaries_per_village": 3364,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 16522
     },
     {
       "name": "co-029",
@@ -300,7 +356,9 @@
       "beneficiaries_per_village": 3186,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 15646
     },
     {
       "name": "co-030",
@@ -310,7 +368,9 @@
       "beneficiaries_per_village": 3022,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 14843
     },
     {
       "name": "co-031",
@@ -320,7 +380,9 @@
       "beneficiaries_per_village": 2872,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 14108
     },
     {
       "name": "co-032",
@@ -330,7 +392,9 @@
       "beneficiaries_per_village": 2734,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 13429
     },
     {
       "name": "co-033",
@@ -340,7 +404,9 @@
       "beneficiaries_per_village": 3475,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 12803
     },
     {
       "name": "co-034",
@@ -350,7 +416,9 @@
       "beneficiaries_per_village": 3318,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 12223
     },
     {
       "name": "co-035",
@@ -360,7 +428,9 @@
       "beneficiaries_per_village": 3172,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 11685
     },
     {
       "name": "co-036",
@@ -370,7 +440,9 @@
       "beneficiaries_per_village": 3036,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 11185
     },
     {
       "name": "co-037",
@@ -380,7 +452,9 @@
       "beneficiaries_per_village": 2910,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 10720
     },
     {
       "name": "co-038",
@@ -390,7 +464,9 @@
       "beneficiaries_per_village": 2792,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 10285
     },
     {
       "name": "co-039",
@@ -400,7 +476,9 @@
       "beneficiaries_per_village": 2682,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9879
     },
     {
       "name": "co-040",
@@ -410,7 +488,9 @@
       "beneficiaries_per_village": 2578,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9498
     },
     {
       "name": "co-041",
@@ -420,7 +500,9 @@
       "beneficiaries_per_village": 3722,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9141
     },
     {
       "name": "co-042",
@@ -430,7 +512,9 @@
       "beneficiaries_per_village": 3586,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 8806
     },
     {
       "name": "co-043",
@@ -440,7 +524,9 @@
       "beneficiaries_per_village": 3457,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 8490
     },
     {
       "name": "co-044",
@@ -450,7 +536,9 @@
       "beneficiaries_per_village": 3336,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 8193
     },
     {
       "name": "co-045",
@@ -460,7 +548,9 @@
       "beneficiaries_per_village": 3222,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7912
     },
     {
       "name": "co-046",
@@ -470,7 +560,9 @@
       "beneficiaries_per_village": 3114,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7646
     },
     {
       "name": "co-047",
@@ -480,7 +572,9 @@
       "beneficiaries_per_village": 3011,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7395
     },
     {
       "name": "co-048",
@@ -490,7 +584,9 @@
       "beneficiaries_per_village": 2914,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7158
     },
     {
       "name": "co-049",
@@ -500,7 +596,9 @@
       "beneficiaries_per_village": 2822,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6932
     },
     {
       "name": "co-050",
@@ -510,7 +608,9 @@
       "beneficiaries_per_village": 2736,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6718
     },
     {
       "name": "co-051",
@@ -520,7 +620,9 @@
       "beneficiaries_per_village": 2620,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6434
     },
     {
       "name": "co-052",
@@ -530,7 +632,9 @@
       "beneficiaries_per_village": 2512,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6169
     },
     {
       "name": "co-053",
@@ -540,7 +644,9 @@
       "beneficiaries_per_village": 2410,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5919
     },
     {
       "name": "co-054",
@@ -550,7 +656,9 @@
       "beneficiaries_per_village": 2314,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5683
     },
     {
       "name": "co-055",
@@ -560,7 +668,9 @@
       "beneficiaries_per_village": 4447,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5461
     },
     {
       "name": "co-056",
@@ -570,7 +680,9 @@
       "beneficiaries_per_village": 4276,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5251
     },
     {
       "name": "co-057",
@@ -580,7 +692,9 @@
       "beneficiaries_per_village": 4115,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5053
     },
     {
       "name": "co-058",
@@ -590,7 +704,9 @@
       "beneficiaries_per_village": 3962,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4865
     },
     {
       "name": "co-059",
@@ -600,7 +716,9 @@
       "beneficiaries_per_village": 3817,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4687
     },
     {
       "name": "co-060",
@@ -610,7 +728,9 @@
       "beneficiaries_per_village": 3680,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4519
     },
     {
       "name": "co-061",
@@ -620,7 +740,9 @@
       "beneficiaries_per_village": 3550,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4359
     },
     {
       "name": "co-062",
@@ -630,7 +752,9 @@
       "beneficiaries_per_village": 3427,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4208
     },
     {
       "name": "co-063",
@@ -640,7 +764,9 @@
       "beneficiaries_per_village": 3310,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4064
     },
     {
       "name": "co-064",
@@ -650,7 +776,9 @@
       "beneficiaries_per_village": 3199,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 3928
     },
     {
       "name": "co-065",
@@ -660,7 +788,9 @@
       "beneficiaries_per_village": 3092,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 3797
     },
     {
       "name": "co-066",
@@ -670,7 +800,9 @@
       "beneficiaries_per_village": 2991,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 3673
     },
     {
       "name": "co-067",
@@ -680,7 +812,9 @@
       "beneficiaries_per_village": 2895,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 3555
     },
     {
       "name": "co-068",
@@ -690,7 +824,9 @@
       "beneficiaries_per_village": 2803,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 3442
     },
     {
       "name": "co-069",
@@ -700,7 +836,9 @@
       "beneficiaries_per_village": 2716,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 3335
     },
     {
       "name": "co-070",
@@ -710,7 +848,9 @@
       "beneficiaries_per_village": 2632,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 3232
     },
     {
       "name": "co-071",
@@ -720,7 +860,9 @@
       "beneficiaries_per_village": 2552,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 3134
     },
     {
       "name": "co-072",
@@ -730,7 +872,9 @@
       "beneficiaries_per_village": 2476,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 3040
     },
     {
       "name": "co-073",
@@ -740,7 +884,9 @@
       "beneficiaries_per_village": 2403,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2951
     },
     {
       "name": "co-074",
@@ -750,7 +896,9 @@
       "beneficiaries_per_village": 2333,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2865
     },
     {
       "name": "co-075",
@@ -760,7 +908,9 @@
       "beneficiaries_per_village": 2266,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2783
     },
     {
       "name": "co-076",
@@ -770,7 +920,9 @@
       "beneficiaries_per_village": 2201,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2703
     },
     {
       "name": "co-077",
@@ -780,7 +932,9 @@
       "beneficiaries_per_village": 2140,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2628
     },
     {
       "name": "co-078",
@@ -790,7 +944,9 @@
       "beneficiaries_per_village": 2080,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2554
     },
     {
       "name": "co-079",
@@ -800,7 +956,9 @@
       "beneficiaries_per_village": 2024,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2485
     },
     {
       "name": "co-080",
@@ -810,7 +968,9 @@
       "beneficiaries_per_village": 1969,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2418
     },
     {
       "name": "co-081",
@@ -820,7 +980,9 @@
       "beneficiaries_per_village": 1916,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2353
     },
     {
       "name": "co-082",
@@ -830,7 +992,9 @@
       "beneficiaries_per_village": 1866,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2291
     },
     {
       "name": "co-083",
@@ -840,7 +1004,9 @@
       "beneficiaries_per_village": 1817,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2231
     },
     {
       "name": "co-084",
@@ -850,7 +1016,9 @@
       "beneficiaries_per_village": 1771,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2175
     },
     {
       "name": "co-085",
@@ -860,7 +1028,9 @@
       "beneficiaries_per_village": 1726,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2119
     },
     {
       "name": "co-086",
@@ -870,7 +1040,9 @@
       "beneficiaries_per_village": 1682,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2065
     },
     {
       "name": "co-087",
@@ -880,7 +1052,9 @@
       "beneficiaries_per_village": 1641,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2015
     },
     {
       "name": "co-088",
@@ -890,7 +1064,9 @@
       "beneficiaries_per_village": 1600,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1965
     },
     {
       "name": "co-089",
@@ -900,7 +1076,9 @@
       "beneficiaries_per_village": 1562,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1918
     },
     {
       "name": "co-090",
@@ -910,7 +1088,9 @@
       "beneficiaries_per_village": 1524,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1871
     },
     {
       "name": "co-091",
@@ -920,7 +1100,9 @@
       "beneficiaries_per_village": 1488,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1827
     },
     {
       "name": "co-092",
@@ -930,7 +1112,9 @@
       "beneficiaries_per_village": 1453,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1784
     },
     {
       "name": "co-093",
@@ -940,7 +1124,9 @@
       "beneficiaries_per_village": 1419,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1742
     },
     {
       "name": "co-094",
@@ -950,7 +1136,9 @@
       "beneficiaries_per_village": 1387,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1703
     },
     {
       "name": "co-095",
@@ -960,7 +1148,9 @@
       "beneficiaries_per_village": 1355,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1664
     },
     {
       "name": "co-096",
@@ -970,7 +1160,9 @@
       "beneficiaries_per_village": 1325,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1627
     },
     {
       "name": "co-097",
@@ -980,7 +1172,9 @@
       "beneficiaries_per_village": 1295,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1590
     },
     {
       "name": "co-098",
@@ -990,7 +1184,9 @@
       "beneficiaries_per_village": 1266,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1555
     },
     {
       "name": "co-099",
@@ -1000,7 +1196,9 @@
       "beneficiaries_per_village": 1239,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1521
     },
     {
       "name": "co-100",
@@ -1010,7 +1208,9 @@
       "beneficiaries_per_village": 1212,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1488
     },
     {
       "name": "co-101",
@@ -1020,7 +1220,9 @@
       "beneficiaries_per_village": 1165,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1431
     },
     {
       "name": "co-102",
@@ -1030,7 +1232,9 @@
       "beneficiaries_per_village": 1120,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1375
     },
     {
       "name": "co-103",
@@ -1040,7 +1244,9 @@
       "beneficiaries_per_village": 1077,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1322
     },
     {
       "name": "co-104",
@@ -1050,7 +1256,9 @@
       "beneficiaries_per_village": 1036,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1272
     },
     {
       "name": "co-105",
@@ -1060,7 +1268,9 @@
       "beneficiaries_per_village": 997,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1224
     },
     {
       "name": "co-106",
@@ -1070,7 +1280,9 @@
       "beneficiaries_per_village": 960,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1179
     },
     {
       "name": "co-107",
@@ -1080,7 +1292,9 @@
       "beneficiaries_per_village": 925,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1136
     },
     {
       "name": "co-108",
@@ -1090,7 +1304,9 @@
       "beneficiaries_per_village": 891,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1094
     },
     {
       "name": "co-109",
@@ -1100,7 +1316,9 @@
       "beneficiaries_per_village": 859,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1055
     },
     {
       "name": "co-110",
@@ -1110,7 +1328,9 @@
       "beneficiaries_per_village": 828,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1017
     },
     {
       "name": "co-111",
@@ -1120,7 +1340,9 @@
       "beneficiaries_per_village": 799,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 981
     },
     {
       "name": "co-112",
@@ -1130,7 +1352,9 @@
       "beneficiaries_per_village": 771,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 947
     },
     {
       "name": "co-113",
@@ -1140,7 +1364,9 @@
       "beneficiaries_per_village": 744,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 914
     },
     {
       "name": "co-114",
@@ -1150,7 +1376,9 @@
       "beneficiaries_per_village": 718,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 882
     },
     {
       "name": "co-115",
@@ -1160,7 +1388,9 @@
       "beneficiaries_per_village": 693,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 851
     },
     {
       "name": "co-116",
@@ -1170,7 +1400,9 @@
       "beneficiaries_per_village": 670,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 823
     },
     {
       "name": "co-117",
@@ -1180,7 +1412,9 @@
       "beneficiaries_per_village": 647,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 794
     },
     {
       "name": "co-118",
@@ -1190,7 +1424,9 @@
       "beneficiaries_per_village": 626,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 769
     },
     {
       "name": "co-119",
@@ -1200,7 +1436,9 @@
       "beneficiaries_per_village": 605,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 743
     },
     {
       "name": "co-120",
@@ -1210,7 +1448,9 @@
       "beneficiaries_per_village": 585,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 718
     },
     {
       "name": "co-121",
@@ -1220,7 +1460,9 @@
       "beneficiaries_per_village": 566,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 695
     },
     {
       "name": "co-122",
@@ -1230,7 +1472,9 @@
       "beneficiaries_per_village": 548,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 673
     },
     {
       "name": "co-123",
@@ -1240,7 +1484,9 @@
       "beneficiaries_per_village": 530,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 651
     },
     {
       "name": "co-124",
@@ -1250,7 +1496,9 @@
       "beneficiaries_per_village": 513,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 630
     },
     {
       "name": "co-125",
@@ -1260,7 +1508,9 @@
       "beneficiaries_per_village": 497,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 610
     },
     {
       "name": "co-126",
@@ -1270,7 +1520,9 @@
       "beneficiaries_per_village": 481,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 591
     },
     {
       "name": "co-127",
@@ -1280,7 +1532,9 @@
       "beneficiaries_per_village": 466,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 572
     },
     {
       "name": "co-128",
@@ -1290,7 +1544,9 @@
       "beneficiaries_per_village": 452,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 555
     },
     {
       "name": "co-129",
@@ -1300,7 +1556,9 @@
       "beneficiaries_per_village": 438,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 538
     },
     {
       "name": "co-130",
@@ -1310,7 +1568,9 @@
       "beneficiaries_per_village": 425,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 522
     },
     {
       "name": "co-131",
@@ -1320,7 +1580,9 @@
       "beneficiaries_per_village": 412,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 506
     },
     {
       "name": "co-132",
@@ -1330,7 +1592,9 @@
       "beneficiaries_per_village": 400,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 491
     },
     {
       "name": "co-133",
@@ -1340,7 +1604,9 @@
       "beneficiaries_per_village": 388,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 476
     },
     {
       "name": "co-134",
@@ -1350,7 +1616,9 @@
       "beneficiaries_per_village": 376,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 462
     },
     {
       "name": "co-135",
@@ -1360,7 +1628,9 @@
       "beneficiaries_per_village": 365,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 448
     },
     {
       "name": "co-136",
@@ -1370,7 +1640,9 @@
       "beneficiaries_per_village": 355,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 436
     },
     {
       "name": "co-137",
@@ -1380,7 +1652,9 @@
       "beneficiaries_per_village": 344,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 422
     },
     {
       "name": "co-138",
@@ -1390,7 +1664,9 @@
       "beneficiaries_per_village": 335,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 411
     },
     {
       "name": "co-139",
@@ -1400,7 +1676,9 @@
       "beneficiaries_per_village": 325,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 399
     },
     {
       "name": "co-140",
@@ -1410,7 +1688,9 @@
       "beneficiaries_per_village": 316,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 388
     },
     {
       "name": "co-141",
@@ -1420,7 +1700,9 @@
       "beneficiaries_per_village": 307,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 377
     },
     {
       "name": "co-142",
@@ -1430,7 +1712,9 @@
       "beneficiaries_per_village": 298,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 366
     },
     {
       "name": "co-143",
@@ -1440,7 +1724,9 @@
       "beneficiaries_per_village": 290,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 356
     },
     {
       "name": "co-144",
@@ -1450,7 +1736,9 @@
       "beneficiaries_per_village": 282,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 346
     },
     {
       "name": "co-145",
@@ -1460,7 +1748,9 @@
       "beneficiaries_per_village": 275,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 338
     },
     {
       "name": "co-146",
@@ -1470,7 +1760,9 @@
       "beneficiaries_per_village": 267,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 328
     },
     {
       "name": "co-147",
@@ -1480,7 +1772,9 @@
       "beneficiaries_per_village": 260,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 319
     },
     {
       "name": "co-148",
@@ -1490,7 +1784,9 @@
       "beneficiaries_per_village": 253,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 311
     },
     {
       "name": "co-149",
@@ -1500,7 +1796,9 @@
       "beneficiaries_per_village": 246,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 302
     },
     {
       "name": "co-150",
@@ -1510,7 +1808,9 @@
       "beneficiaries_per_village": 240,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 295
     },
     {
       "name": "co-151",
@@ -1520,7 +1820,9 @@
       "beneficiaries_per_village": 234,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 287
     },
     {
       "name": "co-152",
@@ -1530,7 +1832,9 @@
       "beneficiaries_per_village": 227,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 279
     },
     {
       "name": "co-153",
@@ -1540,7 +1844,9 @@
       "beneficiaries_per_village": 222,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 273
     },
     {
       "name": "co-154",
@@ -1550,7 +1856,9 @@
       "beneficiaries_per_village": 216,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 265
     },
     {
       "name": "co-155",
@@ -1560,7 +1868,9 @@
       "beneficiaries_per_village": 210,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 258
     },
     {
       "name": "co-156",
@@ -1570,7 +1880,9 @@
       "beneficiaries_per_village": 205,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 252
     },
     {
       "name": "co-157",
@@ -1580,7 +1892,9 @@
       "beneficiaries_per_village": 199,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 244
     },
     {
       "name": "co-158",
@@ -1590,7 +1904,9 @@
       "beneficiaries_per_village": 194,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 238
     },
     {
       "name": "co-159",
@@ -1600,7 +1916,9 @@
       "beneficiaries_per_village": 188,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 231
     },
     {
       "name": "co-160",
@@ -1610,7 +1928,9 @@
       "beneficiaries_per_village": 183,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 225
     },
     {
       "name": "co-161",
@@ -1620,7 +1940,9 @@
       "beneficiaries_per_village": 178,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 219
     },
     {
       "name": "co-162",
@@ -1630,7 +1952,9 @@
       "beneficiaries_per_village": 173,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 212
     },
     {
       "name": "co-163",
@@ -1640,7 +1964,9 @@
       "beneficiaries_per_village": 168,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 206
     },
     {
       "name": "co-164",
@@ -1650,7 +1976,9 @@
       "beneficiaries_per_village": 164,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 201
     },
     {
       "name": "co-165",
@@ -1660,7 +1988,9 @@
       "beneficiaries_per_village": 160,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 196
     },
     {
       "name": "co-166",
@@ -1670,7 +2000,9 @@
       "beneficiaries_per_village": 155,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 190
     },
     {
       "name": "co-167",
@@ -1680,7 +2012,9 @@
       "beneficiaries_per_village": 151,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 185
     },
     {
       "name": "co-168",
@@ -1690,7 +2024,9 @@
       "beneficiaries_per_village": 147,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 181
     },
     {
       "name": "co-169",
@@ -1700,7 +2036,9 @@
       "beneficiaries_per_village": 143,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 176
     },
     {
       "name": "co-170",
@@ -1710,7 +2048,9 @@
       "beneficiaries_per_village": 140,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 172
     },
     {
       "name": "co-171",
@@ -1720,7 +2060,9 @@
       "beneficiaries_per_village": 136,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 167
     },
     {
       "name": "co-172",
@@ -1730,7 +2072,9 @@
       "beneficiaries_per_village": 132,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 162
     },
     {
       "name": "co-173",
@@ -1740,7 +2084,9 @@
       "beneficiaries_per_village": 129,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 158
     },
     {
       "name": "co-174",
@@ -1750,7 +2096,9 @@
       "beneficiaries_per_village": 126,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 155
     },
     {
       "name": "co-175",
@@ -1760,7 +2108,9 @@
       "beneficiaries_per_village": 123,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 151
     },
     {
       "name": "co-176",
@@ -1770,7 +2120,9 @@
       "beneficiaries_per_village": 120,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 147
     },
     {
       "name": "co-177",
@@ -1780,7 +2132,9 @@
       "beneficiaries_per_village": 117,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 144
     },
     {
       "name": "co-178",
@@ -1790,7 +2144,9 @@
       "beneficiaries_per_village": 114,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 140
     },
     {
       "name": "co-179",
@@ -1800,7 +2156,9 @@
       "beneficiaries_per_village": 111,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 136
     },
     {
       "name": "co-180",
@@ -1810,7 +2168,9 @@
       "beneficiaries_per_village": 108,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 133
     },
     {
       "name": "co-181",
@@ -1820,7 +2180,9 @@
       "beneficiaries_per_village": 105,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 129
     },
     {
       "name": "co-182",
@@ -1830,7 +2192,9 @@
       "beneficiaries_per_village": 103,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 126
     },
     {
       "name": "co-183",
@@ -1840,7 +2204,9 @@
       "beneficiaries_per_village": 100,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 123
     },
     {
       "name": "co-184",
@@ -1850,7 +2216,9 @@
       "beneficiaries_per_village": 98,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 120
     },
     {
       "name": "co-185",
@@ -1860,7 +2228,9 @@
       "beneficiaries_per_village": 96,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 118
     },
     {
       "name": "co-186",
@@ -1870,7 +2240,9 @@
       "beneficiaries_per_village": 93,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 114
     },
     {
       "name": "co-187",
@@ -1880,7 +2252,9 @@
       "beneficiaries_per_village": 91,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 112
     },
     {
       "name": "co-188",
@@ -1890,7 +2264,9 @@
       "beneficiaries_per_village": 89,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 109
     },
     {
       "name": "co-189",
@@ -1900,7 +2276,9 @@
       "beneficiaries_per_village": 87,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 107
     },
     {
       "name": "co-190",
@@ -1910,7 +2288,9 @@
       "beneficiaries_per_village": 85,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 104
     },
     {
       "name": "co-191",
@@ -1920,7 +2300,9 @@
       "beneficiaries_per_village": 83,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 102
     },
     {
       "name": "co-192",
@@ -1930,7 +2312,9 @@
       "beneficiaries_per_village": 81,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 99
     },
     {
       "name": "co-193",
@@ -1940,7 +2324,9 @@
       "beneficiaries_per_village": 79,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 97
     },
     {
       "name": "co-194",
@@ -1950,7 +2336,9 @@
       "beneficiaries_per_village": 77,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 95
     },
     {
       "name": "co-195",
@@ -1960,7 +2348,9 @@
       "beneficiaries_per_village": 76,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 93
     },
     {
       "name": "co-196",
@@ -1970,7 +2360,9 @@
       "beneficiaries_per_village": 74,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 91
     },
     {
       "name": "co-197",
@@ -1980,7 +2372,9 @@
       "beneficiaries_per_village": 72,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 88
     },
     {
       "name": "co-198",
@@ -1990,7 +2384,9 @@
       "beneficiaries_per_village": 71,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 87
     },
     {
       "name": "co-199",
@@ -2000,7 +2396,9 @@
       "beneficiaries_per_village": 69,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 85
     },
     {
       "name": "co-200",
@@ -2010,7 +2408,9 @@
       "beneficiaries_per_village": 67,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 82
     },
     {
       "name": "co-201",
@@ -2020,7 +2420,9 @@
       "beneficiaries_per_village": 66,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 81
     },
     {
       "name": "co-202",
@@ -2030,7 +2432,9 @@
       "beneficiaries_per_village": 65,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 80
     },
     {
       "name": "co-203",
@@ -2040,7 +2444,9 @@
       "beneficiaries_per_village": 63,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 77
     },
     {
       "name": "co-204",
@@ -2050,7 +2456,9 @@
       "beneficiaries_per_village": 62,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 76
     },
     {
       "name": "co-205",
@@ -2060,7 +2468,9 @@
       "beneficiaries_per_village": 60,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 74
     },
     {
       "name": "co-206",
@@ -2070,7 +2480,9 @@
       "beneficiaries_per_village": 59,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 72
     },
     {
       "name": "co-207",
@@ -2080,7 +2492,9 @@
       "beneficiaries_per_village": 58,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 71
     },
     {
       "name": "co-208",
@@ -2090,7 +2504,9 @@
       "beneficiaries_per_village": 57,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 70
     },
     {
       "name": "co-209",
@@ -2100,7 +2516,9 @@
       "beneficiaries_per_village": 55,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 68
     },
     {
       "name": "co-210",
@@ -2110,7 +2528,9 @@
       "beneficiaries_per_village": 54,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 66
     },
     {
       "name": "co-211",
@@ -2120,7 +2540,9 @@
       "beneficiaries_per_village": 53,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 65
     },
     {
       "name": "co-212",
@@ -2130,7 +2552,9 @@
       "beneficiaries_per_village": 52,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 64
     },
     {
       "name": "co-213",
@@ -2140,7 +2564,9 @@
       "beneficiaries_per_village": 51,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 63
     },
     {
       "name": "co-214",
@@ -2150,7 +2576,9 @@
       "beneficiaries_per_village": 50,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 61
     },
     {
       "name": "co-215",
@@ -2160,7 +2588,9 @@
       "beneficiaries_per_village": 49,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 60
     },
     {
       "name": "co-216",
@@ -2170,7 +2600,9 @@
       "beneficiaries_per_village": 48,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 59
     },
     {
       "name": "co-217",
@@ -2180,7 +2612,9 @@
       "beneficiaries_per_village": 47,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 58
     },
     {
       "name": "co-218",
@@ -2190,7 +2624,9 @@
       "beneficiaries_per_village": 46,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 56
     },
     {
       "name": "co-219",
@@ -2200,7 +2636,9 @@
       "beneficiaries_per_village": 45,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 55
     },
     {
       "name": "co-220",
@@ -2210,7 +2648,9 @@
       "beneficiaries_per_village": 44,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 54
     },
     {
       "name": "co-221",
@@ -2220,7 +2660,9 @@
       "beneficiaries_per_village": 43,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 53
     },
     {
       "name": "co-222",
@@ -2230,7 +2672,9 @@
       "beneficiaries_per_village": 42,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 52
     },
     {
       "name": "co-223",
@@ -2240,7 +2684,9 @@
       "beneficiaries_per_village": 41,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 50
     },
     {
       "name": "co-224",
@@ -2250,7 +2696,9 @@
       "beneficiaries_per_village": 41,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 50
     },
     {
       "name": "co-225",
@@ -2260,7 +2708,9 @@
       "beneficiaries_per_village": 40,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 49
     },
     {
       "name": "co-226",
@@ -2270,7 +2720,9 @@
       "beneficiaries_per_village": 39,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 48
     },
     {
       "name": "co-227",
@@ -2280,7 +2732,9 @@
       "beneficiaries_per_village": 38,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 47
     },
     {
       "name": "co-228",
@@ -2290,7 +2744,9 @@
       "beneficiaries_per_village": 38,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 47
     },
     {
       "name": "co-229",
@@ -2300,7 +2756,9 @@
       "beneficiaries_per_village": 37,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 45
     },
     {
       "name": "co-230",
@@ -2310,7 +2768,9 @@
       "beneficiaries_per_village": 36,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 44
     },
     {
       "name": "co-231",
@@ -2320,7 +2780,9 @@
       "beneficiaries_per_village": 35,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 43
     },
     {
       "name": "co-232",
@@ -2330,7 +2792,9 @@
       "beneficiaries_per_village": 35,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 43
     },
     {
       "name": "co-233",
@@ -2340,7 +2804,9 @@
       "beneficiaries_per_village": 34,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 42
     },
     {
       "name": "co-234",
@@ -2350,7 +2816,9 @@
       "beneficiaries_per_village": 33,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 41
     },
     {
       "name": "co-235",
@@ -2360,7 +2828,9 @@
       "beneficiaries_per_village": 33,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 41
     },
     {
       "name": "co-236",
@@ -2370,7 +2840,9 @@
       "beneficiaries_per_village": 32,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 39
     },
     {
       "name": "co-237",
@@ -2380,7 +2852,9 @@
       "beneficiaries_per_village": 32,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 39
     },
     {
       "name": "co-238",
@@ -2390,7 +2864,9 @@
       "beneficiaries_per_village": 31,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 38
     },
     {
       "name": "co-239",
@@ -2400,7 +2876,9 @@
       "beneficiaries_per_village": 30,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 37
     },
     {
       "name": "co-240",
@@ -2410,7 +2888,9 @@
       "beneficiaries_per_village": 30,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 37
     },
     {
       "name": "co-241",
@@ -2420,7 +2900,9 @@
       "beneficiaries_per_village": 29,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 36
     },
     {
       "name": "co-242",
@@ -2430,7 +2912,9 @@
       "beneficiaries_per_village": 29,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 36
     },
     {
       "name": "co-243",
@@ -2440,7 +2924,9 @@
       "beneficiaries_per_village": 28,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 34
     },
     {
       "name": "co-244",
@@ -2450,7 +2936,9 @@
       "beneficiaries_per_village": 28,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 34
     },
     {
       "name": "co-245",
@@ -2460,7 +2948,9 @@
       "beneficiaries_per_village": 27,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 33
     },
     {
       "name": "co-246",
@@ -2470,7 +2960,9 @@
       "beneficiaries_per_village": 27,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 33
     },
     {
       "name": "co-247",
@@ -2480,7 +2972,9 @@
       "beneficiaries_per_village": 26,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 32
     },
     {
       "name": "co-248",
@@ -2490,7 +2984,9 @@
       "beneficiaries_per_village": 26,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 32
     },
     {
       "name": "co-249",
@@ -2500,7 +2996,9 @@
       "beneficiaries_per_village": 25,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 31
     },
     {
       "name": "co-250",
@@ -2510,7 +3008,9 @@
       "beneficiaries_per_village": 25,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 31
     },
     {
       "name": "co-251",
@@ -2520,7 +3020,9 @@
       "beneficiaries_per_village": 24,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 29
     },
     {
       "name": "co-252",
@@ -2530,7 +3032,9 @@
       "beneficiaries_per_village": 24,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 29
     },
     {
       "name": "co-253",
@@ -2540,7 +3044,9 @@
       "beneficiaries_per_village": 24,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 29
     },
     {
       "name": "co-254",
@@ -2550,7 +3056,9 @@
       "beneficiaries_per_village": 23,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 28
     },
     {
       "name": "co-255",
@@ -2560,7 +3068,9 @@
       "beneficiaries_per_village": 23,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 28
     },
     {
       "name": "co-256",
@@ -2570,7 +3080,9 @@
       "beneficiaries_per_village": 22,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 27
     },
     {
       "name": "co-257",
@@ -2580,7 +3092,9 @@
       "beneficiaries_per_village": 22,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 27
     },
     {
       "name": "co-258",
@@ -2590,7 +3104,9 @@
       "beneficiaries_per_village": 22,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 27
     },
     {
       "name": "co-259",
@@ -2600,7 +3116,9 @@
       "beneficiaries_per_village": 21,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 26
     },
     {
       "name": "co-260",
@@ -2610,7 +3128,9 @@
       "beneficiaries_per_village": 21,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 26
     },
     {
       "name": "co-261",
@@ -2620,7 +3140,9 @@
       "beneficiaries_per_village": 21,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 26
     },
     {
       "name": "co-262",
@@ -2630,7 +3152,9 @@
       "beneficiaries_per_village": 20,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 25
     },
     {
       "name": "co-263",
@@ -2640,7 +3164,9 @@
       "beneficiaries_per_village": 20,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 25
     },
     {
       "name": "co-264",
@@ -2650,7 +3176,9 @@
       "beneficiaries_per_village": 19,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 23
     },
     {
       "name": "co-265",
@@ -2660,7 +3188,9 @@
       "beneficiaries_per_village": 19,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 23
     },
     {
       "name": "co-266",
@@ -2670,7 +3200,9 @@
       "beneficiaries_per_village": 19,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 23
     },
     {
       "name": "co-267",
@@ -2680,7 +3212,9 @@
       "beneficiaries_per_village": 19,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 23
     },
     {
       "name": "co-268",
@@ -2690,7 +3224,9 @@
       "beneficiaries_per_village": 18,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 22
     },
     {
       "name": "co-269",
@@ -2700,7 +3236,9 @@
       "beneficiaries_per_village": 18,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 22
     },
     {
       "name": "co-270",
@@ -2710,7 +3248,9 @@
       "beneficiaries_per_village": 18,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 22
     },
     {
       "name": "co-271",
@@ -2720,7 +3260,9 @@
       "beneficiaries_per_village": 17,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 21
     },
     {
       "name": "co-272",
@@ -2730,7 +3272,9 @@
       "beneficiaries_per_village": 17,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 21
     },
     {
       "name": "co-273",
@@ -2740,7 +3284,9 @@
       "beneficiaries_per_village": 17,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 21
     },
     {
       "name": "co-274",
@@ -2750,7 +3296,9 @@
       "beneficiaries_per_village": 17,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 21
     },
     {
       "name": "co-275",
@@ -2760,7 +3308,9 @@
       "beneficiaries_per_village": 16,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 20
     },
     {
       "name": "co-276",
@@ -2770,7 +3320,9 @@
       "beneficiaries_per_village": 16,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 20
     },
     {
       "name": "co-277",
@@ -2780,7 +3332,9 @@
       "beneficiaries_per_village": 16,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 20
     },
     {
       "name": "co-278",
@@ -2790,7 +3344,9 @@
       "beneficiaries_per_village": 15,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 18
     },
     {
       "name": "co-279",
@@ -2800,7 +3356,9 @@
       "beneficiaries_per_village": 15,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 18
     },
     {
       "name": "co-280",
@@ -2810,7 +3368,9 @@
       "beneficiaries_per_village": 15,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 18
     },
     {
       "name": "co-281",
@@ -2820,7 +3380,9 @@
       "beneficiaries_per_village": 15,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 18
     },
     {
       "name": "co-282",
@@ -2830,7 +3392,9 @@
       "beneficiaries_per_village": 15,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 18
     },
     {
       "name": "co-283",
@@ -2840,7 +3404,9 @@
       "beneficiaries_per_village": 14,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 17
     },
     {
       "name": "co-284",
@@ -2850,7 +3416,9 @@
       "beneficiaries_per_village": 14,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 17
     },
     {
       "name": "co-285",
@@ -2860,7 +3428,9 @@
       "beneficiaries_per_village": 14,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 17
     },
     {
       "name": "co-286",
@@ -2870,7 +3440,9 @@
       "beneficiaries_per_village": 14,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 17
     },
     {
       "name": "co-287",
@@ -2880,7 +3452,9 @@
       "beneficiaries_per_village": 13,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 16
     },
     {
       "name": "co-288",
@@ -2890,7 +3464,9 @@
       "beneficiaries_per_village": 13,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 16
     },
     {
       "name": "co-289",
@@ -2900,7 +3476,9 @@
       "beneficiaries_per_village": 13,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 16
     },
     {
       "name": "co-290",
@@ -2910,7 +3488,9 @@
       "beneficiaries_per_village": 13,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 16
     },
     {
       "name": "co-291",
@@ -2920,7 +3500,9 @@
       "beneficiaries_per_village": 13,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 16
     },
     {
       "name": "co-292",
@@ -2930,7 +3512,9 @@
       "beneficiaries_per_village": 12,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 15
     },
     {
       "name": "co-293",
@@ -2940,7 +3524,9 @@
       "beneficiaries_per_village": 12,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 15
     },
     {
       "name": "co-294",
@@ -2950,7 +3536,9 @@
       "beneficiaries_per_village": 12,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 15
     },
     {
       "name": "co-295",
@@ -2960,7 +3548,9 @@
       "beneficiaries_per_village": 12,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 15
     },
     {
       "name": "co-296",
@@ -2970,7 +3560,9 @@
       "beneficiaries_per_village": 12,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 15
     },
     {
       "name": "co-297",
@@ -2980,7 +3572,9 @@
       "beneficiaries_per_village": 12,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 15
     },
     {
       "name": "co-298",
@@ -2990,7 +3584,9 @@
       "beneficiaries_per_village": 11,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 14
     },
     {
       "name": "co-299",
@@ -3000,7 +3596,9 @@
       "beneficiaries_per_village": 11,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 14
     },
     {
       "name": "co-300",
@@ -3010,7 +3608,9 @@
       "beneficiaries_per_village": 11,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 14
     },
     {
       "name": "co-301",
@@ -3020,7 +3620,9 @@
       "beneficiaries_per_village": 11,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 14
     },
     {
       "name": "co-302",
@@ -3030,7 +3632,9 @@
       "beneficiaries_per_village": 11,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 14
     },
     {
       "name": "co-303",
@@ -3040,7 +3644,9 @@
       "beneficiaries_per_village": 11,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 14
     },
     {
       "name": "co-304",
@@ -3050,7 +3656,9 @@
       "beneficiaries_per_village": 10,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 12
     },
     {
       "name": "co-305",
@@ -3060,7 +3668,9 @@
       "beneficiaries_per_village": 10,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 12
     },
     {
       "name": "co-306",
@@ -3070,7 +3680,9 @@
       "beneficiaries_per_village": 10,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 12
     },
     {
       "name": "co-307",
@@ -3080,7 +3692,9 @@
       "beneficiaries_per_village": 10,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 12
     },
     {
       "name": "co-308",
@@ -3090,7 +3704,9 @@
       "beneficiaries_per_village": 10,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 12
     },
     {
       "name": "co-309",
@@ -3100,7 +3716,9 @@
       "beneficiaries_per_village": 10,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 12
     },
     {
       "name": "co-310",
@@ -3110,7 +3728,9 @@
       "beneficiaries_per_village": 10,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 12
     },
     {
       "name": "co-311",
@@ -3120,7 +3740,9 @@
       "beneficiaries_per_village": 9,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 11
     },
     {
       "name": "co-312",
@@ -3130,7 +3752,9 @@
       "beneficiaries_per_village": 9,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 11
     },
     {
       "name": "co-313",
@@ -3140,7 +3764,9 @@
       "beneficiaries_per_village": 9,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 11
     },
     {
       "name": "co-314",
@@ -3150,7 +3776,9 @@
       "beneficiaries_per_village": 9,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 11
     },
     {
       "name": "co-315",
@@ -3160,7 +3788,9 @@
       "beneficiaries_per_village": 9,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 11
     },
     {
       "name": "co-316",
@@ -3170,7 +3800,9 @@
       "beneficiaries_per_village": 9,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 11
     },
     {
       "name": "co-317",
@@ -3180,7 +3812,9 @@
       "beneficiaries_per_village": 9,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 11
     },
     {
       "name": "co-318",
@@ -3190,7 +3824,9 @@
       "beneficiaries_per_village": 8,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 10
     },
     {
       "name": "co-319",
@@ -3200,7 +3836,9 @@
       "beneficiaries_per_village": 8,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 10
     },
     {
       "name": "co-320",
@@ -3210,7 +3848,9 @@
       "beneficiaries_per_village": 8,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 10
     },
     {
       "name": "co-321",
@@ -3220,7 +3860,9 @@
       "beneficiaries_per_village": 8,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 10
     },
     {
       "name": "co-322",
@@ -3230,7 +3872,9 @@
       "beneficiaries_per_village": 8,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 10
     },
     {
       "name": "co-323",
@@ -3240,7 +3884,9 @@
       "beneficiaries_per_village": 8,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 10
     },
     {
       "name": "co-324",
@@ -3250,7 +3896,9 @@
       "beneficiaries_per_village": 8,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 10
     },
     {
       "name": "co-325",
@@ -3260,7 +3908,9 @@
       "beneficiaries_per_village": 8,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 10
     },
     {
       "name": "co-326",
@@ -3270,7 +3920,9 @@
       "beneficiaries_per_village": 8,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 10
     },
     {
       "name": "co-327",
@@ -3280,7 +3932,9 @@
       "beneficiaries_per_village": 7,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9
     },
     {
       "name": "co-328",
@@ -3290,7 +3944,9 @@
       "beneficiaries_per_village": 7,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9
     },
     {
       "name": "co-329",
@@ -3300,7 +3956,9 @@
       "beneficiaries_per_village": 7,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9
     },
     {
       "name": "co-330",
@@ -3310,7 +3968,9 @@
       "beneficiaries_per_village": 7,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9
     },
     {
       "name": "co-331",
@@ -3320,7 +3980,9 @@
       "beneficiaries_per_village": 7,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9
     },
     {
       "name": "co-332",
@@ -3330,7 +3992,9 @@
       "beneficiaries_per_village": 7,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9
     },
     {
       "name": "co-333",
@@ -3340,7 +4004,9 @@
       "beneficiaries_per_village": 7,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9
     },
     {
       "name": "co-334",
@@ -3350,7 +4016,9 @@
       "beneficiaries_per_village": 7,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9
     },
     {
       "name": "co-335",
@@ -3360,7 +4028,9 @@
       "beneficiaries_per_village": 7,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9
     },
     {
       "name": "co-336",
@@ -3370,7 +4040,9 @@
       "beneficiaries_per_village": 7,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9
     },
     {
       "name": "co-337",
@@ -3380,7 +4052,9 @@
       "beneficiaries_per_village": 7,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 9
     },
     {
       "name": "co-338",
@@ -3390,7 +4064,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-339",
@@ -3400,7 +4076,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-340",
@@ -3410,7 +4088,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-341",
@@ -3420,7 +4100,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-342",
@@ -3430,7 +4112,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-343",
@@ -3440,7 +4124,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-344",
@@ -3450,7 +4136,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-345",
@@ -3460,7 +4148,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-346",
@@ -3470,7 +4160,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-347",
@@ -3480,7 +4172,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-348",
@@ -3490,7 +4184,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-349",
@@ -3500,7 +4196,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-350",
@@ -3510,7 +4208,9 @@
       "beneficiaries_per_village": 6,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 7
     },
     {
       "name": "co-351",
@@ -3520,7 +4220,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-352",
@@ -3530,7 +4232,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-353",
@@ -3540,7 +4244,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-354",
@@ -3550,7 +4256,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-355",
@@ -3560,7 +4268,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-356",
@@ -3570,7 +4280,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-357",
@@ -3580,7 +4292,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-358",
@@ -3590,7 +4304,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-359",
@@ -3600,7 +4316,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-360",
@@ -3610,7 +4328,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-361",
@@ -3620,7 +4340,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-362",
@@ -3630,7 +4352,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-363",
@@ -3640,7 +4364,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-364",
@@ -3650,7 +4376,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-365",
@@ -3660,7 +4388,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-366",
@@ -3670,7 +4400,9 @@
       "beneficiaries_per_village": 5,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 6
     },
     {
       "name": "co-367",
@@ -3680,7 +4412,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-368",
@@ -3690,7 +4424,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-369",
@@ -3700,7 +4436,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-370",
@@ -3710,7 +4448,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-371",
@@ -3720,7 +4460,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-372",
@@ -3730,7 +4472,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-373",
@@ -3740,7 +4484,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-374",
@@ -3750,7 +4496,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-375",
@@ -3760,7 +4508,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-376",
@@ -3770,7 +4520,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-377",
@@ -3780,7 +4532,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-378",
@@ -3790,7 +4544,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-379",
@@ -3800,7 +4556,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-380",
@@ -3810,7 +4568,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-381",
@@ -3820,7 +4580,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-382",
@@ -3830,7 +4592,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-383",
@@ -3840,7 +4604,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-384",
@@ -3850,7 +4616,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-385",
@@ -3860,7 +4628,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-386",
@@ -3870,7 +4640,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-387",
@@ -3880,7 +4652,9 @@
       "beneficiaries_per_village": 4,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 5
     },
     {
       "name": "co-388",
@@ -3890,7 +4664,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-389",
@@ -3900,7 +4676,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-390",
@@ -3910,7 +4688,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-391",
@@ -3920,7 +4700,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-392",
@@ -3930,7 +4712,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-393",
@@ -3940,7 +4724,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-394",
@@ -3950,7 +4736,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-395",
@@ -3960,7 +4748,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-396",
@@ -3970,7 +4760,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-397",
@@ -3980,7 +4772,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-398",
@@ -3990,7 +4784,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-399",
@@ -4000,7 +4796,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-400",
@@ -4010,7 +4808,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-401",
@@ -4020,7 +4820,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-402",
@@ -4030,7 +4832,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-403",
@@ -4040,7 +4844,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-404",
@@ -4050,7 +4856,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-405",
@@ -4060,7 +4868,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-406",
@@ -4070,7 +4880,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-407",
@@ -4080,7 +4892,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-408",
@@ -4090,7 +4904,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-409",
@@ -4100,7 +4916,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-410",
@@ -4110,7 +4928,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-411",
@@ -4120,7 +4940,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-412",
@@ -4130,7 +4952,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-413",
@@ -4140,7 +4964,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-414",
@@ -4150,7 +4976,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-415",
@@ -4160,7 +4988,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-416",
@@ -4170,7 +5000,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-417",
@@ -4180,7 +5012,9 @@
       "beneficiaries_per_village": 3,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 4
     },
     {
       "name": "co-418",
@@ -4190,7 +5024,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-419",
@@ -4200,7 +5036,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-420",
@@ -4210,7 +5048,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-421",
@@ -4220,7 +5060,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-422",
@@ -4230,7 +5072,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-423",
@@ -4240,7 +5084,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-424",
@@ -4250,7 +5096,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-425",
@@ -4260,7 +5108,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-426",
@@ -4270,7 +5120,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-427",
@@ -4280,7 +5132,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-428",
@@ -4290,7 +5144,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-429",
@@ -4300,7 +5156,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-430",
@@ -4310,7 +5168,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-431",
@@ -4320,7 +5180,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-432",
@@ -4330,7 +5192,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-433",
@@ -4340,7 +5204,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-434",
@@ -4350,7 +5216,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-435",
@@ -4360,7 +5228,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-436",
@@ -4370,7 +5240,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-437",
@@ -4380,7 +5252,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-438",
@@ -4390,7 +5264,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-439",
@@ -4400,7 +5276,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-440",
@@ -4410,7 +5288,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-441",
@@ -4420,7 +5300,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-442",
@@ -4430,7 +5312,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-443",
@@ -4440,7 +5324,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-444",
@@ -4450,7 +5336,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-445",
@@ -4460,7 +5348,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-446",
@@ -4470,7 +5360,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-447",
@@ -4480,7 +5372,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-448",
@@ -4490,7 +5384,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-449",
@@ -4500,7 +5396,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-450",
@@ -4510,7 +5408,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-451",
@@ -4520,7 +5420,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-452",
@@ -4530,7 +5432,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-453",
@@ -4540,7 +5444,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-454",
@@ -4550,7 +5456,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-455",
@@ -4560,7 +5468,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-456",
@@ -4570,7 +5480,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-457",
@@ -4580,7 +5492,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-458",
@@ -4590,7 +5504,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-459",
@@ -4600,7 +5516,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-460",
@@ -4610,7 +5528,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-461",
@@ -4620,7 +5540,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-462",
@@ -4630,7 +5552,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-463",
@@ -4640,7 +5564,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-464",
@@ -4650,7 +5576,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-465",
@@ -4660,7 +5588,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-466",
@@ -4670,7 +5600,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-467",
@@ -4680,7 +5612,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-468",
@@ -4690,7 +5624,9 @@
       "beneficiaries_per_village": 2,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 2
     },
     {
       "name": "co-469",
@@ -4700,7 +5636,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-470",
@@ -4710,7 +5648,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-471",
@@ -4720,7 +5660,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-472",
@@ -4730,7 +5672,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-473",
@@ -4740,7 +5684,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-474",
@@ -4750,7 +5696,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-475",
@@ -4760,7 +5708,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-476",
@@ -4770,7 +5720,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-477",
@@ -4780,7 +5732,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-478",
@@ -4790,7 +5744,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-479",
@@ -4800,7 +5756,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-480",
@@ -4810,7 +5768,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-481",
@@ -4820,7 +5780,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-482",
@@ -4830,7 +5792,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-483",
@@ -4840,7 +5804,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-484",
@@ -4850,7 +5816,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-485",
@@ -4860,7 +5828,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-486",
@@ -4870,7 +5840,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-487",
@@ -4880,7 +5852,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-488",
@@ -4890,7 +5864,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-489",
@@ -4900,7 +5876,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-490",
@@ -4910,7 +5888,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-491",
@@ -4920,7 +5900,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-492",
@@ -4930,7 +5912,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-493",
@@ -4940,7 +5924,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-494",
@@ -4950,7 +5936,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-495",
@@ -4960,7 +5948,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-496",
@@ -4970,7 +5960,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-497",
@@ -4980,7 +5972,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-498",
@@ -4990,7 +5984,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-499",
@@ -5000,7 +5996,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-500",
@@ -5010,7 +6008,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-501",
@@ -5020,7 +6020,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-502",
@@ -5030,7 +6032,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-503",
@@ -5040,7 +6044,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-504",
@@ -5050,7 +6056,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-505",
@@ -5060,7 +6068,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-506",
@@ -5070,7 +6080,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-507",
@@ -5080,7 +6092,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-508",
@@ -5090,7 +6104,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-509",
@@ -5100,7 +6116,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-510",
@@ -5110,7 +6128,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-511",
@@ -5120,7 +6140,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-512",
@@ -5130,7 +6152,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     },
     {
       "name": "co-513",
@@ -5140,7 +6164,9 @@
       "beneficiaries_per_village": 1,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": 1
     }
   ],
   "enrolment_rate": 0.22,

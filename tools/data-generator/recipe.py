@@ -106,14 +106,17 @@ class Recipe:
             bundle_path=str(bundle_path),
             bundle_revision=bundle_revision,
             bundle_fingerprint=bundle_fingerprint(bundle_path),
-            tenants=[{"name": t.name, "organisation_id": t.organisation_id,
-                      "field_workers": t.field_workers,
-                      "field_workers_per_village": t.field_workers_per_village,
-                      "beneficiaries_per_village": t.beneficiaries_per_village,
-                      "encounters_per_worker_per_day": t.encounters_per_worker_per_day,
-                      "supervisor_level": t.supervisor_level,
-                      "bundle_path": t.bundle_path}
-                     for t in deployment.tenants],
+            # Every field, taken from the dataclass rather than listed here.
+            #
+            # This used to be a hand-written list and it had silently fallen two fields behind:
+            # `workers_per_supervisor`, which sets how many supervisors a tenant has and how wide
+            # each catchment is, and `total_encounters`, which is how every co-tenant is sized.
+            # A recipe missing either rebuilds a different dataset while claiming to be the same
+            # one -- and `TenantSpec` gives absent fields their defaults, so nothing raises.
+            #
+            # `asdict` closes it by construction: a field added to TenantSpec is captured without
+            # anyone remembering to come here. The round-trip test is what keeps that true.
+            tenants=[asdict(t) for t in deployment.tenants],
             enrolment_rate=deployment.enrolment_rate,
             program_encounter_share=deployment.program_encounter_share,
             notes=notes,

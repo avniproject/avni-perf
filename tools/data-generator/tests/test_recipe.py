@@ -222,3 +222,41 @@ def test_the_committed_recipes_allow_a_bundle_per_tenant():
     r = recipe_mod.Recipe.load(DATASETS / "pilot-day-180.json")
     assert all("bundle_path" in t for t in r.tenants)
     assert "own bundle_path" in (r.notes or "")
+
+
+def test_a_recipe_captures_every_tenant_field():
+    """A recipe promises the dataset can be rebuilt exactly, so it has to carry every input.
+
+    This is the guard on that promise. The tenant dict used to be hand-written and had fallen two
+    fields behind -- workers_per_supervisor, which sets a tenant's supervisor count and catchment
+    width, and total_encounters, which sizes every co-tenant. TenantSpec fills absent fields with
+    defaults, so a recipe missing one rebuilds a *different* dataset without raising.
+    """
+    import dataclasses
+
+    spec = dep.TenantSpec(name="state-1", organisation_id=1, field_workers=500,
+                          workers_per_supervisor=20, total_encounters=12345)
+    deployment = dep.DeploymentSpec(tenants=(spec,), days=180, reference=date(2026, 3, 1))
+    r = recipe_mod.Recipe.from_deployment("t", deployment, profile="p", bundle_path=".", bundle_revision="rev")
+
+    captured = set(r.tenants[0])
+    declared = {f.name for f in dataclasses.fields(dep.TenantSpec)}
+    assert declared <= captured, f"recipe drops {sorted(declared - captured)}"
+
+
+def test_a_tenant_round_trips_through_a_recipe_unchanged():
+    """Rebuilt from its own recipe, a tenant must be the tenant that was written down."""
+
+    spec = dep.TenantSpec(name="state-1", organisation_id=1, field_workers=500,
+                          workers_per_supervisor=20)
+    deployment = dep.DeploymentSpec(tenants=(spec,), days=180, reference=date(2026, 3, 1))
+    r = recipe_mod.Recipe.from_deployment("t", deployment, profile="p", bundle_path=".", bundle_revision="rev")
+
+    rebuilt = r.to_deployment().tenants[0]
+    assert rebuilt == spec
+
+    # And the span actually survives into the tree, which is the thing that would differ.
+    import catchments as cat
+    supervisors = lambda t: len([c for c in dep.build_tenant(t, 0).catchments
+                                 if c.role == cat.SUPERVISOR])
+    assert supervisors(rebuilt) == supervisors(spec) == 25

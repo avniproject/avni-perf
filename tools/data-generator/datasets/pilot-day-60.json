@@ -19,7 +19,9 @@
       "beneficiaries_per_village": 3000,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": null
     },
     {
       "name": "state-2",
@@ -29,7 +31,9 @@
       "beneficiaries_per_village": 3000,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": null
     },
     {
       "name": "ngo-1",
@@ -39,7 +43,9 @@
       "beneficiaries_per_village": 3000,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": null
     },
     {
       "name": "ngo-2",
@@ -49,7 +55,9 @@
       "beneficiaries_per_village": 3000,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": null
     },
     {
       "name": "ngo-3",
@@ -59,7 +67,9 @@
       "beneficiaries_per_village": 3000,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": null
     },
     {
       "name": "ngo-4",
@@ -69,7 +79,9 @@
       "beneficiaries_per_village": 3000,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": null
     },
     {
       "name": "ngo-5",
@@ -79,7 +91,9 @@
       "beneficiaries_per_village": 3000,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": null
     },
     {
       "name": "ngo-6",
@@ -89,7 +103,9 @@
       "beneficiaries_per_village": 3000,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": null
     },
     {
       "name": "ngo-7",
@@ -99,7 +115,9 @@
       "beneficiaries_per_village": 3000,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": null
     },
     {
       "name": "ngo-8",
@@ -109,7 +127,9 @@
       "beneficiaries_per_village": 3000,
       "encounters_per_worker_per_day": 20,
       "supervisor_level": "Sub-Centre",
-      "bundle_path": null
+      "bundle_path": null,
+      "workers_per_supervisor": null,
+      "total_encounters": null
     }
   ],
   "enrolment_rate": 0.22,
