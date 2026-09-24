@@ -3083,6 +3083,12 @@ confirming the metrics arrive.
 
 Ordering reflects dependencies, not estimates.
 
+> **Phases 1 to 4 are spent.** Everything in them is done or deliberately deferred — the five
+> closed workstreams cover Fidelity, Coverage, Workload and most of Operate. What is left of phase
+> 0 is the environment, and it is the only thing left at all: **F4 → an environment → G1, G4, F1,
+> G2, G3 → F7**, in that order, with F7 last because it is the gate that decides whether any of the
+> rest is believable. The table below is kept for the reasoning rather than as a queue.
+
 | Phase | Tasks | Why here |
 |---|---|---|
 | **0 · Foundation** | **Q1–Q15** → **Success criteria**, **H**, **F5**, **G1**, **G5** · A1, A9, A10 · **F4** → B1 · F1 | **~~Run the [measurement queries](production-measurement-queries.md) first.~~** *Done, and tracked per query.* They were a day's work with no dependencies, and they populated the Success criteria table, `baseMsPerRecord`, the `loadedSince` distribution, catchment sizing and the generator's target statistics. **H, F5 and G5 are the longest lead time in the plan and must be designed together; start them immediately after.** **F1 gates everything** — without server instrumentation the rest produces unactionable findings, though it is mostly attaching the existing New Relic agent to a new environment rather than building anything. **Auth ordering: F4's allowlist and SSH tunnel come first, then B1 turns auth off.** F4 is one security group rule plus the tunnel CI already has most of, rather than a private subnet with NAT and a private hosted zone — but it does require `avni-infra`'s module to be made externally resolvable, which it currently is not. **B2 is deferred by choice and is not in the critical path**: `enable_cognito` stays `false`, and the auth-cost offset is taken on demand if a finding makes it worth knowing (see B). Its absence is carried as a known deviation in F5.2, not as outstanding work. B1 collapses most of G5; A2, A3 and A8 are resolved by A10.1. |
