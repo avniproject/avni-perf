@@ -48,6 +48,53 @@ injector, and that is instrumented.
 
 ---
 
+### Day 0 — What to verify while the infrastructure is up and the application is not
+
+*Added after a bare OpenTofu environment was stood up to test the scripts.* An empty environment is
+not a waste of a window — **several of section J's contract rows are easier to check with nothing
+listening**, because an application answering can mask the thing being tested.
+
+**Three are cheaper now than they will ever be again:**
+
+| Check | Why now |
+|---|---|
+| **The WAF's rate rule** — fire >550 requests in five minutes from an un-allowlisted source and confirm blocking, then from the injector and confirm the scope-down exempts it | WAF acts before the target, so **no application is needed**. With one deployed, a 403 from the WAF and a 5xx from a struggling server look similar in a Gatling report — which is exactly how this defect would reach a run |
+| **Outbound suppression at the boundary** (F5.3) — from the instance, try to reach the SMS, notification and Glific endpoints and confirm each fails | With the app absent there is no application-level config that could mask a boundary rule that is not actually there. Testing this later proves only that *something* blocked it |
+| **Whether a manual snapshot survives `tofu destroy`** | This is the one to check **before** the destroy test, not after. G4 depends on a manual snapshot persisting; the generated dataset costs days to produce. Finding out that destroy takes the snapshot with it is survivable today and catastrophic on Day 10 |
+
+**Everything else that is infrastructure-only, and worth recording rather than re-deriving later:**
+
+- **Reachability** — the app port must be *refused* from the injector (security group allows, nothing
+  listening) and *time out* from anywhere else (security group blocks). **Those two failures look
+  identical in a browser and mean opposite things**, so check the distinction explicitly.
+- **The SSH path** — `aws ec2-instance-connect open-tunnel` as a `ProxyCommand`, addressing the host
+  by **instance ID**. Confirm CI's IAM role can do it, not just yours.
+- **Egress** — apt, Maven and a Docker pull from the instance. A first closed-environment deploy
+  most often breaks here, and it breaks eight minutes into a deploy rather than immediately.
+- **DNS** — `loadtest.avniproject.org` resolves from wherever the injector runs.
+- **Injector round-trip time.** Measure it and write it down. A sync is ~109 requests, so 25 ms of
+  RTT is 2.7 s on a 14.1 s median — a constant offset, not noise. It belongs in the parity record
+  and it is why runs from different injector positions are not comparable.
+- **The database, against J's list** — version 16.8, dedicated, parameter group including autovacuum,
+  `pg_stat_statements` and slow query logging enabled, storage class, IOPS and throughput.
+- **Storage IO stability** — confirm RDS storage autoscaling is **off** and the volume is not on
+  burst credits. IO characteristics that drift mid-exercise make runs incomparable in a way that is
+  very hard to spot afterwards.
+- **Snapshot and restore on the empty instance.** It will not tell you the restore time for a real
+  dataset, but it proves the mechanism and gives a floor. Day 9's number is what sets Phase 4's
+  cadence.
+
+> **Fill in F5.2's parity record from these rather than from intentions.** Instance classes, Postgres
+> version, parameter group, storage class and IOPS are all knowable today. Recorded now they are
+> facts; recorded later they are recollections.
+
+**What cannot be checked without the application**, so do not go looking: New Relic reporting and the
+pool gauges (F1), `avni_idp_type`, pool size and log level, and anything about sync. The one adjacent
+piece that *is* checkable is **egress to New Relic's collector** — worth confirming, since a silent
+agent on Day 3 is otherwise indistinguishable from a misconfigured one.
+
+---
+
 ## Phase 1 — Prove the groundwork, small (Days 4–6)
 
 **Do not generate the real dataset yet.** Every step below is faster to debug on a tiny tenant, and
