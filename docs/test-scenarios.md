@@ -15,6 +15,10 @@ are parameters with a documented range, defaulted to their conservative end.
 
 ---
 
+> **In what order to run these, and what has to be true first:**
+> [execution-plan.md](execution-plan.md). The short version — the environment and a calibration
+> gate come before any of the cases below produce evidence.
+
 ## The cases
 
 | # | Case | Tenants | Users | Dataset | Mode | Run for | What it answers |

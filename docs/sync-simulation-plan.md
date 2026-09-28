@@ -3157,6 +3157,10 @@ plan itself decided. What the tests will *answer* is under **Measure before fixi
   which is private. **This repository is public and carries summarised findings only** — ratios,
   percentiles and the figures the plan reasons about. Per-organisation sizes, per-index scan counts
   and the full hourly and weekly series are recorded there.
+- **[execution-plan.md](execution-plan.md)** — day-wise ordering for actually running this:
+  environment, then proving the groundwork small, then the real dataset and the restore mechanism,
+  then calibration as the gate, then the cases. Separate because it has a different audience and a
+  different lifetime — this plan is how the instrument was built, that is how it gets used.
 - **[test-scenarios.md](test-scenarios.md)** — the deployment being modelled and the test cases
   with numbers, for customer review. Split out because it has a different audience: that is what the
   instrument gets pointed at, this is how it gets built.
