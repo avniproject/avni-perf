@@ -352,10 +352,26 @@ recorded as the number that actually applied — and `archiveRun` folds that in 
 consumed on read, so a later archive cannot silently attach a previous run's configuration, and a
 missing one is reported rather than passed over.
 
-**It also records the injector**: label, OS, JVM, CPU count and heap. Runs from different injector
-positions are not comparable — a sync is about 109 requests, so 25 ms of extra round trip adds 2.7 s
-to a 14.1 second median — and CPU and heap are what F7 needs to tell an injector that saturated from
-a server that did.
+**It also records the injector**: label, OS, JVM, CPU count, heap, and **round-trip time to the
+target**. Runs from different injector positions are not comparable — a sync is about 109 requests,
+so 25 ms of extra round trip adds 2.7 s to a 14.1 second median — and CPU and heap are what F7 needs
+to tell an injector that saturated from a server that did.
+
+> **The RTT field turns that from a caveat into a check.** The label said two runs came from
+> different places; this says by how much, and `estimatedSyncOverheadSeconds` states it in the unit
+> that matters — the median multiplied by a sync's requests. Two runs differing by seconds there are
+> not measuring the same thing, and now it is visible in the archive rather than inferable from a
+> hostname.
+>
+> Measured as a handful of bare TCP connects before the run starts, so nothing the server does can
+> contaminate it and the number exists even for a run that fails immediately. A handshake is one
+> round trip with no application involvement; an HTTP call would fold in server time. **Minimum and
+> median are both kept** — the first is the network, the second is what the run pays, and their
+> divergence is itself a signal about a shared or congested path.
+>
+> **It cannot fail a run.** An unreachable target records why rather than a zero, which would read
+> as an infinitely fast network. D8.6 points the simulation at a dead port deliberately, and a
+> metadata field is not a reason to stop it.
 
 Three deliberate choices:
 

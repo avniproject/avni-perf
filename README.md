@@ -481,13 +481,21 @@ first version restated it and drifted: it recorded a property that had been remo
 push, media, co-tenants or injection profiles. Values are the ones that actually applied, so a
 default nobody passed is recorded as its number rather than as a blank.
 
-It also records the **injector** — label, OS, JVM, CPU count and heap. Pass `-DINJECTOR=<label>`;
-it falls back to the hostname.
+It also records the **injector** — label, OS, JVM, CPU count, heap and **round-trip time to the
+target**. Pass `-DINJECTOR=<label>`; it falls back to the hostname.
+
+RTT is measured before the run as a handful of bare TCP connects, so no server behaviour
+contaminates it. Both the minimum and the median are kept — the minimum is the network, the median
+is what the run actually pays — alongside `estimatedSyncOverheadSeconds`, which multiplies the
+median by a sync's ~109 requests to make the number legible. `RTT_SAMPLES` and `RTT_TIMEOUT_MS`
+tune it; an unreachable target records *why* rather than a zero, and never fails a run.
 
 > **Runs from different injector positions are not comparable.** A sync is about 109 requests, so
 > 25 ms of extra round trip adds 2.7 s to a 14.1-second median — a constant offset on every sync,
-> not noise that averages out. CPU and heap are recorded because they are what tells an injector
-> that saturated from a server that did.
+> not noise that averages out. **The recorded RTT is what makes that checkable** rather than
+> inferred from a label: two runs whose `estimatedSyncOverheadSeconds` differ by seconds are not
+> measuring the same thing. CPU and heap are recorded because they are what tells an injector that
+> saturated from a server that did.
 
 `-DDATASET_ID` and `-DSERVER_BUILD` are not discoverable — the server exposes only `/ping` — so
 they are written as `unrecorded` unless passed, and the task says so.

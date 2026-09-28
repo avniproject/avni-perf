@@ -13,6 +13,7 @@ import org.avni.models.AvniEntity;
 import org.avni.models.PushSeed;
 import org.avni.models.PageInfo;
 import org.avni.models.PushProfiles;
+import org.avni.models.Rtt;
 import org.avni.models.StorageModel;
 import org.avni.models.PushVolume;
 import org.avni.models.SyncDetail;
@@ -882,6 +883,53 @@ public class AvniSyncSimulation extends Simulation {
      * Resolved values, not raw property strings, so a default that was never passed is recorded as
      * the number that actually applied.
      */
+    /**
+     * Time a few bare TCP connects to the target, for the run archive.
+     *
+     * **Measured before the run rather than derived from it**, so nothing the server does can
+     * contaminate it, and so the number exists even for a run that fails immediately.
+     *
+     * **This can never fail a run.** A target that refuses, resolves to nothing, or is simply not
+     * up yet records itself as unreachable and the run proceeds — the closed-port check (D8.6)
+     * points the simulation at a dead port on purpose, and a metadata field is not a reason to
+     * stop it. The cost is bounded by the timeout times the sample count.
+     */
+    private static Rtt measureRtt() {
+        int samples = Integer.getInteger("RTT_SAMPLES", 5);
+        int timeoutMs = Integer.getInteger("RTT_TIMEOUT_MS", 2000);
+        if (samples <= 0) {
+            return Rtt.UNMEASURED;
+        }
+        java.net.URI uri;
+        try {
+            uri = java.net.URI.create(baseUrl);
+        } catch (IllegalArgumentException e) {
+            return Rtt.UNMEASURED;
+        }
+        String host = uri.getHost();
+        if (host == null) {
+            return Rtt.UNMEASURED;
+        }
+        int port = uri.getPort() > 0 ? uri.getPort()
+            : ("https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80);
+
+        List<Double> measured = new ArrayList<>();
+        for (int i = 0; i < samples; i++) {
+            try (java.net.Socket socket = new java.net.Socket()) {
+                long start = System.nanoTime();
+                socket.connect(new java.net.InetSocketAddress(host, port), timeoutMs);
+                measured.add((System.nanoTime() - start) / 1_000_000.0);
+            } catch (Exception e) {
+                // Refused, timed out, unresolvable - all the same to this. Recorded as attempts
+                // without samples rather than as a zero, which would read as a fast network.
+            }
+        }
+        return measured.isEmpty() ? new Rtt(List.of(), samples) : new Rtt(measured, samples);
+    }
+
+    /** Requests in one sync, for turning a round trip into what it costs per sync. */
+    private static final int REQUESTS_PER_SYNC = 109;
+
     private void writeRunSettings() {
         Map<String, Object> settings = new LinkedHashMap<>();
 
@@ -893,6 +941,9 @@ public class AvniSyncSimulation extends Simulation {
         // signal is response times rising with virtual user count while the server stays flat.
         injector.put("cpus", Runtime.getRuntime().availableProcessors());
         injector.put("maxHeapMb", Runtime.getRuntime().maxMemory() / (1024 * 1024));
+        // How far the injector is from the target, which the label alone could not say. A sync is
+        // ~109 requests, so a round trip is paid 109 times and two positions are not comparable.
+        injector.put("rtt", measureRtt().asMetadata(REQUESTS_PER_SYNC));
         settings.put("injector", injector);
 
         Map<String, Object> injection = new LinkedHashMap<>();
