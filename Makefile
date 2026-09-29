@@ -7,6 +7,10 @@ run_perf:
 run_perf_local:
 	./gradlew gatlingRun -DBASE_URL=http://localhost:8021
 
+provision_org: ## Create an org and install a bundle through the server's APIs. URL=... BUNDLE=x.zip ORG_NAME=...
+	@test -n "$(URL)" -a -n "$(BUNDLE)" -a -n "$(ORG_NAME)" || (echo "usage: make provision_org URL=https://host BUNDLE=~/Downloads/Tanuh.zip ORG_NAME=tanuh-load [ADMIN=admin]" && exit 2)
+	@./tools/provision-org.sh --url "$(URL)" --bundle "$(BUNDLE)" --name "$(ORG_NAME)" $(if $(ADMIN),--admin "$(ADMIN)",)
+
 bootstrap_user: ## SQL for one syncable user, no dataset needed. ORG=1 USERNAME=x [AUDIT_USER=1]
 	@test -n "$(ORG)" -a -n "$(USERNAME)" || (echo "usage: make bootstrap_user ORG=1 USERNAME=loadtest@openchs [AUDIT_USER=1]" && exit 2)
 	@cd tools/data-generator && python3 bootstrap_user.py --organisation "$(ORG)" --username "$(USERNAME)" $(if $(AUDIT_USER),--audit-user "$(AUDIT_USER)",)
