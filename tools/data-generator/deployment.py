@@ -295,6 +295,13 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
                 sink.write("catchment_address_mapping", row)
             for row in cat.user_rows(build.users):
                 sink.write("users", row)
+            # Group membership, without which these users resolve no privileges and sync none of
+            # the data generated below them. One group per organisation, so it is written here
+            # with the tenant rather than once globally.
+            for row in cat.group_rows([spec.organisation_id]):
+                sink.write("groups", row)
+            for row in cat.user_group_rows(build.users):
+                sink.write("user_group", row)
 
             tenant_bundle = (bundle.get(spec.organisation_id)
                              if isinstance(bundle, dict) else bundle)

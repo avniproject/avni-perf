@@ -49,7 +49,11 @@ LOAD_ORDER = (
     "address_level",
     "catchment",
     "catchment_address_mapping",
+    # `groups` before `users` only for readability; it references nothing but the organisation.
+    # `user_group` must follow both, since it references each.
+    "groups",
     "users",
+    "user_group",
     "individual",
     "program_enrolment",
     "program_encounter",

@@ -146,3 +146,48 @@ def test_ids_can_be_offset_for_a_second_tenant():
     cb, ub = cat.plan(b, first_catchment_id=500, first_user_id=500)
     assert not ({c.id for c in ca} & {c.id for c in cb})
     assert not ({u.id for u in ua} & {u.id for u in ub})
+
+
+def test_generated_users_belong_to_a_group_with_privileges():
+    """Without this a generated user syncs almost nothing, and the run still goes green.
+
+    SyncDetailsService gates each subject type on ViewSubject, encounters on ViewVisit and
+    enrolments on ViewEnrolmentDetails. Privileges come from user_group -> groups. A user in no
+    group matches neither has_all_privileges nor any explicit privilege row, so every entity
+    carrying field data is dropped from the sync -- individual, encounter, program_encounter,
+    program_enrolment and fifteen more -- while the reference entities still sync and the run
+    reports success against a dataset it never read.
+    """
+    h = hy.build(1, 6)
+    catchments, users = cat.plan(h)
+    groups = cat.group_rows([1])
+    memberships = cat.user_group_rows(users)
+
+    assert len(groups) == 1
+    assert groups[0]["has_all_privileges"] is True
+    assert len(memberships) == len(users), "every user needs a group, not just the first"
+    assert {m["group_id"] for m in memberships} == {groups[0]["id"]}
+    assert {m["user_id"] for m in memberships} == {u.id for u in users}
+
+
+def test_group_membership_carries_a_version():
+    """version is a primitive int on CHSEntity, so NULL makes the row unreadable.
+
+    This is not hypothetical: the first live run against a real server returned a 500 from
+    syncDetails because a hand-provisioned user_group row had a null version, and Hibernate
+    cannot map NULL onto an int.
+    """
+    h = hy.build(1, 3)
+    _, users = cat.plan(h)
+    for row in cat.user_group_rows(users) + cat.group_rows([1]):
+        assert row["version"] == 0, f"{row} must carry a version"
+        assert row["organisation_id"] is not None
+        assert row["created_by_id"] is not None and row["last_modified_by_id"] is not None
+
+
+def test_group_ids_do_not_collide_between_tenants():
+    """Ten tenants in one database; two groups sharing an id would silently merge their members."""
+    ids = [cat.group_id_for(o) for o in range(1, 11)]
+    assert len(set(ids)) == 10
+    # And they sit clear of the user and catchment id space, which starts from the tenant's base.
+    assert min(ids) >= cat.GROUP_ID_STRIDE

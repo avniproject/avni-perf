@@ -102,6 +102,14 @@ CONTRACTS: dict[str, Contract] = {
          "identifier_source_id": "no identifier generation under test",
          "subject_id": "user-subject linkage not modelled"}),
 
+    # Without these two a generated user resolves no privileges, and SyncDetailsService drops
+    # every entity that carries field data -- 19 of the 75 pulled. The sync still succeeds, which
+    # is what makes the omission dangerous rather than merely wrong. See catchments.group_rows.
+    "groups": _c("groups", ["name", "has_all_privileges"],
+        {"allow_edit_of_all_locations": "server default; no admin path under test"}),
+
+    "user_group": _c("user_group", ["user_id", "group_id"], {}),
+
     "individual": _c("individual",
         ["subject_type_id", "address_id", "registration_date", "date_of_birth",
          "date_of_birth_verified", "first_name", "last_name", "observations"] + list(_SYNC),

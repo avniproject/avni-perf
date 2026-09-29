@@ -162,6 +162,60 @@ def user_rows(users: list[UserSpec], audit_user_id: int = 1) -> list[dict]:
     } for u in users]
 
 
+# One group per organisation, carrying every privilege. Ids are derived from the organisation so
+# they are stable across regenerations and cannot collide between tenants.
+GROUP_ID_STRIDE = 1_000_000
+
+
+def group_id_for(organisation_id: int) -> int:
+    return GROUP_ID_STRIDE + organisation_id
+
+
+def group_rows(organisation_ids, audit_user_id: int = 1) -> list[dict]:
+    """The group every generated user belongs to (G5).
+
+    **Without this a generated user syncs almost nothing, and does so silently.**
+    `SyncDetailsService.getAllSyncableItems` gates each subject type on
+    `hasPrivilege(ViewSubject, ...)`, encounters on `ViewVisit` and enrolments on
+    `ViewEnrolmentDetails`. Privileges resolve from `user_group` -> `groups`: either the group has
+    `has_all_privileges`, or explicit `group_privilege` rows are matched. A user in no group gets
+    neither, so **19 of the 75 pulled entities disappear** -- every one that carries field data,
+    including `individual`, `encounter`, `program_encounter` and `program_enrolment`.
+
+    The run still completes. It just measures reference data against a dataset it never reads,
+    which is the kind of green result this whole exercise exists not to produce.
+
+    **`has_all_privileges` rather than explicit rows, deliberately.** A real deployment may grant a
+    field worker a narrower set, and that would change which entities sync. All-privileges is the
+    heavier and less surprising choice: every entity the dataset contains is pulled, so the load is
+    what the scenarios specify rather than a subset nobody chose. Narrow it only with a measurement
+    saying production is narrower.
+    """
+    return [{
+        "id": group_id_for(org), "uuid": f"group-{org}", "name": "Everyone",
+        "has_all_privileges": True, "organisation_id": org,
+        "is_voided": False, "version": 0,
+        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id,
+    } for org in sorted(set(organisation_ids))]
+
+
+def user_group_rows(users: list[UserSpec], audit_user_id: int = 1) -> list[dict]:
+    """Membership linking each generated user to its organisation's group (G5).
+
+    `version` is not decoration here: `CHSEntity.version` is a primitive `int`, so a NULL in this
+    column makes the row unreadable by Hibernate and every `syncDetails` call 500s. That is not
+    hypothetical -- it is the first failure the first live run produced, from a hand-provisioned
+    user whose `user_group` row had a null version.
+    """
+    return [{
+        "id": u.id, "uuid": f"usergroup-{u.organisation_id}-{u.id}",
+        "user_id": u.id, "group_id": group_id_for(u.organisation_id),
+        "organisation_id": u.organisation_id,
+        "is_voided": False, "version": 0,
+        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id,
+    } for u in users]
+
+
 def feeder_rows(users: list[UserSpec]) -> list[dict]:
     """Rows for the simulation's `sync-users.csv`, which needs a stable device id per user (G5)."""
     return [{"userName": u.username, "deviceId": u.device_id, "role": u.role} for u in users]

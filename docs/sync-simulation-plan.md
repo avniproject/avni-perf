@@ -86,7 +86,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Production's tenant skew | none | built — 513 tenants and 473 rows-only organisations, reproducing Q12's skew |
 | **Test data** | | |
 | Dataset generation | none — runs hit whatever happened to be in the database | built: `tools/data-generator`, 235 tests · needs a target database to run against · ETL schemas deferred |
-| User provisioning | hand-built CSV | generated with the dataset — catchments, users and a feeder spanning every tenant, carrying the columns the simulation actually reads (E4.1), pinned by a test |
+| User provisioning | hand-built CSV | generated with the dataset — catchments, users, **group membership** and a feeder spanning every tenant, carrying the columns the simulation actually reads (E4.1), pinned by a test. Without the membership a user syncs 56 of 75 entities and the run still goes green — see G5 |
 | Dataset gate (H5) | none | statistical gate built; the client half of the structural check is manual |
 | Schema drift | nothing to drift against | generation refuses on any column the contract has not accounted for |
 | Dataset and environment parity | none | **Not started — F5** |
@@ -2609,6 +2609,35 @@ is still read-only and still needs no restore. But every scenario that means to 
 path needs the restore path working first.
 
 ### G5 — User provisioning
+
+> **A user in no group syncs almost nothing, and the run still reports success.** *Found offline,
+> 29 Sep 2026, after a live smoke reached `NoCatchmentFound`.*
+>
+> `SyncDetailsService.getAllSyncableItems` gates each subject type on `ViewSubject`, encounters on
+> `ViewVisit`, enrolments on `ViewEnrolmentDetails` and checklists on `ViewChecklist`. Privileges
+> resolve through `user_group` → `groups`: either the group carries `has_all_privileges`, or
+> explicit `group_privilege` rows match. **A user in no group has neither.**
+>
+> The generator wrote `users` but not `user_group`, so every generated user would have been in
+> that position. **19 of the 75 pulled entities disappear** — `individual`, `encounter`,
+> `program_encounter`, `program_enrolment`, `subject_migration`, the approval statuses, all of it.
+> Precisely the entities the dataset exists to hold.
+>
+> **The sync would have succeeded.** 56 reference and configuration entities still sync, the error
+> budget is untouched, and the report is green — against a dataset the run never read. A load test
+> measuring reference data while appearing to measure a 5.4-million-row deployment is worse than
+> one that fails, because nothing prompts anyone to look.
+>
+> Fixed in the generator rather than in a provisioning script: `catchments.group_rows` and
+> `user_group_rows` are written with the users they belong to, and the contracts and `LOAD_ORDER`
+> carry them. **`has_all_privileges` rather than explicit rows, deliberately** — a narrower grant
+> would change which entities sync, and all-privileges is the heavier and less surprising choice.
+> Narrow it only on a measurement saying production is narrower.
+>
+> It also closes the first failure the live runs produced: `version` is a primitive `int` on
+> `CHSEntity`, so a NULL in these rows makes them unreadable and every `syncDetails` call 500s.
+> Both emitters set it, and a test asserts they do.
+
 
 One-time per environment, but it needs a script — it is not a manual task at the volumes involved.
 
