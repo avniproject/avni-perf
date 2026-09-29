@@ -90,6 +90,7 @@ work has been done on that item at all** — the "Before" column still describes
 | Dataset gate (H5) | none | statistical gate built; the client half of the structural check is manual |
 | Schema drift | nothing to drift against | generation refuses on any column the contract has not accounted for |
 | Dataset and environment parity | none | **Not started — F5** |
+| User provisioning script | none | **Done — G5**, folded into dataset generation rather than built as a script |
 | Run-to-run restore | none — nothing reset between runs | **Not started — G4 / F6** |
 | **Environment** | | |
 | Network isolation and deploy path | none | **Not started — F4**, now a security group allowlist plus the SSH tunnel CI is most of the way to |
@@ -2638,6 +2639,26 @@ path needs the restore path working first.
 > `CHSEntity`, so a NULL in these rows makes them unreadable and every `syncDetails` call 500s.
 > Both emitters set it, and a test asserts they do.
 
+
+**Done — and not as a script.** *29 Sep 2026.* The original shape was a provisioning script run
+once per environment. **Everything it had to do is now part of dataset generation instead**, which
+is strictly better: users cannot drift from the catchments they point at or the data they are
+supposed to read, because the same run of the generator produces all three.
+
+| What G5 required | Where it ended up |
+|---|---|
+| Create N users idempotently | `catchments.user_rows`, written with the dataset. **Idempotency comes from G4's restore** rather than from an upsert — a run starts from the snapshot, so re-running is inherently safe and there is no second code path to keep correct |
+| Assign catchments | `catchments.plan` builds them from the tenant's tree and points each user at one. The supervisor span (8–20) is what varies a catchment's width, and therefore sync volume per user |
+| `sync-users.csv` with a stable per-user `deviceId` | `deployment.feeder_csv`. Verified unique per user and byte-identical across regenerations; the simulation reads it per user (E4.1), and `filterChangedEntities` branches on it |
+| Bootstrap each user's sync-status baseline and cache it | `bootstrapChain` in the simulation, cached per username in a `ConcurrentHashMap` and issued at most once per user per run. **Named separately in the report**, so bootstrap calls do not contaminate D1.1's `syncDetails` measurement |
+
+> **The cache is per-run and deliberately stays that way.** Persisting it across runs would save
+> roughly 1% of a run's requests — one call per user, against ~109 per sync — and would introduce
+> a cached baseline that can silently disagree with what the server now tracks after a dataset or
+> org-config change. **A 1% saving is not worth a new way to be quietly wrong**, which this epic
+> has now produced five times without help.
+
+The original text follows, since it is still what the requirement *means*.
 
 One-time per environment, but it needs a script — it is not a manual task at the volumes involved.
 
