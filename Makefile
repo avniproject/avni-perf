@@ -7,6 +7,10 @@ run_perf:
 run_perf_local:
 	./gradlew gatlingRun -DBASE_URL=http://localhost:8021
 
+check_environment: ## Is an environment ready for a run? URL=... USER=... [DB=conninfo]
+	@test -n "$(URL)" -a -n "$(USER)" || (echo "usage: make check_environment URL=https://host USER=name [DB=conninfo]" && exit 2)
+	@./tools/environment-check.sh --url "$(URL)" --user "$(USER)" $(if $(DB),--db "$(DB)",)
+
 unit_test: ## Unit tests for the simulation's pure logic - push distribution and page parsing
 	@./gradlew unitTest
 

@@ -81,6 +81,18 @@ injector, and that is instrumented.
 not a waste of a window — **several of section J's contract rows are easier to check with nothing
 listening**, because an application answering can mask the thing being tested.
 
+**Run `make check_environment URL=… USER=…` first.** It asks all of the questions below that can
+be asked over HTTP, in one pass, and exits non-zero if the environment is not ready. It exists
+because three environment windows produced three failures — a null `version` on a `user_group`
+row, missing AWS credentials, and a user with no catchment — each found one at a time by a person
+running a simulation and reading a stack trace, when every one was a single request away from
+being visible.
+
+It names those three specifically when it sees them, and it checks the thing a `200` does not
+prove: **that the user resolves privileges**. Without a group carrying `has_all_privileges` the
+sync succeeds and silently omits every entity holding field data (G5), so "syncDetails returned
+200" is not the same as "this environment can be measured".
+
 **Three are cheaper now than they will ever be again:**
 
 | Check | Why now |
