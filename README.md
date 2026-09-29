@@ -276,6 +276,19 @@ exactly when every user would otherwise start hammering it flat out.
 `make check_entities_current` regenerates the entity table from the pinned `openchs-models` and
 fails if the committed copy has drifted.
 
+`make check_environment URL=… [SYNC_USER=…] [DB=…] [WAF=1]` asks whether an environment is ready for a
+run — DNS, reachability, round-trip time, auth, `syncDetails`, whether the user resolves privileges
+at all, entity coverage, and optionally the database and the WAF's rate rule. It exits non-zero if
+not, and names the failures already seen so nobody diagnoses them twice.
+
+`SYNC_USER` is optional — and is named that rather than `USER` because every login shell sets
+`USER`, which Make would inherit and pass silently. The users the scenarios run as come from the
+dataset generator, so requiring one would mean the check could only run after the thing it
+de-risks.
+`make bootstrap_user ORG=… USERNAME=…` emits idempotent SQL for one syncable user with no dataset
+behind it — one location and its type, a catchment, a group carrying privileges, and the
+membership row without which a user silently syncs none of the data.
+
 `make unit_test` runs the simulation's unit tests — the push distribution's validation and maths,
 and page-metadata parsing. Only what can be tested without an injector; anything needing a running
 scenario is covered by the closed-port check above.

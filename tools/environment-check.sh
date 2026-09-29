@@ -17,7 +17,7 @@
 
 set -uo pipefail
 
-URL=""; USER_NAME=""; DB=""; PASS=0; FAIL=0; WARN=0
+URL=""; USER_NAME=""; DB=""; WAF=""; WAF_N=600; PASS=0; FAIL=0; WARN=0
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 while [ $# -gt 0 ]; do
@@ -25,6 +25,8 @@ while [ $# -gt 0 ]; do
     --url)  URL="$2"; shift 2 ;;
     --user) USER_NAME="$2"; shift 2 ;;
     --db)   DB="$2"; shift 2 ;;
+    --waf)  WAF=1; shift ;;
+    --waf-requests) WAF_N="$2"; shift 2 ;;
     *) echo "unknown argument: $1"; exit 2 ;;
   esac
 done
@@ -37,7 +39,7 @@ done
 #
 # gives you one, with no dataset behind it.
 [ -n "$URL" ] || {
-  echo "usage: $0 --url <base-url> [--user <username>] [--db <conninfo>]"; exit 2; }
+  echo "usage: $0 --url <base-url> [--user <username>] [--db <conninfo>] [--waf]"; exit 2; }
 
 ok()   { printf '  \033[32mPASS\033[0m  %-34s %s\n' "$1" "${2:-}"; PASS=$((PASS+1)); }
 bad()  { printf '  \033[31mFAIL\033[0m  %-34s %s\n' "$1" "${2:-}"; FAIL=$((FAIL+1)); }
@@ -48,7 +50,7 @@ HOST="$(printf '%s' "$URL" | sed -E 's#^https?://##; s#[:/].*$##')"
 PORT="$(printf '%s' "$URL" | grep -qi '^https' && echo 443 || echo 80)"
 
 echo
-echo "Environment check — $URL as $USER_NAME"
+echo "Environment check — $URL${USER_NAME:+ as $USER_NAME}"
 echo
 
 # ---------------------------------------------------------------- network
@@ -223,6 +225,37 @@ else
   echo "        - storage autoscaling is OFF and the volume is not on burst credits"
   echo "        - the parameter group matches production's, autovacuum settings included"
   echo "        - a manual snapshot exists and survives a tofu destroy"
+fi
+
+# ---------------------------------------------------------------- waf
+# Last, and opt-in, because it deliberately generates enough traffic to trip a rate rule — and if
+# the injector turns out not to be exempted, everything after it would be blocked for the rest of
+# the window and report nonsense.
+echo
+echo "WAF"
+if [ -z "$WAF" ]; then
+  skip "injector exempt from rate rule" "not run — pass --waf"
+  echo
+  echo "      Worth running once from the machine that will drive the load. \`avni-infra\`"
+  echo "      measured production's rate rule at 550 requests per five minutes, about 1.8 a"
+  echo "      second. A load run is far above that, so an un-exempted injector is throttled and"
+  echo "      **Gatling reports the WAF's 403s as the server failing**. That is a corrupted run"
+  echo "      that looks like a finding."
+else
+  printf '  ....  %-34s firing %s requests...' "injector exempt from rate rule" "$WAF_N" >&2
+  BLOCKED=0; SENT=0
+  for _ in $(seq 1 "$WAF_N"); do
+    C=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$URL/ping" 2>/dev/null)
+    SENT=$((SENT+1))
+    [ "$C" = "403" ] && BLOCKED=$((BLOCKED+1))
+  done
+  printf '\r%*s\r' 80 '' >&2
+  if [ "$BLOCKED" -eq 0 ]; then
+    ok "injector exempt from rate rule" "$SENT requests, none blocked"
+  else
+    bad "injector exempt from rate rule" \
+        "$BLOCKED of $SENT returned 403 — this injector is NOT exempted. A load run will be throttled and Gatling will read it as the server failing. Exempt it by scope-down statement, never by an allow rule, which would terminate evaluation and skip the rest of the rules production pays for"
+  fi
 fi
 
 # ---------------------------------------------------------------- verdict

@@ -11,9 +11,12 @@ bootstrap_user: ## SQL for one syncable user, no dataset needed. ORG=1 USERNAME=
 	@test -n "$(ORG)" -a -n "$(USERNAME)" || (echo "usage: make bootstrap_user ORG=1 USERNAME=loadtest@openchs [AUDIT_USER=1]" && exit 2)
 	@cd tools/data-generator && python3 bootstrap_user.py --organisation "$(ORG)" --username "$(USERNAME)" $(if $(AUDIT_USER),--audit-user "$(AUDIT_USER)",)
 
-check_environment: ## Is an environment ready for a run? URL=... USER=... [DB=conninfo]
-	@test -n "$(URL)" -a -n "$(USER)" || (echo "usage: make check_environment URL=https://host USER=name [DB=conninfo]" && exit 2)
-	@./tools/environment-check.sh --url "$(URL)" --user "$(USER)" $(if $(DB),--db "$(DB)",)
+check_environment: ## Is an environment ready for a run? URL=... [SYNC_USER=...] [DB=conninfo] [WAF=1]
+	@test -n "$(URL)" || (echo "usage: make check_environment URL=https://host [SYNC_USER=name] [DB=conninfo] [WAF=1]" && exit 2)
+# SYNC_USER, not USER: USER is set in every login shell, so Make would inherit it and the check
+# would silently run against your own login name, reporting "no such user" as an environment
+# failure. Named so it cannot be inherited by accident.
+	@./tools/environment-check.sh --url "$(URL)" $(if $(SYNC_USER),--user "$(SYNC_USER)",) $(if $(DB),--db "$(DB)",) $(if $(WAF),--waf,)
 
 unit_test: ## Unit tests for the simulation's pure logic - push distribution and page parsing
 	@./gradlew unitTest

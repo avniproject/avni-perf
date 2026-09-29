@@ -106,7 +106,7 @@ sync succeeds and silently omits every entity holding field data (G5), so "syncD
 
 | Check | Why now |
 |---|---|
-| **The WAF's rate rule** — fire >550 requests in five minutes from an un-allowlisted source and confirm blocking, then from the injector and confirm the scope-down exempts it | WAF acts before the target, so **no application is needed**. With one deployed, a 403 from the WAF and a 5xx from a struggling server look similar in a Gatling report — which is exactly how this defect would reach a run |
+| **The WAF's rate rule** — `make check_environment … WAF=1`, from the machine that will drive the load | WAF acts before the target, so **no application is needed**. It fires past the 550-per-five-minutes threshold and fails if any request comes back 403, because an un-exempted injector is throttled and **Gatling reports the WAF's 403s as the server failing** — a corrupted run that looks like a finding. Opt-in and last, since if the injector is not exempt everything after it would be blocked for the rest of the window |
 | **Outbound suppression at the boundary** (F5.3) — from the instance, try to reach the SMS, notification and Glific endpoints and confirm each fails | With the app absent there is no application-level config that could mask a boundary rule that is not actually there. Testing this later proves only that *something* blocked it |
 | **Whether a manual snapshot survives `tofu destroy`** | This is the one to check **before** the destroy test, not after. G4 depends on a manual snapshot persisting; the generated dataset costs days to produce. Finding out that destroy takes the snapshot with it is survivable today and catastrophic on Day 10 |
 
