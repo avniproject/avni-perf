@@ -107,9 +107,14 @@ def check_against_target(builders: dict, target: dict) -> list[str]:
             if c.get("required") and name not in row:
                 problems.append(
                     f"{table}.{name}: NOT NULL with no default, and nothing writes it")
-            if name in row and row[name] is None and c.get("required"):
+            # `not_null`, not `required`. COPY reads `\N` as an explicit NULL and never
+            # consults the column's default, so writing null into a NOT NULL column fails
+            # whether or not it has one. Checking `required` here missed every defaulted
+            # NOT NULL column — `catchment.type`, `individual.registration_date` and the rest.
+            if name in row and row[name] is None and (c.get("not_null") or c.get("required")):
                 problems.append(
-                    f"{table}.{name}: written as null, but it is NOT NULL with no default")
+                    f"{table}.{name}: written as null, but the column is NOT NULL — omit it "
+                    "instead and the default applies, because COPY never defaults a \\N")
 
         for name, value in sorted(row.items()):
             c = cols.get(name)

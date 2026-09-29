@@ -201,3 +201,24 @@ def test_every_contract_accounts_for_the_columns_the_target_requires():
         for absent in sorted(c.populated - names):
             problems.append(f"{table}.{absent}: written, but the target has no such column")
     assert not problems, "\n".join(problems)
+
+
+def test_a_null_into_a_defaulted_not_null_column_is_caught():
+    """`required` and `not_null` answer different questions, and only one of them applies here.
+
+    A column that is NOT NULL *with* a default is not `required` — the generator may omit it and
+    the default applies. But it may not write `\\N` into it, because COPY reads that as an
+    explicit NULL and never consults the default. Checking `required` missed exactly this shape,
+    which is `catchment.type`, `individual.registration_date` and the is_voided family.
+    """
+    target = {"t": [
+        {"name": "id", "type": "integer", "required": False, "not_null": True,
+         "default": "nextval(...)"},
+        {"name": "type", "type": "text", "required": False, "not_null": True,
+         "default": "'Villages'::text"},
+    ]}
+    # Omitted entirely: fine, the default applies.
+    assert schema.check_against_target({"t": {"id": 1}}, target) == []
+    # Written as null: not fine, and the message says what to do instead.
+    problems = schema.check_against_target({"t": {"id": 1, "type": None}}, target)
+    assert any("NOT NULL" in p and "omit it instead" in p for p in problems), problems

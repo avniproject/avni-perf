@@ -41,6 +41,7 @@ from pathlib import Path
 from typing import Iterable, Mapping, Sequence
 
 import schema
+from schema import column_names
 
 NULL = r"\N"
 
@@ -109,17 +110,41 @@ def project(row: Mapping, columns: Sequence, *, table: str = "") -> list[str]:
     return [render(row.get(c)) for c in columns]
 
 
-def write_table(path: Path, rows: Iterable[Mapping], columns: Sequence[str],
-                *, table: str = "") -> int:
-    """Write one table's `COPY` file. Returns the row count."""
+def written_columns(columns: Sequence, row: Mapping) -> list[str]:
+    """The target's columns, in its order, narrowed to the ones this row actually populates.
+
+    **A column the generator does not populate must be left out of the COPY list entirely, not
+    written as `\\N`.** COPY treats `\\N` as an explicit NULL and never consults the column's
+    default, so a NOT NULL column with a default fails the load, and a nullable one with a
+    default gets NULL instead of the default. The second is the dangerous shape:
+    `organisation_id` defaults to 1, so a row that skipped it would load cleanly into the wrong
+    tenant rather than erroring.
+
+    Leaving the column out instead lets the server's own default apply — which is the right
+    behaviour for `is_voided`, `catchment.type`, `address_level_type.uuid` and the rest — while a
+    NOT NULL column with no default still fails loudly, as it should.
+    """
+    return [c for c in column_names(columns) if c in row]
+
+
+def write_table(path: Path, rows: Iterable[Mapping], columns: Sequence,
+                *, table: str = "") -> tuple[int, list[str]]:
+    """Write one table's `COPY` file. Returns the row count and the columns written.
+
+    The caller needs the column list back, because the `\copy` statement has to name exactly
+    these and no others.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     n = 0
+    written: list[str] = []
     with path.open("w", encoding="utf-8", newline="\n") as fh:
         for row in rows:
-            fh.write("\t".join(project(row, columns, table=table or path.stem)))
+            if not written:
+                written = written_columns(columns, row)
+            fh.write("\t".join(project(row, written, table=table or path.stem)))
             fh.write("\n")
             n += 1
-    return n
+    return n, (written or column_names(columns))
 
 
 def load_script(tables: Mapping[str, Sequence[str]], *, directory: str = ".",

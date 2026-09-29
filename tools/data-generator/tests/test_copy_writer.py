@@ -108,7 +108,12 @@ def test_a_written_file_round_trips_through_the_copy_text_rules():
     rows = [{"id": 1, "note": "has\ttab", "obs": {"k": "v"}, "gone": None},
             {"id": 2, "note": "has\nnewline", "obs": {}, "gone": True}]
     cols = ["id", "note", "obs", "gone"]
-    assert cw.write_table(d / "t.tsv", rows, cols) == 2
+    # write_table returns the columns it wrote as well as the count: a column the rows do not
+    # populate is left out of the COPY list so the server's default applies, rather than written
+    # as \N, which COPY reads as an explicit NULL and never defaults.
+    n, written = cw.write_table(d / "t.tsv", rows, cols)
+    assert n == 2
+    assert written == cols, "these rows populate every column"
 
     lines = (d / "t.tsv").read_text().splitlines()
     assert len(lines) == 2, "an escaped newline must not split the row"
@@ -121,7 +126,8 @@ def test_a_written_file_round_trips_through_the_copy_text_rules():
 
 def test_an_empty_table_writes_an_empty_file_rather_than_failing():
     d = Path(tempfile.mkdtemp())
-    assert cw.write_table(d / "t.tsv", [], ["a"]) == 0
+    n, written = cw.write_table(d / "t.tsv", [], ["a"])
+    assert n == 0 and written == ["a"], "no rows means nothing to narrow against"
     assert (d / "t.tsv").read_text() == ""
 
 
@@ -211,3 +217,38 @@ def test_the_one_table_whose_id_nothing_references_leaves_it_to_the_sequence():
     assert "sequence" in c.unwritten["id"]
     for other in ("individual", "program_enrolment", "program_encounter", "encounter"):
         assert "id" in schema.CONTRACTS[other].populated
+
+
+def test_a_column_the_rows_do_not_populate_is_left_out_entirely():
+    """COPY reads \\N as an explicit NULL and never consults the column's default.
+
+    So a NOT NULL column with a default fails the load, and a nullable one gets NULL instead of
+    its default. The second is the dangerous shape: `organisation_id` defaults to 1, so a row
+    that skipped it would load cleanly into the wrong tenant rather than erroring.
+
+    Leaving the column out of the COPY list lets the default apply, which is right for
+    `is_voided`, `catchment.type` and `address_level_type.uuid`; a NOT NULL column with no
+    default still fails loudly, which is also right.
+    """
+    import tempfile
+    from pathlib import Path as P
+    d = P(tempfile.mkdtemp())
+    target = ["id", "name", "is_voided", "type"]
+    rows = [{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]
+
+    n, written = cw.write_table(d / "t.tsv", rows, target)
+    assert n == 2
+    assert written == ["id", "name"], f"defaulted columns must be omitted, got {written}"
+
+    body = (d / "t.tsv").read_text().splitlines()
+    assert body[0] == "1\ta", "no trailing \\N for the columns left out"
+    assert "\\N" not in (d / "t.tsv").read_text()
+
+
+def test_the_column_order_follows_the_target_not_the_row():
+    """COPY matches by position, so the list has to be in the target's ordinal order."""
+    import tempfile
+    from pathlib import Path as P
+    d = P(tempfile.mkdtemp())
+    _, written = cw.write_table(d / "t.tsv", [{"c": 3, "a": 1}], ["a", "b", "c"])
+    assert written == ["a", "c"], "target order, not dict insertion order"

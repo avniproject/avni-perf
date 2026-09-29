@@ -30,7 +30,14 @@ from (
          json_agg(json_build_object(
            'name', column_name,
            'type', data_type,
+           -- Two distinct questions, and conflating them is what let a load through to the
+           -- database before failing:
+           --   `required` — must the generator supply this if it omits the column? Only when
+           --      there is no default to fall back on.
+           --   `not_null` — may the generator write `\N` here? Never, default or not, because
+           --      COPY reads `\N` as an explicit NULL and never consults the default.
            'required', (is_nullable = 'NO' and column_default is null),
+           'not_null', (is_nullable = 'NO'),
            'nullable', (is_nullable = 'YES'),
            'default', column_default
          ) order by ordinal_position) as cols

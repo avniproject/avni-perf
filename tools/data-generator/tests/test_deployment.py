@@ -1,3 +1,4 @@
+import re
 import sys, tempfile
 from datetime import date
 from pathlib import Path
@@ -77,13 +78,28 @@ def test_the_stride_survives_a_tenant_ten_times_its_planned_size():
     assert biggest * 10 < dep.ID_STRIDE, "a tenant could reach its neighbour's range"
 
 
+def written_cols(out, table):
+    """The columns actually written for a table, read from load.sql.
+
+    Tests used to index into `sorted(contract.accounted)`, which never matched the target's
+    ordinal order — and matters more now that a column the rows do not populate is omitted
+    entirely so the server's default applies.
+    """
+    m = re.search(rf"\\copy {table} \(([^)]*)\)", (out / "load.sql").read_text())
+    assert m, f"{table} is not in load.sql"
+    return [c.strip() for c in m.group(1).split(",")]
+
+
 def test_no_id_collides_across_tenants_in_a_real_run():
     b, p, st, pr, et = refs()
     out = Path(tempfile.mkdtemp())
     dep.write_dataset(tiny(), b, p, columns(), out,
                       subject_types=st, programs=pr, encounter_types=et)
+    # The column order comes from load.sql, which is the only thing that agrees with the files
+    # by construction. An earlier version indexed into `sorted(contract.accounted)`, which never
+    # matched the target's ordinal order and happened to put `id` in the right place anyway.
     for table in ("address_level", "individual", "users"):
-        cols = sorted(schema.CONTRACTS[table].accounted)
+        cols = written_cols(out, table)
         idx = cols.index("id")
         ids = [ln.split("\t")[idx] for ln in
                (out / f"{table}.tsv").read_text().splitlines()]
@@ -226,12 +242,12 @@ def test_encounters_reference_only_their_own_tenants_subjects():
     out = Path(tempfile.mkdtemp())
     dep.write_dataset(tiny(), b, p, columns(), out,
                       subject_types=st, programs=pr, encounter_types=et)
-    icols = sorted(schema.CONTRACTS["individual"].accounted)
+    icols = written_cols(out, "individual")
     subj = {}
     for ln in (out / "individual.tsv").read_text().splitlines():
         f = ln.split("\t")
         subj[f[icols.index("id")]] = f[icols.index("organisation_id")]
-    ecols = sorted(schema.CONTRACTS["encounter"].accounted)
+    ecols = written_cols(out, "encounter")
     for ln in (out / "encounter.tsv").read_text().splitlines():
         f = ln.split("\t")
         sid, org = f[ecols.index("individual_id")], f[ecols.index("organisation_id")]

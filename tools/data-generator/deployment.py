@@ -25,6 +25,7 @@ import catchments as cat
 import copy_writer as cw
 import hierarchy as hy
 import rows as row_gen
+import schema
 from bundle import Bundle
 from profile import Profile
 
@@ -269,6 +270,12 @@ def summarise(deployment: DeploymentSpec) -> str:
     return "\n".join(lines)
 
 
+def _contract_columns(table: str, target_columns) -> list[str]:
+    """The contract's populated set, in the target's column order."""
+    populated = schema.CONTRACTS[table].populated
+    return [c for c in cw.column_names(target_columns) if c in populated]
+
+
 class _Sink:
     """Per-table append-only writers, so tenants stream into shared files."""
 
@@ -277,6 +284,10 @@ class _Sink:
         self.columns = columns
         self._handles: dict[str, object] = {}
         self.counts: dict[str, int] = {t: 0 for t in columns}
+        # Narrowed to what the first row of each table actually populates. A column left out
+        # takes the server's default; one written as `\N` does not, because COPY reads that as
+        # an explicit NULL. See copy_writer.written_columns.
+        self.written: dict[str, list[str]] = {}
 
     def __enter__(self):
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -289,8 +300,11 @@ class _Sink:
         cols = self.columns.get(table)
         if cols is None:
             raise KeyError(f"no column list for {table!r}; the target schema did not report it")
+        written = self.written.get(table)
+        if written is None:
+            written = self.written[table] = cw.written_columns(cols, row)
         fh = self._handles[table]
-        fh.write("\t".join(cw.project(row, cols, table=table)))
+        fh.write("\t".join(cw.project(row, written, table=table)))
         fh.write("\n")
         self.counts[table] += 1
 
@@ -360,7 +374,14 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
         counts = dict(sink.counts)
 
     (directory / "load.sql").write_text(
-        cw.load_script(columns, directory=str(directory), verify_schema=verify_schema))
+        # The load script names exactly the columns that were written, not every column the
+        # target has -- otherwise `\copy` would expect values the files do not contain.
+        # A table with no rows has nothing to narrow against, so it falls back to what its
+        # contract says it populates rather than to every column the target has -- otherwise an
+        # empty file would be declared with columns nothing ever writes, `audit_id` among them.
+        cw.load_script({t: sink.written.get(t) or _contract_columns(t, columns[t])
+                        for t in columns},
+                       directory=str(directory), verify_schema=verify_schema))
     (directory / "summary.txt").write_text(
         summarise(deployment) + "\n\nwritten:\n" +
         "\n".join(f"  {t:<28} {n:>12,}" for t, n in sorted(counts.items())) + "\n")
