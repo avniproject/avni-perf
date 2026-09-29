@@ -16,6 +16,7 @@ Writes the dataset, a `load.sql`, a `summary.txt` and a `manifest.json` fingerpr
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import json
 import sys
 from pathlib import Path
@@ -146,13 +147,22 @@ def main(argv: list[str]) -> int:
     print()
 
     # One tenant at a time, because each has its own metadata ids.
+    #
+    # **The bases come from the whole deployment, not from each slice of it.** `plan_ids` hands
+    # out a disjoint range per tenant precisely so rows from different tenants cannot collide —
+    # but computing it on a one-tenant deployment returns the base for tenant *zero* every time,
+    # so all ten pilot tenants were being allocated the same range. Nothing had caught it because
+    # no multi-tenant dataset has ever been loaded; it would have surfaced as primary key
+    # violations partway through Day 7.
+    bases = dep.plan_ids(deployment)
+
     counts: dict[str, int] = {}
     for spec in deployment.tenants:
         sts, prs, ets, alts = refs[spec.organisation_id]
-        one = dep.DeploymentSpec(tenants=(spec,), days=deployment.days,
-                                 reference=deployment.reference, seed=deployment.seed,
-                                 enrolment_rate=deployment.enrolment_rate,
-                                 program_encounter_share=deployment.program_encounter_share)
+        # `replace` rather than a fresh DeploymentSpec: the hand-written version dropped
+        # `id_base` when it was added, which is the third time a field has gone missing from a
+        # list like that. This one cannot.
+        one = replace(deployment, tenants=(spec,), id_base=bases[spec.organisation_id])
         part = dep.write_dataset(one, bundles[spec.organisation_id], profile, columns,
                                  Path(args.out) / spec.name,
                                  subject_types=sts, programs=prs, encounter_types=ets,

@@ -297,3 +297,48 @@ def test_generation_refuses_early_when_the_metadata_is_not_loaded():
     }))
     _, missing = generate._refs(refs, {1})
     assert missing == [], "programmes absent is fine; encounter types present is enough"
+
+
+def test_tenants_get_disjoint_id_ranges_through_the_generate_path():
+    """`plan_ids` promises ranges that cannot collide, and the generator used to void that.
+
+    It splits a deployment into one-tenant deployments so each can use its own metadata ids, and
+    computed the base from the slice — which returns tenant zero's base every time, so every
+    tenant was allocated the same range. No multi-tenant dataset has been loaded, so it would
+    have surfaced as primary key violations partway through a day-180 load.
+    """
+    from dataclasses import replace
+    from datetime import date
+    import deployment as dep
+
+    full = dep.pilot_deployment(60, date(2026, 9, 18))
+    bases = dep.plan_ids(full)
+
+    seen = []
+    for spec in full.tenants:
+        one = replace(full, tenants=(spec,), id_base=bases[spec.organisation_id])
+        seen.append(dep.plan_ids(one)[spec.organisation_id])
+
+    assert len(set(seen)) == len(seen), f"tenants share an id base: {seen}"
+    assert seen == sorted(seen) and seen[0] == 0
+    assert seen[1] - seen[0] == dep.ID_STRIDE
+
+
+def test_the_per_tenant_split_keeps_every_deployment_field():
+    """The split used to rebuild DeploymentSpec by hand and dropped id_base when it was added."""
+    import dataclasses
+    from dataclasses import replace
+    from datetime import date
+    import deployment as dep
+
+    full = dep.DeploymentSpec(
+        tenants=(dep.TenantSpec(name="a", organisation_id=1, field_workers=3),
+                 dep.TenantSpec(name="b", organisation_id=2, field_workers=3)),
+        days=60, reference=date(2026, 9, 18), seed=7, id_base=500,
+        enrolment_rate=0.33, program_encounter_share=0.44)
+    one = replace(full, tenants=(full.tenants[0],), id_base=0)
+
+    for f in dataclasses.fields(dep.DeploymentSpec):
+        if f.name in ("tenants", "id_base"):
+            continue
+        assert getattr(one, f.name) == getattr(full, f.name), f"{f.name} lost in the split"
