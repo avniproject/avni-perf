@@ -53,6 +53,52 @@ class Contract:
         return sorted(self.populated - set(target_columns))
 
 
+INT4_MAX = 2_147_483_647
+
+
+def check_against_target(builders: dict, target: dict) -> list[str]:
+    """Compare what the builders emit against the target's real column shapes.
+
+    `target` is `columns.json` in its richer form — name, type, required, default per column.
+    `builders` maps a table to one representative row.
+
+    **This is the check that four rounds of live-database failures asked for.** Every one of them
+    passed the offline tests, because the tests compared the builders against the entity classes
+    and the entity classes do not carry width, nullability, or the existence of a trigger.
+
+    Returns a list of problems, empty when there are none. Reported rather than raised so one run
+    surfaces every mismatch instead of the first.
+    """
+    problems = []
+    for table, row in sorted(builders.items()):
+        shape = target.get(table)
+        if shape is None:
+            problems.append(f"{table}: not in columns.json — add it to columns.sql")
+            continue
+        cols = {c["name"]: c for c in shape}
+
+        for name in sorted(set(row) - set(cols)):
+            problems.append(
+                f"{table}.{name}: written, but the target has no such column")
+
+        for name, c in sorted(cols.items()):
+            if c.get("required") and name not in row:
+                problems.append(
+                    f"{table}.{name}: NOT NULL with no default, and nothing writes it")
+            if name in row and row[name] is None and c.get("required"):
+                problems.append(
+                    f"{table}.{name}: written as null, but it is NOT NULL with no default")
+
+        for name, value in sorted(row.items()):
+            c = cols.get(name)
+            if c and isinstance(value, int) and not isinstance(value, bool):
+                if c["type"] == "integer" and abs(value) > INT4_MAX:
+                    problems.append(
+                        f"{table}.{name}: {value:,} exceeds int4 — the column is `integer`, "
+                        "whatever the Java entity says")
+    return problems
+
+
 def _c(table, populated, unwritten=None, audit=True):
     return Contract(table=table,
                     populated=frozenset(populated) | (frozenset(AUDIT) if audit else frozenset()),
@@ -65,12 +111,18 @@ _SYNC = {
 }
 
 CONTRACTS: dict[str, Contract] = {
+    # No `level` here. It exists on `address_level_type` and is nullable there; on this table
+    # depth is carried by `lineage` and `type_id`. The name column is `title`, which is the
+    # opposite way round from its own type table.
     "address_level": _c("address_level",
-        ["title", "level", "type_id", "parent_id", "lineage"],
+        ["title", "type_id", "parent_id", "lineage"],
         {"gps_coordinates": "no geospatial query is under test",
          "legacy_id": "import provenance, unused by sync",
          "location_properties": "not read on the sync path",
          "title_lineage": "derived for reporting views, not sync"}),
+
+    "address_level_type": _c("address_level_type", ["name", "level", "parent_id"],
+        {"legacy_id": "import provenance, unused by sync"}),
 
     "catchment": _c("catchment", ["name"],
         {"type": "unused by sync"}),

@@ -165,7 +165,9 @@ def build_tenant(spec: TenantSpec, id_base: int) -> TenantBuild:
 def location_rows(build: TenantBuild) -> Iterator[dict]:
     h = build.hierarchy
     for l in h.locations:
-        yield {"id": l.id, "uuid": l.uuid, "title": l.title, "level": float(l.depth),
+        # No `level` column on this table — depth lives in `lineage` and in the type. The name
+        # column is `title`, not `name`, which is the opposite of address_level_type.
+        yield {"id": l.id, "uuid": l.uuid, "title": l.title,
                "type_id": l.type_id, "parent_id": l.parent_id, "lineage": h.lineage(l),
                "organisation_id": l.organisation_id, "is_voided": False, "version": 0,
                "created_by_id": 1, "last_modified_by_id": 1,

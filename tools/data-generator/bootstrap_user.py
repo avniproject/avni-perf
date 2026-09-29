@@ -90,9 +90,12 @@ def statements(organisation_id: int, username: str, audit_user_id: int = 1) -> l
         "level": 1.0, "organisation_id": organisation_id, "is_voided": False, "version": 0,
         "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id, **cat._stamps(),
     }))
+    # `address_level` has no `level` column — that is on `address_level_type`, where it is
+    # nullable. Here depth is carried by `lineage` and `type_id`, and the name column is `title`.
     out.append(insert("address_level", {
-        "id": village.id, "uuid": village.uuid, "title": village.title, "level": 1.0,
-        "type_id": village.type_id, "organisation_id": organisation_id,
+        "id": village.id, "uuid": village.uuid, "title": village.title,
+        "lineage": str(village.id), "type_id": village.type_id,
+        "organisation_id": organisation_id,
         "is_voided": False, "version": 0,
         "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id, **cat._stamps(),
     }))

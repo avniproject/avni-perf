@@ -107,3 +107,34 @@ def test_every_builder_emits_what_its_contract_claims():
         claimed = schema.CONTRACTS[table].populated
         missing = sorted(claimed - set(row))
         assert not missing, f"{table} contract claims {missing} but the builder emits none of them"
+
+
+def test_the_target_check_catches_what_four_live_failures_taught_it():
+    """`check_against_target` is the offline stand-in for a real database, so it has to catch the
+    four shapes that got through every other test and failed on one.
+    """
+    target = {"t": [
+        {"name": "id", "type": "integer", "required": False, "default": "nextval(...)"},
+        {"name": "name", "type": "character varying", "required": True, "default": None},
+        {"name": "created_date_time", "type": "timestamp", "required": True, "default": None},
+    ]}
+
+    # A column the target does not have — users.version, dropped by V1_42.
+    assert any("no such column" in p for p in
+               schema.check_against_target({"t": {"id": 1, "name": "x", "gone": 2,
+                                                  "created_date_time": "2020-01-01"}}, target))
+    # NOT NULL with no default and nothing writes it — users.name.
+    assert any("nothing writes it" in p for p in
+               schema.check_against_target({"t": {"id": 1, "created_date_time": "2020-01-01"}},
+                                           target))
+    # Written, but as null — the structural timestamps that fed a trigger into audit.
+    assert any("written as null" in p for p in
+               schema.check_against_target({"t": {"id": 1, "name": "x",
+                                                  "created_date_time": None}}, target))
+    # Too wide for the column — id is SERIAL, int4, whatever the Java entity says.
+    assert any("exceeds int4" in p for p in
+               schema.check_against_target({"t": {"id": 51_300_000_000, "name": "x",
+                                                  "created_date_time": "2020-01-01"}}, target))
+    # And a correct row is silent.
+    assert schema.check_against_target(
+        {"t": {"id": 1, "name": "x", "created_date_time": "2020-01-01"}}, target) == []

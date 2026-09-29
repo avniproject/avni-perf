@@ -46,6 +46,7 @@ NULL = r"\N"
 
 # Order matters: a row cannot reference a table loaded after it.
 LOAD_ORDER = (
+    "address_level_type",
     "address_level",
     "catchment",
     "catchment_address_mapping",
