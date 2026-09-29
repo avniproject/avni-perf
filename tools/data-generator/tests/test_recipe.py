@@ -260,3 +260,40 @@ def test_a_tenant_round_trips_through_a_recipe_unchanged():
     supervisors = lambda t: len([c for c in dep.build_tenant(t, 0).catchments
                                  if c.role == cat.SUPERVISOR])
     assert supervisors(rebuilt) == supervisors(spec) == 25
+
+
+def test_generation_refuses_early_when_the_metadata_is_not_loaded():
+    """Encounter types come from the bundle, and nothing downstream guards their absence.
+
+    `rows.py` indexes `ctx.encounter_types` directly, so an empty list fails with an IndexError
+    deep inside generation rather than at the point the cause is visible. Subject types were
+    already checked; encounter types were not, and a real environment with no bundle loaded is
+    exactly the case that finds it.
+
+    Programmes are deliberately absent from this check: `rows.py` guards them, and with the
+    programme design out of scope a deployment with none is the expected shape.
+    """
+    import json
+    import tempfile
+    from pathlib import Path as P
+    import generate
+
+    refs = P(tempfile.mkdtemp()) / "refs.json"
+    refs.write_text(json.dumps({
+        "subject_types": [{"id": 1, "uuid": "st", "name": "Individual", "organisation_id": 1}],
+        "programs": [],
+        "encounter_types": [],
+        "audit_user_id": 1,
+    }))
+    _, missing = generate._refs(refs, {1})
+    assert ("encounter type", 1) in missing
+    assert ("subject type", 1) not in missing
+
+    refs.write_text(json.dumps({
+        "subject_types": [{"id": 1, "uuid": "st", "name": "Individual", "organisation_id": 1}],
+        "programs": [],
+        "encounter_types": [{"id": 9, "uuid": "et", "name": "Visit", "organisation_id": 1}],
+        "audit_user_id": 1,
+    }))
+    _, missing = generate._refs(refs, {1})
+    assert missing == [], "programmes absent is fine; encounter types present is enough"

@@ -49,7 +49,14 @@ def _refs(path: Path, organisation_ids: set[int]):
         ets = [row_gen.EncounterTypeRef(id=e["id"], uuid=e["uuid"], name=e["name"])
                for e in raw.get("encounter_types", []) if e.get("organisation_id") == org]
         if not sts:
-            missing.append(org)
+            missing.append(("subject type", org))
+        # Encounter types were not checked, and nothing downstream guards them: `rows.py` indexes
+        # `ctx.encounter_types` directly, so an empty list fails with an IndexError deep inside
+        # generation rather than here. Programmes are guarded (`if ctx.programs`), which is why
+        # they are absent from this check -- a deployment with no programmes simply generates no
+        # enrolments, and with the programme design out of scope that is the expected shape.
+        if not ets:
+            missing.append(("encounter type", org))
         out[org] = (sts, prs, ets)
     return out, missing
 
@@ -108,8 +115,11 @@ def main(argv: list[str]) -> int:
 
     refs, missing = _refs(Path(args.refs), {t.organisation_id for t in deployment.tenants})
     if missing:
-        print(f"error: no subject type for organisation(s) {missing}. Load the implementation "
-              f"bundle into each tenant before generating.", file=sys.stderr)
+        for kind, org in missing:
+            print(f"error: no {kind} for organisation {org}", file=sys.stderr)
+        print("\nThese come from the implementation bundle, and refs.json is dumped from the "
+              "database after it is loaded.\nLoad the bundle into each tenant, re-run refs.sql, "
+              "and try again.", file=sys.stderr)
         return 2
 
     # Load each distinct bundle once, however many tenants share it.
