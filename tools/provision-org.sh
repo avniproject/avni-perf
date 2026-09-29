@@ -40,24 +40,50 @@ done
 [ -n "$URL" ] && [ -n "$BUNDLE" ] && [ -n "$NAME" ] || {
   echo "usage: $0 --url <base-url> --bundle <bundle.zip> --name <org-name> [--admin <username>]" >&2
   exit 2; }
+# The importer's fileSequence, in order, from BundleZipFileImporter. Folders are entries too.
+BUNDLE_ORDER='organisationConfig.json addressLevelTypes.json locations.json catchments.json
+subjectTypes.json operationalSubjectTypes.json programs.json operationalPrograms.json
+encounterTypes.json operationalEncounterTypes.json calendars.json calendarDateMarkers.json
+documentations.json concepts.json attendanceTypes.json forms formMappings.json
+individualRelation.json relationshipType.json identifierSource.json checklist.json groups.json
+groupRole.json groupPrivilege.json video.json reportCard.json reportDashboard.json
+groupDashboards.json taskType.json taskStatus.json menuItem.json messageRule.json translations
+ruleDependency.json oldRules subjectTypeIcons reportCardIcons customCardHtmlFiles conceptMedia
+customQueries.json'
+
 # A directory is accepted and zipped, because that is the shape an implementation config repo is
 # checked out in, while the server validates the upload's content type as a zip. Entries go in at
 # the root — the importer looks for `concepts.json` and friends there, not under a folder.
-CLEANUP_ZIP=""
+CLEANUP_ZIP=""; CLEANUP_SRC=""; SRC_DIR=""
 if [ -d "$BUNDLE" ]; then
   SRC="$BUNDLE"
+  SRC_DIR="$BUNDLE"
   # A single dot in the filename. `mktemp foo.XXXXXX` plus `.zip` gives `bundle.a1b2c3.zip`, and
   # the server rejects that outright as a double extension — a uniquely unhelpful way to fail on
   # a file it would otherwise accept. The randomness goes in the directory name instead.
   ZIPDIR="$(mktemp -d "${TMPDIR:-/tmp}/bundle.XXXXXX")"
   BUNDLE="$ZIPDIR/bundle.zip"
   CLEANUP_ZIP="$ZIPDIR"
-  ( cd "$SRC" && zip -qr "$BUNDLE" . ) || { echo "error: could not zip $SRC" >&2; exit 2; }
-  echo "zipped $SRC -> $(basename "$BUNDLE")"
+  # Entry ORDER is what the importer actually obeys. Its `fileSequence` list looks like it
+  # sequences the bundle, but the batch step is configured `chunk(1)`, so write() is handed one
+  # file at a time and that list only ever matches the single entry in hand. BundleZipFileImporter
+  # says so itself: "the authoritative ordering is the export insertion order in
+  # BundleService.createBundle()". `zip -r` writes in filesystem order, which put formMappings.json
+  # second — ahead of forms/, concepts.json and encounterTypes.json — and operationalEncounterTypes
+  # ahead of encounterTypes. Both imported as zero rows while the job reported COMPLETED, and
+  # without form mappings `getAllSyncableItems` never adds Encounter, so no encounter can sync.
+  # Adding entries one at a time in the importer's order reproduces an exported bundle's layout.
+  ( cd "$SRC" && for e in $BUNDLE_ORDER; do
+      [ -e "$e" ] && zip -qr "$BUNDLE" "$e"
+    done
+    # anything the sequence does not name still goes in, after the ordered entries
+    zip -qr "$BUNDLE" . -x $(for e in $BUNDLE_ORDER; do printf '%s ' "$e" "$e/*"; done) \
+  ) || { echo "error: could not zip $SRC" >&2; exit 2; }
+  echo "zipped $SRC -> $(basename "$BUNDLE") ($(unzip -l "$BUNDLE" | tail -1 | awk '{print $2}') entries, in import order)"
 elif [ ! -f "$BUNDLE" ]; then
   echo "error: no such bundle: $BUNDLE" >&2; exit 2
 fi
-trap '[ -n "$CLEANUP_ZIP" ] && rm -rf "$CLEANUP_ZIP"' EXIT
+trap '[ -n "$CLEANUP_ZIP" ] && rm -rf "$CLEANUP_ZIP"; [ -n "$CLEANUP_SRC" ] && rm -rf "$CLEANUP_SRC"' EXIT
 case "$BUNDLE" in *.zip) ;; *) echo "error: the bundle must be a .zip or a directory to zip" >&2; exit 2 ;; esac
 
 api() { curl -s -w '\n%{http_code}' --max-time 120 "$@"; }
@@ -204,6 +230,54 @@ except Exception: print('')" 2>/dev/null)
     *)         printf '   %s\r' "$STATUS" ;;
   esac
 done
+
+# ---- 5. did it actually land? ---------------------------------------------------------------
+#
+# COMPLETED is not the same as imported. The first real run of this script reported COMPLETED
+# with no errors and brought over concepts, subject types and encounter types while importing
+# **zero form mappings** — and without those, `getAllSyncableItems` never adds `Encounter`, so a
+# dataset's encounters can never sync however many rows were loaded. The job status alone would
+# have let that through to a load test.
+echo
+echo "5. checking what actually landed"
+# Comparing against the bundle means reading the bundle, and in the common case it arrived as a
+# zip. Without this the comparison reads nothing, finds nothing to expect, and passes everything
+# — the check would have been decoration.
+if [ -z "$SRC_DIR" ]; then
+  CLEANUP_SRC="$(mktemp -d "${TMPDIR:-/tmp}/bundlesrc.XXXXXX")"
+  unzip -qo "$BUNDLE" -d "$CLEANUP_SRC" || die "could not read $BUNDLE back to check the import against"
+  SRC_DIR="$CLEANUP_SRC"
+fi
+sync_count() {
+  api "$URL/$1/search/lastModified?lastModifiedDateTime=1900-01-01T00:00:00.000Z&now=2099-01-01T00:00:00.000Z&size=1&page=0" \
+      -H "USER-NAME: $ADMIN" -H "ORGANISATION-UUID: $ORG_UUID" \
+    | sed '$d' | python3 -c "
+import json,sys
+try: print(json.load(sys.stdin).get('page',{}).get('totalElements', 0))
+except Exception: print(0)" 2>/dev/null
+}
+bundle_count() {
+  python3 -c "
+import json,sys
+try:
+    d=json.load(open('$SRC_DIR/$1'))
+    print(len(d if isinstance(d,list) else list(d.values())[0]))
+except Exception: print(0)" 2>/dev/null
+}
+
+SHORT=0
+for pair in "formMapping:formMappings.json" "subjectType:subjectTypes.json" \
+            "encounterType:encounterTypes.json" "concept:concepts.json"; do
+  ep="${pair%%:*}"; file="${pair##*:}"
+  got=$(sync_count "$ep"); want=$(bundle_count "$file")
+  if [ "${want:-0}" -gt 0 ] && [ "${got:-0}" -eq 0 ]; then
+    printf '  \033[31mFAIL\033[0m  %-16s bundle has %s, the organisation has none\n' "$ep" "$want"
+    SHORT=1
+  else
+    printf '  \033[32mok\033[0m    %-16s %s in the organisation, %s in the bundle\n' "$ep" "${got:-0}" "${want:-0}"
+  fi
+done
+[ "$SHORT" -eq 0 ] || die "the import reported COMPLETED but did not bring everything. Voided entries explain a smaller count; none at all does not."
 
 echo
 echo "Done. Re-dump the metadata ids the generator needs:"
