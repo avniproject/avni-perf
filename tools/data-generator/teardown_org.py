@@ -7,7 +7,7 @@ bare `BEGIN` plus `\\copy` with no truncate, so loading a second dataset onto a 
 fails on the primary key rather than doing anything useful.
 
 **This is the iteration-phase reset, not the measurement-phase one.** Between the runs that produce
-evidence, restore the snapshot (G4) — `DELETE` leaves dead tuples, `VACUUM` will not shrink the
+evidence, use G4's restore mechanism — `DELETE` leaves dead tuples, `VACUUM` will not shrink the
 indexes, and successive runs stop resembling each other. That matters once F7 has passed and the
 comparison is run against run. It does not matter while the generator is still changing, and a
 restore is far too slow a loop for that. See docs/execution-plan.md, Day 9.
@@ -248,9 +248,9 @@ def emit(organisations, id_base: int | None, scope: str) -> str:
     w("-- Not covered here, and worth knowing before a run is trusted:")
     w("--   * `audit` grows with every insert and is not organisation-scoped unless the preflight")
     w("--     said otherwise. It is bloat, not correctness.")
-    w("--   * media uploaded by a push run lives in S3 and survives this and any snapshot restore.")
+    w("--   * media uploaded by a push run lives in S3 and survives this and any restore.")
     w("--   * dead tuples remain. That is fine while iterating and not fine between measured runs,")
-    w("--     which is what G4's snapshot restore is for.")
+    w("--     which is what G4's restore mechanism is for.")
     return "\n".join(out) + "\n"
 
 

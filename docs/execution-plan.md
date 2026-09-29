@@ -181,14 +181,17 @@ each one has a failure mode that would otherwise surface eight hours into a load
 > **That applies to measured runs, not to the days before them.** While the generator is still
 > changing, a reset happens many times a day and a restore is far too slow a loop — so
 > `make teardown_org ORG=n ID_BASE=b` emits SQL that empties an organisation in place. Dead tuples
-> are irrelevant when nothing is being compared yet. Switch to the snapshot at F7, and do not
-> switch back.
+> are irrelevant when nothing is being compared yet. Switch to G4's restore at F7, and do not
+> switch back. **Which mechanism that is remains open** — `CREATE DATABASE … TEMPLATE`, a
+> `pg_restore`, or regenerating — and RDS snapshot restore is not among the per-run candidates:
+> it cannot restore in place, and lazy loading leaves a restored instance with far worse I/O until
+> every block has faulted in. See #11, § G4.
 
 **No run is read-only**, which is the part that catches people out. Every sync ends with
 `POST /syncTelemetry`, so a pull-only scenario still leaves a row per user per sync; a push
 scenario writes subjects and encounters with server-assigned ids; and every insert fires the
 `audit` trigger. Two things no reset here reaches: media uploaded by a push run lives in S3 and
-survives a snapshot restore, and `audit` grows regardless.
+survives any database-side restore, and `audit` grows regardless.
 
 ---
 
