@@ -15,6 +15,21 @@ bootstrap_user: ## SQL for one syncable user, no dataset needed. ORG=1 USERNAME=
 	@test -n "$(ORG)" -a -n "$(USERNAME)" || (echo "usage: make bootstrap_user ORG=1 USERNAME=loadtest@openchs [AUDIT_USER=1]" && exit 2)
 	@cd tools/data-generator && python3 bootstrap_user.py --organisation "$(ORG)" --username "$(USERNAME)" $(if $(AUDIT_USER),--audit-user "$(AUDIT_USER)",)
 
+teardown_org: ## SQL to empty an org between scenarios. DATASET=datasets/x.json [SCOPE=data|all]
+	@test -n "$(DATASET)$(ORG)" || (echo "usage: make teardown_org DATASET=tools/data-generator/datasets/tanuh-small.json [SCOPE=data|all]\n   or: make teardown_org ORG=3 ID_BASE=1000000" && exit 2)
+# DATASET is the recipe that was generated, or a build's manifest.json. It carries the
+# organisations and the id_base, so neither is retyped - a wrong id_base is the one input here
+# that fails quietly, taking the bundle's own rows or none at all.
+#
+# It prints SQL rather than running it. This deletes, and the one thing worse than a slow reset is
+# a fast one against the wrong database - so the connection string is chosen by whoever runs it:
+#   make teardown_org DATASET=tools/data-generator/datasets/tanuh-small.json > /tmp/teardown.sql
+#   psql -d <db> -v ON_ERROR_STOP=1 -f /tmp/teardown.sql
+	@cd tools/data-generator && python3 teardown_org.py \
+		$(if $(DATASET),--dataset "$(abspath $(DATASET))",) \
+		$(if $(ORG),--organisation "$(ORG)",) \
+		$(if $(ID_BASE),--id-base "$(ID_BASE)",) $(if $(SCOPE),--scope "$(SCOPE)",)
+
 check_environment: ## Is an environment ready for a run? URL=... [SYNC_USER=...] [DB=conninfo] [WAF=1]
 	@test -n "$(URL)" || (echo "usage: make check_environment URL=https://host [SYNC_USER=name] [DB=conninfo] [WAF=1]" && exit 2)
 # SYNC_USER, not USER: USER is set in every login shell, so Make would inherit it and the check

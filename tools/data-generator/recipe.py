@@ -205,11 +205,16 @@ class Manifest:
     generated_at: str
     tables: dict[str, dict] = field(default_factory=dict)
     provenance: dict = field(default_factory=dict)
+    # What it takes to unmake this build: the organisations it wrote into and the id floor its
+    # rows sit above. `teardown_org.py` needs both, and requiring them to be retyped from the
+    # recipe makes a wrong id_base easy — one too low takes the bundle's rows with the dataset,
+    # one too high deletes nothing and surfaces hours into the next load as a primary key clash.
+    target: dict = field(default_factory=dict)
     schema_version: int = SCHEMA_VERSION
 
     @classmethod
     def of(cls, recipe_name: str, directory: str | Path, counts: dict[str, int],
-           *, hash_files: bool = True) -> "Manifest":
+           *, hash_files: bool = True, target: dict | None = None) -> "Manifest":
         d = Path(directory)
         tables = {}
         for table, n in sorted(counts.items()):
@@ -229,6 +234,7 @@ class Manifest:
                 "generator_dirty": bool(_git("status", "--porcelain")),
                 "python": platform.python_version(),
             },
+            target=target or {},
         )
 
     @property

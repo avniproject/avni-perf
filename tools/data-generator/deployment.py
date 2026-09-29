@@ -390,7 +390,10 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
     # keeps the counts and alters the content, which is most changes to the generator.
     import recipe as recipe_mod
     recipe_mod.Manifest.of(recipe_name or "(unnamed)", directory, counts,
-                           hash_files=hash_files).save(directory / "manifest.json")
+                           hash_files=hash_files,
+                           target={"organisations": [t.organisation_id for t in deployment.tenants],
+                                   "id_base": deployment.id_base}
+                           ).save(directory / "manifest.json")
     return counts
 
 

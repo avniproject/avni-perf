@@ -178,6 +178,18 @@ each one has a failure mode that would otherwise surface eight hours into a load
 > `VACUUM` does not shrink indexes, and runs progressively stop resembling each other. Determinism
 > matters more than absolute realism here, because the primary comparison is run against run.
 
+> **That applies to measured runs, not to the days before them.** While the generator is still
+> changing, a reset happens many times a day and a restore is far too slow a loop — so
+> `make teardown_org ORG=n ID_BASE=b` emits SQL that empties an organisation in place. Dead tuples
+> are irrelevant when nothing is being compared yet. Switch to the snapshot at F7, and do not
+> switch back.
+
+**No run is read-only**, which is the part that catches people out. Every sync ends with
+`POST /syncTelemetry`, so a pull-only scenario still leaves a row per user per sync; a push
+scenario writes subjects and encounters with server-assigned ids; and every insert fires the
+`audit` trigger. Two things no reset here reaches: media uploaded by a push run lives in S3 and
+survives a snapshot restore, and `audit` grows regardless.
+
 ---
 
 ## Phase 3 — Calibration (Day 11). **The gate.**
