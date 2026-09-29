@@ -33,6 +33,37 @@ select json_build_object(
     ) order by level desc), '[]'::json)
     from address_level_type where is_voided = false
   ),
+  -- **Where subjects may be registered**, which is not the same as the deepest location type.
+  --
+  -- `customRegistrationLocations` in organisation_config names, per subject type, the address
+  -- level types a subject of that type can be registered at. When it is set, the sync scope query
+  -- stops using the user's whole catchment: AddressLevelService calls
+  -- getAddressLevelsForCatchmentAndMatchingAddressLevelTypeIds instead, and an empty intersection
+  -- is a hard "match nothing" rather than a no-op
+  -- (OperatingIndividualScopeAwareRepository: `cb.equal(from.get("id"), cb.literal(0))`).
+  --
+  -- This is what made org 3's 900 individuals invisible. Tanuh restricts Patient registration to
+  -- Village; the generator had placed every subject, and every catchment, one level below at
+  -- Health Center. The intersection was empty, so `Individual`, `SubjectMigration`,
+  -- `SubjectProgramEligibility` and `IndividualRelationship` were added by
+  -- SyncDetailsService.getAllSyncableItems and then dropped again by filterChangedEntities --
+  -- exactly the four entities keyed by subjectTypeUuid. `Encounter` is keyed on encounter type,
+  -- never applies this filter, and so survived, which is why the dataset looked half-working.
+  --
+  -- Matching is on `address_id IN (...)` directly, not on lineage, so registering a subject at a
+  -- descendant of a permitted type does not count.
+  'registration_locations', (
+    select coalesce(json_agg(json_build_object(
+      'subject_type_uuid', e ->> 'subjectTypeUUID',
+      'location_type_uuids', e -> 'locationTypeUUIDs'
+    )), '[]'::json)
+    -- Cast to jsonb rather than relying on the column's type: `?` and `->` are spelled the same
+    -- either way once it is jsonb, and this works whether settings is declared json or jsonb.
+    from organisation_config oc,
+         lateral jsonb_array_elements(oc.settings::jsonb -> 'customRegistrationLocations') e
+    where oc.settings::jsonb ? 'customRegistrationLocations'
+      and jsonb_typeof(oc.settings::jsonb -> 'customRegistrationLocations') = 'array'
+  ),
   'programs', (
     select coalesce(json_agg(json_build_object(
       'id', id, 'uuid', uuid, 'name', name, 'organisation_id', organisation_id

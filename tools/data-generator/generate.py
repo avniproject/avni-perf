@@ -60,7 +60,26 @@ def _refs(path: Path, organisation_ids: set[int]):
         # enrolments, and with the programme design out of scope that is the expected shape.
         if not ets:
             missing.append(("encounter type", org))
-        out[org] = (sts, prs, ets, alts)
+        # Where this tenant's subjects may be registered. The generator uses one subject type
+        # per tenant (`ctx.subject_types[0]`), so only that one's entry matters.
+        #
+        # **An empty list here is not the same as no restriction.** No entry for the subject type
+        # means registration is unrestricted and the whole catchment counts; an entry naming types
+        # means the sync scope query intersects the catchment with exactly those, and an empty
+        # intersection matches nothing. Placing subjects below the permitted level is what made
+        # org 3's 900 individuals invisible while every privilege resolved correctly.
+        by_uuid = {a["uuid"]: a["id"] for a in alts}
+        reg = []
+        if sts:
+            for entry in raw.get("registration_locations", []):
+                if entry.get("subject_type_uuid") != sts[0].uuid:
+                    continue
+                for u in entry.get("location_type_uuids") or []:
+                    if u in by_uuid:
+                        reg.append(by_uuid[u])
+                    else:
+                        missing.append((f"registration location type {u}", org))
+        out[org] = (sts, prs, ets, alts, sorted(set(reg)))
     return out, missing
 
 
@@ -158,7 +177,7 @@ def main(argv: list[str]) -> int:
 
     counts: dict[str, int] = {}
     for spec in deployment.tenants:
-        sts, prs, ets, alts = refs[spec.organisation_id]
+        sts, prs, ets, alts, reg = refs[spec.organisation_id]
         # `replace` rather than a fresh DeploymentSpec: the hand-written version dropped
         # `id_base` when it was added, which is the third time a field has gone missing from a
         # list like that. This one cannot.
@@ -166,7 +185,7 @@ def main(argv: list[str]) -> int:
         part = dep.write_dataset(one, bundles[spec.organisation_id], profile, columns,
                                  Path(args.out) / spec.name,
                                  subject_types=sts, programs=prs, encounter_types=ets,
-                                 address_level_types=alts,
+                                 address_level_types=alts, registration_type_ids=reg,
                                  recipe_name=recipe.name, hash_files=not args.no_hash)
         for t, n in part.items():
             counts[t] = counts.get(t, 0) + n

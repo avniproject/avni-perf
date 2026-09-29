@@ -28,7 +28,7 @@ ESTABLISHMENT = (
 )
 
 
-def from_target_types(types, base=ESTABLISHMENT):
+def from_target_types(types, base=ESTABLISHMENT, registration_type_ids=None):
     """An establishment matching the target's own location hierarchy, and the type ids for it.
 
     Returns `(establishment, type_ids)` ready for `build`.
@@ -42,6 +42,10 @@ def from_target_types(types, base=ESTABLISHMENT):
     off the middle of its spine: Tanuh has a Health Centre at 3.5 and a Taluka Hospital at 5.5
     beside a State/District/Taluka/Village chain. Ordering by level alone would thread all eight
     into one impossible lineage.
+
+    **`registration_type_ids` truncates the chain** at the deepest type a subject may be
+    registered at, because that is where subjects and catchments have to meet. See the comment on
+    the cut below.
 
     Branching factors are taken positionally from the measured establishment, which is an
     approximation: they describe an Indian public-health hierarchy, and a target with a different
@@ -62,6 +66,32 @@ def from_target_types(types, base=ESTABLISHMENT):
         return [node] if not kids else [node] + max((longest(k) for k in kids), key=len)
 
     chain = max((longest(r) for r in roots), key=len)
+
+    # **Stop the chain where subjects may be registered**, not at the deepest type that exists.
+    #
+    # `customRegistrationLocations` decides this, and getting it wrong is silent. Tanuh permits
+    # Patient registration at Village while its hierarchy continues to Health Center; generating
+    # down to the deepest type put all 900 subjects, and every catchment, one level below what the
+    # configuration allows. The sync scope query intersects the catchment with the permitted types
+    # and an empty result matches nothing at all, so the subjects existed, the privileges resolved,
+    # and `Individual` still vanished from syncDetails.
+    #
+    # Truncating rather than registering at an ancestor is what keeps the shape: the leaf count
+    # drives the row totals, so if Health Centers collapsed into their Village every subject in a
+    # tenant would share one address and one catchment. Cut here and the fan-out lands on Villages
+    # instead, which is what the deployment already means by a village.
+    if registration_type_ids:
+        permitted = set(registration_type_ids)
+        cut = [i for i, t in enumerate(chain) if t["id"] in permitted]
+        if not cut:
+            raise ValueError(
+                "none of the registration location types "
+                f"{sorted(permitted)} are on the target's main hierarchy "
+                f"{[(t['id'], t['name']) for t in chain]}. A type hanging off the side of the "
+                "spine cannot be generated into: the tree has one chain, and subjects registered "
+                "anywhere else would not intersect a catchment built from it.")
+        chain = chain[:max(cut) + 1]
+
     branching = [b for _, b in base[1:]]
     establishment = tuple(
         (t["name"], None if i == 0 else branching[min(i - 1, len(branching) - 1)])

@@ -154,13 +154,15 @@ class TenantBuild:
         return self.hierarchy.leaves
 
 
-def build_tenant(spec: TenantSpec, id_base: int, address_level_types=None) -> TenantBuild:
+def build_tenant(spec: TenantSpec, id_base: int, address_level_types=None,
+                 registration_type_ids=None) -> TenantBuild:
     """`address_level_types` comes from refs.json and is what makes the generated locations
     reference type ids that actually exist on the target. Omitted, the tree keeps its measured
     shape and each level's depth doubles as its type id — correct only on an empty database."""
     type_ids = None
     if address_level_types:
-        establishment, type_ids = hy.from_target_types(address_level_types)
+        establishment, type_ids = hy.from_target_types(
+            address_level_types, registration_type_ids=registration_type_ids)
         if spec.workers_per_supervisor is not None:
             establishment = hy.with_supervisor_span(
                 spec.workers_per_supervisor, spec.field_workers_per_village, establishment)
@@ -318,7 +320,8 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
                   columns: dict[str, list[str]], directory: str | Path,
                   *, subject_types, programs, encounter_types,
                   verify_schema: bool = True, recipe_name: str | None = None,
-                  hash_files: bool = True, address_level_types=None) -> dict[str, int]:
+                  hash_files: bool = True, address_level_types=None,
+                  registration_type_ids=None) -> dict[str, int]:
     """Generate and write a whole deployment. Returns the row count per table.
 
     Rows stream to disk as they are produced, so the peak memory cost is one village's subjects
@@ -339,7 +342,7 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
     with _Sink(directory, columns) as sink:
         for spec in deployment.tenants:
             base = bases[spec.organisation_id]
-            build = build_tenant(spec, base, address_level_types)
+            build = build_tenant(spec, base, address_level_types, registration_type_ids)
 
             for row in location_rows(build):
                 sink.write("address_level", row)
@@ -398,7 +401,8 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
 
 
 def feeder_csv(deployment: DeploymentSpec, path: str | Path, *,
-               supervisor_push_scale: float = 1.0, address_level_types=None) -> int:
+               supervisor_push_scale: float = 1.0, address_level_types=None,
+               registration_type_ids=None) -> int:
     """The simulation's `sync-users.csv`, spanning every tenant (E4).
 
     **The columns are the simulation's contract, not this module's convenience.** It reads
@@ -429,7 +433,8 @@ def feeder_csv(deployment: DeploymentSpec, path: str | Path, *,
         w.writeheader()
         n = 0
         for spec in deployment.tenants:
-            build = build_tenant(spec, bases[spec.organisation_id], address_level_types)
+            build = build_tenant(spec, bases[spec.organisation_id], address_level_types,
+                                 registration_type_ids)
             for u in build.users:
                 w.writerow({"userName": u.username,
                             "lastModifiedDateTime": "1900-01-01T00:00:00.000Z",

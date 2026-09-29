@@ -156,3 +156,72 @@ def test_a_span_narrower_than_a_village_is_refused():
         hy.with_supervisor_span(2, field_workers_per_village=3)
     with pytest.raises(ValueError, match="must be positive"):
         hy.with_supervisor_span(0, field_workers_per_village=3)
+
+
+# --- registration location types --------------------------------------------------------------
+#
+# The defect these cover cost a day. Tanuh's organisation_config restricts Patient registration to
+# Village through `customRegistrationLocations`, while its location hierarchy continues one level
+# further to Health Center. The generator built down to the deepest type, so every subject and
+# every catchment sat below what the configuration permits.
+#
+# Nothing failed. The rows loaded, the foreign keys held, privileges resolved, and 10,800
+# encounters synced. But `AddressLevelService` intersects the user's catchment with the permitted
+# types, and `OperatingIndividualScopeAwareRepository` turns an empty intersection into
+# `id = 0` -- a hard match-nothing -- so `Individual`, `SubjectMigration`,
+# `SubjectProgramEligibility` and `IndividualRelationship` were added by
+# `getAllSyncableItems` and then silently dropped by `filterChangedEntities`.
+
+TANUH_TYPES = [
+    {"id": 11, "name": "State", "parent_id": None, "uuid": "u-state"},
+    {"id": 12, "name": "District", "parent_id": 11, "uuid": "u-district"},
+    {"id": 13, "name": "Taluka", "parent_id": 12, "uuid": "u-taluka"},
+    {"id": 14, "name": "Village", "parent_id": 13, "uuid": "u-village"},
+    {"id": 15, "name": "Health Center", "parent_id": 14, "uuid": "u-hc"},
+]
+
+
+def test_without_a_restriction_the_chain_runs_to_the_deepest_type():
+    names = [n for n, _ in hy.from_target_types(TANUH_TYPES)[0]]
+    assert names[-1] == "Health Center"
+
+
+def test_a_restriction_truncates_the_chain_there():
+    """So that `hierarchy.leaves` -- which is both where subjects are registered and what
+    field-worker catchments are built from -- lands on a permitted type."""
+    est, type_ids = hy.from_target_types(TANUH_TYPES, registration_type_ids=[14])
+    assert [n for n, _ in est] == ["State", "District", "Taluka", "Village"]
+    assert "Health Center" not in type_ids
+
+
+def test_subjects_and_catchments_move_together():
+    """Registering at an ancestor instead of truncating would collapse three catchments into one.
+
+    Matching is on `address_id IN (...)` directly rather than on lineage, so both sides have to
+    land on the same rows, and the leaf count is what drives the row totals.
+    """
+    est, type_ids = hy.from_target_types(TANUH_TYPES, registration_type_ids=[14])
+    h = hy.build(3, leaf_count=3, first_id=1, type_ids=type_ids, establishment=est)
+    assert [l.level_name for l in h.leaves] == ["Village"] * 3
+    assert {l.type_id for l in h.leaves} == {14}
+
+
+def test_the_deepest_permitted_type_wins_when_several_are_allowed():
+    est, _ = hy.from_target_types(TANUH_TYPES, registration_type_ids=[12, 14])
+    assert [n for n, _ in est][-1] == "Village"
+
+
+def test_a_type_off_the_spine_is_refused_rather_than_ignored():
+    """Tanuh really does hang facilities off the middle -- District Hospital at 6.5, Public Health
+    Center at 4.5. Registration restricted to one of those cannot be generated into, and silently
+    falling back to the deepest type is how this defect happened the first time."""
+    types = TANUH_TYPES + [{"id": 18, "name": "Public Health Center", "parent_id": 13,
+                            "uuid": "u-phc"}]
+    with pytest.raises(ValueError, match="are on the target's main hierarchy"):
+        hy.from_target_types(types, registration_type_ids=[18])
+
+
+def test_an_empty_restriction_means_unrestricted():
+    """No entry for the subject type is not the same as an entry naming nothing."""
+    assert [n for n, _ in hy.from_target_types(TANUH_TYPES, registration_type_ids=[])[0]][-1] \
+        == "Health Center"
