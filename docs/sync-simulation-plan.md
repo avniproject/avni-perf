@@ -2899,6 +2899,31 @@ impact:
 
 ### H4 — Loading it
 
+> **Blocker: the generated ids do not fit in the column.** *Found 29 Sep 2026, on a real database.*
+> `V0_1__CreateTables` declares `id SERIAL PRIMARY KEY`, which is **int4**, and nothing since
+> widens it. The generator allocates each tenant a block of 100,000,000 ids, so only **21 tenants
+> fit** under 2,147,483,647.
+>
+> | Deployment | Tenants | Ids reach | |
+> |---|---|---|---|
+> | `pilot-day-180` | 10 | 1.0 billion | loadable |
+> | `co-tenants-day-180` | 513 | **51.3 billion** | **24× over the ceiling** |
+>
+> **So cases 6, 7, 12 and 13 could never have loaded**, failing around the twenty-second tenant
+> with `integer out of range`. It surfaced because a bootstrap user was given a deliberately high
+> id and hit the same wall — the generator's own tests could not have caught it, since nothing in
+> them knows the column's width.
+>
+> **Shrinking the stride only moves the ceiling.** 513 tenants inside int4 allows about 4 million
+> ids each, and a state tenant already needs 1.8 million at day 180 with no headroom for growth
+> or for the 986-organisation shape. The fix is to allocate from each tenant's measured size
+> rather than from a fixed block, and to assert the total against `INT4_MAX` at generation time
+> so this fails in a second on a laptop rather than an hour into a load.
+>
+> A test records the boundary and which side each committed deployment falls on, so the fix is
+> verifiable rather than asserted.
+
+
 Bulk-load with `COPY` directly into the tables, not through the API — the API is orders of magnitude
 slower and millions of rows are needed. Build indexes after the load, then `ANALYZE`.
 

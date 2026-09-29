@@ -82,25 +82,29 @@ def test_the_users_row_carries_what_the_live_schema_makes_mandatory():
     assert "'ByCatchment'" in users, "what UserAndCatchmentWriter sets for a catchment user"
 
 
-def test_ids_cannot_collide_with_a_generated_dataset():
-    """A bootstrap user may sit beside a dataset if someone loads one without restoring first.
+def test_every_id_fits_in_int4():
+    """The id columns are SERIAL, which is int4, not bigint.
 
-    Measured against the real upper bound rather than a guess: `plan_ids` gives each tenant
-    `i * ID_STRIDE`, and the committed co-tenant deployment has 513 of them, so generated ids
-    already reach 51.3 billion. The first constant chosen here was two billion — below the range
-    in use — and this assertion is what caught it.
+    `V0_1__CreateTables` declares `id SERIAL PRIMARY KEY` and nothing since widens it, so an id
+    above 2,147,483,647 fails the insert outright with "integer out of range". An earlier base of
+    nine trillion was chosen to clear the generated range and cleared int4 as well.
     """
+    import re
+    for line in sql().splitlines():
+        for n in (int(m) for m in re.findall(r"\b(\d{8,})\b", line)):
+            assert n <= boot.INT4_MAX, f"{n:,} exceeds int4 in: {line[:90]}"
+
+
+def test_bootstrap_ids_sit_above_the_pilot_deployment():
+    """A bootstrap user may sit beside a dataset if someone loads one without restoring first."""
     import recipe as recipe_mod
     import deployment as dep
     from pathlib import Path as P
-    datasets = P(__file__).resolve().parents[1] / "datasets"
-    highest = 0
-    for f in datasets.glob("*.json"):
-        d = recipe_mod.Recipe.load(f).to_deployment()
-        highest = max(highest, max(dep.plan_ids(d).values()) + dep.ID_STRIDE)
-    assert highest > 0, "no committed recipes to measure against"
-    assert boot.BOOTSTRAP_ID_BASE > highest, (
-        f"bootstrap ids start at {boot.BOOTSTRAP_ID_BASE:,} but generated ids reach {highest:,}")
+    pilot = P(__file__).resolve().parents[1] / "datasets" / "pilot-day-180.json"
+    d = recipe_mod.Recipe.load(pilot).to_deployment()
+    top = max(dep.plan_ids(d).values()) + dep.ID_STRIDE
+    assert boot.BOOTSTRAP_ID_BASE > top, (
+        f"bootstrap starts at {boot.BOOTSTRAP_ID_BASE:,}, pilot ids reach {top:,}")
 
 
 def test_the_username_reaches_the_users_row_and_is_escaped():

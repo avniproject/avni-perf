@@ -28,14 +28,19 @@ import sys
 import catchments as cat
 import hierarchy as hy
 
-# Above anything a generated dataset can reach, so a bootstrap user can coexist with one if
-# someone loads a dataset without restoring first.
+# **These id columns are `SERIAL`, which is int4.** Not bigint — `V0_1__CreateTables` declares
+# `id SERIAL PRIMARY KEY` and nothing since widens it. So every id here has to fit under
+# 2,147,483,647, and a value above it fails the insert with "integer out of range".
 #
-# The first attempt at this was two billion, which is *below* the range in use: `plan_ids` gives
-# each tenant `i * ID_STRIDE`, and the committed co-tenant deployment has 513 tenants, so ids
-# already reach 51.3 billion. A test caught it. Nine trillion leaves three orders of magnitude of
-# headroom and is still comfortably inside a bigint.
-BOOTSTRAP_ID_BASE = 9_000_000_000_000
+# This took two wrong answers to get right. The first base was two billion, which a test rejected
+# for being below the range `plan_ids` hands out. So it went to nine trillion — comfortably clear
+# of the generated range and comfortably outside int4, which the live database then rejected.
+# The test had been measuring against the wrong ceiling, because the generated range is itself
+# too large (see ID_CEILING in deployment.py).
+#
+# Near the top of int4, leaving the few rows this writes room above anything generated.
+INT4_MAX = 2_147_483_647
+BOOTSTRAP_ID_BASE = 2_100_000_000
 
 
 def quote(v) -> str:

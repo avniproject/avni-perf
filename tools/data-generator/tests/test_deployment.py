@@ -336,3 +336,27 @@ def test_the_default_span_is_the_measured_establishment():
     sups = len([c for c in plain.catchments if c.role == cat.SUPERVISOR])
     # 2.8 villages to a sub-centre at three workers each is about 8.4, so roughly 60 of them.
     assert 55 <= sups <= 65, f"measured establishment should give about 60 supervisors, got {sups}"
+
+
+def test_a_deployment_that_cannot_fit_in_int4_is_visible():
+    """The id columns are SERIAL, which is int4. A deployment whose ids exceed it cannot load.
+
+    This is a known defect rather than a guard: the committed co-tenant deployment has 513
+    tenants and reaches 51.3 billion, so cases 6, 7, 12 and 13 would fail at load with "integer
+    out of range". The test records the boundary and which side each committed deployment falls
+    on, so the fix can be verified rather than assumed.
+    """
+    import recipe as recipe_mod
+    from pathlib import Path as P
+    datasets = P(__file__).resolve().parents[1] / "datasets"
+
+    def reach(name):
+        d = recipe_mod.Recipe.load(datasets / name).to_deployment()
+        return max(dep.plan_ids(d).values()) + dep.ID_STRIDE
+
+    assert reach("pilot-day-180.json") <= dep.INT4_MAX, "the pilot must remain loadable"
+    assert dep.INT4_MAX // dep.ID_STRIDE == 21, "21 tenants fit at the current stride"
+    # Documented as broken. When the allocation is fixed this flips, and the assertion above it
+    # is what proves the fix rather than a comment claiming one.
+    assert reach("co-tenants-day-180.json") > dep.INT4_MAX, (
+        "co-tenants now fit in int4 — the allocation was fixed, so invert this assertion")

@@ -28,8 +28,22 @@ import rows as row_gen
 from bundle import Bundle
 from profile import Profile
 
-# Wide enough that a tenant reaching ten times its planned size still cannot reach its neighbour's
-# range. Cheap: ids are bigints.
+# **The id columns are int4, not bigint, and this scheme does not fit in one.**
+#
+# `V0_1__CreateTables` declares `id SERIAL PRIMARY KEY` and nothing since widens it, so every id
+# has to stay under 2,147,483,647. At a stride of 100,000,000 only **21 tenants** fit. The pilot
+# deployment has ten and reaches 1.0 billion, which is fine; the co-tenant deployment has 513 and
+# reaches **51.3 billion**, which is 24x over the ceiling.
+#
+# So every case needing co-tenant data -- 6, 7, 12 and 13 -- would have failed at load with
+# "integer out of range", somewhere around the twenty-second tenant. Found when a bootstrap user
+# with a deliberately high id hit the same wall on a real database.
+#
+# **Not fixed by shrinking this constant**, which only trades one ceiling for another: 513 tenants
+# inside int4 allows about 4 million ids each, and a state tenant already needs 1.8 million at day
+# 180 with no headroom for growth. The fix is to allocate from each tenant's actual size rather
+# than from a fixed block, and it is deliberately not bundled into the change that found it.
+INT4_MAX = 2_147_483_647
 ID_STRIDE = 100_000_000
 
 
