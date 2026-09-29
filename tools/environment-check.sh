@@ -28,8 +28,16 @@ while [ $# -gt 0 ]; do
     *) echo "unknown argument: $1"; exit 2 ;;
   esac
 done
-[ -n "$URL" ] && [ -n "$USER_NAME" ] || {
-  echo "usage: $0 --url <base-url> --user <username> [--db <conninfo>]"; exit 2; }
+# --user is optional on purpose. The users the scenarios run as come from the dataset generator,
+# which needs a bundle and two files dumped from the target database, so requiring one here would
+# mean this check could only run after the expensive thing it exists to de-risk. Without a user it
+# runs everything that does not need one and says clearly what it skipped.
+#
+#   python3 tools/data-generator/bootstrap_user.py --organisation N --username X | psql ...
+#
+# gives you one, with no dataset behind it.
+[ -n "$URL" ] || {
+  echo "usage: $0 --url <base-url> [--user <username>] [--db <conninfo>]"; exit 2; }
 
 ok()   { printf '  \033[32mPASS\033[0m  %-34s %s\n' "$1" "${2:-}"; PASS=$((PASS+1)); }
 bad()  { printf '  \033[31mFAIL\033[0m  %-34s %s\n' "$1" "${2:-}"; FAIL=$((FAIL+1)); }
@@ -89,6 +97,19 @@ fi
 # ---------------------------------------------------------------- application
 echo
 echo "Application"
+if [ -z "$USER_NAME" ]; then
+  skip "auth under IdpType.none" "no --user given"
+  skip "syncDetails responds" "no --user given"
+  skip "privilege resolution" "no --user given"
+  skip "entity coverage" "no --user given"
+  echo
+  echo "      No user supplied, so the application checks were skipped — and they are the ones"
+  echo "      that found every failure so far. To get one without a dataset:"
+  echo
+  echo "        python3 tools/data-generator/bootstrap_user.py \\"
+  echo "          --organisation <id> --username <name> | psql \"\$DB\""
+  echo
+else
 BODY=$(curl -s --max-time 30 -X POST \
   "$URL/v2/syncDetails?includeUserSubjectType=true&deviceId=environment-check" \
   -H 'Content-Type: application/json' -H 'Accept: application/json' \
@@ -178,6 +199,8 @@ PY
 else
   skip "privilege resolution" "needs syncDetails"
   skip "entity coverage" "needs syncDetails"
+fi
+
 fi
 
 # ---------------------------------------------------------------- database

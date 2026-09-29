@@ -81,6 +81,15 @@ injector, and that is instrumented.
 not a waste of a window — **several of section J's contract rows are easier to check with nothing
 listening**, because an application answering can mask the thing being tested.
 
+> **Getting a user is the chicken-and-egg, and it is solved.** The users the scenarios run as come
+> from the dataset generator, which needs a bundle and two files dumped from the target database —
+> so requiring one would mean the readiness check could only run *after* the expensive thing it
+> exists to de-risk. `make bootstrap_user ORG=… USERNAME=…` emits idempotent SQL for one syncable
+> user with no dataset behind it: one location and its type, a catchment, a group carrying
+> privileges, and the membership row. It reuses the generator's own row builders, so a bootstrap
+> user is shaped exactly like a generated one. `--user` is optional on the check, which runs
+> everything that does not need one and says what it skipped.
+
 **Run `make check_environment URL=… USER=…` first.** It asks all of the questions below that can
 be asked over HTTP, in one pass, and exits non-zero if the environment is not ready. It exists
 because three environment windows produced three failures — a null `version` on a `user_group`
