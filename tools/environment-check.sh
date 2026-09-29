@@ -132,6 +132,11 @@ else
     *AmazonS3Exception*)       HINT="$HINT — S3 credentials missing; syncDetails lists extension files" ;;
     *"of primitive type"*)     HINT="$HINT — a NULL in a column mapped to a primitive, usually version" ;;
     *AuthenticationException*|*Unauthorized*) HINT="$HINT — user not found or auth misconfigured" ;;
+    *"permission denied for"*)
+      # The trap that looks like an application fault and is not. A new organisation gets its own
+      # db_user, and without grants its reads fail while /ping stays green and the instance looks
+      # entirely healthy. The symptom points at the server; the cause is one missing grant.
+      HINT="$HINT — the organisation's db_user lacks grants. Run select grant_all_on_all('<db_user>'), via provision/scripts/db-bootstrap.sh with AVNI_DB_SQL=<file>" ;;
   esac
   bad "syncDetails responds" "$HINT"
 fi
