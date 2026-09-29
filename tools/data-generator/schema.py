@@ -87,12 +87,17 @@ CONTRACTS: dict[str, Contract] = {
          "organisation_id": "this table has no tenant column; scope comes from the catchment",
          "uuid": "this table has no uuid column"}, audit=False),
 
-    "users": _c("users", ["username", "catchment_id", "disabled_in_cognito"],
-        {"name": "shown in the admin screens; no sync query reads it",
+    # `audit=False` and the audit columns listed by hand, because `users` is the one table that
+    # carries them *without* `version` -- V1_42__DropColumnVersionFromUsers took it away.
+    "users": _c("users", ["username", "name", "catchment_id", "disabled_in_cognito",
+                          "operating_individual_scope",
+                          "id", "uuid", "is_voided", "organisation_id",
+                          "created_by_id", "last_modified_by_id",
+                          "created_date_time", "last_modified_date_time"],
+        {
          "email": "no notification path under test",
          "phone_number": "no notification path under test",
          "settings": "left at the server's own default, which is what production users get",
-         "operating_individual_scope": "server default",
          "ignore_sync_settings_in_dea": "server default",
          "sync_settings": "attribute-based sync settings -- see the note in H",
          "last_activated_date_time": "not read on the sync path",
@@ -100,7 +105,9 @@ CONTRACTS: dict[str, Contract] = {
          "is_org_admin": "field workers and supervisors are not organisation admins",
          "password": "AVNI_IDP_TYPE=none authenticates from the header (B1)",
          "identifier_source_id": "no identifier generation under test",
-         "subject_id": "user-subject linkage not modelled"}),
+         "subject_id": "user-subject linkage not modelled",
+         "version": "dropped from this table by V1_42; every other table still has it"},
+        audit=False),
 
     # Without these two a generated user resolves no privileges, and SyncDetailsService drops
     # every entity that carries field data -- 19 of the 75 pulled. The sync still succeeds, which

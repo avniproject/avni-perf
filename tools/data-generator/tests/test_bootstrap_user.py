@@ -48,13 +48,38 @@ def test_it_is_re_runnable():
             assert "on conflict (" not in line, line
 
 
-def test_every_row_carries_a_version_and_its_audit_columns():
+# The two tables that do not carry `version`, and the migration that took it away from each.
+# Named rather than skipped, so adding a third is a deliberate act.
+NO_VERSION = {"catchment_address_mapping": "V0_38", "users": "V1_42"}
+
+
+def test_every_row_carries_a_version_except_the_two_that_cannot():
     """version is a primitive int on CHSEntity: NULL makes the row unreadable and syncDetails
-    500s. That is the first failure the first live run produced."""
+    500s. That is the first failure the first live run produced.
+
+    But writing it where the column was dropped fails the insert outright, which is how the live
+    schema caught this. Both directions are wrong, so the exceptions are enumerated.
+    """
     for line in sql().splitlines():
-        if line.startswith("insert into") and "catchment_address_mapping" not in line:
+        if not line.startswith("insert into"):
+            continue
+        table = line.split()[2]
+        if table in NO_VERSION:
+            assert "version" not in line, f"{table} lost version in {NO_VERSION[table]}: {line}"
+        else:
             assert "version" in line, line
+        if table != "catchment_address_mapping":
             assert "created_by_id" in line and "last_modified_by_id" in line, line
+
+
+def test_the_users_row_carries_what_the_live_schema_makes_mandatory():
+    """Both are NOT NULL with no default, and both were originally left out on the grounds that
+    nothing on the sync path reads them. "Nothing reads it" and "it may be null" are different
+    claims, and the second is the one that decides whether the insert succeeds."""
+    users = [l for l in sql().splitlines() if l.startswith("insert into users ")][0]
+    assert " name," in users, "users.name is NOT NULL since V1_328"
+    assert "operating_individual_scope" in users, "NOT NULL, and None would leave sync unscoped"
+    assert "'ByCatchment'" in users, "what UserAndCatchmentWriter sets for a catchment user"
 
 
 def test_ids_cannot_collide_with_a_generated_dataset():

@@ -154,10 +154,25 @@ def catchment_rows(catchments: list[CatchmentSpec], audit_user_id: int = 1) -> l
 
 
 def user_rows(users: list[UserSpec], audit_user_id: int = 1) -> list[dict]:
+    """The `users` table, which is the one place the audit convention does not hold.
+
+    Three ways it differs from every other table here, all verified against migrations rather
+    than assumed, and all of which fail a load rather than degrading it:
+
+    - **No `version`.** `V1_42__DropColumnVersionFromUsers` removed it. Writing it is a column
+      that does not exist.
+    - **`name` is NOT NULL with no default**, since `V1_328__UserNameIsMandatory`. It is only
+      shown in admin screens and no sync query reads it, which is why it was originally left
+      out — but "nothing reads it" and "it may be null" are different claims.
+    - **`operating_individual_scope` is NOT NULL with no default.** `ByCatchment` rather than
+      `None`, because that is what `UserAndCatchmentWriter` sets for a user who has a catchment,
+      and `None` would leave the sync unscoped.
+    """
     return [{
-        "id": u.id, "uuid": u.uuid, "username": u.username,
+        "id": u.id, "uuid": u.uuid, "username": u.username, "name": u.username,
         "organisation_id": u.organisation_id, "catchment_id": u.catchment_id,
-        "is_voided": False, "version": 0, "disabled_in_cognito": False,
+        "operating_individual_scope": "ByCatchment",
+        "is_voided": False, "disabled_in_cognito": False,
         "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id,
     } for u in users]
 
