@@ -646,6 +646,34 @@ stable per-user device ID to the feeder.
 
 ### D1.1 — Measure what `syncDetails` costs *and* what it saves
 
+> **`filterChangedEntities` makes an S3 call on every request, and nothing turns it off.** *Found
+> by the first live runs against a real server, 29 Sep 2026.* One of the entities is `Extension`,
+> whose change check is `ExtensionService.isNonScopeEntityChanged` → `S3Service.listExtensionFiles`
+> — a real S3 **list**, not a local signature.
+>
+> **It is unconditional.** `SyncDetailsService` adds `Extension` to the syncable set in a flat
+> list with no privilege or organisation-config gate, unlike the subject-type entities above it.
+> And the client cannot opt out: `getChangedEntities` adds back any syncable item the request
+> omits, so a body that leaves `Extension` out is indistinguishable from one that includes it.
+> **Both `/syncDetails` and `/v2/syncDetails` go through the same path**, so the legacy endpoint is
+> not an escape either.
+>
+> So **every sync begins with an S3 list call**, inside the per-entity loop this section exists to
+> measure. At production's 792 syncs an hour that is 792 S3 round trips an hour on the endpoint
+> every sync hits first. It is not a database cost, so `pg_stat_statements` will not show it and
+> the D1.1 measurement would attribute it to nothing.
+>
+> It surfaced as a 500 only because the load-test environment had no AWS credentials. **That was
+> the environment being half-configured; the call itself is not.** Once credentials are in it stops
+> being an error and becomes latency nobody has measured, which is the harder version of the
+> problem.
+>
+> **Measure it explicitly when D1.1 runs**: how long `listExtensionFiles` takes, whether anything
+> caches it, and what it does to `syncDetails` p95. If it is material, the fix is a server change —
+> gate it, cache it, or make it asynchronous — and that is a finding for `avni-server#1060` rather
+> than something this harness can work around.
+
+
 **Measured (Q8), over 112,349 syncs: the client posts 79 tracked entities and 4 come back changed at
 p50, 7 at p90 — an average changed fraction of 6.1%.** So roughly **94% of `filterChangedEntities`'
 per-row queries exist to establish that nothing changed**.
@@ -3089,7 +3117,8 @@ means the harness does not require it, not that it is unnecessary.
 |---|---|
 | Outbound side effects impossible — notifications, SMS, external integrations. Enforce at the infrastructure boundary rather than in application config alone, so a configuration mistake cannot cause an incident | F5.3 |
 | The co-tenant workloads present and runnable — ETL host, export and import jobs, webapp. They share the instance and the IOPS budget, so an environment without them is quieter than any real one | F5.4 |
-| A configured `bucketName` and a populated organisation `mediaDirectory`. **An actual S3 bucket is probably not needed** — presigning is local and nothing validates the bucket's existence; see D5.4. Create one only as a deliberate choice | D5.4, C2 |
+| **Working AWS credentials, and an S3 bucket that answers a list.** Corrected by the first live run: presigning is indeed local and needs no bucket, but `syncDetails` does not only presign — `ExtensionService.isNonScopeEntityChanged` calls `S3Service.listExtensionFiles`, a real S3 list, on the `Extension` entity. Without credentials the whole request 500s | D5.4, C2, D1.1 |
+| A configured `bucketName` and a populated organisation `mediaDirectory` | D5.4, C2 |
 | An outbound path for run artefacts: `simulation.log`, generated reports and run metadata | A11 |
 
 ### I5 — Observability
