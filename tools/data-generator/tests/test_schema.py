@@ -138,3 +138,66 @@ def test_the_target_check_catches_what_four_live_failures_taught_it():
     # And a correct row is silent.
     assert schema.check_against_target(
         {"t": {"id": 1, "name": "x", "created_date_time": "2020-01-01"}}, target) == []
+
+
+def _target():
+    """The committed schema snapshot, if there is one."""
+    import json
+    from pathlib import Path
+    p = Path(__file__).resolve().parents[1] / "columns.json"
+    return json.loads(p.read_text()) if p.exists() else None
+
+
+def test_every_builder_matches_the_real_schema():
+    """The check that four rounds of live failures asked for, run offline.
+
+    `columns.json` is a snapshot of the target's own `information_schema`, carrying each column's
+    type, nullability and default. Every one of those four failures — a dropped column written, a
+    NOT NULL column omitted, a NOT NULL column written as null, and an id too wide for int4 —
+    is visible here without a database.
+    """
+    target = _target()
+    if target is None:
+        pytest.skip("no columns.json; run columns.sql against a target to enable this")
+
+    import catchments as cat
+    import deployment as dep
+    import hierarchy as hy
+
+    h = hy.build(1, 3)
+    catchments, users = cat.plan(h)
+    build = dep.build_tenant(dep.TenantSpec(name="t", organisation_id=1, field_workers=3), 0)
+    builders = {
+        "catchment": cat.catchment_rows(catchments)[0],
+        "users": cat.user_rows(users)[0],
+        "groups": cat.group_rows([1])[0],
+        "user_group": cat.user_group_rows(users)[0],
+        "address_level": next(iter(dep.location_rows(build))),
+        "catchment_address_mapping": cat.declared_mappings(catchments)[0],
+    }
+    problems = schema.check_against_target(builders, target)
+    assert not problems, "\n".join(problems)
+
+
+def test_every_contract_accounts_for_the_columns_the_target_requires():
+    """A NOT NULL column with no default that no contract mentions fails the load.
+
+    Contract-level rather than builder-level, so it covers the transactional tables too — those
+    need a bundle to produce a row, and this needs nothing.
+    """
+    target = _target()
+    if target is None:
+        pytest.skip("no columns.json; run columns.sql against a target to enable this")
+
+    problems = []
+    for table, cols in sorted(target.items()):
+        c = schema.CONTRACTS.get(table)
+        if c is None:
+            problems.append(f"{table}: in the target, but no contract")
+            continue
+        names = {x["name"] for x in cols}
+        for missing in sorted({x["name"] for x in cols if x["required"]} - c.accounted):
+            problems.append(f"{table}.{missing}: NOT NULL with no default, unaccounted")
+        for absent in sorted(c.populated - names):
+            problems.append(f"{table}.{absent}: written, but the target has no such column")
+    assert not problems, "\n".join(problems)

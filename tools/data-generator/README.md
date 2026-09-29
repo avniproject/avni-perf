@@ -194,7 +194,12 @@ Two things reduce the gap:
   column the contract has not accounted for. That catches columns that *exist*; it does not catch
   nullability, types or triggers. **Extending it to carry `is_nullable`, `data_type` and
   `column_default` from `information_schema` would catch all three rounds above**, and is the
-  single highest-value thing left in this tool.
+  single highest-value thing left in this tool. *Done, 29 Sep 2026.*
+- **`columns.json` is committed, and the tests validate against it.** It is a snapshot of the
+  target's own `information_schema` — every column's type, nullability and default — so all four
+  rounds above are now catchable on a laptop in a second. Re-dump it with `columns.sql` whenever
+  the server's migration level moves; a stale snapshot still catches more than none, but it will
+  not catch a column that changed after it was taken.
 - **A test asserts every builder emits what its contract claims.** The contract said
   `created_date_time` was populated while four builders emitted nothing; that is checkable
   offline and now is.
