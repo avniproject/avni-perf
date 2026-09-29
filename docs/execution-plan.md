@@ -13,22 +13,25 @@ so treat the shape as firm and the dates as provisional.
 
 ---
 
-## Two things gate everything, and neither is in this repository
+## One thing gates everything, and it is not in this repository
 
 **1 — The environment.** `avni-infra#112`. Nothing below Day 1 can start without it. It is smaller
 than it was: F4 is a security group allowlist plus the SSH tunnel CI mostly has, and
 `configure/group_vars/loadtest_vars.yml` already carries the New Relic agent, production's heap, an
 explicit pool size and `avni_idp_type: none`.
 
-**2 — The bundle carrying the programme design.** Cases 2 to 13 size `program_enrolment` and
-`program_encounter` rows. **The bundle the customer exports today has no live programs** — every
-form mapping is a general `Encounter` on one `Patient` subject type — so the generator cannot
-produce the designed shape. The simulation switches with one property; the dataset cannot.
+**2 — ~~The bundle carrying the programme design.~~ Settled: out of scope.** *29 Sep 2026.* The
+design is still being built, and the exercise no longer waits for it. These runs use the shape the
+current bundle exports — a general `Encounter` on one `Patient` subject type — and the simulation
+now defaults to `PUSH_ENCOUNTER_MODEL=general` to match. Separate runs later if the design lands
+and anyone wants them.
 
-> **Decide this before Day 4, because it changes what Days 7 to 9 build.** Either the designed
-> bundle arrives, or the datasets are generated against the current one with
-> `PUSH_ENCOUNTER_MODEL=general` and **every result carries that deviation**. Waiting silently is
-> the one option with no upside — it converts a known deviation into a schedule slip.
+> **This removes a gate, not a risk.** Days 7 to 9 can build immediately; the generator already
+> guards enrolment generation on the bundle's programmes, so it produces the general shape without
+> changes. What the exercise gives up is written down in F5.2's parity record: `program_encounter`
+> — production's largest table at 11.4 GB with a GIN index — is never written, nor is
+> `program_enrolment`, so the enrolment join on the pull side never happens. Volume is preserved;
+> the tables it lands on are not production's.
 
 ---
 
@@ -186,7 +189,7 @@ per-connection `set role` churn (F2.1).
 ## What would make this slip, honestly
 
 - **The environment.** Everything is behind `avni-infra#112`. It is the whole critical path.
-- **The bundle.** No designed programme means no designed dataset. Decide by Day 4.
+- ~~**The bundle.**~~ Settled — the programme design is out of scope and the exercise no longer waits for it.
 - **Restore time.** Unmeasured until Day 9. If it is an hour, Phase 4 stretches by days.
 - **F7 not passing.** Budgeted one day; could be three. It is also the step most likely to send
   work back into the harness.
@@ -195,4 +198,5 @@ per-connection `set role` churn (F2.1).
   already found four defects whose whole character was passing silently.
 
 **Rough total: four weeks to first findings**, of which the first three days are not in this team's
-hands.
+hands. Taking the programme design out of scope removed a gate on Days 7 to 9 rather than shortening
+them.

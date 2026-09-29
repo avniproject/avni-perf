@@ -815,18 +815,28 @@ built.** The bundle exported today has no live programs — every form mapping i
 this exercise was scoped against is an NCD programme with ten encounter types. The first is a
 configuration mid-build, not the shape being sized.
 
-`PUSH_ENCOUNTER_MODEL=program` is the default and follows the design; `general` follows the current
-export. Volume is identical either way. What changes is whether the write path touches
+`PUSH_ENCOUNTER_MODEL=general` is now the default and follows the current export; `program` follows
+the design and is **out of scope** (see below). Volume is identical either way. What changes is whether the write path touches
 `program_encounter` behind a `program_enrolment` parent or `encounter` hanging off the subject —
 **different sync strategies, different indexes, different join depth on the pull side**, so it is
 not a detail that can be left implicit.
 
-> **The dataset side of this is not yet resolved.** [test-scenarios.md](test-scenarios.md) and the
-> generator profile both size `program_enrolment` and `program_encounter` rows, and the current
-> bundle cannot produce them — `survey_bundle` reports both as absent. So generating a dataset in
-> the designed shape needs a bundle that has the programme in it. **That makes the dataset work
-> track the customer's design rather than lead it**, and is worth knowing before H is scheduled
-> against a date.
+> **Resolved by taking it out of scope.** *Decided, 29 Sep 2026.* The design is still being built,
+> so rather than hold the exercise for it, **these runs use the shape the current bundle exports**
+> and `PUSH_ENCOUNTER_MODEL` defaults to `general` to match. Separate runs will be commissioned
+> later if the design lands and anyone wants them; no task here is waiting on it.
+>
+> **The dataset side resolves itself.** `deployment.py` already guards enrolment generation on
+> `ctx.programs`, so a bundle with no programmes simply produces none — the generator has never
+> been blocked on this, it would just have produced a shape the simulation's old default did not
+> match. Flipping the default is what aligns them.
+>
+> **What goes unexercised is the part worth remembering.** `program_encounter` is production's
+> largest table at 11.4 GB with a GIN index on `observations`, and it is not written at all.
+> Neither is `program_enrolment`, so the enrolment join on the pull side and
+> `SubjectProgramEligibility`'s resolution never happen. The heavy 3× storage tier is mostly those
+> pages, so they do not occur either. **A green result says this shape holds at this volume**, and
+> says nothing about the designed one.
 
 **Still open: the payload shapes have not been sent to a running server.** They are built from the
 client's `toResource` getters and checked field-by-field against the server's request contracts,
@@ -2134,6 +2144,7 @@ read rather than merely what the environment costs:
 | **TLS** | Production terminates HTTPS at the ALB. The module falls back to a plain HTTP listener when `acm_certificate_arn` is null, which removes a measurable per-request cost. Supply a certificate, or record its absence per run |
 | **Fixed instance classes** | Production is burstable in unlimited mode; this environment is fixed, deliberately, to remove credit dynamics from every run. It also means this environment cannot reproduce a credit-exhaustion choke point, which production has actually hit on the database side — so that failure mode has to be reasoned about, not measured here |
 | **Pristine indexes** | Post-load indexes have no bloat; production's have accumulated it. Understates index scan and maintenance cost (G4) |
+| **No programme shape** (out of scope) | The customer's encounters land on `encounter` rather than `program_encounter`, because the designed bundle does not exist yet. **Production's largest table, 11.4 GB with a GIN index on `observations`, is never written**, `program_enrolment` is never written, and the enrolment join on the pull side never happens. Volume is preserved; the tables it lands on are not production's |
 | **No non-sync load at all** (F5.4 deferred) | **The largest asterisk on the exercise.** Production shares the instance, the pool and the 3,000 IOPS between sync, an ETL cycle every 90 minutes, user-triggered exports and imports, and a webapp with people on it. Here only sync runs. Exports and imports *can* coincide with the sync peak — that is taken as given rather than measured — so the gap is real and its size is unbounded |
 | **Injector position** | Runs from different positions are not comparable: a sync is ~109 requests, so 25 ms of extra round trip adds 2.7 s to a 14.1 s median. Recorded per run in `run-metadata.json` (A11) |
 

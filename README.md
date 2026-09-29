@@ -211,8 +211,9 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
 `PUSH_PROFILE` `customer` (default) or `production` — see below
 
-`PUSH_ENCOUNTER_MODEL` `program` (default) or `general` — which table the customer's
-encounters land on
+`PUSH_ENCOUNTER_MODEL` `general` (default) or `program` — which table the customer's
+encounters land on. The programme design is out of scope for this exercise, so `general` matches
+what the datasets actually contain
 
 `CO_TENANTS` `true` adds production's other organisations as a second syncing population — see below
 
@@ -356,14 +357,15 @@ median, p95 at 45, floor at 8. `-DPUSH_PROGRAM_ENCOUNTERS=1.0:20:20:20:20` resto
 if the literal reading is preferred. No customer figure exists for registrations or enrolments, so
 those borrow production's shape.
 
-> **`PUSH_ENCOUNTER_MODEL` decides which table the twenty a day land on, and it will change.**
-> The customer's programme design is work in progress: the bundle they export today has no live
-> programs — every mapping is a general `Encounter` on one `Patient` subject type — while the
-> design this exercise was scoped against is an NCD programme with ten encounter types.
+> **`PUSH_ENCOUNTER_MODEL` decides which table the twenty a day land on. The programme design is
+> out of scope, so the default is `general`.** The bundle the customer exports today has no live
+> programs — every mapping is a general `Encounter` on one `Patient` subject type — and the
+> designed NCD programme is still being built. Separate runs later if it lands.
 >
-> `program` (default) follows the design. `general` follows the current export, moving the volume
-> to `Encounter` and dropping enrolments. Same volume either way; what changes is whether the
-> write path touches `program_encounter` behind a `program_enrolment` parent or `encounter`
+> `general` (default) follows the current export and matches what the generated datasets contain:
+> the volume moves to `Encounter` and there are no enrolments. `program` follows the design and
+> would push a volume these datasets cannot receive. Same volume either way; what changes is whether
+> the write path touches `program_encounter` behind a `program_enrolment` parent or `encounter`
 > hanging straight off the subject — different sync strategies, indexes and join depth.
 
 **`production`** — Q17's measurement of the platform as it stands, over 105,718 syncs.

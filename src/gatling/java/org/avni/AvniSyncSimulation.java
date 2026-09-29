@@ -283,8 +283,22 @@ public class AvniSyncSimulation extends Simulation {
      * straight off the subject. Different sync strategies, different indexes, different join depth
      * on the pull side. Volume is the same either way - the 20 a day just moves.
      */
+    /**
+     * Which table the customer's encounters land on. `general` (the default) or `program`.
+     *
+     * **`general` is the default because the programme design is out of scope for this exercise.**
+     * The bundle the customer exports today has no live programs — every form mapping is a general
+     * `Encounter` on one `Patient` subject type — so a generated dataset carries no
+     * `program_enrolment` rows and nothing to hang a `program_encounter` off. Defaulting to
+     * `program` would push a volume the dataset cannot receive, and `PushSeed` would correctly
+     * draw zero for it, so the write path would quietly lose its largest component.
+     *
+     * `program` is kept for the separate runs that will follow if the design lands. **What those
+     * runs would add is not a detail**: `program_encounter` is production's 11.4 GB GIN-indexed
+     * table, and the enrolment join is on the sync path. Nothing in this exercise exercises either.
+     */
     private static final boolean encountersAreProgramEncounters =
-        !"general".equalsIgnoreCase(System.getProperty("PUSH_ENCOUNTER_MODEL", "program"));
+        "program".equalsIgnoreCase(System.getProperty("PUSH_ENCOUNTER_MODEL", "general"));
 
     /*
      * Records queued per sync, per entity. The tables and the rules that pick between them live in
@@ -738,12 +752,16 @@ public class AvniSyncSimulation extends Simulation {
             if (customerProfile) {
                 out.println(String.format(
                     "  The customer's projection: 20 encounters per worker per day, as the median, "
-                    + "on %s. Their programme design is still in progress, so "
-                    + "PUSH_ENCOUNTER_MODEL=%s moves the same volume to the other table.",
+                    + "on %s. %s",
                     encountersAreProgramEncounters
                         ? "program_encounter (the designed shape)"
                         : "encounter (the shape their current bundle exports)",
-                    encountersAreProgramEncounters ? "general" : "program"));
+                    encountersAreProgramEncounters
+                        ? "PUSH_ENCOUNTER_MODEL=program is OUT OF SCOPE for this exercise - the "
+                          + "generated datasets carry no enrolments, so there is nothing to hang "
+                          + "these off and the write path will lose them."
+                        : "The programme design is out of scope; program_encounter and "
+                          + "program_enrolment are therefore not exercised at all."));
                 out.println(
                     "  PUSH_PROFILE=production switches to Q17's measurement of the platform as it "
                     + "is today. Use it for the co-tenant traffic in cases 7 and 13, not for the "

@@ -118,12 +118,27 @@ sync, with a third of syncs pushing nothing at all — an order of magnitude lig
 measurement is reference, and the setting for case 7's and 13's co-tenants; it is not what the
 customer's own cases run on.
 
-> **These cases assume the programme design, which is still being built.** The bundle the customer
-> exports today has no live programs — every form mapping is a general `Encounter` on one `Patient`
-> subject type — so it cannot yet generate the `program_enrolment` and `program_encounter` rows
-> these scenarios size. The simulation follows the design by default and switches with one
-> property; **the datasets cannot, and need a bundle carrying the programme**. Dataset work
-> therefore follows the design rather than leading it. Both figures can be right: production spans 986 organisations of varied intensity, and this is
+> **The programme design is out of scope for this exercise.** *Decided, 29 Sep 2026.* It is still
+> being built, and rather than hold the exercise for it, **these cases run on the shape the
+> customer's current bundle exports**: every form mapping a general `Encounter` on one `Patient`
+> subject type. The simulation defaults to `PUSH_ENCOUNTER_MODEL=general` to match, which moves the
+> same twenty-a-day volume onto `encounter` instead of `program_encounter`. Separate runs will be
+> commissioned later if the design lands and anyone wants them.
+>
+> **What that costs is worth stating rather than discovering in a report.** The volume is
+> preserved, so the write path is loaded — but it lands on a different table, and the two are not
+> interchangeable:
+>
+> - **`program_encounter` is production's largest table at 11.4 GB**, carries a GIN index on
+>   `observations`, and is the one D3's push-path findings were most expected to come from. It is
+>   not written at all in these runs.
+> - **`program_enrolment` is not written either**, so the enrolment join on the sync path is never
+>   exercised, and `SubjectProgramEligibility` has nothing to resolve against.
+> - **The read path shifts with it.** Pages of `program_encounter` are the heavy tier the storage
+>   model charges 3× for; those pages do not occur.
+>
+> So a green result here says the server holds *this* shape at *this* volume. It does not say the
+> designed shape holds, and the difference is a table that does not exist in these datasets. Both figures can be right: production spans 986 organisations of varied intensity, and this is
 a high-intensity screening programme. But it means **every push and media number on this page rests
 on the customer's estimate, not on a measurement**, and the simulation's own defaults are
 production's. Cases 1 to 13 override them; case 7's co-tenants use the measured ones, which is what
