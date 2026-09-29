@@ -91,6 +91,9 @@ class Recipe:
     tenants: list[dict] = field(default_factory=list)
     enrolment_rate: float = 0.22
     program_encounter_share: float = 0.59
+    # Shifts the generated id range up, for an organisation that already holds rows in the
+    # tables the generator writes -- a bundle brings its own locations and catchments.
+    id_base: int = 0
     notes: str | None = None
     schema_version: int = SCHEMA_VERSION
 
@@ -102,6 +105,7 @@ class Recipe:
             days=deployment.days,
             reference_date=deployment.reference.isoformat(),
             seed=deployment.seed,
+            id_base=deployment.id_base,
             profile=profile,
             bundle_path=str(bundle_path),
             bundle_revision=bundle_revision,
@@ -132,6 +136,7 @@ class Recipe:
             days=self.days,
             reference=date.fromisoformat(self.reference_date),
             seed=self.seed,
+            id_base=self.id_base,
             enrolment_rate=self.enrolment_rate,
             program_encounter_share=self.program_encounter_share,
         )

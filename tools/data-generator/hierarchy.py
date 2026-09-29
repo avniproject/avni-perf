@@ -28,6 +28,47 @@ ESTABLISHMENT = (
 )
 
 
+def from_target_types(types, base=ESTABLISHMENT):
+    """An establishment matching the target's own location hierarchy, and the type ids for it.
+
+    Returns `(establishment, type_ids)` ready for `build`.
+
+    **Why this is not optional.** Without it `build` falls back to a level's depth as its type
+    id, which is only right on an empty database. A bundle's types are numbered wherever they
+    landed — the Tanuh bundle's are 11 to 18 — so generated `address_level` rows reference type
+    ids that do not exist and the load fails on a foreign key.
+
+    **The chain comes from `parent_id`, not from `level`.** A real establishment hangs alternates
+    off the middle of its spine: Tanuh has a Health Centre at 3.5 and a Taluka Hospital at 5.5
+    beside a State/District/Taluka/Village chain. Ordering by level alone would thread all eight
+    into one impossible lineage.
+
+    Branching factors are taken positionally from the measured establishment, which is an
+    approximation: they describe an Indian public-health hierarchy, and a target with a different
+    shape gets the closest measured fan-out rather than its own. The leaf count is what actually
+    drives the row totals, so this affects the tree's shape and not its size.
+    """
+    by_id = {t["id"]: t for t in types}
+    children = {}
+    for t in types:
+        children.setdefault(t.get("parent_id"), []).append(t)
+
+    roots = children.get(None, [])
+    if not roots:
+        raise ValueError("no root address level type: every one of them declares a parent")
+
+    def longest(node):
+        kids = children.get(node["id"], [])
+        return [node] if not kids else [node] + max((longest(k) for k in kids), key=len)
+
+    chain = max((longest(r) for r in roots), key=len)
+    branching = [b for _, b in base[1:]]
+    establishment = tuple(
+        (t["name"], None if i == 0 else branching[min(i - 1, len(branching) - 1)])
+        for i, t in enumerate(chain))
+    return establishment, {t["name"]: t["id"] for t in chain}
+
+
 def with_supervisor_span(workers_per_supervisor: float,
                          field_workers_per_village: int,
                          establishment=ESTABLISHMENT):

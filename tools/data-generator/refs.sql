@@ -20,6 +20,19 @@ select json_build_object(
     ) order by id), '[]'::json)
     from subject_type where is_voided = false
   ),
+  -- The target's own location hierarchy. Without these the generator falls back to using a
+  -- level's depth as its type id, which is only ever right on an empty database: a bundle's
+  -- types are numbered wherever they landed, and its hierarchy is whatever the implementation
+  -- designed -- not the six-level State/District/Block/PHC/Sub-Centre/Village this tool assumes.
+  -- `parent_id` is what says which of them form a chain; `level` alone does not, because a real
+  -- establishment hangs alternates like a health centre off the middle of it.
+  'address_level_types', (
+    select coalesce(json_agg(json_build_object(
+      'id', id, 'uuid', uuid, 'name', name, 'level', level,
+      'parent_id', parent_id, 'organisation_id', organisation_id
+    ) order by level desc), '[]'::json)
+    from address_level_type where is_voided = false
+  ),
   'programs', (
     select coalesce(json_agg(json_build_object(
       'id', id, 'uuid', uuid, 'name', name, 'organisation_id', organisation_id

@@ -27,6 +27,16 @@ from dataclasses import dataclass, field
 CHECKED_AGAINST_MIGRATION = "V1_410"
 
 # Columns present on nearly every table, written from the audit helper.
+# Columns the target has that the generator deliberately leaves alone, on tables that carry the
+# audit convention. Recorded once rather than repeated in nine contracts.
+#
+# `audit_id` is the one worth understanding: the BEFORE INSERT trigger writes a row into `audit`
+# and sets this to point at it. Writing it ourselves would either duplicate that row or dangle.
+AUDIT_UNWRITTEN = {
+    "audit_id": "the insert trigger writes the audit row and sets this; writing it would dangle",
+    "manual_update_history": "admin edit provenance, not read on the sync path",
+}
+
 AUDIT = ("id", "uuid", "is_voided", "version", "organisation_id",
          "created_by_id", "last_modified_by_id", "created_date_time", "last_modified_date_time")
 
@@ -46,11 +56,23 @@ class Contract:
 
     def unaccounted(self, target_columns) -> list[str]:
         """Columns the target has that this contract has never heard of."""
-        return sorted(set(target_columns) - self.accounted)
+        return sorted(set(column_names(target_columns)) - self.accounted)
 
     def missing(self, target_columns) -> list[str]:
         """Columns this contract writes that the target no longer has."""
-        return sorted(self.populated - set(target_columns))
+        return sorted(self.populated - set(column_names(target_columns)))
+
+
+def column_names(cols) -> list[str]:
+    """Just the names, from either shape of `columns.json`.
+
+    The file used to be a list of names per table. It now carries a dict per column -- name,
+    type, required, default -- because names alone could not catch a dropped column written, a
+    NOT NULL column omitted, or an id too wide for int4. Both shapes are accepted so an older
+    dump still works, and so the format change cannot silently break a load path that only ever
+    wanted the names.
+    """
+    return [c["name"] if isinstance(c, dict) else c for c in cols]
 
 
 INT4_MAX = 2_147_483_647
@@ -100,9 +122,11 @@ def check_against_target(builders: dict, target: dict) -> list[str]:
 
 
 def _c(table, populated, unwritten=None, audit=True):
+    # `audit=False` still gets AUDIT_UNWRITTEN: `users` carries `audit_id` too, it just has no
+    # `version`. The two are separate facts and conflating them is how the last round went wrong.
     return Contract(table=table,
                     populated=frozenset(populated) | (frozenset(AUDIT) if audit else frozenset()),
-                    unwritten=dict(unwritten or {}))
+                    unwritten={**AUDIT_UNWRITTEN, **(unwritten or {})})
 
 
 _SYNC = {
@@ -178,7 +202,10 @@ CONTRACTS: dict[str, Contract] = {
          "registration_location": "no geospatial query under test",
          "legacy_id": "import provenance",
          "facility_id": "facility linkage not modelled",
-         "subject_type": "resolved through subject_type_id"}),
+         "subject_type": "resolved through subject_type_id",
+         "subject_location": "no geospatial query is under test",
+         "sync_disabled": "defaults false; a disabled subject would not sync, which is the opposite of the point",
+         "sync_disabled_date_time": "only meaningful when sync_disabled is set"}),
 
     "program_enrolment": _c("program_enrolment",
         ["program_id", "individual_id", "address_id", "enrolment_date_time", "observations",
@@ -186,7 +213,10 @@ CONTRACTS: dict[str, Contract] = {
         {"enrolment_location": "no geospatial query under test",
          "exit_location": "no geospatial query under test",
          "program_exit_observations": "exit forms are not part of the modelled workload",
-         "legacy_id": "import provenance"}),
+         "legacy_id": "import provenance",
+         "program_outcome_id": "outcomes are not modelled; enrolments under test are open",
+         "sync_disabled": "defaults false; a disabled enrolment would not sync",
+         "sync_disabled_date_time": "only meaningful when sync_disabled is set"}),
 
     "program_encounter": _c("program_encounter",
         ["program_enrolment_id", "individual_id", "address_id", "encounter_type_id", "name",
@@ -196,7 +226,8 @@ CONTRACTS: dict[str, Contract] = {
          "encounter_location": "no geospatial query under test",
          "cancel_location": "no geospatial query under test",
          "sync_disabled_date_time": "only set when sync_disabled is true",
-         "legacy_id": "import provenance"}),
+         "legacy_id": "import provenance",
+         "filled_by_id": "who filled the form is not read on the sync path"}),
 
     "encounter": _c("encounter",
         ["individual_id", "address_id", "encounter_type_id", "name", "encounter_date_time",
@@ -206,7 +237,8 @@ CONTRACTS: dict[str, Contract] = {
          "encounter_location": "no geospatial query under test",
          "cancel_location": "no geospatial query under test",
          "sync_disabled_date_time": "only set when sync_disabled is true",
-         "legacy_id": "import provenance"}),
+         "legacy_id": "import provenance",
+         "filled_by_id": "who filled the form is not read on the sync path"}),
 }
 
 

@@ -1,0 +1,33 @@
+{
+  "name": "tanuh-small",
+  "days": 60,
+  "reference_date": "2026-09-29",
+  "seed": 42,
+  "profile": "production-2026-09",
+  "bundle_path": "<set at generation time>",
+  "bundle_revision": null,
+  "bundle_fingerprint": {
+    "files": {},
+    "combined": null
+  },
+  "tenant_bundle_fingerprints": {},
+  "tenants": [
+    {
+      "name": "tanuh-load",
+      "organisation_id": 3,
+      "field_workers": 9,
+      "field_workers_per_village": 3,
+      "beneficiaries_per_village": 300,
+      "encounters_per_worker_per_day": 20,
+      "supervisor_level": "Village",
+      "workers_per_supervisor": null,
+      "bundle_path": null,
+      "total_encounters": null
+    }
+  ],
+  "enrolment_rate": 0.22,
+  "program_encounter_share": 0.59,
+  "id_base": 1000000,
+  "notes": "Phase 1 Day 4: a deliberately small dataset in organisation 3, to prove the generate/load/gate path before day-180 volumes. supervisor_level is Village because that is one above the leaf in Tanuh's own hierarchy; the tool's default Sub-Centre does not exist there. id_base clears the rows the bundle created.",
+  "schema_version": 1
+}

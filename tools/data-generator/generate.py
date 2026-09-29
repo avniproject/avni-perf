@@ -48,6 +48,8 @@ def _refs(path: Path, organisation_ids: set[int]):
                for p in raw.get("programs", []) if p.get("organisation_id") == org]
         ets = [row_gen.EncounterTypeRef(id=e["id"], uuid=e["uuid"], name=e["name"])
                for e in raw.get("encounter_types", []) if e.get("organisation_id") == org]
+        alts = [a for a in raw.get("address_level_types", [])
+                if a.get("organisation_id") == org]
         if not sts:
             missing.append(("subject type", org))
         # Encounter types were not checked, and nothing downstream guards them: `rows.py` indexes
@@ -57,7 +59,7 @@ def _refs(path: Path, organisation_ids: set[int]):
         # enrolments, and with the programme design out of scope that is the expected shape.
         if not ets:
             missing.append(("encounter type", org))
-        out[org] = (sts, prs, ets)
+        out[org] = (sts, prs, ets, alts)
     return out, missing
 
 
@@ -146,7 +148,7 @@ def main(argv: list[str]) -> int:
     # One tenant at a time, because each has its own metadata ids.
     counts: dict[str, int] = {}
     for spec in deployment.tenants:
-        sts, prs, ets = refs[spec.organisation_id]
+        sts, prs, ets, alts = refs[spec.organisation_id]
         one = dep.DeploymentSpec(tenants=(spec,), days=deployment.days,
                                  reference=deployment.reference, seed=deployment.seed,
                                  enrolment_rate=deployment.enrolment_rate,
@@ -154,6 +156,7 @@ def main(argv: list[str]) -> int:
         part = dep.write_dataset(one, bundles[spec.organisation_id], profile, columns,
                                  Path(args.out) / spec.name,
                                  subject_types=sts, programs=prs, encounter_types=ets,
+                                 address_level_types=alts,
                                  recipe_name=recipe.name, hash_files=not args.no_hash)
         for t, n in part.items():
             counts[t] = counts.get(t, 0) + n

@@ -92,8 +92,13 @@ def render(value) -> str:
     return escape(str(value))
 
 
-def project(row: Mapping, columns: Sequence[str], *, table: str = "") -> list[str]:
-    """Lay a row out in the target's column order, refusing keys that are not columns."""
+def project(row: Mapping, columns: Sequence, *, table: str = "") -> list[str]:
+    """Lay a row out in the target's column order, refusing keys that are not columns.
+
+    Takes either shape of `columns.json` — a list of names, or the richer list of dicts that
+    carries type and nullability — because COPY only ever needed the names and order.
+    """
+    columns = schema.column_names(columns)
     unknown = set(row) - set(columns)
     if unknown:
         where = f" for {table}" if table else ""
@@ -152,7 +157,7 @@ def load_script(tables: Mapping[str, Sequence[str]], *, directory: str = ".",
         "",
     ]
     for t in ordered:
-        cols = ", ".join(tables[t])
+        cols = ", ".join(schema.column_names(tables[t]))
         out += [f"\\echo loading {t}",
                 f"\\copy {t} ({cols}) FROM '{directory}/{t}.tsv' WITH (FORMAT text)",
                 ""]

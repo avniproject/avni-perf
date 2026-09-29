@@ -94,6 +94,10 @@ class DeploymentSpec:
     days: int
     reference: date
     seed: int = 42
+    # Shifts every tenant's id range up, for generating into an organisation that already holds
+    # rows in the tables below -- a bundle brings its own locations and catchments. Must leave
+    # room for the tenants above it: id_base + tenants x ID_STRIDE has to stay under INT4_MAX.
+    id_base: int = 0
     # Share of subjects enrolled in a programme. Q3's per-device medians give roughly 100
     # enrolments to 464 subjects, so 0.22 is the measured ratio rather than a guess -- but it is a
     # ratio of medians, not a measurement of enrolment rate, and the customer has not supplied one.
@@ -149,12 +153,22 @@ class TenantBuild:
         return self.hierarchy.leaves
 
 
-def build_tenant(spec: TenantSpec, id_base: int) -> TenantBuild:
-    establishment = (hy.ESTABLISHMENT if spec.workers_per_supervisor is None
-                     else hy.with_supervisor_span(spec.workers_per_supervisor,
-                                                  spec.field_workers_per_village))
+def build_tenant(spec: TenantSpec, id_base: int, address_level_types=None) -> TenantBuild:
+    """`address_level_types` comes from refs.json and is what makes the generated locations
+    reference type ids that actually exist on the target. Omitted, the tree keeps its measured
+    shape and each level's depth doubles as its type id — correct only on an empty database."""
+    type_ids = None
+    if address_level_types:
+        establishment, type_ids = hy.from_target_types(address_level_types)
+        if spec.workers_per_supervisor is not None:
+            establishment = hy.with_supervisor_span(
+                spec.workers_per_supervisor, spec.field_workers_per_village, establishment)
+    else:
+        establishment = (hy.ESTABLISHMENT if spec.workers_per_supervisor is None
+                         else hy.with_supervisor_span(spec.workers_per_supervisor,
+                                                      spec.field_workers_per_village))
     h = hy.build(spec.organisation_id, spec.villages, first_id=id_base + 1,
-                 establishment=establishment)
+                 establishment=establishment, type_ids=type_ids)
     cs, us = cat.plan(h, field_workers_per_leaf=spec.field_workers_per_village,
                       supervisor_level=spec.supervisor_level,
                       first_catchment_id=id_base + 1, first_user_id=id_base + 1,
@@ -231,8 +245,15 @@ def transactional_rows(build: TenantBuild, deployment: DeploymentSpec, ctx: row_
 
 
 def plan_ids(deployment: DeploymentSpec) -> dict[int, int]:
-    """A disjoint id range per tenant, so rows from different tenants cannot collide."""
-    return {t.organisation_id: i * ID_STRIDE for i, t in enumerate(deployment.tenants)}
+    """A disjoint id range per tenant, so rows from different tenants cannot collide.
+
+    `id_base` shifts the whole allocation up. It exists because a generated dataset does not
+    always land in an empty organisation: an implementation bundle creates address level types,
+    locations and catchments of its own, and those are tables the generator also writes. Starting
+    at 1 would collide with them. Default 0 keeps the original behaviour for a clean target.
+    """
+    return {t.organisation_id: deployment.id_base + i * ID_STRIDE
+            for i, t in enumerate(deployment.tenants)}
 
 
 def summarise(deployment: DeploymentSpec) -> str:
@@ -283,7 +304,7 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
                   columns: dict[str, list[str]], directory: str | Path,
                   *, subject_types, programs, encounter_types,
                   verify_schema: bool = True, recipe_name: str | None = None,
-                  hash_files: bool = True) -> dict[str, int]:
+                  hash_files: bool = True, address_level_types=None) -> dict[str, int]:
     """Generate and write a whole deployment. Returns the row count per table.
 
     Rows stream to disk as they are produced, so the peak memory cost is one village's subjects
@@ -304,7 +325,7 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
     with _Sink(directory, columns) as sink:
         for spec in deployment.tenants:
             base = bases[spec.organisation_id]
-            build = build_tenant(spec, base)
+            build = build_tenant(spec, base, address_level_types)
 
             for row in location_rows(build):
                 sink.write("address_level", row)
@@ -353,7 +374,7 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
 
 
 def feeder_csv(deployment: DeploymentSpec, path: str | Path, *,
-               supervisor_push_scale: float = 1.0) -> int:
+               supervisor_push_scale: float = 1.0, address_level_types=None) -> int:
     """The simulation's `sync-users.csv`, spanning every tenant (E4).
 
     **The columns are the simulation's contract, not this module's convenience.** It reads
@@ -384,7 +405,7 @@ def feeder_csv(deployment: DeploymentSpec, path: str | Path, *,
         w.writeheader()
         n = 0
         for spec in deployment.tenants:
-            build = build_tenant(spec, bases[spec.organisation_id])
+            build = build_tenant(spec, bases[spec.organisation_id], address_level_types)
             for u in build.users:
                 w.writerow({"userName": u.username,
                             "lastModifiedDateTime": "1900-01-01T00:00:00.000Z",
