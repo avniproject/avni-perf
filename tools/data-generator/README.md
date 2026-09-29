@@ -173,6 +173,32 @@ supervisors would outnumber the places they supervise.
 Recipes get the parameter for free — `Recipe.deployment()` splats each tenant dict into
 `TenantSpec`, so adding `workers_per_supervisor` to a recipe's tenant entry is enough.
 
+## The builders are shaped for the schema, and the schema is not the entity classes
+
+Three rounds of the same defect, each found on a real database rather than by a test:
+
+| | What the entity class said | What the database said |
+|---|---|---|
+| `users.version` | `CHSEntity` has it | `V1_42` dropped it from this table only |
+| `users.name`, `operating_individual_scope` | nullable fields | NOT NULL, no default |
+| every structural table's timestamps | nullable columns | a BEFORE INSERT trigger copies them into `audit`, whose date columns are NOT NULL |
+
+**The pattern is that a Java entity cannot tell you what a column costs.** It does not carry the
+column's width — `id` is `Long` in Java and `SERIAL`, meaning int4, in Postgres — nor its
+nullability after 484 migrations, nor whether a trigger reads it. Reading the entity and writing
+a matching row is how all three of these were produced.
+
+Two things reduce the gap:
+
+- **`columns.sql` already dumps the target's real column list**, and generation refuses on a
+  column the contract has not accounted for. That catches columns that *exist*; it does not catch
+  nullability, types or triggers. **Extending it to carry `is_nullable`, `data_type` and
+  `column_default` from `information_schema` would catch all three rounds above**, and is the
+  single highest-value thing left in this tool.
+- **A test asserts every builder emits what its contract claims.** The contract said
+  `created_date_time` was populated while four builders emitted nothing; that is checkable
+  offline and now is.
+
 ## What a bulk load bypasses, and what it does not
 
 H4 loads with `COPY`, which skips the application entirely. So the question is what the application

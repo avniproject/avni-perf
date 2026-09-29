@@ -73,3 +73,37 @@ def test_address_id_is_written_on_every_table_sync_1_indexes():
 
 def test_the_migration_watermark_is_recorded():
     assert schema.CHECKED_AGAINST_MIGRATION.startswith("V1_")
+
+
+def test_every_builder_emits_what_its_contract_claims():
+    """The contract's `populated` set is a claim about the builder, and nothing checked it.
+
+    It claimed `created_date_time` and `last_modified_date_time` for every audit-bearing table
+    while four builders emitted neither. The columns are nullable, so `COPY` accepts the nulls —
+    but each of those tables carries a BEFORE INSERT trigger that copies the timestamps into
+    `audit`, whose own date columns are NOT NULL. The load fails with a message naming `audit`
+    rather than the table being written, which is a long way from the cause.
+
+    This is the offline half of validating against the real schema: it cannot see column types
+    or triggers, but it can see that a builder does not produce what its contract promises.
+    """
+    import catchments as cat
+    import deployment as dep
+    import hierarchy as hy
+
+    h = hy.build(1, 3)
+    catchments, users = cat.plan(h)
+    build = dep.build_tenant(dep.TenantSpec(name="t", organisation_id=1, field_workers=3), 0)
+
+    emitted = {
+        "catchment": cat.catchment_rows(catchments)[0],
+        "users": cat.user_rows(users)[0],
+        "groups": cat.group_rows([1])[0],
+        "user_group": cat.user_group_rows(users)[0],
+        "address_level": next(iter(dep.location_rows(build))),
+        "catchment_address_mapping": cat.declared_mappings(catchments)[0],
+    }
+    for table, row in emitted.items():
+        claimed = schema.CONTRACTS[table].populated
+        missing = sorted(claimed - set(row))
+        assert not missing, f"{table} contract claims {missing} but the builder emits none of them"

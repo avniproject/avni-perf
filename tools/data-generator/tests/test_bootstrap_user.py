@@ -112,5 +112,24 @@ def test_the_username_reaches_the_users_row_and_is_escaped():
 
 
 def test_the_audit_user_is_configurable():
-    """created_by_id points at a user that must already exist; it is not always 1."""
-    assert ", 42, 42)" in sql(audit_user_id=42)
+    """created_by_id points at a user that must already exist; it is not always 1.
+
+    Checked by column rather than by position: the first version asserted on ", 42, 42)" at the
+    end of the values list, which broke the moment timestamps were appended after it.
+    """
+    import catchments as cat
+    import hierarchy as hy
+    catchments, _ = cat.plan(hy.build(1, 2))
+    row = cat.catchment_rows(catchments, 42)[0]
+    assert row["created_by_id"] == 42 and row["last_modified_by_id"] == 42
+    assert "42" in sql(audit_user_id=42)
+
+
+def test_every_row_carries_the_timestamps_its_trigger_needs():
+    """Every table here but `users` has a BEFORE INSERT trigger copying the row's timestamps into
+    `audit`, whose date columns are NOT NULL with no default. A null fails the insert with a
+    message naming `audit` rather than the table being written."""
+    for line in sql().splitlines():
+        if line.startswith("insert into") and "catchment_address_mapping" not in line:
+            assert "created_date_time" in line, line
+            assert "last_modified_date_time" in line, line

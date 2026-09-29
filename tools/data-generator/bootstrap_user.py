@@ -88,13 +88,13 @@ def statements(organisation_id: int, username: str, audit_user_id: int = 1) -> l
     out.append(insert("address_level_type", {
         "id": village.type_id, "uuid": f"bootstrap-type-{organisation_id}", "name": "Village",
         "level": 1.0, "organisation_id": organisation_id, "is_voided": False, "version": 0,
-        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id,
+        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id, **cat._stamps(),
     }))
     out.append(insert("address_level", {
         "id": village.id, "uuid": village.uuid, "title": village.title, "level": 1.0,
         "type_id": village.type_id, "organisation_id": organisation_id,
         "is_voided": False, "version": 0,
-        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id,
+        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id, **cat._stamps(),
     }))
     for row in cat.catchment_rows([catchment], audit_user_id):
         out.append(insert("catchment", row))

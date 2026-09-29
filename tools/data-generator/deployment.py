@@ -169,7 +169,10 @@ def location_rows(build: TenantBuild) -> Iterator[dict]:
                "type_id": l.type_id, "parent_id": l.parent_id, "lineage": h.lineage(l),
                "organisation_id": l.organisation_id, "is_voided": False, "version": 0,
                "created_by_id": 1, "last_modified_by_id": 1,
-               "created_date_time": None, "last_modified_date_time": None}
+               # Not None. These tables carry a BEFORE INSERT trigger that copies the row's
+               # timestamps into `audit`, whose date columns are NOT NULL with no default, so a
+               # null here fails the insert with a message naming `audit` rather than this table.
+               **cat._stamps()}
 
 
 def transactional_rows(build: TenantBuild, deployment: DeploymentSpec, ctx: row_gen.Context,

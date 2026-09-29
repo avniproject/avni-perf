@@ -145,11 +145,28 @@ def expanded_locations(hierarchy: Hierarchy, catchment: CatchmentSpec) -> list[L
     return list(seen.values())
 
 
+# Structural rows -- locations, catchments, users, groups -- are setup, not activity. A fixed
+# timestamp well before any dataset's reference date keeps them out of every incremental sync's
+# window and makes regeneration byte-identical.
+#
+# **They cannot be left null.** Every one of these tables carries a BEFORE INSERT trigger that
+# copies the row's timestamps into the `audit` table, whose own date columns are NOT NULL with no
+# default. A null here fails the insert with a message naming `audit`, not the table being
+# written -- which is why it reads as an unrelated problem. `users` is the exception: it has
+# CURRENT_TIMESTAMP defaults and no trigger. Supplying them everywhere is both safer and more
+# consistent than relying on that.
+SETUP_TIMESTAMP = "2020-01-01 00:00:00"
+
+
+def _stamps() -> dict:
+    return {"created_date_time": SETUP_TIMESTAMP, "last_modified_date_time": SETUP_TIMESTAMP}
+
+
 def catchment_rows(catchments: list[CatchmentSpec], audit_user_id: int = 1) -> list[dict]:
     return [{
         "id": c.id, "uuid": c.uuid, "name": c.name, "organisation_id": c.organisation_id,
         "is_voided": False, "version": 0,
-        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id,
+        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id, **_stamps(),
     } for c in catchments]
 
 
@@ -173,7 +190,7 @@ def user_rows(users: list[UserSpec], audit_user_id: int = 1) -> list[dict]:
         "organisation_id": u.organisation_id, "catchment_id": u.catchment_id,
         "operating_individual_scope": "ByCatchment",
         "is_voided": False, "disabled_in_cognito": False,
-        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id,
+        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id, **_stamps(),
     } for u in users]
 
 
@@ -210,7 +227,7 @@ def group_rows(organisation_ids, audit_user_id: int = 1) -> list[dict]:
         "id": group_id_for(org), "uuid": f"group-{org}", "name": "Everyone",
         "has_all_privileges": True, "organisation_id": org,
         "is_voided": False, "version": 0,
-        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id,
+        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id, **_stamps(),
     } for org in sorted(set(organisation_ids))]
 
 
@@ -227,7 +244,7 @@ def user_group_rows(users: list[UserSpec], audit_user_id: int = 1) -> list[dict]
         "user_id": u.id, "group_id": group_id_for(u.organisation_id),
         "organisation_id": u.organisation_id,
         "is_voided": False, "version": 0,
-        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id,
+        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id, **_stamps(),
     } for u in users]
 
 
