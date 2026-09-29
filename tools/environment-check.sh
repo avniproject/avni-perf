@@ -169,16 +169,32 @@ served = {d.get("entityName") for d in (body or {}).get("syncDetails", [])}
 # ranked the warning above the failure and reported a broken environment as ready.
 failed = warned = False
 
+# `syncDetails` returns only entities that have *changed*, so an entity with no rows is filtered
+# out whatever the privileges say. On an empty organisation every field-data entity is absent for
+# that reason alone, and reading it as a privilege failure is a false alarm — which is what this
+# check did on its first real use.
+#
+# `MyGroups` is the discriminator. It is served when the user has group rows, and those are the
+# same rows that carry `has_all_privileges`, so its presence means membership resolved even
+# before any subject data exists.
+membership = "MyGroups" in served or "Groups" in served
+
 if body is None:
     print(f"  {YELLOW}WARN{OFF}  {'privilege resolution':<34} response was not JSON")
     warned = True
 elif gated & served:
     print(f"  {GREEN}PASS{OFF}  {'privilege resolution':<34} "
           f"{len(gated & served)} field-data entities served")
+elif membership:
+    print(f"  {YELLOW}WARN{OFF}  {'privilege resolution':<34} no field-data entities yet, but "
+          "group membership resolved (MyGroups is served). Expected on an organisation with no "
+          "data loaded — entities with no rows are filtered out whatever the privileges say. "
+          "Re-check after the dataset loads; only then does an absence mean anything")
+    warned = True
 else:
-    print(f"  {RED}FAIL{OFF}  {'privilege resolution':<34} none of the field-data entities are "
-          "served. The user resolves no privileges, so it is in no group carrying "
-          "has_all_privileges — a run would go green and measure reference data only (G5)")
+    print(f"  {RED}FAIL{OFF}  {'privilege resolution':<34} no field-data entities and no "
+          "MyGroups. The user is in no group carrying has_all_privileges — a run would go green "
+          "and measure reference data only (G5)")
     failed = True
 
 if body is not None:
@@ -186,9 +202,12 @@ if body is not None:
     wanted = {e["entityName"] for e in table["entities"] if e["pullRequired"]}
     missing = sorted(wanted - served)
     if missing:
+        # Not necessarily a defect: an entity with no rows is filtered out of the response, so on
+        # an empty organisation most of the table is legitimately absent.
+        note = ("— expected while the organisation has no data; it means something only after a "
+                "dataset is loaded" if not (gated & served) else "")
         print(f"  {YELLOW}WARN{OFF}  {'entity coverage':<34} {len(served)} served, {len(missing)} "
-              f"the simulation pulls are absent: {', '.join(missing[:6])}"
-              f"{' and more' if len(missing) > 6 else ''}")
+              f"the simulation pulls are absent {note}")
         warned = True
     else:
         print(f"  {GREEN}PASS{OFF}  {'entity coverage':<34} all {len(wanted)} pulled entities served")
