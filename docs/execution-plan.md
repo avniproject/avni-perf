@@ -13,6 +13,30 @@ so treat the shape as firm and the dates as provisional.
 
 ---
 
+## At a glance
+
+| Phase | Days | |
+|---|---|---|
+| **Day 0** | *while the bare environment is up* | Verify what is cheaper to check with no application listening — the WAF rule, outbound suppression, and whether a manual snapshot survives `destroy`. |
+| **0 · Environment** | **1–3** | A server that answers, reachable only from the injector, and instrumented. |
+| **1 · Prove the groundwork, small** | **4–6** | Generate, load, provision and smoke on a deliberately tiny tenant. First contact with a real server. |
+| **2 · Real dataset and reset** | **7–10** | The day-180 dataset loaded and gated, the restore mechanism built and **timed**. |
+| **3 · Calibration** | **11** | **F7, the gate.** Nothing before it is evidence; nothing after it is trustworthy until it passes. |
+| **4 · Execution** | **12–20** | Cases 1 to 13, ordered so each is interpretable when it runs. |
+| **5 · Findings** | **21+** | Saturate, name the resource, fix, re-run. Four to six iterations, not one pass. |
+
+**Roughly four weeks to first findings**, of which Days 1 to 3 are not in this team's hands.
+
+**Three of those rows carry most of the risk.** Day 9 produces the restore time, and a run is
+*restore + run + collect*, so that number sets Phase 4's cadence rather than being a detail of it.
+Day 11 is the one that can send work back into the harness, because both storage coefficients are
+deliberate upper bounds rather than measurements. And Days 5 to 6 are the first time any of this
+touches a real server — the three gates that run without one cannot catch anything that needs a
+server to be wrong, and this epic has already found four defects whose whole character was passing
+silently.
+
+---
+
 ## One thing gates everything, and it is not in this repository
 
 **1 — The environment.** `avni-infra#112`. Nothing below Day 1 can start without it. It is smaller
