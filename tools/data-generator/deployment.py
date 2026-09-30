@@ -255,8 +255,26 @@ def plan_ids(deployment: DeploymentSpec) -> dict[int, int]:
     locations and catchments of its own, and those are tables the generator also writes. Starting
     at 1 would collide with them. Default 0 keeps the original behaviour for a clean target.
     """
-    return {t.organisation_id: deployment.id_base + i * ID_STRIDE
-            for i, t in enumerate(deployment.tenants)}
+    bases = {t.organisation_id: deployment.id_base + i * ID_STRIDE
+             for i, t in enumerate(deployment.tenants)}
+
+    # **A fixed stride does not survive many tenants.** 513 co-tenants at 100,000,000 apiece needs
+    # 51.2 billion of id space against int4's 2.147 billion, and nothing here noticed: the ids go
+    # into the .tsv files, generation reports success, and `COPY` fails hours later on "integer out
+    # of range" -- or, worse, on a column somebody has since widened, loads and collides.
+    #
+    # Refused rather than clamped. The fix is to allocate each tenant a band sized to its own rows
+    # instead of a block sized to the largest imaginable tenant, and choosing that is not something
+    # to do silently inside an id allocator.
+    top = max(bases.values()) + ID_STRIDE
+    if top > INT4_MAX:
+        raise ValueError(
+            f"{len(deployment.tenants)} tenants at ID_STRIDE {ID_STRIDE:,} need ids up to "
+            f"{top:,}, and these columns are int4 (max {INT4_MAX:,}). "
+            f"At this stride only {(INT4_MAX - deployment.id_base) // ID_STRIDE} tenants fit. "
+            f"A deployment this wide needs bands sized per tenant -- the whole co-tenant set is "
+            f"about 5.7 million rows, which fits inside a single stride.")
+    return bases
 
 
 def summarise(deployment: DeploymentSpec) -> str:

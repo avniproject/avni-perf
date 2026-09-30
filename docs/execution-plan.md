@@ -236,6 +236,24 @@ that were just recreated, so there are no dead tuples to skip and no bloated ind
 where the teardown's reload was inserting into files still holding 2.3M dead rows. So the
 teardown pays twice: once to delete, and again on the insert that follows.
 
+**The same 2.3M rows reload at three different speeds, depending on the files they land in.**
+
+| into | seconds |
+|---|---|
+| freshly truncated files | **334** |
+| files whose indexes still hold live entries | 350 |
+| files still holding 2.3M dead rows, after a `DELETE` | 402 |
+
+So part of `truncate`'s advantage is not the clear at all — it hands the loader empty files. A
+`DELETE` leaves the insert that follows descending bloated indexes and skipping dead tuples, which
+is the 68 s between the first and last row, and it leaves the vacuum debt as well.
+
+**Restoring after it needs a transactional-only script.** `load.sql` copies 11 tables and 7 of them
+are structural; a transactional `TRUNCATE` leaves those rows in place, so reloading the whole
+script collides on all seven. The benchmark greps the four it needs, which is fine for a benchmark
+and a trap for anyone restoring by hand — "just reload" is the wrong instinct and fails seven
+statements in.
+
 **Its cost is scope, and the first run demonstrated it.** `TRUNCATE` cannot distinguish tenants, so
 it emptied organisations 3 and 11 as well and only state-1 was reloaded. A reset built on it has to
 reload every dataset the database holds, which is the right shape for a per-run restore and the

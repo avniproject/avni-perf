@@ -354,25 +354,34 @@ def test_the_default_span_is_the_measured_establishment():
     assert 55 <= sups <= 65, f"measured establishment should give about 60 supervisors, got {sups}"
 
 
-def test_a_deployment_that_cannot_fit_in_int4_is_visible():
+def test_a_deployment_that_cannot_fit_in_int4_is_refused():
     """The id columns are SERIAL, which is int4. A deployment whose ids exceed it cannot load.
 
-    This is a known defect rather than a guard: the committed co-tenant deployment has 513
-    tenants and reaches 51.3 billion, so cases 6, 7, 12 and 13 would fail at load with "integer
-    out of range". The test records the boundary and which side each committed deployment falls
-    on, so the fix can be verified rather than assumed.
+    **This used to be silent, and that was the defect.** The committed co-tenant deployment has 513
+    tenants and reaches 51.3 billion at a 100,000,000 stride; `plan_ids` returned those ids without
+    complaint, generation reported success, and `COPY` would have failed on "integer out of range"
+    after writing the whole dataset. Now it refuses.
+
+    Refusing is not the fix. Cases 6, 7, 12 and 13 still cannot run: the allocation has to give
+    each tenant a band sized to its own rows rather than a block sized to the largest imaginable
+    one. The whole co-tenant set is about 5.7 million rows, which fits inside a single stride.
     """
+    import pytest
     import recipe as recipe_mod
     from pathlib import Path as P
     datasets = P(__file__).resolve().parents[1] / "datasets"
 
-    def reach(name):
-        d = recipe_mod.Recipe.load(datasets / name).to_deployment()
-        return max(dep.plan_ids(d).values()) + dep.ID_STRIDE
+    def plan(name):
+        return dep.plan_ids(recipe_mod.Recipe.load(datasets / name).to_deployment())
 
-    assert reach("pilot-day-180.json") <= dep.INT4_MAX, "the pilot must remain loadable"
+    assert max(plan("pilot-day-180.json").values()) + dep.ID_STRIDE <= dep.INT4_MAX, \
+        "the pilot must remain loadable"
     assert dep.INT4_MAX // dep.ID_STRIDE == 21, "21 tenants fit at the current stride"
-    # Documented as broken. When the allocation is fixed this flips, and the assertion above it
-    # is what proves the fix rather than a comment claiming one.
-    assert reach("co-tenants-day-180.json") > dep.INT4_MAX, (
-        "co-tenants now fit in int4 — the allocation was fixed, so invert this assertion")
+
+    # When the allocation is fixed this stops raising, and the row count below is what proves the
+    # fix rather than a comment claiming one.
+    with pytest.raises(ValueError, match="int4"):
+        plan("co-tenants-day-180.json")
+    d = recipe_mod.Recipe.load(datasets / "co-tenants-day-180.json").to_deployment()
+    assert d.beneficiaries + d.encounters < dep.ID_STRIDE, (
+        "the whole co-tenant set fits inside one stride, which is why a per-tenant band works")
