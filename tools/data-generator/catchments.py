@@ -194,16 +194,23 @@ def user_rows(users: list[UserSpec], audit_user_id: int = 1) -> list[dict]:
     } for u in users]
 
 
-# One group per organisation, carrying every privilege. Ids are derived from the organisation so
-# they are stable across regenerations and cannot collide between tenants.
-GROUP_ID_STRIDE = 1_000_000
+# One group per organisation, carrying every privilege.
+#
+# **Its id comes from the tenant's own band, like every other row the generator writes.** It used
+# to be `1,000,000 + organisation_id`, the one global formula in the generator, and that is the
+# one that collided: a generated load advances `groups_id_seq`, so an organisation provisioned
+# afterwards had its bundle groups allocated from 1,000,004 upward -- inside the range the
+# formula reserves. state-1 then wanted 1,000,010, which organisation 9's "Physician" already
+# held, and the load failed on the primary key.
+#
+# A band cannot be reserved from a sequence that chases it. Numbering from `id_base` keeps the
+# group inside the disjoint range `plan_ids` already gives each tenant, and `load.sql` raises the
+# sequences past the dataset afterwards so the application allocates above it rather than into it.
+def group_id_for(id_base: int) -> int:
+    return id_base + 1
 
 
-def group_id_for(organisation_id: int) -> int:
-    return GROUP_ID_STRIDE + organisation_id
-
-
-def group_rows(organisation_ids, audit_user_id: int = 1) -> list[dict]:
+def group_rows(group_ids: dict[int, int], audit_user_id: int = 1) -> list[dict]:
     """The group every generated user belongs to (G5).
 
     **Without this a generated user syncs almost nothing, and does so silently.**
@@ -224,14 +231,15 @@ def group_rows(organisation_ids, audit_user_id: int = 1) -> list[dict]:
     saying production is narrower.
     """
     return [{
-        "id": group_id_for(org), "uuid": f"group-{org}", "name": "Everyone",
+        "id": gid, "uuid": f"group-{org}", "name": "Everyone",
         "has_all_privileges": True, "organisation_id": org,
         "is_voided": False, "version": 0,
         "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id, **_stamps(),
-    } for org in sorted(set(organisation_ids))]
+    } for org, gid in sorted(group_ids.items())]
 
 
-def user_group_rows(users: list[UserSpec], audit_user_id: int = 1) -> list[dict]:
+def user_group_rows(users: list[UserSpec], audit_user_id: int = 1,
+                    group_ids: dict[int, int] | None = None) -> list[dict]:
     """Membership linking each generated user to its organisation's group (G5).
 
     `version` is not decoration here: `CHSEntity.version` is a primitive `int`, so a NULL in this
@@ -241,7 +249,7 @@ def user_group_rows(users: list[UserSpec], audit_user_id: int = 1) -> list[dict]
     """
     return [{
         "id": u.id, "uuid": f"usergroup-{u.organisation_id}-{u.id}",
-        "user_id": u.id, "group_id": group_id_for(u.organisation_id),
+        "user_id": u.id, "group_id": (group_ids or {})[u.organisation_id],
         "organisation_id": u.organisation_id,
         "is_voided": False, "version": 0,
         "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id, **_stamps(),

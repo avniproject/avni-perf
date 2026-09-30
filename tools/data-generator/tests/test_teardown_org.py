@@ -32,15 +32,15 @@ def test_organisation_one_is_refused():
         sql(organisation=1)
 
 
-def test_data_scope_will_not_run_without_an_id_base():
-    """Without it the cut cannot tell a generated location from one the bundle imported.
+def test_data_scope_no_longer_needs_an_id_base():
+    """It used to, because the cut was a range. Provenance replaced it, so the base is optional.
 
-    Deleting every address_level in the organisation would take the bundle's 15 locations with
-    the dataset's 7, and the next run would need a re-import to explain why nothing syncs.
+    A range cut assumed the application never allocates inside a band the generator reserves,
+    which turned out to be false: organisations provisioned after a load were given bundle
+    `groups` ids from 1,000,004 upward, and a teardown would have deleted them.
     """
-    with pytest.raises(ValueError, match="--id-base is required"):
-        td.emit([3], None, "data")
-    td.emit([3], None, "all")  # `all` is explicit about wanting that, so it needs no base.
+    td.emit([3], None, "data")
+    td.emit([3], None, "all")
 
 
 def test_children_are_deleted_before_their_parents():
@@ -55,7 +55,6 @@ def test_children_are_deleted_before_their_parents():
     assert position(s, "users") < position(s, "catchment")
     assert position(s, "catchment_address_mapping") < position(s, "catchment")
     assert position(s, "catchment_address_mapping") < position(s, "address_level")
-    assert position(s, "address_level") < position(s, "address_level_type")
 
 
 def test_run_artefacts_go_first_because_they_reference_the_subjects():
@@ -66,48 +65,62 @@ def test_run_artefacts_go_first_because_they_reference_the_subjects():
         assert position(s, table) < position(s, "individual")
 
 
-def test_every_loaded_table_is_also_torn_down():
-    """The failure this guards against is a table added to the load and forgotten by the reset:
-    the next load then dies on a primary key partway through, hours in."""
+def test_every_loaded_table_is_accounted_for():
+    """A table added to the load and forgotten by the reset means the next load dies on a primary
+    key partway through, hours in. Accounted for means deleted, or named as deliberately skipped:
+    the generator takes the target's own `address_level_type` rows and writes none."""
     s = sql()
     for table in LOAD_ORDER:
-        assert f"tbl := {table!r};" in s, f"{table} is loaded but never removed"
+        assert f"tbl := {table!r};" in s or f"-- {table}: the generator writes none" in s, (
+            f"{table} is loaded but neither removed nor explained")
 
 
-def test_structural_tables_are_cut_by_range_and_transactional_ones_by_organisation():
+def test_structural_tables_are_cut_by_provenance_and_transactional_ones_by_organisation():
     """The bundle writes locations, catchments, groups and a bundleloader user into the same
-    tables the generator does. Pushed rows, by contrast, carry ids the server assigned, which no
-    range covers — so those have to go by organisation."""
+    tables the generator does, so those need telling apart. Pushed rows carry ids and uuids the
+    server assigned, so they can only go by organisation."""
     s = sql()
-    def line(table):
-        return s[position(s, table):].splitlines()[0]
-    for table in ("users", "groups", "catchment", "address_level", "catchment_address_mapping"):
-        assert "rng := true" in line(table), f"{table} should be cut by id range"
+
+    def statement(table):
+        body = s[position(s, table):]
+        return body[:body.index("GET DIAGNOSTICS")]
+
+    for table, mark in (("users", "uuid LIKE 'user-'"),
+                        ("groups", "uuid = 'group-'"),
+                        ("catchment", "uuid LIKE 'catchment-'"),
+                        ("address_level", "uuid LIKE 'loc-'"),
+                        ("user_group", "uuid LIKE 'usergroup-'")):
+        assert mark in statement(table), f"{table} should be cut by its generated uuid"
     for table in ("individual", "encounter", "sync_telemetry"):
-        assert "rng := false" in line(table), f"{table} should be cut by organisation"
+        assert "uuid" not in statement(table), f"{table} should be cut by organisation alone"
 
 
 def test_the_join_table_is_cut_through_its_catchment():
-    """catchment_address_mapping is a bare join table with no id of its own, so naming `id`
-    would be a runtime error rather than a no-op."""
+    """It carries no uuid, and no id the generator populates -- load.sql copies only
+    (catchment_id, addresslevel_id). So it is reached through the catchments it points at, which
+    are themselves identified by uuid."""
     s = sql()
-    assert "col := 'catchment_id'" in s[position(s, "catchment_address_mapping"):][:200]
+    body = s[position(s, "catchment_address_mapping"):][:400]
+    assert "catchment_id IN (SELECT id FROM catchment" in body
+    assert "uuid LIKE 'catchment-'" in body
 
 
 def test_a_bootstrap_user_survives_a_teardown():
-    """environment-check.sh needs a user to ask anything at all, and bootstrap_user.py puts one
-    above every generated id. A cut of `id >= id_base` alone would take it, and the next check
-    would fail on a missing user rather than on anything real."""
+    """environment-check.sh needs a user to ask anything at all, and a bootstrap one is not the
+    generator's. Its uuid is `bootstrap-user-{org}`, which no generated pattern matches, so it
+    survives without needing an id band to hide in -- which is what the old upper bound was for.
+    """
     s = sql()
-    assert str(boot.GENERATED_ID_CEILING) in s
-    assert "AND %I >= $2 AND %I < $3" in s
-    assert "USING org, id_floor, bootstrap_floor;" in s
+    assert "uuid LIKE 'user-' || $1 || '-%'" in s
+    assert "bootstrap" not in s.lower() or "GENERATED_ID_CEILING" not in s
+    assert "id_floor" not in s and "bootstrap_floor" not in s
 
 
-def test_scope_all_ignores_the_range_entirely():
+def test_scope_all_ignores_provenance_entirely():
+    """`all` means empty the organisation, bundle rows included, so nothing is filtered by uuid."""
     s = sql(scope="all")
-    assert "rng := true" not in s
-    assert "bootstrap_floor" in s  # declared, but no range delete uses it
+    assert "uuid LIKE" not in s and "uuid = 'group-'" not in s
+    assert "tbl := 'address_level_type';" in s, "skipped under data scope, removed under all"
 
 
 def test_it_aborts_on_a_table_it_does_not_recognise():
@@ -243,13 +256,9 @@ def test_a_table_with_no_organisation_id_is_scoped_through_its_parent():
     only through a parent has to be named. Avni's deleteOrgMetadata.sql scopes it the same way.
     """
     s = sql()
-    parent = "catchment_id IN (SELECT id FROM catchment WHERE organisation_id = $1)"
     body = s[position(s, "catchment_address_mapping"):][:600]
-    assert parent in body
+    assert "catchment_id IN (SELECT id FROM catchment WHERE organisation_id = $1" in body
     assert "catchment_address_mapping WHERE organisation_id" not in s
-    # And its range cut still goes through catchment_id, because the generator never populates
-    # the table's own id -- load.sql copies only (catchment_id, addresslevel_id).
-    assert "col := 'catchment_id'" in body
 
 
 def test_the_leftover_check_uses_the_same_predicates_as_the_delete():

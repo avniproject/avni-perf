@@ -355,9 +355,10 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
             # Group membership, without which these users resolve no privileges and sync none of
             # the data generated below them. One group per organisation, so it is written here
             # with the tenant rather than once globally.
-            for row in cat.group_rows([spec.organisation_id]):
+            group_ids = {spec.organisation_id: cat.group_id_for(base)}
+            for row in cat.group_rows(group_ids):
                 sink.write("groups", row)
-            for row in cat.user_group_rows(build.users):
+            for row in cat.user_group_rows(build.users, group_ids=group_ids):
                 sink.write("user_group", row)
 
             tenant_bundle = (bundle.get(spec.organisation_id)

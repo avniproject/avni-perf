@@ -98,8 +98,8 @@ def test_every_builder_emits_what_its_contract_claims():
     emitted = {
         "catchment": cat.catchment_rows(catchments)[0],
         "users": cat.user_rows(users)[0],
-        "groups": cat.group_rows([1])[0],
-        "user_group": cat.user_group_rows(users)[0],
+        "groups": cat.group_rows({1: 1000001})[0],
+        "user_group": cat.user_group_rows(users, group_ids={1: 1000001})[0],
         "address_level": next(iter(dep.location_rows(build))),
         "catchment_address_mapping": cat.declared_mappings(catchments)[0],
     }
@@ -170,8 +170,8 @@ def test_every_builder_matches_the_real_schema():
     builders = {
         "catchment": cat.catchment_rows(catchments)[0],
         "users": cat.user_rows(users)[0],
-        "groups": cat.group_rows([1])[0],
-        "user_group": cat.user_group_rows(users)[0],
+        "groups": cat.group_rows({1: 1000001})[0],
+        "user_group": cat.user_group_rows(users, group_ids={1: 1000001})[0],
         "address_level": next(iter(dep.location_rows(build))),
         "catchment_address_mapping": cat.declared_mappings(catchments)[0],
     }

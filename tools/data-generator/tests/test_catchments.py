@@ -160,8 +160,8 @@ def test_generated_users_belong_to_a_group_with_privileges():
     """
     h = hy.build(1, 6)
     catchments, users = cat.plan(h)
-    groups = cat.group_rows([1])
-    memberships = cat.user_group_rows(users)
+    groups = cat.group_rows({1: 1000001})
+    memberships = cat.user_group_rows(users, group_ids={1: 1000001})
 
     assert len(groups) == 1
     assert groups[0]["has_all_privileges"] is True
@@ -179,15 +179,30 @@ def test_group_membership_carries_a_version():
     """
     h = hy.build(1, 3)
     _, users = cat.plan(h)
-    for row in cat.user_group_rows(users) + cat.group_rows([1]):
+    for row in cat.user_group_rows(users, group_ids={1: 1000001}) + cat.group_rows({1: 1000001}):
         assert row["version"] == 0, f"{row} must carry a version"
         assert row["organisation_id"] is not None
         assert row["created_by_id"] is not None and row["last_modified_by_id"] is not None
 
 
-def test_group_ids_do_not_collide_between_tenants():
-    """Ten tenants in one database; two groups sharing an id would silently merge their members."""
-    ids = [cat.group_id_for(o) for o in range(1, 11)]
-    assert len(set(ids)) == 10
-    # And they sit clear of the user and catchment id space, which starts from the tenant's base.
-    assert min(ids) >= cat.GROUP_ID_STRIDE
+def test_group_ids_come_from_the_tenant_band_not_a_global_formula():
+    """The id used to be `1,000,000 + organisation_id`, the generator's one global formula, and it
+    is the one that collided.
+
+    A generated load advances `groups_id_seq`, so an organisation provisioned afterwards had its
+    bundle groups allocated from 1,000,004 upward -- inside the range that formula reserves.
+    state-1 then wanted 1,000,010, which organisation 9's "Physician" already held.
+
+    Numbering from `id_base` puts the group inside the disjoint range `plan_ids` already gives
+    each tenant, so two tenants cannot collide and no global band has to stay reserved.
+    """
+    import deployment as dep
+    assert cat.group_id_for(201_000_000) == 201_000_001
+    assert not hasattr(cat, "GROUP_ID_STRIDE"), "the global band is gone, not merely unused"
+
+    # Two tenants of one deployment land in their own bands.
+    bases = [1_000_000, 101_000_000]
+    ids = [cat.group_id_for(b) for b in bases]
+    assert len(set(ids)) == len(ids)
+    for b, gid in zip(bases, ids):
+        assert b < gid < b + dep.ID_STRIDE, f"{gid:,} is outside the band starting {b:,}"

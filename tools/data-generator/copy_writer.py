@@ -198,6 +198,40 @@ def load_script(tables: Mapping[str, Sequence[str]], *, directory: str = ".",
         out.append("")
 
     out += ["COMMIT;", ""]
+
+    # **Raise every sequence past what was just loaded.**
+    #
+    # The generator writes explicit ids, and an explicit id does not move the sequence. So after a
+    # load the application still allocates from wherever the sequence was -- which is *inside* the
+    # band the dataset occupies. That is not theoretical: organisations provisioned after a load
+    # were given bundle `groups` ids from 1,000,004 upward, inside the range the generator reserved
+    # for itself, and the next load then failed on the primary key against a row the application
+    # owned.
+    #
+    # A reserved band cannot be defended by convention, only by moving the sequence. After this
+    # the application always allocates above the dataset instead of into it.
+    #
+    # `greatest` because a sequence is never lowered: another tenant may already have pushed it
+    # higher, and winding it back would hand out ids that are already taken.
+    out += [
+        "-- Move the sequences above the ids just loaded, so the application allocates after the",
+        "-- dataset rather than into it. See the comment in copy_writer.load_script.",
+        "DO $$",
+        "DECLARE tbl text; seq text; loaded bigint; current_pos bigint;",
+        "BEGIN",
+        f"  FOREACH tbl IN ARRAY ARRAY[{', '.join(repr(t) for t in ordered)}]::text[] LOOP",
+        "    seq := pg_get_serial_sequence(tbl, 'id');",
+        "    IF seq IS NULL THEN CONTINUE; END IF;   -- no id column, or not sequence-backed",
+        "    EXECUTE format('SELECT coalesce(max(id), 0) FROM %I', tbl) INTO loaded;",
+        "    EXECUTE format('SELECT last_value FROM %s', seq) INTO current_pos;",
+        "    IF loaded > current_pos THEN",
+        "      PERFORM setval(seq, loaded);",
+        "      RAISE NOTICE '  % -> %', seq, loaded;",
+        "    END IF;",
+        "  END LOOP;",
+        "END $$;",
+        "",
+    ]
     if build_indexes_after:
         out += ["-- Build indexes and refresh statistics after the load, not before (H4).",
                 "-- The index definitions are production's own and belong with the schema.",

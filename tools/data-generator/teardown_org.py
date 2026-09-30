@@ -38,7 +38,6 @@ import json
 import sys
 from pathlib import Path
 
-from bootstrap_user import GENERATED_ID_CEILING
 from copy_writer import LOAD_ORDER
 
 # The organisation the server itself owns. `V0_3__CreateOpenCHSUser` seeds it along with user 1,
@@ -69,15 +68,45 @@ RUN_ARTEFACTS = (
 # assigned that no range would cover.
 TRANSACTIONAL = ("encounter", "program_encounter", "program_enrolment", "individual")
 
-# Cut by id range under `data` scope, because the bundle writes into these too. `id_base` is the
-# generator's guarantee of a disjoint range (deployment.plan_ids).
+# Cut by provenance under `data` scope, because the bundle writes into these too.
 STRUCTURAL = ("user_group", "users", "groups", "catchment_address_mapping", "catchment",
               "address_level", "address_level_type")
 
-# `catchment_address_mapping` has an `id`, but the generator never populates it — load.sql copies
-# only (catchment_id, addresslevel_id) — so its ids are server-assigned and outside any range the
-# dataset knows about. The range cut goes through the catchment it points at instead.
-RANGE_COLUMN = {"catchment_address_mapping": "catchment_id"}
+# **What the generator wrote, identified by uuid rather than by id range.**
+#
+# The range cut is gone. It read `id >= id_base and id < GENERATED_ID_CEILING`, which assumed the
+# application never allocates inside a band the generator reserves. It does: the generator writes
+# explicit ids, an explicit id does not move the sequence, and so an organisation provisioned
+# after a load was handed bundle `groups` ids from 1,000,004 upward -- inside the reserved range.
+# A teardown of that organisation would have deleted its entire bundle group set as though the
+# generator had written it.
+#
+# These uuids are deterministic and the application never produces them, so they say what a row's
+# provenance is instead of guessing from where it landed. `load.sql` now also raises the sequences
+# past the dataset, so the two work together: nothing collides, and what did come from the
+# generator is recognisable.
+#
+# The contract this changes is worth stating: a teardown now removes rows by provenance. A row
+# hand-written with a generator-shaped uuid is deleted; a generated row whose uuid was edited
+# survives. That is a better basis than an id range, and it is a different one.
+# `$1` is the organisation, bound at run time -- the script loops over organisations, so the
+# pattern cannot be baked in when the SQL is written.
+GENERATED_UUID = {
+    "address_level": "uuid LIKE 'loc-' || $1 || '-%'",
+    "catchment": "uuid LIKE 'catchment-' || $1 || '-%'",
+    "users": "uuid LIKE 'user-' || $1 || '-%'",
+    "groups": "uuid = 'group-' || $1",
+    "user_group": "uuid LIKE 'usergroup-' || $1 || '-%'",
+}
+
+# `catchment_address_mapping` carries no uuid, and no id the generator populates -- load.sql
+# copies only (catchment_id, addresslevel_id). It is reached through the catchments it points at,
+# which are themselves identified by uuid.
+VIA_PARENT = {
+    "catchment_address_mapping":
+        "catchment_id IN (SELECT id FROM catchment WHERE organisation_id = $1"
+        " AND uuid LIKE 'catchment-' || $1 || '-%')",
+}
 
 # How a table is tied to an organisation, where it is not tied to one directly. `$1` is the
 # organisation.
@@ -148,11 +177,6 @@ def emit(organisations, id_base: int | None, scope: str) -> str:
         raise ValueError(
             f"organisation {protected[0]} is the server's own and is never emptied "
             f"(V0_3 seeds it with user 1, which every audit column references)")
-    if scope == "data" and id_base is None:
-        raise ValueError(
-            "--id-base is required for --scope data: without it the structural tables cannot be "
-            "told apart from the bundle's own locations, catchments, groups and users. It is the "
-            "`id_base` of the dataset that was loaded. Use --scope all to empty them regardless.")
 
     order = _delete_order(scope)
     known = sorted({t for t, _ in order} | (set(METADATA) if scope == "data" else set()))
@@ -160,6 +184,8 @@ def emit(organisations, id_base: int | None, scope: str) -> str:
 
     out: list[str] = []
     w = out.append
+    # id_base is accepted and recorded, not used: the cut is by provenance now. Kept in the
+    # header because knowing which dataset a teardown was aimed at is worth having.
     named = (f"organisation {orgs[0]}" if len(orgs) == 1
              else f"{len(orgs)} organisations ({orgs[0]}..{orgs[-1]})")
     w(f"-- Empty {named} ({scope} scope)"
@@ -175,8 +201,6 @@ def emit(organisations, id_base: int | None, scope: str) -> str:
     w("DECLARE")
     w(f"  orgs      int[] := ARRAY[{', '.join(str(o) for o in orgs)}];")
     w("  org       int;")
-    w(f"  id_floor  bigint := {id_base if id_base is not None else 0};")
-    w(f"  bootstrap_floor bigint := {GENERATED_ID_CEILING};  -- bootstrap_user.py's band, kept")
     w("  tbl       text;")
     w("  rng       boolean;")
     w("  col       text;")
@@ -219,18 +243,24 @@ def emit(organisations, id_base: int | None, scope: str) -> str:
       "STRUCTURAL or METADATA in teardown_org.py.', org, array_to_string(unknown, ', ');")
     w("  END IF;")
     w("")
-    for table, by_range in order:
-        col = RANGE_COLUMN.get(table, "id")
+    for table, by_provenance in order:
         pred = ORG_PREDICATE.get(table, DEFAULT_ORG_PREDICATE)
-        w(f"  tbl := {table!r}; rng := {'true' if by_range else 'false'}; col := {col!r};")
+        if by_provenance:
+            # `data` scope: only what the generator wrote. Identified by uuid, or through the
+            # parent for the one table that has none.
+            if table in VIA_PARENT:
+                pred = VIA_PARENT[table]
+            elif table in GENERATED_UUID:
+                pred += f" AND {GENERATED_UUID[table]}"
+            else:
+                # Nothing here is the generator's. `address_level_type` is the case: it is in
+                # LOAD_ORDER but the dataset takes the target's own types and writes none, so a
+                # data-scope teardown has nothing to remove and must not guess.
+                w(f"  -- {table}: the generator writes none of these, so --scope data skips it")
+                continue
+        w(f"  tbl := {table!r};")
         w("  IF to_regclass('public.' || tbl) IS NOT NULL THEN")
-        w("    IF rng THEN")
-        w(f"      EXECUTE format('DELETE FROM %I WHERE {pred}"
-          " AND %I >= $2 AND %I < $3', tbl, col, col)")
-        w("        USING org, id_floor, bootstrap_floor;")
-        w("    ELSE")
-        w(f"      EXECUTE format('DELETE FROM %I WHERE {pred}', tbl) USING org;")
-        w("    END IF;")
+        w(f"    EXECUTE format('DELETE FROM %I WHERE {pred}', tbl) USING org;")
         w("    GET DIAGNOSTICS n = ROW_COUNT;")
         w("    total := total + n;")
         w("    IF n > 0 THEN RAISE NOTICE '  % rows from %', n, tbl; END IF;")

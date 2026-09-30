@@ -165,12 +165,12 @@ def statements(organisation_id: int, username: str, audit_user_id: int = 1) -> l
 
     for row in cat.catchment_rows([catchment], audit_user_id):
         out += upsert("catchment", without_id(row), "v_catchment_id")
-    for row in cat.group_rows([org], audit_user_id):
+    for row in cat.group_rows({org: 0}, audit_user_id):
         out += upsert("groups", without_id(row), "v_group_id")
     for row in cat.user_rows([user], audit_user_id):
         out += upsert("users", without_id(row, catchment_id=Raw("v_catchment_id")),
                       "v_user_id")
-    for row in cat.user_group_rows([user], audit_user_id):
+    for row in cat.user_group_rows([user], audit_user_id, group_ids={org: 0}):
         out += upsert("user_group", without_id(row, user_id=Raw("v_user_id"),
                                                group_id=Raw("v_group_id")),
                       "v_user_group_id")
