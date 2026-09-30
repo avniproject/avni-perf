@@ -68,6 +68,9 @@ timed() {
 }
 
 wants() { [ -z "$ONLY" ] || [ "$ONLY" = "$1" ]; }
+# `truncate` is never part of a default sweep. It empties tables across every organisation, not
+# just the one named, so it has to be asked for by name.
+wants_explicitly() { [ "$ONLY" = "$1" ]; }
 
 echo "G4 reset benchmark"
 echo
@@ -146,6 +149,51 @@ if wants regenerate && [ -n "$DATASET" ]; then
       echo "   failed after ${s}s"; record regenerate "-" "failed"
     fi
   fi
+fi
+
+# ---- truncate + reload ------------------------------------------------------------------------
+#
+# **The candidate the original list missed, and the arithmetic says it should win.** Per-organisation
+# DELETE is expensive precisely because it is per-organisation: 611 s to remove 2.3M rows against
+# 402 s to insert them, because every one of encounter's 15 indexes is updated per row. But a
+# per-run reset restores the whole database rather than one tenant, and TRUNCATE is nearer O(1)
+# than O(rows) -- it drops the file rather than walking the rows.
+#
+# **Only the transactional tables.** The structural ones -- locations, catchments, users, groups --
+# hold the bundle's rows alongside the generator's, and TRUNCATE cannot tell them apart. They are
+# 1,709 rows and 137 ms of the load, so leaving them costs nothing and losing them would mean
+# re-provisioning the organisation.
+#
+# **CASCADE reaches further than the four named tables**, to anything referencing them: sync
+# telemetry, approval statuses, comments, checklists. For a reset that is correct -- those are run
+# artefacts, which is what is being cleared -- but it is worth knowing rather than discovering.
+#
+# Sequences are deliberately not restarted. They sit above the dataset and the reload's own setval
+# keeps them there; winding them back would hand out ids the application has already used.
+if wants_explicitly truncate && [ -n "$DATASET" ]; then
+  echo "5. TRUNCATE + reload (every organisation, not just $ORG)"
+  [ -f "$DATASET/load.sql" ] || die "no load.sql under $DATASET"
+  TX="$(mktemp "${TMPDIR:-/tmp}/g4truncate.XXXXXX")"
+  {
+    echo "SET client_min_messages = warning;"
+    echo "BEGIN;"
+    grep -E '^\\copy (individual|encounter|program_enrolment|program_encounter) ' "$DATASET/load.sql"
+    echo "COMMIT;"
+  } > "$TX"
+  COPIES=$(grep -c '^\\copy' "$TX")
+  [ "$COPIES" -ge 2 ] || die "found only $COPIES transactional \\copy lines in $DATASET/load.sql"
+  if t=$(timed psql "$DB" -v ON_ERROR_STOP=1 \
+           -c "TRUNCATE individual, encounter, program_enrolment, program_encounter CASCADE"); then
+    if l=$(timed psql "$DB" -v ON_ERROR_STOP=1 -f "$TX"); then
+      echo "   truncate ${t}s + reload ${l}s = $((t + l))s   (${COPIES} tables)"
+      record truncate "$((t + l))" "truncate ${t}s + reload ${l}s; whole database, no headroom, no artefact"
+    else
+      echo "   reload failed after ${l}s"; record truncate "-" "reload failed"
+    fi
+  else
+    echo "   truncate failed after ${t}s"; record truncate "-" "truncate failed"
+  fi
+  rm -f "$TX"
 fi
 
 # ---- teardown + reload ------------------------------------------------------------------------

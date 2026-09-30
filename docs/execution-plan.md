@@ -216,12 +216,41 @@ reset saves better than three hours of the exercise, which is what Day 9 is actu
 organisations present, and nobody has measured what loading them costs. If it is an hour, those
 four resets alone are half the total. **Size it before Day 10 commits to the shape.**
 
-**A candidate the list was missing.** Per-organisation `DELETE` is expensive precisely because it is
-per-organisation; a per-run reset restores the whole database, where `TRUNCATE` is closer to O(1)
-than O(rows). Truncating the transactional tables and reloading every dataset should cost about
-what the loads cost — around 20 min for all three organisations — against 34 min to tear down two
-of them. **Time `TRUNCATE` + reload alongside `template`**, since it needs no extra storage
-headroom and no artefact.
+**Measured, and `truncate` wins by a factor of three.**
+
+| mechanism | clear | reload | total | |
+|---|---|---|---|---|
+| **truncate** | **1 s** | 334 s | **335 s** (5m35s) | whole database; no headroom, no artefact, no dead tuples |
+| teardown | 611 s | 402 s | 1,013 s (16m53s) | per-organisation; leaves 2.3M dead tuples for vacuum |
+| regenerate | — | 402 s | 402 s | needs an empty target |
+| template | unmeasured | — | — | needs the application's connections to `openchs` dropped |
+| dump | unmeasured | — | — | needs `postgresql-client-16` on the host |
+
+**One second to clear 2.3M rows across four tables and everything `CASCADE` reached.** The 611 s
+`DELETE` did the same work by walking every row and updating all 15 indexes on `encounter` and 16
+on `individual`. That is the whole gap between the two, and it is the O(1)-against-O(rows)
+difference the candidate was added to test.
+
+**The reload got faster too, which was not predicted** — 334 s against 402 s. It loads into files
+that were just recreated, so there are no dead tuples to skip and no bloated indexes to descend,
+where the teardown's reload was inserting into files still holding 2.3M dead rows. So the
+teardown pays twice: once to delete, and again on the insert that follows.
+
+**Its cost is scope, and the first run demonstrated it.** `TRUNCATE` cannot distinguish tenants, so
+it emptied organisations 3 and 11 as well and only state-1 was reloaded. A reset built on it has to
+reload every dataset the database holds, which is the right shape for a per-run restore and the
+wrong one for the iteration loop — where `teardown_org.py` still earns its place by emptying one
+organisation without touching its neighbours.
+
+**What it saves across the exercise.** `TRUNCATE`'s clear is O(1) so it stays at a second whatever
+the dataset; the teardown's `DELETE` scales with rows. At ten-tenant scale that is a 51-minute
+reset against a 20-minute one, and **across ~19 resets it is about 9.7 hours** — most of two
+working days, and more than the difference between any other pair on this list.
+
+**`template` is the only plausible rival left.** `dump` rebuilds every index, GIN worst of all, so
+it will not beat 5m35s. A file-level page copy could come in under a minute *and needs no reload at
+all*, which is the comparison that matters: 335 s against perhaps 60 s. Whether the 2x storage
+headroom exists is a provisioning question for avni-infra#112, not a timing one.
 
 > **Do not skip the snapshot in favour of deleting rows between runs.** `DELETE` leaves dead tuples,
 > `VACUUM` does not shrink indexes, and runs progressively stop resembling each other. Determinism
