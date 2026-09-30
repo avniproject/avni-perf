@@ -321,7 +321,7 @@ def test_tenants_get_disjoint_id_ranges_through_the_generate_path():
 
     assert len(set(seen)) == len(seen), f"tenants share an id base: {seen}"
     assert seen == sorted(seen) and seen[0] == 0
-    assert seen[1] - seen[0] == dep.ID_STRIDE
+    assert seen[1] - seen[0] == dep.band_width(full.tenants[0], full.days)
 
 
 def test_the_per_tenant_split_keeps_every_deployment_field():

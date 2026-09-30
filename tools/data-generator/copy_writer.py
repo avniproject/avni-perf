@@ -147,6 +147,12 @@ def write_table(path: Path, rows: Iterable[Mapping], columns: Sequence,
     return n, (written or column_names(columns))
 
 
+# The tables a per-run reset clears and reloads. Everything else the generator writes --
+# locations, catchments, users, groups -- shares its table with the bundle's own rows, which a
+# TRUNCATE cannot tell apart and a reload would duplicate.
+TRANSACTIONAL = ("individual", "program_enrolment", "program_encounter", "encounter")
+
+
 def load_script(tables: Mapping[str, Sequence[str]], *, directory: str = ".",
                 serial_tables: Iterable[str] | None = None,
                 build_indexes_after: bool = True,
@@ -249,3 +255,21 @@ def load_script(tables: Mapping[str, Sequence[str]], *, directory: str = ".",
                 "-- The index definitions are production's own and belong with the schema.",
                 "ANALYZE;", ""]
     return "\n".join(out)
+
+
+def reload_script(tables: Mapping[str, Sequence[str]], **kwargs) -> str:
+    """The transactional half of `load_script`, for restoring after a `TRUNCATE`.
+
+    **G4 settled on truncate-and-reload**: clearing 2.3M rows takes a second where a
+    per-organisation `DELETE` takes 611, because `TRUNCATE` drops the file rather than walking
+    every row and updating fifteen indexes per row.
+
+    But `TRUNCATE` cannot distinguish tenants, so a reset only truncates the transactional tables
+    -- the structural ones hold the bundle's rows beside the generator's. Those rows survive, and
+    reloading the full `load.sql` then collides on all seven of them. That is a trap worth removing
+    rather than documenting: "just reload it" is the obvious instinct and it fails seven statements
+    in, partway through a transaction.
+
+    Same builder, same column contracts, same sequence handling -- only the table list differs.
+    """
+    return load_script({t: cols for t, cols in tables.items() if t in TRANSACTIONAL}, **kwargs)

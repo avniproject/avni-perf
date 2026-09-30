@@ -66,16 +66,45 @@ def test_only_encounter_volume_grows_between_the_three_datasets(days, expected):
 # --- ids --------------------------------------------------------------------
 
 def test_tenants_get_disjoint_id_ranges():
+    """Each band starts where the previous one ends, and no tenant can reach its neighbour."""
     d = dep.pilot_deployment(180, REFERENCE)
-    bases = sorted(dep.plan_ids(d).values())
-    assert len(set(bases)) == len(bases)
-    assert all(b - a >= dep.ID_STRIDE for a, b in zip(bases, bases[1:]))
+    bases = dep.plan_ids(d)
+    ordered = sorted(bases.values())
+    assert len(set(ordered)) == len(ordered)
+    for t in d.tenants:
+        start = bases[t.organisation_id]
+        after = [b for b in ordered if b > start]
+        if after:
+            assert start + dep.band_width(t, 180) <= min(after), (
+                f"{t.name} can reach the next tenant's range")
 
 
-def test_the_stride_survives_a_tenant_ten_times_its_planned_size():
+def test_a_band_leaves_room_for_the_tenant_to_grow():
+    """Sized on the largest table rather than the sum, because each table counts from the base
+    with its own counter -- so the highest id a tenant reaches is its biggest table, not its
+    total. Doubling it means a table can grow without the bands being replanned."""
     d = dep.pilot_deployment(180, REFERENCE)
-    biggest = max(t.beneficiaries + t.encounters(180) for t in d.tenants)
-    assert biggest * 10 < dep.ID_STRIDE, "a tenant could reach its neighbour's range"
+    for t in d.tenants:
+        largest = max(t.beneficiaries, t.encounters(180))
+        assert dep.band_width(t, 180) >= largest * 2
+
+
+def test_a_tenant_with_almost_nothing_still_gets_room():
+    """Most co-tenants hold one subject. Their locations, catchments and users still need ids."""
+    tiny = dep.TenantSpec(name="co-513", organisation_id=99, field_workers=1,
+                          beneficiaries_per_village=1)
+    assert dep.band_width(tiny, 180) == dep.ID_BAND_MIN
+
+
+def test_the_whole_co_tenant_set_fits_where_one_tenant_used_to():
+    """The point of sizing per tenant. 513 organisations at a flat 100,000,000 reached 51.3
+    billion; sized to their rows they need less id space than the old stride gave one of them."""
+    import recipe as recipe_mod
+    from pathlib import Path as P
+    d = recipe_mod.Recipe.load(
+        P(__file__).resolve().parents[1] / "datasets" / "co-tenants-day-180.json").to_deployment()
+    top = max(dep.plan_ids(d).values())
+    assert top < dep.ID_STRIDE, f"513 co-tenants reach {top:,}"
 
 
 def written_cols(out, table):
@@ -355,33 +384,14 @@ def test_the_default_span_is_the_measured_establishment():
 
 
 def test_a_deployment_that_cannot_fit_in_int4_is_refused():
-    """The id columns are SERIAL, which is int4. A deployment whose ids exceed it cannot load.
+    """The id columns are SERIAL, which is int4, so an allocation past it cannot load.
 
-    **This used to be silent, and that was the defect.** The committed co-tenant deployment has 513
-    tenants and reaches 51.3 billion at a 100,000,000 stride; `plan_ids` returned those ids without
-    complaint, generation reported success, and `COPY` would have failed on "integer out of range"
-    after writing the whole dataset. Now it refuses.
-
-    Refusing is not the fix. Cases 6, 7, 12 and 13 still cannot run: the allocation has to give
-    each tenant a band sized to its own rows rather than a block sized to the largest imaginable
-    one. The whole co-tenant set is about 5.7 million rows, which fits inside a single stride.
+    With bands sized per tenant this is genuinely about too much data rather than a stride that is
+    too wide, so the message says so. It is still refused rather than clamped: the ids would reach
+    the .tsv files, generation would report success, and COPY would fail hours later.
     """
     import pytest
-    import recipe as recipe_mod
-    from pathlib import Path as P
-    datasets = P(__file__).resolve().parents[1] / "datasets"
-
-    def plan(name):
-        return dep.plan_ids(recipe_mod.Recipe.load(datasets / name).to_deployment())
-
-    assert max(plan("pilot-day-180.json").values()) + dep.ID_STRIDE <= dep.INT4_MAX, \
-        "the pilot must remain loadable"
-    assert dep.INT4_MAX // dep.ID_STRIDE == 21, "21 tenants fit at the current stride"
-
-    # When the allocation is fixed this stops raising, and the row count below is what proves the
-    # fix rather than a comment claiming one.
+    d = dep.pilot_deployment(180, REFERENCE, state_tenants=2, ngo_tenants=0,
+                             state_workers=500_000)
     with pytest.raises(ValueError, match="int4"):
-        plan("co-tenants-day-180.json")
-    d = recipe_mod.Recipe.load(datasets / "co-tenants-day-180.json").to_deployment()
-    assert d.beneficiaries + d.encounters < dep.ID_STRIDE, (
-        "the whole co-tenant set fits inside one stride, which is why a per-tenant band works")
+        dep.plan_ids(d)

@@ -270,3 +270,40 @@ def test_the_sequence_block_gets_its_notices_back():
     the application was already allocating above the dataset."""
     s = cw.load_script({"individual": ["id", "uuid"]}, directory="/tmp/x", verify_schema=False)
     assert s.index("COMMIT;") < s.index("SET client_min_messages = notice;") < s.index("DO $$")
+
+
+def test_the_reload_script_carries_only_the_transactional_tables():
+    """G4's reset truncates the transactional tables and leaves the structural ones, because a
+    TRUNCATE cannot tell the bundle's locations and users from the generator's. Reloading the
+    full load.sql afterwards collides on every structural table it left alone -- seven of the
+    eleven copies -- partway through a transaction.
+    """
+    tables = {"address_level": ["id", "title"], "catchment": ["id", "uuid"],
+              "users": ["id", "uuid"], "groups": ["id", "uuid"],
+              "individual": ["id", "uuid"], "encounter": ["id", "uuid"],
+              "program_enrolment": ["id", "uuid"], "program_encounter": ["id", "uuid"]}
+    r = cw.reload_script(tables, directory="/tmp/x", verify_schema=False)
+    copied = {l.split()[1] for l in r.splitlines() if l.startswith("\\copy ")}
+    assert copied == set(cw.TRANSACTIONAL)
+    for structural in ("address_level", "catchment", "users", "groups"):
+        assert f"\\copy {structural} " not in r
+
+
+def test_the_reload_script_keeps_everything_else_the_load_script_does():
+    """Same builder, so the column contracts, the notice suppression and the sequence handling
+    cannot drift apart from load.sql's."""
+    tables = {"individual": ["id", "uuid"], "encounter": ["id", "uuid"]}
+    r = cw.reload_script(tables, directory="/tmp/x", verify_schema=False)
+    assert r.index("SET client_min_messages = warning;") < r.index("BEGIN;")
+    assert "setval" in r and "COMMIT;" in r
+
+
+def test_the_transactional_set_matches_what_a_reset_truncates():
+    """One named set, so the reload script and restore-benchmark.sh's TRUNCATE cannot disagree
+    about which tables a reset clears."""
+    from pathlib import Path as P
+    bench = (P(__file__).resolve().parents[2] / "restore-benchmark.sh").read_text()
+    truncate = [l for l in bench.splitlines() if "TRUNCATE " in l and "CASCADE" in l]
+    assert truncate, "the benchmark no longer truncates"
+    for table in cw.TRANSACTIONAL:
+        assert table in truncate[0], f"{table} is reloaded but not truncated"

@@ -45,6 +45,21 @@ from profile import Profile
 # 180 with no headroom for growth. The fix is to allocate from each tenant's actual size rather
 # than from a fixed block, and it is deliberately not bundled into the change that found it.
 INT4_MAX = 2_147_483_647
+
+# **A tenant's band is sized to the tenant, not to the largest one imaginable.**
+#
+# It used to be a flat 100,000,000 apiece. That survives ten tenants and nothing wider: the
+# committed co-tenant deployment has 513 and reached 51.3 billion against int4's 2.147 billion,
+# which blocked cases 6, 7, 12 and 13 outright. The stride was sized for a tenant holding millions
+# of rows and applied equally to 300 tenants holding one subject each.
+#
+# Sized per tenant, the whole co-tenant set needs about 7 million ids -- less than the old stride
+# gave a single organisation.
+ID_BAND_SAFETY = 2      # headroom over the tenant's largest table
+ID_BAND_MIN = 10_000    # floor, so a one-subject tenant still has room for its structural rows
+
+# Kept because a generated dataset is often loaded beside an organisation that already holds rows,
+# and callers reason in round numbers about how far to shift it. Nothing allocates with it now.
 ID_STRIDE = 100_000_000
 
 
@@ -247,6 +262,19 @@ def transactional_rows(build: TenantBuild, deployment: DeploymentSpec, ctx: row_
     return generate
 
 
+def band_width(tenant: TenantSpec, days: int) -> int:
+    """How much id space one tenant needs.
+
+    Every table the generator writes numbers from the tenant's base with its own counter, so the
+    highest id a tenant reaches is its largest table. Doubling that leaves room for a table to
+    grow without the bands being replanned, and the floor covers a tenant whose transactional
+    tables are nearly empty but which still writes locations, catchments and users.
+    """
+    return max(ID_BAND_MIN, ID_BAND_SAFETY * max(
+        tenant.beneficiaries, tenant.encounters(days),
+        tenant.villages * 2, tenant.field_workers * 2))
+
+
 def plan_ids(deployment: DeploymentSpec) -> dict[int, int]:
     """A disjoint id range per tenant, so rows from different tenants cannot collide.
 
@@ -255,25 +283,22 @@ def plan_ids(deployment: DeploymentSpec) -> dict[int, int]:
     locations and catchments of its own, and those are tables the generator also writes. Starting
     at 1 would collide with them. Default 0 keeps the original behaviour for a clean target.
     """
-    bases = {t.organisation_id: deployment.id_base + i * ID_STRIDE
-             for i, t in enumerate(deployment.tenants)}
+    bases: dict[int, int] = {}
+    cursor = deployment.id_base
+    for t in deployment.tenants:
+        bases[t.organisation_id] = cursor
+        cursor += band_width(t, deployment.days)
 
-    # **A fixed stride does not survive many tenants.** 513 co-tenants at 100,000,000 apiece needs
-    # 51.2 billion of id space against int4's 2.147 billion, and nothing here noticed: the ids go
-    # into the .tsv files, generation reports success, and `COPY` fails hours later on "integer out
-    # of range" -- or, worse, on a column somebody has since widened, loads and collides.
-    #
-    # Refused rather than clamped. The fix is to allocate each tenant a band sized to its own rows
-    # instead of a block sized to the largest imaginable tenant, and choosing that is not something
-    # to do silently inside an id allocator.
-    top = max(bases.values()) + ID_STRIDE
-    if top > INT4_MAX:
+    # Refused rather than clamped: an allocation that does not fit is not something to paper over
+    # inside an id allocator. The ids would reach the .tsv files, generation would report success,
+    # and `COPY` would fail on "integer out of range" -- or load and collide on a column somebody
+    # had since widened.
+    if cursor > INT4_MAX:
         raise ValueError(
-            f"{len(deployment.tenants)} tenants at ID_STRIDE {ID_STRIDE:,} need ids up to "
-            f"{top:,}, and these columns are int4 (max {INT4_MAX:,}). "
-            f"At this stride only {(INT4_MAX - deployment.id_base) // ID_STRIDE} tenants fit. "
-            f"A deployment this wide needs bands sized per tenant -- the whole co-tenant set is "
-            f"about 5.7 million rows, which fits inside a single stride.")
+            f"{len(deployment.tenants)} tenants need ids up to {cursor:,}, and these columns are "
+            f"int4 (max {INT4_MAX:,}). Bands are sized per tenant, so this is genuinely too much "
+            f"data rather than a stride that is too wide: "
+            f"{deployment.beneficiaries + deployment.encounters:,} rows across the deployment.")
     return bases
 
 
@@ -331,6 +356,16 @@ class _Sink:
     def __exit__(self, *exc):
         for fh in self._handles.values():
             fh.close()
+
+
+def _load_columns(sink, columns):
+    """The columns each load script declares: exactly what was written.
+
+    A table with no rows has nothing to narrow against, so it falls back to what its contract says
+    it populates rather than to every column the target has -- otherwise an empty file would be
+    declared with columns nothing ever writes, `audit_id` among them.
+    """
+    return {t: sink.written.get(t) or _contract_columns(t, columns[t]) for t in columns}
 
 
 def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle],
@@ -401,9 +436,14 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
         # A table with no rows has nothing to narrow against, so it falls back to what its
         # contract says it populates rather than to every column the target has -- otherwise an
         # empty file would be declared with columns nothing ever writes, `audit_id` among them.
-        cw.load_script({t: sink.written.get(t) or _contract_columns(t, columns[t])
-                        for t in columns},
+        cw.load_script(_load_columns(sink, columns),
                        directory=str(directory), verify_schema=verify_schema))
+    # The transactional half, for restoring after a per-run TRUNCATE. G4 settled on that as the
+    # reset, and reloading the full load.sql afterwards collides on every structural table whose
+    # rows the truncate deliberately left alone.
+    (directory / "reload.sql").write_text(
+        cw.reload_script(_load_columns(sink, columns),
+                         directory=str(directory), verify_schema=verify_schema))
     (directory / "summary.txt").write_text(
         summarise(deployment) + "\n\nwritten:\n" +
         "\n".join(f"  {t:<28} {n:>12,}" for t, n in sorted(counts.items())) + "\n")
