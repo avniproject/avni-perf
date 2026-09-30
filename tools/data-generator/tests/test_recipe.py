@@ -422,3 +422,36 @@ def test_a_location_type_uuid_absent_from_the_organisation_is_reported():
          "location_type_uuids": ["alt-nowhere"]}])
     _, missing = generate._refs(refs, {10, 11})
     assert any("alt-nowhere" in str(m[0]) for m in missing)
+
+
+def test_committed_recipes_claim_disjoint_id_bands():
+    """Two recipes loaded into one database must not allocate the same primary keys.
+
+    **`plan_ids` guarantees disjointness within a deployment and says nothing across
+    deployments.** tanuh-small and states-day-180 were both written with id_base 1,000,000, so
+    their first tenants wanted the same ids in the same database. The load fails fast --
+    address_level is the first non-empty table, so it dies within seconds inside its transaction
+    rather than hours in -- but the collision is only visible once someone tries.
+
+    Recipes that leave id_base unset are skipped: they have not claimed a band, and the run that
+    uses one has to choose.
+    """
+    import deployment as dep
+    import recipe as recipe_mod
+
+    claimed = []
+    for path in sorted((Path(__file__).resolve().parents[1] / "datasets").glob("*.json")):
+        if path.name.endswith(".waivers.json"):
+            continue
+        r = recipe_mod.Recipe.load(path)
+        if not r.id_base:
+            continue
+        d = r.to_deployment()
+        top = max(dep.plan_ids(d).values()) + dep.ID_STRIDE
+        claimed.append((r.id_base, top, path.name))
+
+    claimed.sort()
+    for (lo, hi, name), (next_lo, _, next_name) in zip(claimed, claimed[1:]):
+        assert hi <= next_lo, (
+            f"{name} claims {lo:,}..{hi:,} and {next_name} starts at {next_lo:,}; "
+            f"loading both into one database collides on the primary key")
