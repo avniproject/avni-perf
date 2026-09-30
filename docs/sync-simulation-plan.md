@@ -2399,29 +2399,36 @@ finding out has multiplied.
 
 ### G2 — Per run, before
 
-- **Restore the database to the reference snapshot.** See G4 — this is the answer to the bloat
-  problem, not `DELETE`.
-- **Decide and apply a cache policy.** A freshly restored database has cold `shared_buffers` and cold
-  OS page cache; the first run against it will look dramatically worse than the second for reasons
-  that have nothing to do with the server. Either run a fixed warm-up and discard it, or accept cold
-  starts — but do the same thing every time and write down which.
-- **Reset per-run statistics** — `pg_stat_statements_reset()`, JVM metric counters, log rotation — so
-  the collected data covers this run only.
-- **Generate the scenario's sync-status arrays** by rewriting `loadedSince` on the cached baselines
-  per D1's distribution.
-- **Enrol the injector's public egress address** in both the ALB security group and the WAF IP set
-  (F4). It differs between a local run and the EC2 injector, and a run from an un-enrolled address
-  fails as server errors and latency rather than as an access decision.
-- **Record run metadata** (A11): simulation SHA, server build, dataset identity and row counts,
-  injection profile, `STORAGE_MODEL`, `PAGE_SIZE`, cache policy.
+*Done. `tools/prepare-run.sh` is the sequence.* **A script rather than a checklist, because six of
+the seven items are invisible in the result if they are wrong** — an un-enrolled injector address
+fails as 403s and latency that Gatling reports as the server failing, a database somebody else's
+run dirtied is not comparable with anything, and statistics nobody reset attribute the previous
+run's queries to this one. None of that shows in a Gatling report.
+
+It prints the SQL rather than running it, as the teardown does: the connection string belongs to
+whoever is at the keyboard, and the reset truncates across every organisation in the database.
+
+| item | how it is satisfied |
+|---|---|
+| Restore the database | G4's decision: `TRUNCATE` the four transactional tables, then each dataset's `reload.sql`. Every dataset the database holds, not only the one under test — `TRUNCATE` cannot distinguish tenants, which is the cost of it being one second |
+| **Cache policy** | **Decided: no separate warm-up.** The reset's own reload has just written every page through `shared_buffers` and the OS page cache, so the database starts warm — closer to production than a cold start, and closer than a snapshot restore could be, since a restored instance faults blocks in lazily. Recorded per run as `CACHE_POLICY=warm-from-reload`; revisit only if run-to-run variance says the warmth is uneven |
+| Reset per-run statistics | `pg_stat_statements_reset()` and `pg_stat_reset()`. Without it the slowest statement in a report may belong to a run nobody is looking at |
+| Generate sync-status arrays | **Not a per-run step any more.** The simulation draws the window per user and per entity from Q2's measured gaps (`SYNC_MODE=realistic`), so there is nothing to pre-generate and nothing that can go stale between runs — the same way G5 folded user provisioning into generation |
+| Enrol the injector's egress address | The script reports this machine's public address; confirming it against the ALB security group and WAF IP set is F4's, and it is the one failure that masquerades as a server problem |
+| Record run metadata | A11, plus the two decisions below. `archiveRun` now names any of `DATASET_ID`, `SERVER_BUILD`, `CACHE_POLICY`, `AUTOVACUUM` left unrecorded, rather than only the first two |
 
 ### G3 — During
 
-Start observability capture, run the injection profile, and leave it alone. One decision to make
-consciously: **autovacuum on or off.** Leaving it on is realistic — production has it on, and an
-autovacuum storm mid-run is a genuine production failure mode worth catching. Turning it off is
-deterministic. Prefer on for choke-point hunting, but record it as a known source of run-to-run
-variance rather than being surprised by it.
+*Done — it was one decision.* Start observability capture, run the injection profile, and leave it
+alone.
+
+**Autovacuum stays on.** Production runs it, and an autovacuum storm mid-run is a genuine
+production failure mode worth catching rather than engineering away. Turning it off would buy
+determinism by removing something the exercise exists to find.
+
+It is a known source of run-to-run variance, which is why `AUTOVACUUM=on` is recorded with every
+run rather than assumed. A run whose variance cannot be explained should have this looked at before
+anything else.
 
 ### G4 — Protecting against index and table drift
 

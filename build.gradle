@@ -140,7 +140,15 @@ tasks.register('archiveRun') {
                 total : entities.size(),
                 pulled: entities.count { it.pullRequired }
             ],
-            dataset   : prop('DATASET_ID', 'unrecorded')
+            dataset   : prop('DATASET_ID', 'unrecorded'),
+            // G2 and G3 each come down to one decision that changes how a result reads, and
+            // neither is visible in the run otherwise. A cold database measures its disks and a
+            // warm one measures the server; autovacuum on is realistic and a known source of
+            // run-to-run variance. Recorded so two runs cannot be compared without it showing.
+            environment: [
+                cachePolicy: prop('CACHE_POLICY', 'unrecorded'),
+                autovacuum : prop('AUTOVACUUM', 'unrecorded')
+            ]
         ]
 
         def target = new File(latest, "run-metadata.json")
@@ -150,9 +158,15 @@ tasks.register('archiveRun') {
             logger.lifecycle("archiveRun: WARNING - working tree is dirty, so this run cannot be "
                 + "reproduced from ${metadata.simulation.gitSha} alone")
         }
-        if (metadata.dataset == 'unrecorded' || metadata.target.serverBuild == 'unrecorded') {
-            logger.lifecycle("archiveRun: NOTE - pass -DDATASET_ID and -DSERVER_BUILD to make this "
-                + "run comparable with others")
+        def unrecorded = [
+            'DATASET_ID'  : metadata.dataset,
+            'SERVER_BUILD': metadata.target.serverBuild,
+            'CACHE_POLICY': metadata.environment.cachePolicy,
+            'AUTOVACUUM'  : metadata.environment.autovacuum
+        ].findAll { it.value == 'unrecorded' }.keySet()
+        if (unrecorded) {
+            logger.lifecycle("archiveRun: NOTE - pass " + unrecorded.collect { "-D$it" }.join(' ')
+                + " to make this run comparable with others")
         }
         if (settings instanceof String) {
             logger.lifecycle("archiveRun: WARNING - no run settings found at ${settingsFile}. The "
