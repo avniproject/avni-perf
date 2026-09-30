@@ -252,3 +252,21 @@ def test_the_column_order_follows_the_target_not_the_row():
     d = P(tempfile.mkdtemp())
     _, written = cw.write_table(d / "t.tsv", [{"c": 3, "a": 1}], ["a", "b", "c"])
     assert written == ["a", "c"], "target order, not dict insertion order"
+
+
+def test_the_load_silences_the_audit_triggers_per_row_notices():
+    """The audit trigger raises two notices per insert — `Checking sync disabled value...` and
+    `setting value of audit to N`. On a day-180 tenant that is ~4.6 million lines, each formatted
+    by the server and sent to the client, inside the phase G4's cadence is measured from.
+
+    Suppressing them changes nothing about what is loaded, and warnings and errors still arrive.
+    """
+    s = cw.load_script({"individual": ["id", "uuid"]}, directory="/tmp/x", verify_schema=False)
+    assert s.index("SET client_min_messages = warning;") < s.index("BEGIN;")
+
+
+def test_the_sequence_block_gets_its_notices_back():
+    """They are the record of which sequences it raised, and a load that raised none would mean
+    the application was already allocating above the dataset."""
+    s = cw.load_script({"individual": ["id", "uuid"]}, directory="/tmp/x", verify_schema=False)
+    assert s.index("COMMIT;") < s.index("SET client_min_messages = notice;") < s.index("DO $$")

@@ -174,6 +174,38 @@ each one has a failure mode that would otherwise surface eight hours into a load
 > so if a restore is 40 minutes, a 2-hour case is a half-day and a 4-hour case is a day. Do not plan
 > Phase 4 until this is measured.
 
+**First measurement, 30 Sep 2026 — `regenerate`, both day-180 state tenants.** 501,000 subjects
+and 1,799,926 encounters each. **13.7 min for the pair**, and the two runs are close enough to
+treat the figure as reproducible rather than a single sample:
+
+| phase | rows | state-1 | state-2 | |
+|---|---|---|---|---|
+| structural (locations, catchments, users, groups) | 1,709 | 137 ms | ~150 ms | — |
+| `individual` | 501,000 | 65.7 s | 65.6 s | **−0.2%** |
+| `encounter` | 1,799,926 | 335.1 s | 350.0 s | **+4.4%** |
+| `ANALYZE` | — | 3.5 s | 4.8 s | |
+| **total** | 2,302,635 | **404 s** | **421 s** | |
+
+**state-2 loaded on top of state-1, so its indexes were already twice the size — and it cost 4.4%
+more.** `individual` did not move at all. Index depth is therefore not what governs this at these
+volumes, which is what licenses projecting linearly: the committed ten-tenant recipe comes to
+**~21 min**, and ten times the encounters to roughly **55 min**.
+
+**It is IOPS-bound, not CPU-bound** — 250 GB gp3 at the baseline 3,000 IOPS, with `encounter` 83%
+of the load. Two things follow. It scales close to linearly in rows, so the committed ten-tenant
+recipe projects to **~20 min** and ten times the encounters to roughly **55 min**. And **a larger
+instance class will not shorten it**, which removes the obvious lever: the answers are provisioned
+IOPS, or a mechanism that does not rebuild indexes.
+
+That is what makes `template` the candidate to beat — a file-level page copy builds no index at
+all — and what makes `pg_dump`/`pg_restore` unlikely to win, since its data phase is essentially
+this `\copy` with an artefact written and read on top.
+
+> **This figure is an upper bound.** It was measured with the audit trigger's two notices per row
+> still on: about 4.6 million lines for one tenant, each formatted by the server and sent to the
+> client, inside the timed phase. `load.sql` now sets `client_min_messages = warning`, so the next
+> measurement times the load rather than the logging of it. **Re-time before quoting a cadence.**
+
 > **Do not skip the snapshot in favour of deleting rows between runs.** `DELETE` leaves dead tuples,
 > `VACUUM` does not shrink indexes, and runs progressively stop resembling each other. Determinism
 > matters more than absolute realism here, because the primary comparison is run against run.
