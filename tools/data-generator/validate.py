@@ -26,6 +26,7 @@ class Verdict(str, Enum):
     PASS = "pass"
     WARN = "warn"
     FAIL = "fail"
+    WAIVED = "waived"
 
 
 @dataclass(frozen=True)
@@ -55,6 +56,10 @@ class Report:
         return [c for c in self.checks if c.verdict is Verdict.FAIL]
 
     @property
+    def waived(self) -> list[Check]:
+        return [c for c in self.checks if c.verdict is Verdict.WAIVED]
+
+    @property
     def warned(self) -> list[Check]:
         return [c for c in self.checks if c.verdict is Verdict.WARN]
 
@@ -66,14 +71,19 @@ class Report:
         width = max((len(c.name) for c in self.checks), default=10)
         lines = [f"H5 statistical gate against profile {self.profile_name}", ""]
         for c in self.checks:
-            mark = {Verdict.PASS: "ok  ", Verdict.WARN: "warn", Verdict.FAIL: "FAIL"}[c.verdict]
+            mark = {Verdict.PASS: "ok  ", Verdict.WARN: "warn", Verdict.FAIL: "FAIL",
+                    Verdict.WAIVED: "wvd "}[c.verdict]
             ratio = f"{c.ratio:.2f}x" if c.ratio is not None else "-"
             lines.append(f"  {mark} {c.name:<{width}} {c.table:<18} {ratio:>7}  {c.detail}")
         lines += ["", f"  {len(self.checks)} checks, {len(self.failed)} failed, "
-                      f"{len(self.warned)} warned"]
+                      f"{len(self.warned)} warned, {len(self.waived)} waived"]
         if not self.ok:
             lines += ["", "  A failure means the dataset is not usable for measurement. Fix the "
                           "generator, reload, re-run."]
+        if self.waived:
+            lines += ["", "  Waived checks are accepted deviations, not passes. They are recorded "
+                          "in the verdict with", "  the value accepted, and stop being waived if "
+                          "the dataset drifts away from it."]
         return "\n".join(lines)
 
 
@@ -92,6 +102,45 @@ def _band(name, table, observed, expected, *, tolerance, fail_beyond, detail):
         v = Verdict.FAIL
     return Check(name, table, v, observed, expected, tolerance,
                  f"{detail} (observed {observed:,.0f} against {expected:,.0f})")
+
+
+# How far a waived figure may move before the waiver stops covering it. A waiver records a
+# deviation someone looked at and accepted; it is not an instruction to ignore the check forever.
+WAIVER_DRIFT = 0.25
+
+
+def apply_waivers(report: Report, waivers: list[dict]) -> Report:
+    """Turn accepted failures into `waived`, and leave everything else alone.
+
+    **Why this exists rather than deleting the checks.** A gate that always reports the same four
+    failures is a gate nobody reads, and the fifth failure — the real one — arrives invisible.
+    Waiving keeps the check running and the number in front of you.
+
+    **A waiver names the value it accepted.** If the dataset drifts more than `WAIVER_DRIFT` from
+    it, the waiver no longer applies and the check fails again with the reason why. That is the
+    difference between accepting a known shape and switching a check off: the first survives the
+    thing changing underneath it, the second does not.
+    """
+    by_key = {(w["check"], w["table"]): w for w in waivers}
+    out = []
+    for c in report.checks:
+        w = by_key.get((c.name, c.table))
+        if w is None or c.verdict is not Verdict.FAIL:
+            out.append(c)
+            continue
+        accepted = w.get("observed")
+        if accepted and c.observed is not None and accepted:
+            drift = abs(c.observed / accepted - 1.0)
+            if drift > WAIVER_DRIFT:
+                out.append(Check(
+                    c.name, c.table, Verdict.FAIL, c.observed, c.expected, c.tolerance,
+                    f"{c.detail} -- WAIVER NO LONGER APPLIES: accepted at {accepted:,.0f}, "
+                    f"now {c.observed:,.0f}, {drift:.0%} away. Re-read the reason: {w['reason']}"))
+                continue
+        out.append(Check(c.name, c.table, Verdict.WAIVED, c.observed, c.expected, c.tolerance,
+                         w["reason"]))
+    report.checks = out
+    return report
 
 
 def run(observed: dict, profile: Profile, *, expected_rows: dict | None = None) -> Report:
@@ -167,6 +216,11 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--profile", default=None, help="production reference to judge against")
     ap.add_argument("--expected-rows", default=None,
                     help="what the generator was asked to produce, as JSON keyed by table")
+    ap.add_argument("--waivers", default=None,
+                    help="deviations already looked at and accepted, as JSON: a list of "
+                         "{check, table, reason, observed}. A waived check still runs and is "
+                         "still recorded; it stops being waived if the dataset drifts away from "
+                         "the value the waiver names")
     ap.add_argument("--recipe", default=None,
                     help="recipe name this dataset was built from, recorded in the verdict")
     ap.add_argument("--out", default=None,
@@ -181,6 +235,9 @@ def main(argv: list[str]) -> int:
             expected = json.load(fh)
 
     report = run(stats, profile_mod.load(args.profile), expected_rows=expected)
+    if args.waivers:
+        with open(args.waivers) as fh:
+            report = apply_waivers(report, json.load(fh))
     print(report.render())
 
     if args.out:

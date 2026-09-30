@@ -1,0 +1,20 @@
+[
+  {
+    "check": "obs keys p50",
+    "table": "individual",
+    "observed": 2,
+    "reason": "Accepted 30 Sep 2026: the customer's subject payload is lighter than production's average, and that is the shape being tested. Tanuh's IndividualProfile form mapping carries 2 generatable elements against production's median of 7; `make survey_bundle` reports this before any data is generated. No row count changes it, so the day-180 dataset fails this identically."
+  },
+  {
+    "check": "obs keys p95",
+    "table": "individual",
+    "observed": 2,
+    "reason": "Accepted 30 Sep 2026, same cause. With 2 elements the p50 and p95 are necessarily equal, so the spread check cannot pass while the median fails for the same reason. Production's p95 is 29."
+  },
+  {
+    "check": "obs mean bytes",
+    "table": "individual",
+    "observed": 119,
+    "reason": "Accepted 30 Sep 2026, same cause: 119 bytes against production's 742. What it costs is recorded in the plan's parity record -- subject pull payloads and the GIN index on `individual` are both lighter than production, so subject-sync cost comes out optimistic. A green run says this shape holds at this volume."
+  }
+]

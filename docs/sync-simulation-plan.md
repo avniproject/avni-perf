@@ -2175,7 +2175,60 @@ read rather than merely what the environment costs:
 | **Pristine indexes** | Post-load indexes have no bloat; production's have accumulated it. Understates index scan and maintenance cost (G4) |
 | **No programme shape** (out of scope) | The customer's encounters land on `encounter` rather than `program_encounter`, because the designed bundle does not exist yet. **Production's largest table, 11.4 GB with a GIN index on `observations`, is never written**, `program_enrolment` is never written, and the enrolment join on the pull side never happens. Volume is preserved; the tables it lands on are not production's |
 | **No non-sync load at all** (F5.4 deferred) | **The largest asterisk on the exercise.** Production shares the instance, the pool and the 3,000 IOPS between sync, an ETL cycle every 90 minutes, user-triggered exports and imports, and a webapp with people on it. Here only sync runs. Exports and imports *can* coincide with the sync peak — that is taken as given rather than measured — so the gap is real and its size is unbounded |
+| **Observation shape** (H5, 30 Sep 2026) | The customer's registration form carries **2 generatable elements against production's median of 7**, so subject payloads are lighter — 119 bytes against 742 — and subject-pull cost comes out optimistic. Accepted deliberately: this is the shape being tested. Waived in `datasets/tanuh.waivers.json` with the value accepted, so the gate keeps running and un-waives if the dataset drifts. **The index it produces is heavier, not lighter** — see below |
 | **Injector position** | Runs from different positions are not comparable: a sync is ~109 requests, so 25 ms of extra round trip adds 2.7 s to a 14.1 s median. Recorded per run in `run-metadata.json` (A11) |
+
+**A narrow registration form makes the index heavier per row, not lighter, and that is worth
+writing down before the day-180 dataset is built** — otherwise the number gets rationalised when it
+arrives rather than tested.
+
+The generator's value vocabulary is set by datatype: `Coded`, `Numeric`, `Date` and `Time` are
+bounded by the concept's own answers or range and so do not grow with row count, while `Id`
+(`ID-{10^6..10^7}`) is effectively unique per row and `Text` saturates at 8,999 values per concept.
+Production's registration carries a unique identifier too — the same absolute cost — but spreads it
+across 7 mostly-coded keys. Tanuh's two elements are an `Id` and a `Text`, so **nothing amortises
+the unique entry**: 1,750 GIN entries for 900 subjects, posting lists averaging 1.0 row.
+
+On `tanuh-small` (900 subjects, 10,800 encounters) H5 measured:
+
+| | observed | production | |
+|---|---|---|---|
+| `individual` GIN bytes/row | 173 | 99 | **1.75×** |
+| `encounter` GIN bytes/row | 189 | 59 | **3.20×** |
+
+**The prediction, to be tested against the day-180 dataset and not explained away:**
+
+- **`encounter` falls substantially, towards 59.** Its 125 keys sit against 7,633 distinct values,
+  and posting lists average 6.2 rows where production's run to thousands. As rows grow ~1000× the
+  bounded datatypes saturate and compression improves. **If it does not fall, the generated value
+  vocabulary is genuinely wrong**, and that is a finding about the generator rather than an
+  artefact of size.
+- **`individual` stays near 173.** Its cause is structural — `Id` keeps minting new values as
+  subjects grow — so volume changes nothing. **If it holds, it belongs under the accepted
+  deviation above** and should be waived with its own observed value, not treated as new.
+
+**What that number is and is not evidence of.** The observation GIN is **not an access path for
+sync**. `OperatingIndividualScopeAwareRepository` filters on `lastModifiedDateTime`, `addressLevel.id
+IN (...)` and the dedicated `syncConcept1Value`/`syncConcept2Value` columns, ordered by
+`lastModifiedDateTime, id`; `observations` never appears in a predicate. Every download-only case
+would produce identical plans with that index dropped.
+
+It matters in two narrower ways. **Push maintains it on every insert**, so an index heavier than
+production's makes write cost pessimistic rather than optimistic. And it competes for memory:
+G4 measured production at 19.4 GB of indexes against 13.6 GB of rows, 21x `shared_buffers`, so an
+observation index larger per row than production's displaces the b-tree pages sync actually reads.
+
+So treat the figure as **a shape detector, which is its stated purpose** -- the one number the
+generator cannot target directly, and therefore evidence about whether observations are realistic.
+It is not a measurement of anything the pull path touches, and a failure here should not by itself
+block a download scenario.
+
+Two notes on how this was reached, because both were wrong first time. The observation-shape
+failures were read as an impoverished index and are the opposite. And `validate_stats.sql` matched
+observation indexes by name (`%obs_idx`), which silently missed `idx_individual_obs` — named under
+the older V1_03 convention — and reported null where a real index existed; it now matches on
+`amname = 'gin'` plus the index definition. **A check that cannot tell "absent" from "misspelled"
+reads as a measurement, which is worse than no check**, and G4 is the thing that depends on it.
 
 **Most of these understate latency, which is worth stating plainly: a green result in this
 environment is not automatically a green result in production.** The exception is the WAF rule set,

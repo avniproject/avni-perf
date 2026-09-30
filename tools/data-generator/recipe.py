@@ -278,7 +278,10 @@ def verdict_document(recipe_name: str, report) -> dict:
         "verdict": "pass" if report.ok else "fail",
         "counts": {"checks": len(report.checks),
                    "failed": len(report.failed),
-                   "warned": len(report.warned)},
+                   "warned": len(report.warned),
+                   # Carried separately from passes: a blessed dataset should say what was
+                   # accepted about it, not just that it was accepted.
+                   "waived": len(getattr(report, "waived", []))},
         "checks": [{"name": c.name, "table": c.table, "verdict": c.verdict.value,
                     "observed": c.observed, "expected": c.expected,
                     "ratio": round(c.ratio, 4) if c.ratio is not None else None,
