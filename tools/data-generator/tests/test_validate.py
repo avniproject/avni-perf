@@ -209,7 +209,14 @@ def test_the_shipped_waiver_file_is_well_formed():
     ws = json.loads((Path(__file__).resolve().parents[1]
                      / "datasets" / "tanuh.waivers.json").read_text())
     assert ws
+    seen = set()
     for w in ws:
         assert set(w) == {"check", "table", "reason", "observed"}, w
-        assert w["table"] == "individual"
-        assert w["reason"].startswith("Accepted ")
+        # Dated, because a waiver records a judgement someone made on a day, and the value it
+        # accepted, so drift un-waives it rather than hiding behind it.
+        assert w["reason"].startswith("Accepted "), w
+        assert isinstance(w["observed"], (int, float)) and w["observed"] > 0, w
+        # One waiver per (check, table): two would mean the second silently never applies.
+        key = (w["check"], w["table"])
+        assert key not in seen, f"duplicate waiver for {key}"
+        seen.add(key)
