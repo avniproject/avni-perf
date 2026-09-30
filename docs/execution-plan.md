@@ -265,10 +265,29 @@ the dataset; the teardown's `DELETE` scales with rows. At ten-tenant scale that 
 reset against a 20-minute one, and **across ~19 resets it is about 9.7 hours** — most of two
 working days, and more than the difference between any other pair on this list.
 
-**`template` is the only plausible rival left.** `dump` rebuilds every index, GIN worst of all, so
-it will not beat 5m35s. A file-level page copy could come in under a minute *and needs no reload at
-all*, which is the comparison that matters: 335 s against perhaps 60 s. Whether the 2x storage
-headroom exists is a provisioning question for avni-infra#112, not a timing one.
+**Decided, 30 Sep 2026: `truncate` + `reload.sql`.** Clear the transactional tables across the
+database, then reload every dataset it holds. 335 s for a two-tenant day-180 tenant, ~20 min
+projected at ten-tenant scale, no storage headroom, no artefact, and no vacuum debt.
+
+`dump` is not worth measuring — it rebuilds every index with GIN worst of all, so it cannot
+approach 5m35s. `template` might: a file-level page copy needs no reload at all, so perhaps 60 s
+against 335. **It is an optimisation, not a blocker**, and it stays unmeasured for now — it needs
+the application's connections to `openchs` dropped, and whether the 2x storage headroom exists is
+a provisioning question for avni-infra#112. Phase 4 can be planned on 20 minutes a reset; if
+`template` is arranged later it shortens the cadence without changing anything else.
+
+**What the mechanism consists of**, so it is not reassembled from this prose later:
+
+1. `TRUNCATE individual, encounter, program_enrolment, program_encounter CASCADE` — one second,
+   and `CASCADE` clears the run artefacts that reference them: sync telemetry, approval statuses,
+   comments, checklists.
+2. `reload.sql` per dataset the database holds — emitted beside `load.sql`, transactional tables
+   only, because the structural rows survive the truncate and reloading them collides.
+3. Sequences are not restarted. They sit above the dataset and each reload's own `setval` keeps
+   them there; winding them back would hand out ids the application has already used.
+
+`teardown_org.py` is not this. It stays the iteration-phase reset, where emptying one organisation
+without touching its neighbours is worth 611 s.
 
 > **Do not skip the snapshot in favour of deleting rows between runs.** `DELETE` leaves dead tuples,
 > `VACUUM` does not shrink indexes, and runs progressively stop resembling each other. Determinism
