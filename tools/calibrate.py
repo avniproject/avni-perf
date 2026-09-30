@@ -71,13 +71,13 @@ BANDS = (
 BAND_2_FLOOR = 47_500 / 2
 
 
-def band_for(records: int) -> tuple[Band, bool]:
-    """The band to judge against, and whether the record count sits outside its measured range."""
+def band_for(records: int) -> tuple[Band | None, bool]:
+    """The band whose measured range covers this count, or None if none does."""
     if records <= BANDS[0].max_records:
         return BANDS[0], False
-    if records < BAND_2_FLOOR:
-        return BANDS[0], True
-    return BANDS[1], True
+    if records >= BAND_2_FLOOR:
+        return BANDS[1], False
+    return None, True
 
 
 @dataclass(frozen=True)
@@ -87,7 +87,12 @@ class Verdict:
     detail: str
 
 
-def judge(records: int, seconds: float, band: Band, outside: bool = False) -> Verdict:
+def judge(records: int, seconds: float, band: Band | None, outside: bool = False) -> Verdict:
+    if band is None:
+        return Verdict(True, "unbanded",
+                       f"{records:,} records falls between Q5's measured bands "
+                       f"(under {BANDS[0].max_records:,}, or around 47,500) -- {seconds:,.1f}s "
+                       f"recorded. The slope check below is what covers it")
     if not band.gradable:
         return Verdict(True, "ungraded",
                        f"{band.name} has no p95 yet -- {seconds:,.1f}s recorded, not judged")
@@ -100,11 +105,94 @@ def judge(records: int, seconds: float, band: Band, outside: bool = False) -> Ve
                        f"{seconds:,.1f}s exceeds p95 {band.p95:,.1f}s. Results are conservative "
                        f"rather than wrong. Check the injector's position before the model -- a "
                        f"sync is ~109 requests, so 25ms of round trip adds 2.7s")
-    note = (f" -- note: {records:,} records is above this band's measured ceiling, so the "
-            f"comparison is indicative. It errs safe: a heavier sync should be slower than the "
-            f"band's median, never faster") if outside else ""
     return Verdict(True, "ok",
-                   f"{seconds:,.1f}s inside p50 {band.p50:,.1f}s .. p95 {band.p95:,.1f}s{note}")
+                   f"{seconds:,.1f}s inside p50 {band.p50:,.1f}s .. p95 {band.p95:,.1f}s")
+
+
+# **Production's marginal cost of one more record, and the check that discriminates.**
+#
+# Anchoring the intercept at band 1's p50 gives 8.85 ms/record, against Q1's regression at 9.19 --
+# a 4% difference, which is noise. The slope was never the contested part; the free intercept was,
+# and every unanchored fit returned a value that could not fit inside a 14.1 s sync.
+#
+# **This is the check the bands could not make.** A band asks whether one sync's duration is
+# plausible for its volume, and answers weakly: band 1 spans five-fold, so almost anything passes.
+# The slope asks what one more record costs, which is exactly the quantity the storage model sets
+# and the only one an upper-bound coefficient gets wrong in a direction that matters. It also needs
+# no band, so it covers the volumes Q5 never measured.
+PRODUCTION_MS_PER_RECORD = 8.85
+
+# How far the simulated slope may sit from production's, **as a factor either way**.
+#
+# Not an absolute deviation from a ratio of 1.0, which is the shape this check had first and is
+# wrong for a ratio: an under-estimate can never deviate by more than 1.0 however bad it is, so a
+# simulation four times too fast scored 0.74 against a 0.75 threshold and warned instead of
+# failing. A factor is symmetric -- twice too slow fails as surely as twice too fast.
+#
+# Wide, because the two slopes do not measure quite the same thing: production's carries its server
+# under real contention and this one carries a test server with nothing else running. A factor of
+# two is arguable on those grounds. A factor of four is not.
+SLOPE_WARN_FACTOR = 1.5
+SLOPE_FAIL_FACTOR = 2.0
+
+# Two cohorts at least this far apart, so the slope is a measurement rather than two points and
+# hope.
+SLOPE_MIN_SPAN = 2.0
+
+
+def slope(rows: list[tuple[str, int, float]]) -> tuple[float, int, int] | None:
+    """Simulated milliseconds per record, from the lightest and heaviest cohorts.
+
+    Two cohort medians rather than a regression through every sync: within a cohort the durations
+    are nearly identical, so a regression would be dominated by however many users happened to run
+    at each volume rather than by the volumes themselves.
+    """
+    groups = cohorts(rows)
+    if len(groups) < 2:
+        return None
+    lo, hi = groups[0], groups[-1]
+    r_lo = statistics.median(r for _, r, _ in lo)
+    r_hi = statistics.median(r for _, r, _ in hi)
+    if r_lo <= 0 or r_hi / r_lo < SLOPE_MIN_SPAN:
+        return None
+    s_lo = statistics.median(s for _, _, s in lo)
+    s_hi = statistics.median(s for _, _, s in hi)
+    return ((s_hi - s_lo) * 1000 / (r_hi - r_lo), int(r_lo), int(r_hi))
+
+
+def slope_check(rows: list[tuple[str, int, float]]) -> tuple[list[str], bool]:
+    """Whether one more record costs what it costs production."""
+    got = slope(rows)
+    if got is None:
+        return (["", "  Slope not measured: needs two cohorts at least "
+                 f"{SLOPE_MIN_SPAN:g}x apart in record count. Run a light and a heavy user "
+                 "together -- a field worker and a supervisor is enough."], True)
+
+    ms, r_lo, r_hi = got
+    ratio = ms / PRODUCTION_MS_PER_RECORD
+    factor = max(ratio, 1 / ratio) if ratio else float("inf")
+    direction = "fast" if ratio < 1 else "slow"
+    lines = ["", f"  Marginal cost, {r_lo:,} to {r_hi:,} records: **{ms:.2f} ms/record** against "
+                 f"production's {PRODUCTION_MS_PER_RECORD} ({ratio:.2f}x, {factor:.1f}x "
+                 f"{direction})"]
+    if factor <= SLOPE_WARN_FACTOR:
+        return lines, True
+    if factor <= SLOPE_FAIL_FACTOR:
+        lines += [f"  warn: {factor:.1f}x off, inside the {SLOPE_FAIL_FACTOR:g}x the differing "
+                  f"server load can account for. Worth refitting."]
+        return lines, True
+    lines += [
+        "",
+        f"  FAIL: the simulation charges {ratio:.2f}x production's cost per record "
+        f"-- {factor:.1f}x too {direction}.",
+        "  Every duration it reports scales with this, so a finding about how long a sync takes",
+        "  is wrong by the same factor. Two candidates, and the plan expects both:",
+        "    * BASE_MS_PER_RECORD is a deliberate upper bound derived from a 2-second page",
+        "      ceiling, not a measurement. D7's telemetry would settle it and is deferred.",
+        "    * MS_PER_PAGE double-counts the server's own response time, which this simulation",
+        "      genuinely incurs. Net the server's median response out of it, then refit.",
+    ]
+    return lines, False
 
 
 def read(path: str) -> list[tuple[str, int, float]]:
@@ -201,6 +289,9 @@ def report(rows: list[tuple[str, int, float]]) -> tuple[str, bool]:
                       f"median {statistics.median(secs):,.1f}s, "
                       f"range {secs[0]:,.1f}s-{secs[-1]:,.1f}s"]
         lines += spread_notes(rows)
+    slope_lines, slope_ok = slope_check(rows)
+    lines += slope_lines
+    ok = ok and slope_ok
 
     lines += ["", "  PASS -- the simulation reproduces production for these volumes." if ok
                   else "  FAIL -- the simulation is not an instrument yet. Its findings are not "
