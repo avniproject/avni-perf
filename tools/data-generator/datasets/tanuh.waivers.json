@@ -16,5 +16,11 @@
     "table": "individual",
     "observed": 119,
     "reason": "Accepted 30 Sep 2026, same cause: 119 bytes against production's 742. What it costs is recorded in the plan's parity record -- subject pull payloads and the GIN index on `individual` are both lighter than production, so subject-sync cost comes out optimistic. A green run says this shape holds at this volume."
+  },
+  {
+    "check": "index bytes/row",
+    "table": "encounter",
+    "observed": 417,
+    "reason": "Accepted 30 Sep 2026: the index SET matches production exactly -- 15 on encounter, 16 on individual, 17 on program_enrolment, 18 on program_encounter, confirmed by name after db-bootstrap added the sync_N family -- and an EXPLAIN of a catchment-scoped pull uses encounter_sync_1_index on all four columns in 18ms. The residual 0.33x is fill factor and bloat, not absence: these were built by CREATE INDEX over loaded data so they pack near 90% with no dead entries, while production's grew through years of inserts where page splits settle around 70% and dead entries persist until a REINDEX these tables rarely get. Recorded in the parity record as understating index scan and maintenance cost."
   }
 ]
