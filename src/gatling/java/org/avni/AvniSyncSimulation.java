@@ -634,7 +634,14 @@ public class AvniSyncSimulation extends Simulation {
         return exec(authChainBuilder)
             .exec(bootstrapChain(workload))
             .exec(seedChain(workload))
-            .exec(session -> session.set("syncStartTime", java.time.Instant.now().toString()))
+            .exec(session -> session
+                .set("syncStartTime", java.time.Instant.now().toString())
+                // F7 compares a simulated sync against production's observed distribution for the
+                // same record count, so both halves have to be measured here. Nothing else
+                // surfaces them: the duration went only into the syncTelemetry POST, which means
+                // reading the gate's own result back required querying the server's database.
+                .set("syncStartMillis", System.currentTimeMillis())
+                .set("recordsPulled", 0))
             // The client uploads before it asks what changed: dataServerSync runs pushData, then
             // the reset-sync check, then getSyncDetails. Pushing after the pull would measure a
             // different thing - the server's clock for the pull window is read after the upload
@@ -652,7 +659,8 @@ public class AvniSyncSimulation extends Simulation {
                 .check(jsonPath("$.now").saveAs("serverNow"))
                 .check(jsonPath("$.nowMinus10Seconds").saveAs("serverNowMinus10Seconds")))
             .exec(sync(workload))
-            .exec(postSyncTelemetry(workload));
+            .exec(postSyncTelemetry(workload))
+            .exec(AvniSyncSimulation::recordSyncResult);
     }
 
     private ScenarioBuilder scenarioFor(Workload workload) {
@@ -1298,6 +1306,58 @@ public class AvniSyncSimulation extends Simulation {
             .check(status().in(200, 201, 204)));
     }
 
+    /**
+     * F7's raw material: one line per completed sync, `userName,records,durationMs,profile`.
+     *
+     * **Why the simulation has to write this itself.** The gate asks whether a simulated sync of N
+     * records lands inside production's observed distribution for N records. Both numbers existed
+     * only inside the run -- the duration went into the syncTelemetry POST and nowhere else, and
+     * the record count was consumed page by page to size the storage pause and then discarded. So
+     * reading the gate's own result meant querying the server's `sync_telemetry`, which makes the
+     * calibration of the instrument depend on the system under test.
+     *
+     * The duration spans `syncStartTime` to here: push, reset-sync, syncDetails, the pull and the
+     * telemetry POST. That is what a client calls a sync, and it includes the simulation's own
+     * storage pauses, which is the point -- those pauses are the model F7 exists to check.
+     *
+     * Appended under a lock because virtual users finish concurrently. Failures are swallowed
+     * deliberately: a run that cannot write its calibration file should still produce its load
+     * result, and the missing file is obvious at the point someone runs the gate.
+     */
+    private static final java.nio.file.Path SYNC_RESULTS =
+        java.nio.file.Paths.get(System.getProperty("SYNC_RESULTS", "build/sync-durations.csv"));
+    private static final Object SYNC_RESULTS_LOCK = new Object();
+
+    private static Session recordSyncResult(Session session) {
+        long started = session.getLong("syncStartMillis");
+        if (started <= 0) {
+            return session;
+        }
+        String line = String.format("%s,%d,%d,%s%n",
+            session.getString("userName"), session.getInt("recordsPulled"),
+            System.currentTimeMillis() - started,
+            System.getProperty("PROFILE", "ramp"));
+        synchronized (SYNC_RESULTS_LOCK) {
+            try {
+                java.nio.file.Path parent = SYNC_RESULTS.toAbsolutePath().getParent();
+                if (parent != null) {
+                    java.nio.file.Files.createDirectories(parent);
+                }
+                if (!java.nio.file.Files.exists(SYNC_RESULTS)) {
+                    java.nio.file.Files.write(SYNC_RESULTS,
+                        "userName,records,durationMs,profile\n".getBytes(
+                            java.nio.charset.StandardCharsets.UTF_8));
+                }
+                java.nio.file.Files.write(SYNC_RESULTS,
+                    line.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    java.nio.file.StandardOpenOption.APPEND);
+            } catch (java.io.IOException e) {
+                // See above: a load result is worth more than a calibration line.
+            }
+        }
+        return session;
+    }
+
     private static String syncTelemetryBody(Session session) {
         Map<String, Object> entityStatus = new LinkedHashMap<>();
         List<Map<String, Object>> pull = new ArrayList<>();
@@ -1589,6 +1649,11 @@ public class AvniSyncSimulation extends Simulation {
                     // `pageInfo` still describes the previous page - pausing on it would model a
                     // client persisting a page it never received.
                     .exitHereIfFailed()
+                    // Counted after exitHereIfFailed, so a failed page contributes nothing: on a
+                    // failure the check never ran and `pageInfo` still describes the previous
+                    // page, which would otherwise be counted twice.
+                    .exec(session -> session.set("recordsPulled",
+                        session.getInt("recordsPulled") + pageInfo(session).recordCount))
                     // The time the client spends parsing and persisting this page: its record
                     // count times the entity's tier times baseMsPerRecord (D6.2). A page of
                     // observation-bearing rows costs fifteen times a page of lookup rows, which one
