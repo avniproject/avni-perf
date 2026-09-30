@@ -38,7 +38,7 @@ import json
 import sys
 from pathlib import Path
 
-from bootstrap_user import BOOTSTRAP_ID_BASE
+from bootstrap_user import GENERATED_ID_CEILING
 from copy_writer import LOAD_ORDER
 
 # The organisation the server itself owns. `V0_3__CreateOpenCHSUser` seeds it along with user 1,
@@ -176,7 +176,7 @@ def emit(organisations, id_base: int | None, scope: str) -> str:
     w(f"  orgs      int[] := ARRAY[{', '.join(str(o) for o in orgs)}];")
     w("  org       int;")
     w(f"  id_floor  bigint := {id_base if id_base is not None else 0};")
-    w(f"  bootstrap_floor bigint := {BOOTSTRAP_ID_BASE};  -- bootstrap_user.py's band, kept")
+    w(f"  bootstrap_floor bigint := {GENERATED_ID_CEILING};  -- bootstrap_user.py's band, kept")
     w("  tbl       text;")
     w("  rng       boolean;")
     w("  col       text;")

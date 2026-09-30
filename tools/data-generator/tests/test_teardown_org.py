@@ -99,7 +99,7 @@ def test_a_bootstrap_user_survives_a_teardown():
     above every generated id. A cut of `id >= id_base` alone would take it, and the next check
     would fail on a missing user rather than on anything real."""
     s = sql()
-    assert str(boot.BOOTSTRAP_ID_BASE) in s
+    assert str(boot.GENERATED_ID_CEILING) in s
     assert "AND %I >= $2 AND %I < $3" in s
     assert "USING org, id_floor, bootstrap_floor;" in s
 
