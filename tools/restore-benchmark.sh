@@ -116,14 +116,35 @@ fi
 # ---- regenerate -------------------------------------------------------------------------------
 # The load only, not the generation: generating runs on the injector and can happen while the
 # previous run is still going, so it is off the critical path in a way the load is not.
+#
+# **It needs its target empty, and says so rather than discovering it.** load.sql has no truncate
+# and no ON CONFLICT, so against an organisation that already holds the dataset it dies on the
+# primary key seconds in -- a confusing failure that looks like a broken script rather than a
+# benchmark run in the wrong order. Checked up front, because the point of this file is to produce
+# a number and a failed candidate produces none.
 if wants regenerate && [ -n "$DATASET" ]; then
-  echo "3. regenerate (load.sql into an empty database)"
+  echo "3. regenerate (load.sql into an empty organisation)"
   [ -f "$DATASET/load.sql" ] || die "no load.sql under $DATASET"
-  if s=$(timed psql "$DB" -v ON_ERROR_STOP=1 -f "$DATASET/load.sql"); then
-    echo "   ${s}s"
-    record regenerate "$s" "load only; generation runs on the injector, off the critical path"
+  if [ -z "$ORG" ]; then
+    echo "   skipped -- pass --organisation so the target can be checked for emptiness first"
+    record regenerate "-" "skipped: no --organisation to check"
   else
-    echo "   failed after ${s}s"; record regenerate "-" "failed"
+    OCCUPIED=$(psql "$DB" -At -c \
+      "select coalesce(sum(n), 0) from (
+         select count(*) n from individual where organisation_id = $ORG
+         union all select count(*) from encounter where organisation_id = $ORG) t" 2>/dev/null)
+    if [ "${OCCUPIED:-0}" != "0" ]; then
+      echo "   skipped -- organisation $ORG already holds ${OCCUPIED} rows."
+      echo "   load.sql has no truncate, so this would fail on the primary key rather than time"
+      echo "   anything. Run --only teardown, which tears down and reloads and times both, or"
+      echo "   point --db at an empty database."
+      record regenerate "-" "skipped: organisation $ORG is not empty"
+    elif s=$(timed psql "$DB" -v ON_ERROR_STOP=1 -f "$DATASET/load.sql"); then
+      echo "   ${s}s"
+      record regenerate "$s" "load only; generation runs on the injector, off the critical path"
+    else
+      echo "   failed after ${s}s"; record regenerate "-" "failed"
+    fi
   fi
 fi
 
