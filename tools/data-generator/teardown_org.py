@@ -74,9 +74,24 @@ TRANSACTIONAL = ("encounter", "program_encounter", "program_enrolment", "individ
 STRUCTURAL = ("user_group", "users", "groups", "catchment_address_mapping", "catchment",
               "address_level", "address_level_type")
 
-# `catchment_address_mapping` is a bare join table with no `id`, so its range cut goes through the
-# catchment it points at.
+# `catchment_address_mapping` has an `id`, but the generator never populates it — load.sql copies
+# only (catchment_id, addresslevel_id) — so its ids are server-assigned and outside any range the
+# dataset knows about. The range cut goes through the catchment it points at instead.
 RANGE_COLUMN = {"catchment_address_mapping": "catchment_id"}
+
+# How a table is tied to an organisation, where it is not tied to one directly. `$1` is the
+# organisation.
+#
+# **Not every table in the delete list has an `organisation_id`**, and the preflight cannot see
+# the ones that do not: it discovers candidates by looking for that column, so a table scoped only
+# through a parent is invisible to it and has to be named here. `catchment_address_mapping` is the
+# case in hand — it carries `catchment_id` and `addresslevel_id` and nothing else identifying.
+# Avni's own deleteOrgMetadata.sql scopes it the same way, through `catchment`.
+ORG_PREDICATE = {
+    "catchment_address_mapping":
+        "catchment_id IN (SELECT id FROM catchment WHERE organisation_id = $1)",
+}
+DEFAULT_ORG_PREDICATE = "organisation_id = $1"
 
 # The range cut is bounded above as well as below, so a bootstrap user survives a teardown.
 # `bootstrap_user.py` places its rows at 2,100,000,000 — deliberately above anything generated but
@@ -96,6 +111,16 @@ METADATA = (
     "individual_relation_gender_mapping", "individual_relationship_type", "rule", "rule_dependency",
     "menu_item", "message_rule", "message_request_queue", "message_receiver", "task", "task_type",
     "task_status", "documentation", "documentation_item", "extension", "custom_query", "gender",
+    # Location metadata, not dataset rows, on three independent readings: the generator never
+    # writes it; the application maintains it when locations are created through
+    # LocationMappingController, and the generator `\copy`s address_level straight past the app so
+    # no mapping is produced; and Avni's own deleteOrgMetadata.sql groups it with the location
+    # tables, deleting it immediately before address_level and address_level_type.
+    #
+    # If any row here did point at a generated address level, the address_level delete would fail
+    # on the foreign key — safely, inside the transaction — and that would be the evidence for
+    # moving it to STRUCTURAL with RANGE_COLUMN {"location_location_mapping": "location_id"}.
+    "location_location_mapping",
 )
 
 
@@ -196,14 +221,15 @@ def emit(organisations, id_base: int | None, scope: str) -> str:
     w("")
     for table, by_range in order:
         col = RANGE_COLUMN.get(table, "id")
+        pred = ORG_PREDICATE.get(table, DEFAULT_ORG_PREDICATE)
         w(f"  tbl := {table!r}; rng := {'true' if by_range else 'false'}; col := {col!r};")
         w("  IF to_regclass('public.' || tbl) IS NOT NULL THEN")
         w("    IF rng THEN")
-        w("      EXECUTE format('DELETE FROM %I WHERE organisation_id = $1"
+        w(f"      EXECUTE format('DELETE FROM %I WHERE {pred}"
           " AND %I >= $2 AND %I < $3', tbl, col, col)")
         w("        USING org, id_floor, bootstrap_floor;")
         w("    ELSE")
-        w("      EXECUTE format('DELETE FROM %I WHERE organisation_id = $1', tbl) USING org;")
+        w(f"      EXECUTE format('DELETE FROM %I WHERE {pred}', tbl) USING org;")
         w("    END IF;")
         w("    GET DIAGNOSTICS n = ROW_COUNT;")
         w("    total := total + n;")
@@ -222,17 +248,20 @@ def emit(organisations, id_base: int | None, scope: str) -> str:
     w("-- anything left here surfaces as a primary key violation partway through a multi-hour")
     w("-- load rather than here, where it costs nothing.")
     w("DO $$")
-    w("DECLARE tbl text; n bigint; org int; left_over text[] := '{}';")
+    w("DECLARE n bigint; org int; left_over text[] := '{}';")
     w(f"  orgs int[] := ARRAY[{', '.join(str(o) for o in orgs)}];")
     w("BEGIN")
     w("  FOREACH org IN ARRAY orgs LOOP")
-    w(f"  FOREACH tbl IN ARRAY ARRAY[{', '.join(repr(t) for t, _ in order)}]::text[] LOOP")
-    w("    IF to_regclass('public.' || tbl) IS NOT NULL THEN")
-    w("      EXECUTE format('SELECT count(*) FROM %I WHERE organisation_id = $1', tbl)")
-    w("        INTO n USING org;")
-    w("      IF n > 0 THEN left_over := left_over || format('%s (%s)', tbl, n); END IF;")
-    w("    END IF;")
-    w("  END LOOP;")
+    # Unrolled rather than looped over a name array, because the organisation predicate differs
+    # per table: `catchment_address_mapping` has no organisation_id of its own. A generic loop is
+    # what put `WHERE organisation_id = $1` on a table that has no such column.
+    for table, _ in order:
+        pred = ORG_PREDICATE.get(table, DEFAULT_ORG_PREDICATE)
+        w(f"    IF to_regclass('public.{table}') IS NOT NULL THEN")
+        w(f"      EXECUTE 'SELECT count(*) FROM {table} WHERE {pred}' INTO n USING org;")
+        w(f"      IF n > 0 THEN left_over := left_over || format('%s (%s)', {table!r}, n);"
+          " END IF;")
+        w("    END IF;")
     w("  END LOOP;")
     w("  IF array_length(left_over, 1) > 0 THEN")
     if scope == "data":

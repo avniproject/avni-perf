@@ -218,3 +218,53 @@ def test_a_protected_organisation_anywhere_in_the_list_stops_it():
 def test_organisations_are_deduplicated_and_ordered():
     s = td.emit([5, 3, 5], 1_000_000, "data")
     assert "ARRAY[3, 5]" in s
+
+
+def test_location_mappings_are_kept_not_deleted():
+    """Found by the preflight on the first real run against org 3, which refused to delete
+    anything rather than guess.
+
+    `location_location_mapping` is location metadata the application maintains through
+    LocationMappingController. The generator never writes it — it `\\copy`s address_level straight
+    past the application — and Avni's own deleteOrgMetadata.sql groups it with the location tables.
+    """
+    s = sql()
+    assert "tbl := 'location_location_mapping';" not in s
+    assert "location_location_mapping" in td.METADATA
+    # It has to be in the known set, or the preflight aborts on it again.
+    assert "'location_location_mapping'" in s
+
+
+def test_a_table_with_no_organisation_id_is_scoped_through_its_parent():
+    """`catchment_address_mapping` carries (id, catchment_id, addresslevel_id) and nothing else.
+
+    The first delete phase to reach it failed on `column "organisation_id" does not exist`. It is
+    invisible to the preflight too, which finds candidates *by* that column, so a table scoped
+    only through a parent has to be named. Avni's deleteOrgMetadata.sql scopes it the same way.
+    """
+    s = sql()
+    parent = "catchment_id IN (SELECT id FROM catchment WHERE organisation_id = $1)"
+    body = s[position(s, "catchment_address_mapping"):][:600]
+    assert parent in body
+    assert "catchment_address_mapping WHERE organisation_id" not in s
+    # And its range cut still goes through catchment_id, because the generator never populates
+    # the table's own id -- load.sql copies only (catchment_id, addresslevel_id).
+    assert "col := 'catchment_id'" in body
+
+
+def test_the_leftover_check_uses_the_same_predicates_as_the_delete():
+    """It used to loop over a name array with `WHERE organisation_id = $1` hardcoded, which is
+    the same defect one statement further down: it would have failed after a successful delete."""
+    s = sql()
+    for table in ("catchment_address_mapping", "individual", "users"):
+        assert f"SELECT count(*) FROM {table} WHERE" in s
+    assert ("SELECT count(*) FROM catchment_address_mapping WHERE catchment_id IN "
+            "(SELECT id FROM catchment WHERE organisation_id = $1)") in s
+
+
+def test_every_deleted_table_has_a_scoping_predicate():
+    """Over-listing ORG_PREDICATE is harmless; a missing entry is a runtime error against a live
+    database, which is the most expensive place to find one."""
+    for table, _ in td._delete_order("data"):
+        pred = td.ORG_PREDICATE.get(table, td.DEFAULT_ORG_PREDICATE)
+        assert "$1" in pred, f"{table} has no organisation placeholder"
