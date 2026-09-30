@@ -342,3 +342,83 @@ def test_the_per_tenant_split_keeps_every_deployment_field():
         if f.name in ("tenants", "id_base"):
             continue
         assert getattr(one, f.name) == getattr(full, f.name), f"{f.name} lost in the split"
+
+
+def _refs_file(**payload):
+    """A refs.json on disk, for exercising generate._refs."""
+    import tempfile
+    p = Path(tempfile.mkdtemp()) / "refs.json"
+    base = {"subject_types": [], "programs": [], "encounter_types": [],
+            "address_level_types": [], "registration_locations": [], "audit_user_id": 1}
+    base.update(payload)
+    p.write_text(json.dumps(base))
+    return p
+
+
+def _two_orgs_sharing_a_bundle(reg_entries):
+    """Two organisations carrying the same bundle.
+
+    **Their metadata uuids are identical and their ids are not.** An import creates a row per
+    organisation reusing the bundle's uuid, so a uuid identifies a row within an organisation and
+    nowhere else. Village is type 14 in org 10 and type 24 in org 11.
+    """
+    return _refs_file(
+        subject_types=[{"id": 3, "uuid": "st-patient", "name": "Patient", "organisation_id": 10},
+                       {"id": 7, "uuid": "st-patient", "name": "Patient", "organisation_id": 11}],
+        encounter_types=[{"id": 1, "uuid": "et", "name": "Visit", "organisation_id": 10},
+                         {"id": 2, "uuid": "et", "name": "Visit", "organisation_id": 11}],
+        address_level_types=[{"id": 14, "uuid": "alt-village", "name": "Village",
+                              "organisation_id": 10, "level": 4, "parent_id": None},
+                             {"id": 24, "uuid": "alt-village", "name": "Village",
+                              "organisation_id": 11, "level": 4, "parent_id": None}],
+        registration_locations=reg_entries)
+
+
+def test_a_registration_rule_resolves_to_its_own_organisations_type_ids():
+    """The same uuid means a different row in each organisation, and the generator needs the id."""
+    import generate
+    refs = _two_orgs_sharing_a_bundle([
+        {"organisation_id": 10, "subject_type_uuid": "st-patient",
+         "location_type_uuids": ["alt-village"]},
+        {"organisation_id": 11, "subject_type_uuid": "st-patient",
+         "location_type_uuids": ["alt-village"]}])
+    out, missing = generate._refs(refs, {10, 11})
+    assert missing == []
+    assert out[10][4] == [14]
+    assert out[11][4] == [24]
+
+
+def test_a_rule_belonging_to_another_organisation_is_not_inherited():
+    """Without the organisation filter every tenant takes the union of every tenant's rules.
+
+    Harmless while every organisation carries the same bundle, which is exactly why it would have
+    gone unnoticed: the dump carried three identical entries for four organisations and no way to
+    tell which one was missing a rule.
+    """
+    import generate
+    refs = _two_orgs_sharing_a_bundle([
+        {"organisation_id": 10, "subject_type_uuid": "st-patient",
+         "location_type_uuids": ["alt-village"]}])
+    out, _ = generate._refs(refs, {10, 11})
+    assert out[10][4] == [14]
+    assert out[11][4] == [], "org 11 has no rule of its own, so registration is unrestricted"
+
+
+def test_an_untagged_rule_is_ignored_rather_than_applied_everywhere():
+    """A dump taken before refs.sql projected organisation_id. Applying it to every tenant would
+    silently truncate hierarchies nobody asked to truncate."""
+    import generate
+    refs = _two_orgs_sharing_a_bundle([
+        {"subject_type_uuid": "st-patient", "location_type_uuids": ["alt-village"]}])
+    out, _ = generate._refs(refs, {10, 11})
+    assert out[10][4] == [] and out[11][4] == []
+
+
+def test_a_location_type_uuid_absent_from_the_organisation_is_reported():
+    """Rather than silently dropping it and generating against an untruncated hierarchy."""
+    import generate
+    refs = _two_orgs_sharing_a_bundle([
+        {"organisation_id": 10, "subject_type_uuid": "st-patient",
+         "location_type_uuids": ["alt-nowhere"]}])
+    _, missing = generate._refs(refs, {10, 11})
+    assert any("alt-nowhere" in str(m[0]) for m in missing)

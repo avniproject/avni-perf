@@ -54,6 +54,14 @@ select json_build_object(
   -- descendant of a permitted type does not count.
   'registration_locations', (
     select coalesce(json_agg(json_build_object(
+      -- **Projected, because a uuid does not identify an organisation.** The bundle's uuids are
+      -- reused in every organisation it is imported into -- same subject type uuid, same address
+      -- level type uuid, different ids -- so without this the entries are indistinguishable and a
+      -- tenant silently inherits every other tenant's registration rule. Harmless while every
+      -- organisation carries the same bundle, and exactly the shape of bug this field was added
+      -- to catch. It also says which organisations have no rule at all, which the count alone
+      -- cannot: four organisations carrying the bundle produced three entries.
+      'organisation_id', oc.organisation_id,
       'subject_type_uuid', e ->> 'subjectTypeUUID',
       'location_type_uuids', e -> 'locationTypeUUIDs'
     )), '[]'::json)

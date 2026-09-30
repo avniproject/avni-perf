@@ -72,6 +72,11 @@ def _refs(path: Path, organisation_ids: set[int]):
         reg = []
         if sts:
             for entry in raw.get("registration_locations", []):
+                # Both filters are needed. The uuid alone does not identify an organisation --
+                # every organisation importing this bundle gets the same subject type uuid -- so
+                # matching on it alone hands each tenant the union of every tenant's rules.
+                if entry.get("organisation_id") != org:
+                    continue
                 if entry.get("subject_type_uuid") != sts[0].uuid:
                     continue
                 for u in entry.get("location_type_uuids") or []:
