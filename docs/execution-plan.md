@@ -201,7 +201,14 @@ That is what makes `template` the candidate to beat — a file-level page copy b
 all — and what makes `pg_dump`/`pg_restore` unlikely to win, since its data phase is essentially
 this `\copy` with an artefact written and read on top.
 
-> **This figure is an upper bound.** It was measured with the audit trigger's two notices per row
+> **Both figures predate the index parity fix and are no longer representative.** They were
+> measured when this environment held 0.73 GB of index against production's 4.24 GB, missing the
+> five `sync_N` indexes per table that no migration defines. Those are now added through
+> `db-bootstrap` in avni-infra, so every insert maintains five more indexes than these runs did:
+> **expect the load to be materially slower, and re-time it before quoting a cadence.**
+>
+> **They are also an upper bound in the other direction.** They were measured with the audit
+> trigger's two notices per row
 > still on: about 4.6 million lines for one tenant, each formatted by the server and sent to the
 > client, inside the timed phase. `load.sql` now sets `client_min_messages = warning`, so the next
 > measurement times the load rather than the logging of it. **Re-time before quoting a cadence.**
