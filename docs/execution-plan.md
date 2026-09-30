@@ -174,44 +174,54 @@ each one has a failure mode that would otherwise surface eight hours into a load
 > so if a restore is 40 minutes, a 2-hour case is a half-day and a 4-hour case is a day. Do not plan
 > Phase 4 until this is measured.
 
-**First measurement, 30 Sep 2026 — `regenerate`, both day-180 state tenants.** 501,000 subjects
-and 1,799,926 encounters each. **13.7 min for the pair**, and the two runs are close enough to
-treat the figure as reproducible rather than a single sample:
+**Measured 30 Sep 2026, on the day-180 state tenants.** 501,000 subjects and 1,799,926 encounters
+per tenant, under Phase 4 conditions: full index parity with production, and the audit trigger's
+per-row notices suppressed.
 
-| phase | rows | state-1 | state-2 | |
-|---|---|---|---|---|
-| structural (locations, catchments, users, groups) | 1,709 | 137 ms | ~150 ms | — |
-| `individual` | 501,000 | 65.7 s | 65.6 s | **−0.2%** |
-| `encounter` | 1,799,926 | 335.1 s | 350.0 s | **+4.4%** |
-| `ANALYZE` | — | 3.5 s | 4.8 s | |
-| **total** | 2,302,635 | **404 s** | **421 s** | |
+| | per tenant | rate | both tenants |
+|---|---|---|---|
+| **load into an empty organisation** | **402 s** (6.7 min) | 5,728 rows/s | **13.4 min** |
+| teardown, then reload | 1,013 s (16.9 min) | — | 34 min |
+| &nbsp;&nbsp;— the `DELETE` half | 611 s (10.2 min) | 3,769 rows/s | 20 min |
 
-**state-2 loaded on top of state-1, so its indexes were already twice the size — and it cost 4.4%
-more.** `individual` did not move at all. Index depth is therefore not what governs this at these
-volumes, which is what licenses projecting linearly: the committed ten-tenant recipe comes to
-**~21 min**, and ten times the encounters to roughly **55 min**.
+**Deleting costs 1.52x inserting**, because every one of the 15 indexes on `encounter` has to be
+updated per row. So **`teardown` is not the per-run reset** — it is 2.5x a plain load and leaves
+dead tuples on top. It stays what it was built for: the iteration-phase reset, where it empties one
+organisation without touching its neighbours and a restore would be far too slow a loop.
 
-**It is IOPS-bound, not CPU-bound** — 250 GB gp3 at the baseline 3,000 IOPS, with `encounter` 83%
-of the load. Two things follow. It scales close to linearly in rows, so the committed ten-tenant
-recipe projects to **~20 min** and ten times the encounters to roughly **55 min**. And **a larger
-instance class will not shorten it**, which removes the obvious lever: the answers are provisioned
-IOPS, or a mechanism that does not rebuild indexes.
+> **The two corrections cancelled.** This load is 402 s against 404 s measured before index parity
+> and before the notices were suppressed. Five more indexes per insert and ~4.6 million fewer
+> notice lines turn out to be near-equal and opposite, which neither figure predicted. The
+> coincidence is worth stating rather than hiding, because it means the earlier number was right
+> by accident and the reasoning behind it was not.
 
-That is what makes `template` the candidate to beat — a file-level page copy builds no index at
-all — and what makes `pg_dump`/`pg_restore` unlikely to win, since its data phase is essentially
-this `\copy` with an artefact written and read on top.
+**How many times this is paid.** Every case except 1 runs with the push path on, so every run
+leaves the dataset mutated and the next needs a pristine start. There is no sharing a reset
+between runs.
 
-> **Both figures predate the index parity fix and are no longer representative.** They were
-> measured when this environment held 0.73 GB of index against production's 4.24 GB, missing the
-> five `sync_N` indexes per table that no migration defines. Those are now added through
-> `db-bootstrap` in avni-infra, so every insert maintains five more indexes than these runs did:
-> **expect the load to be materially slower, and re-time it before quoting a cadence.**
->
-> **They are also an upper bound in the other direction.** They were measured with the audit
-> trigger's two notices per row
-> still on: about 4.6 million lines for one tenant, each formatted by the server and sent to the
-> client, inside the timed phase. `load.sql` now sets `client_min_messages = warning`, so the next
-> measurement times the load rather than the logging of it. **Re-time before quoting a cadence.**
+| | runs | on |
+|---|---|---|
+| cases 1–7 | 7 | one empty, three on two-state day-180, three on ten-tenant ± co-tenants |
+| case 8, growth | 3 | day 60, 120, 365 — day 180 reuses case 4's result |
+| cases 9–13 | 5 | ten-tenant ± co-tenants |
+| **Phase 4** | **15** | |
+| Phase 5, four to six iterations | 4–6 | |
+| **total** | **~20**, of which ~19 need a reset first | case 1 has no field data and does not push |
+
+At the projected ~21 min for a ten-tenant reset, **19 resets is about 7 hours** of reset time
+across Phases 4 and 5; by the teardown path it is 11–12. So a mechanism that saves ten minutes a
+reset saves better than three hours of the exercise, which is what Day 9 is actually deciding.
+
+**The co-tenant datasets are the gap in that arithmetic.** Cases 6, 7, 12 and 13 need 986 further
+organisations present, and nobody has measured what loading them costs. If it is an hour, those
+four resets alone are half the total. **Size it before Day 10 commits to the shape.**
+
+**A candidate the list was missing.** Per-organisation `DELETE` is expensive precisely because it is
+per-organisation; a per-run reset restores the whole database, where `TRUNCATE` is closer to O(1)
+than O(rows). Truncating the transactional tables and reloading every dataset should cost about
+what the loads cost — around 20 min for all three organisations — against 34 min to tear down two
+of them. **Time `TRUNCATE` + reload alongside `template`**, since it needs no extra storage
+headroom and no artefact.
 
 > **Do not skip the snapshot in favour of deleting rows between runs.** `DELETE` leaves dead tuples,
 > `VACUUM` does not shrink indexes, and runs progressively stop resembling each other. Determinism
