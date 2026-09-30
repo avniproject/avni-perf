@@ -641,7 +641,8 @@ public class AvniSyncSimulation extends Simulation {
                 // surfaces them: the duration went only into the syncTelemetry POST, which means
                 // reading the gate's own result back required querying the server's database.
                 .set("syncStartMillis", System.currentTimeMillis())
-                .set("recordsPulled", 0))
+                .set("recordsPulled", 0)
+                .set("pausedMs", 0L))
             // The client uploads before it asks what changed: dataServerSync runs pushData, then
             // the reset-sync check, then getSyncDetails. Pushing after the pull would measure a
             // different thing - the server's clock for the pull window is read after the upload
@@ -1333,9 +1334,11 @@ public class AvniSyncSimulation extends Simulation {
         if (started <= 0) {
             return session;
         }
-        String line = String.format("%s,%d,%d,%s%n",
+        long elapsed = System.currentTimeMillis() - started;
+        long paused = session.getLong("pausedMs");
+        String line = String.format("%s,%d,%d,%d,%d,%s%n",
             session.getString("userName"), session.getInt("recordsPulled"),
-            System.currentTimeMillis() - started,
+            elapsed, paused, elapsed - paused,
             System.getProperty("PROFILE", "ramp"));
         synchronized (SYNC_RESULTS_LOCK) {
             try {
@@ -1345,7 +1348,7 @@ public class AvniSyncSimulation extends Simulation {
                 }
                 if (!java.nio.file.Files.exists(SYNC_RESULTS)) {
                     java.nio.file.Files.write(SYNC_RESULTS,
-                        "userName,records,durationMs,profile\n".getBytes(
+                        "userName,records,durationMs,pausedMs,serverMs,profile\n".getBytes(
                             java.nio.charset.StandardCharsets.UTF_8));
                 }
                 java.nio.file.Files.write(SYNC_RESULTS,
@@ -1658,7 +1661,19 @@ public class AvniSyncSimulation extends Simulation {
                     // count times the entity's tier times baseMsPerRecord (D6.2). A page of
                     // observation-bearing rows costs fifteen times a page of lookup rows, which one
                     // uniform constant could not express.
-                    .pause(session -> storagePause(entity, session))
+                    //
+                    // Computed into the session rather than inside `.pause` so the total is
+                    // recoverable. F7 compares the simulated cost of one more record against
+                    // production's 8.85 ms, and a mismatch has two possible homes -- the client
+                    // model, or the server's own response time. Separating them is the difference
+                    // between refitting a coefficient and guessing at one, and nothing else in the
+                    // run reports it.
+                    .exec(session -> {
+                        long ms = storagePause(entity, session).toMillis();
+                        return session.set("lastPauseMs", ms)
+                                      .set("pausedMs", session.getLong("pausedMs") + ms);
+                    })
+                    .pause(session -> java.time.Duration.ofMillis(session.getLong("lastPauseMs")))
             ));
     }
 

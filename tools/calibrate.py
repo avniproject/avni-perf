@@ -206,6 +206,26 @@ def read(path: str) -> list[tuple[str, int, float]]:
     return rows
 
 
+def read_split(path: str) -> list[tuple[int, float, float]]:
+    """(records, paused seconds, server+network seconds), where the run recorded the split.
+
+    **Which half is wrong is the whole question.** A slope 3.8x under production's has two
+    possible homes: the client model, which `BASE_MS_PER_RECORD` and `MS_PER_PAGE` set, or the
+    server's own response time, which this simulation genuinely incurs and cannot control.
+    Refitting without knowing which is guessing. Runs recorded before the simulation wrote the
+    split return nothing here.
+    """
+    out = []
+    with open(path, newline="") as fh:
+        for r in csv.DictReader(fh):
+            try:
+                out.append((int(r["records"]), int(r["pausedMs"]) / 1000.0,
+                            int(r["serverMs"]) / 1000.0))
+            except (KeyError, ValueError, TypeError):
+                continue
+    return out
+
+
 # Two syncs are comparable when their record counts are within this of each other. Duration rises
 # with records, so a range computed across different volumes measures the workload rather than the
 # variation between devices carrying the same workload.
