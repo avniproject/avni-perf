@@ -149,16 +149,19 @@ if wants regenerate && [ -n "$DATASET" ]; then
 fi
 
 # ---- teardown + reload ------------------------------------------------------------------------
-if wants teardown && [ -n "$DATASET" ] && [ -n "$ORG" ] && [ -n "$ID_BASE" ]; then
+# `--id-base` is no longer required: the teardown identifies generated rows by the uuids only the
+# generator writes, not by where their ids landed. Requiring it here would have silently skipped
+# the one candidate that can be run against an organisation that is already loaded.
+if wants teardown && [ -n "$DATASET" ] && [ -n "$ORG" ]; then
   echo "4. teardown_org.py + load.sql"
   HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   SQL="$(mktemp "${TMPDIR:-/tmp}/g4teardown.XXXXXX")"
-  python3 "$HERE/data-generator/teardown_org.py" --organisation "$ORG" --id-base "$ID_BASE" > "$SQL" \
+  python3 "$HERE/data-generator/teardown_org.py" --organisation "$ORG" > "$SQL" \
     || die "could not generate the teardown"
   if t=$(timed psql "$DB" -v ON_ERROR_STOP=1 -f "$SQL"); then
     if l=$(timed psql "$DB" -v ON_ERROR_STOP=1 -f "$DATASET/load.sql"); then
       echo "   teardown ${t}s + load ${l}s = $((t + l))s"
-      record teardown "$((t + l))" "leaves dead tuples; measure bloat before trusting it between runs"
+      record teardown "$((t + l))" "teardown ${t}s + load ${l}s; leaves dead tuples"
     else
       echo "   reload failed after ${l}s"; record teardown "-" "reload failed"
     fi

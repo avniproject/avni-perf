@@ -153,6 +153,26 @@ METADATA = (
 )
 
 
+def _quoted(pred: str) -> str:
+    """A predicate embedded in a SQL string literal: every quote doubled."""
+    return pred.replace("'", "''")
+
+
+def _in_format(pred: str) -> str:
+    """A predicate embedded in a `format()` template.
+
+    **Two escapes, and missing either produces SQL that does not parse.** The quotes double
+    because the predicate sits inside a string literal; the percents double because `format()`
+    reads `%` as a placeholder, so a LIKE pattern's wildcard is one. The first version of the
+    provenance cut escaped neither, and every structural delete was a syntax error:
+
+        EXECUTE format('... uuid = 'group-' || $1', tbl)
+
+    closes the literal at `'group-'` and leaves the rest as stray tokens.
+    """
+    return _quoted(pred).replace("%", "%%")
+
+
 def _delete_order(scope: str) -> list[tuple[str, bool]]:
     """(table, cut_by_range) children first.
 
@@ -260,7 +280,8 @@ def emit(organisations, id_base: int | None, scope: str) -> str:
                 continue
         w(f"  tbl := {table!r};")
         w("  IF to_regclass('public.' || tbl) IS NOT NULL THEN")
-        w(f"    EXECUTE format('DELETE FROM %I WHERE {pred}', tbl) USING org;")
+        w(f"    EXECUTE format('DELETE FROM %I WHERE {_in_format(pred)}', tbl)"
+          " USING org;")
         w("    GET DIAGNOSTICS n = ROW_COUNT;")
         w("    total := total + n;")
         w("    IF n > 0 THEN RAISE NOTICE '  % rows from %', n, tbl; END IF;")
@@ -288,7 +309,9 @@ def emit(organisations, id_base: int | None, scope: str) -> str:
     for table, _ in order:
         pred = ORG_PREDICATE.get(table, DEFAULT_ORG_PREDICATE)
         w(f"    IF to_regclass('public.{table}') IS NOT NULL THEN")
-        w(f"      EXECUTE 'SELECT count(*) FROM {table} WHERE {pred}' INTO n USING org;")
+        # A plain EXECUTE, not format(), so quotes double but percents must not.
+        w(f"      EXECUTE 'SELECT count(*) FROM {table} WHERE {_quoted(pred)}'"
+          " INTO n USING org;")
         w(f"      IF n > 0 THEN left_over := left_over || format('%s (%s)', {table!r}, n);"
           " END IF;")
         w("    END IF;")

@@ -85,11 +85,11 @@ def test_structural_tables_are_cut_by_provenance_and_transactional_ones_by_organ
         body = s[position(s, table):]
         return body[:body.index("GET DIAGNOSTICS")]
 
-    for table, mark in (("users", "uuid LIKE 'user-'"),
-                        ("groups", "uuid = 'group-'"),
-                        ("catchment", "uuid LIKE 'catchment-'"),
-                        ("address_level", "uuid LIKE 'loc-'"),
-                        ("user_group", "uuid LIKE 'usergroup-'")):
+    for table, mark in (("users", "uuid LIKE ''user-''"),
+                        ("groups", "uuid = ''group-''"),
+                        ("catchment", "uuid LIKE ''catchment-''"),
+                        ("address_level", "uuid LIKE ''loc-''"),
+                        ("user_group", "uuid LIKE ''usergroup-''")):
         assert mark in statement(table), f"{table} should be cut by its generated uuid"
     for table in ("individual", "encounter", "sync_telemetry"):
         assert "uuid" not in statement(table), f"{table} should be cut by organisation alone"
@@ -102,7 +102,7 @@ def test_the_join_table_is_cut_through_its_catchment():
     s = sql()
     body = s[position(s, "catchment_address_mapping"):][:400]
     assert "catchment_id IN (SELECT id FROM catchment" in body
-    assert "uuid LIKE 'catchment-'" in body
+    assert "uuid LIKE ''catchment-''" in body
 
 
 def test_a_bootstrap_user_survives_a_teardown():
@@ -111,7 +111,7 @@ def test_a_bootstrap_user_survives_a_teardown():
     survives without needing an id band to hide in -- which is what the old upper bound was for.
     """
     s = sql()
-    assert "uuid LIKE 'user-' || $1 || '-%'" in s
+    assert "uuid LIKE ''user-'' || $1 || ''-%%''" in s
     assert "bootstrap" not in s.lower() or "GENERATED_ID_CEILING" not in s
     assert "id_floor" not in s and "bootstrap_floor" not in s
 
@@ -119,7 +119,7 @@ def test_a_bootstrap_user_survives_a_teardown():
 def test_scope_all_ignores_provenance_entirely():
     """`all` means empty the organisation, bundle rows included, so nothing is filtered by uuid."""
     s = sql(scope="all")
-    assert "uuid LIKE" not in s and "uuid = 'group-'" not in s
+    assert "uuid LIKE" not in s and "uuid = ''group-''" not in s
     assert "tbl := 'address_level_type';" in s, "skipped under data scope, removed under all"
 
 
@@ -277,3 +277,38 @@ def test_every_deleted_table_has_a_scoping_predicate():
     for table, _ in td._delete_order("data"):
         pred = td.ORG_PREDICATE.get(table, td.DEFAULT_ORG_PREDICATE)
         assert "$1" in pred, f"{table} has no organisation placeholder"
+
+
+def test_every_dynamic_statement_is_escaped_so_it_parses():
+    """The provenance cut embeds predicates containing quotes and LIKE wildcards into dynamic
+    SQL, and there are two different escapes depending on where they land.
+
+    Inside `format()` both apply: quotes double because the predicate sits in a string literal,
+    and percents double because `format()` reads `%` as a placeholder. Inside a plain `EXECUTE`
+    only the quotes do. The first version escaped neither, so every structural delete was a
+    syntax error — `uuid = 'group-' || $1` closes the enclosing literal at `'group-'`. It was
+    caught by a reader before it ran, which is not a check.
+    """
+    import re
+    for scope in ("data", "all"):
+        for raw in td.emit([10], None, scope).splitlines():
+            line = raw.strip()
+            if line.startswith("--") or "EXECUTE" not in line:
+                continue
+            assert line.count("'") % 2 == 0, f"unbalanced quotes: {line}"
+            if "EXECUTE format(" in line:
+                for m in re.finditer(r"%(.)", line):
+                    assert m.group(1) in "I%sL", f"bare % in a format template: {line}"
+
+
+def test_the_generated_uuid_patterns_survive_escaping_intact():
+    """Escaping must not change what the SQL matches. Doubling turns `'loc-'` into `''loc-''`,
+    which Postgres reads back as `'loc-'`; getting it wrong silently matches nothing and a
+    teardown would report success having deleted no generated rows."""
+    s = sql()
+    for pattern in ("''loc-'' || $1 || ''-%%''",
+                    "''catchment-'' || $1 || ''-%%''",
+                    "''user-'' || $1 || ''-%%''",
+                    "''usergroup-'' || $1 || ''-%%''",
+                    "''group-'' || $1"):
+        assert pattern in s, f"missing or mis-escaped: {pattern}"
