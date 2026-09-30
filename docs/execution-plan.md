@@ -236,17 +236,34 @@ that were just recreated, so there are no dead tuples to skip and no bloated ind
 where the teardown's reload was inserting into files still holding 2.3M dead rows. So the
 teardown pays twice: once to delete, and again on the insert that follows.
 
-**The same 2.3M rows reload at three different speeds, depending on the files they land in.**
+**Deleting is layout-dependent. Loading is not.** The same 2,302,635 rows, measured four times:
 
-| into | seconds |
-|---|---|
-| freshly truncated files | **334** |
-| files whose indexes still hold live entries | 350 |
-| files still holding 2.3M dead rows, after a `DELETE` | 402 |
+| operation | layout | seconds | |
+|---|---|---|---|
+| `DELETE` | rows physically contiguous, from a truncate rebuild | 413 | |
+| `DELETE` | rows fragmented by an earlier cycle | **621** | **+50%** |
+| `\copy` | into freshly truncated files | 405 | |
+| `\copy` | into files holding live index entries | 410 | +1.2% |
 
-So part of `truncate`'s advantage is not the clear at all — it hands the loader empty files. A
-`DELETE` leaves the insert that follows descending bloated indexes and skipping dead tuples, which
-is the 68 s between the first and last row, and it leaves the vacuum debt as well.
+**A reload costs what it costs.** A delete costs whatever the table's history left behind, and it
+gets worse the more the table has been cycled — which is precisely what an iteration loop does to
+it. Across ~19 resets that spread alone is an hour nobody can plan around, on top of the teardown
+being three times slower at its best.
+
+So `truncate` wins on more than wall clock: **its clear is one second whatever the layout**, which
+is what makes a cadence predictable rather than merely short.
+
+> The reload's own small spread has the same cause, one step removed: 334 s into freshly truncated
+> files, 405–410 s into files still holding live index entries, and 402 s into files still holding
+> 2.3M dead rows after a `DELETE`. Part of `truncate`'s advantage is that it hands the loader empty
+> files, not the clear itself — and the `DELETE` path pays twice, once to delete and again on the
+> insert that follows.
+
+**The uuid-based teardown was validated end to end here**, which is the first time it has run
+against real data. Both tenants came back with 227 addresses (212 generated + 15 the bundle
+created), 210 catchments (207 + 3), 542 users (541 + 1) and 13 groups (1 + 12): it removed exactly
+the generated rows and left every bundle row in place. That is what the provenance cut replaced the
+id-range cut to achieve, and it is now measured rather than reasoned about.
 
 **Restoring after it needs a transactional-only script.** `load.sql` copies 11 tables and 7 of them
 are structural; a transactional `TRUNCATE` leaves those rows in place, so reloading the whole
