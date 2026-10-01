@@ -147,6 +147,27 @@ public final class CoTenantLoad {
         return weights;
     }
 
+    /**
+     * Each organisation's rank in this feeder, by rows contributed. Same ordering `rowWeights`
+     * uses, exposed because the media rate is a per-organisation measurement keyed the same way
+     * and the two must not rank differently.
+     */
+    public static Map<String, Integer> ranks(List<Map<String, String>> rows,
+                                             String organisationColumn) {
+        Map<String, Integer> sizes = new LinkedHashMap<>();
+        for (Map<String, String> row : rows) {
+            String org = row.get(organisationColumn);
+            sizes.merge(org == null ? "" : org, 1, Integer::sum);
+        }
+        List<String> ranked = new ArrayList<>(sizes.keySet());
+        ranked.sort(Comparator.<String>comparingInt(o -> -sizes.get(o)).thenComparing(o -> o));
+        Map<String, Integer> out = new LinkedHashMap<>();
+        for (int i = 0; i < ranked.size(); i++) {
+            out.put(ranked.get(i), i + 1);
+        }
+        return out;
+    }
+
     /** Identity of a feeder row. `userName` is unique per user and is the column every mode reads. */
     public static String key(Map<String, String> row) {
         return row.get("userName");

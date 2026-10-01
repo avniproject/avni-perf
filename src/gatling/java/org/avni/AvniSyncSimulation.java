@@ -11,6 +11,7 @@ import io.gatling.javaapi.http.*;
 import org.avni.helper.CognitoHelper;
 import org.avni.models.AvniEntity;
 import org.avni.models.CoTenantLoad;
+import org.avni.models.MediaProfiles;
 import org.avni.models.PushSeed;
 import org.avni.models.PageInfo;
 import org.avni.models.StorageProfiles;
@@ -476,15 +477,22 @@ public class AvniSyncSimulation extends Simulation {
         System.getProperty("CO_TENANT_USERS", "co-tenant-users.csv");
 
     /**
-     * Media per encounter for the co-tenants.
+     * Media per encounter for the co-tenants: the platform aggregate, distributed per tenant.
      *
-     * Production-wide rather than the customer's bundle: 2.14% of program_encounter rows carry a
-     * media observation across 986 organisations, most of which photograph nothing. Applying the
-     * customer's screening rate here would invent an image-heavy platform and drown the signal
-     * case 7 exists to find.
+     * Production-wide rather than the customer's bundle, for the original reason -- applying the
+     * customer's screening rate here would invent an image-heavy platform and drown the signal case
+     * 7 exists to find. **But the figure was 0.0214 and production uploads 0.2306**, measured as
+     * `media/uploadUrl` calls per pushed encounter over the same eleven days. 0.0214 was the share
+     * of `program_encounter` rows carrying *any* media, which is files per row only if such a row
+     * carries exactly one file.
+     *
+     * This is the aggregate. {@link MediaProfiles} distributes it across tenants on the measured
+     * per-organisation shape, which spans 0.0007 to 1.80 -- so overriding this scales every
+     * tenant's rate and keeps their relative weights.
      */
     private static final double coTenantMediaPerEncounter =
-        Double.parseDouble(System.getProperty("CO_TENANT_MEDIA_PER_ENCOUNTER", "0.0214"));
+        Double.parseDouble(System.getProperty("CO_TENANT_MEDIA_PER_ENCOUNTER",
+                                              String.valueOf(MediaProfiles.PLATFORM_UPLOADS_PER_ENCOUNTER)));
 
     /**
      * The customer's population. Unprefixed when it runs alone, so single-workload runs keep the
@@ -1016,6 +1024,27 @@ public class AvniSyncSimulation extends Simulation {
                     + "committed co-tenant-users.csv is a stub for CI. Cases 7 and 13 need a "
                     + "generated feeder.");
             }
+            // Media is per tenant now, so the aggregate alone no longer describes the run.
+            double heaviest = MediaProfiles.rateAtRank(1);
+            // Counted over the organisations that actually sync, not over the file. 512 of 513
+            // "queue media" is true and useless: 403 of them never sync, so they queue nothing.
+            long withMedia = coTenantRanks.values().stream()
+                .filter(r -> r <= CoTenantLoad.ACTIVE_ORGANISATIONS && MediaProfiles.rateAtRank(r) > 0)
+                .count();
+            long syncing = coTenantRanks.values().stream()
+                .filter(r -> r <= CoTenantLoad.ACTIVE_ORGANISATIONS).count();
+            out.println(String.format(
+                "  Media is per tenant: %d of the %d organisations that sync queue any, the heaviest at %.2f "
+                + "files/encounter against a tail of %.4f. Aggregate %.4f, measured as uploadUrl "
+                + "calls per pushed encounter -- the 0.0214 this replaces was the share of rows "
+                + "carrying any media, which is files per row only if such a row carries one file.",
+                withMedia, Math.max(syncing, 1), heaviest,
+                MediaProfiles.rateAtRank(CoTenantLoad.ACTIVE_ORGANISATIONS),
+                coTenantMediaPerEncounter));
+            out.println(
+                "  Upload only. media/signedUrl outnumbers uploadUrl 7.6 to 1 and is not modelled: "
+                + "it is an on-demand download, called by the web app and integrations as well as "
+                + "the app, so its volume is not attributable to a device fleet.");
             out.println(String.format(
                 "  They push on the log-measured profile (%.1f records/sync) and media at %.4f per "
                 + "encounter, not the customer's. Both populations are named apart in the report, "
@@ -1233,6 +1262,9 @@ public class AvniSyncSimulation extends Simulation {
             co.put("organisationsSyncing", cover[0]);
             co.put("organisationsPresent", cover[1]);
             co.put("pushRecordsPerSync", coTenantWorkload.recordsPerSync());
+            co.put("mediaDistributed", true);
+            co.put("mediaHeaviestRate", MediaProfiles.rateAtRank(1));
+            co.put("mediaTailRate", MediaProfiles.rateAtRank(CoTenantLoad.ACTIVE_ORGANISATIONS));
             co.put("recordsPerSync", round(coTenantWorkload.recordsPerSync()));
         }
         settings.put("coTenants", co);
@@ -2079,7 +2111,7 @@ public class AvniSyncSimulation extends Simulation {
             }
         }
         return session.set("pushCounts", counts)
-            .set("mediaCalls", mediaCallCount(encounters, workload.mediaPerEncounter));
+            .set("mediaCalls", mediaCallCount(encounters, mediaRateFor(session, workload)));
     }
 
     /** Entities whose records carry the media a device uploads. */
@@ -2155,6 +2187,47 @@ public class AvniSyncSimulation extends Simulation {
             return java.time.Duration.ZERO;
         }
         return java.time.Duration.ofMillis(Math.round(1000.0 * mediaFileKb / mediaUploadKbps));
+    }
+
+    /** Organisation to rank, for the concentrated feeder. Built once, read per sync. */
+    private static final Map<String, Integer> coTenantRanks =
+        coTenants ? CoTenantLoad.ranks(feederRows(coTenantFeeder), "organisationUUID")
+                  : java.util.Collections.emptyMap();
+
+    /**
+     * Files per encounter for the tenant this sync belongs to.
+     *
+     * **Three sources, in order of how much they know.** A `mediaPerEncounter` column in the user
+     * file wins, because only the generator has read that tenant's bundle and a bundle with no
+     * media element settles the question outright -- a form with no media question cannot queue a
+     * file however long the device is offline. Failing that, a co-tenant takes its rank's measured
+     * rate, which spans 0.0007 to 1.80 where one constant stood. Failing both, the workload's own
+     * figure, which is what the customer's population uses: one specified deployment, one rate.
+     *
+     * The scale factor carries an operator's `CO_TENANT_MEDIA_PER_ENCOUNTER` override through to
+     * every tenant, so moving the aggregate keeps the measured relative weights.
+     */
+    private static double mediaRateFor(Session session, Workload workload) {
+        String declared = session.contains("mediaPerEncounter")
+            ? session.getString("mediaPerEncounter") : null;
+        if (declared != null && !declared.isBlank()) {
+            try {
+                return Double.parseDouble(declared.trim());
+            } catch (NumberFormatException e) {
+                throw new IllegalStateException(
+                    "mediaPerEncounter in " + workload.feederFile + " is not a number: " + declared);
+            }
+        }
+        if (!workload.concentrated) {
+            return workload.mediaPerEncounter;
+        }
+        Integer rank = coTenantRanks.get(session.getString("organisationUUID"));
+        if (rank == null) {
+            return workload.mediaPerEncounter;
+        }
+        double scale = MediaProfiles.PLATFORM_UPLOADS_PER_ENCOUNTER > 0
+            ? workload.mediaPerEncounter / MediaProfiles.PLATFORM_UPLOADS_PER_ENCOUNTER : 1.0;
+        return MediaProfiles.rateAtRank(rank) * scale;
     }
 
     private static int mediaCallCount(int encounters, double mediaPerEncounter) {
