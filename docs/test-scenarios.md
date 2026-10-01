@@ -28,14 +28,14 @@ are parameters with a documented range, defaulted to their conservative end.
 | **3** | Supervisor steady state | 1 state | 25–63 | Day 180 | Incremental, 1% full | **2 h, driven** | Whether 3× the volume per device changes anything |
 | **4** | **Combined** | 1 state | 500 + 25–63 | Day 180 | Incremental, 1% full | **4 h** | **The realistic case.** Wide and frequent syncs competing for one pool |
 | **5** | **Separate infrastructure** | **10** | 1,504 + 188 | Day 180 | Incremental, 1% full | **2 h** | The customer's own load with nobody else's data in the tables. **The baseline the next two are measured against** |
-| **6** | **Shared — co-tenant data** | **10 + 986** | 1,504 + 188 | Day 180 **plus production's organisations**, which sync nothing | Incremental, 1% full | **2 h** | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
-| **7** | **Shared — co-tenant load** | **10 + 986** | Case 6, plus `CO_TENANTS=on` at 792 syncs/hour | Same as case 6 | Incremental, 1% full | **2 h** | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
+| **6** | **Shared — co-tenant data** | **10 + 513** | 1,504 + 188 | Day 180 **plus production's organisations**, which sync nothing | Incremental, 1% full | **2 h** | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
+| **7** | **Shared — co-tenant load** | **10 + 513** | Case 6, plus `CO_TENANTS=on` at 792 syncs/hour | Same as case 6 | Incremental, 1% full | **2 h** | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
 | **8** | Growth comparison | 1 state | Case 4 | Day 60, 120, 180, **365** | Incremental, 1% full | **2 h × 4** | The shape of the curve. A knee between two points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
 | **9** | Stress ramp | **10** | Ramp past case 5 until failure | Day 180 | Incremental | **until it breaks** | Where the knee is, and which resource names it |
 | **10** | Soak | 1 state | Case 4 | Day 180 | Incremental | **12 h** | Leaks, pool exhaustion, autovacuum interaction over hours |
 | **11** | **Clustered — separate** | **10** | Case 5 | Day 180 | Incremental, 1% full | **1 h** | Case 5's day compressed into one hour |
-| **12** | **Clustered — co-tenant data** | **10 + 986** | Case 6 | Same as case 6 | Incremental, 1% full | **1 h** | Case 6 compressed: **6.6 syncs in flight against 0.55** |
-| **13** | **Clustered — co-tenant load** | **10 + 986** | Case 7 | Same as case 6 | Incremental, 1% full | **1 h** | Case 7 compressed: **9.7 in flight**, three times production's peak and the heaviest sustained load in the suite |
+| **12** | **Clustered — co-tenant data** | **10 + 513** | Case 6 | Same as case 6 | Incremental, 1% full | **1 h** | Case 6 compressed: **6.6 syncs in flight against 0.55** |
+| **13** | **Clustered — co-tenant load** | **10 + 513** | Case 7 | Same as case 6 | Incremental, 1% full | **1 h** | Case 7 compressed: **9.7 in flight**, three times production's peak and the heaviest sustained load in the suite |
 
 **Cases 6 and 7 are the same run with one property changed**, which is what makes their difference
 readable: `CO_TENANTS=on` adds production's organisations as a second syncing population at Q4's
@@ -148,8 +148,24 @@ Media is the larger effect by an order of magnitude, and it lands on elapsed tim
 server load — see [below](#media-dominates-sync-time-and-it-is-not-close).
 
 **Tenant counts trace to the table under [the deployment](#the-deployment-being-modelled)**: a state
-tenant is 500 field workers and 25 to 63 supervisors depending on the span, and the ten together are 1,504 and 75 to 188. The 986 in
-cases 6 and 7 is production's existing organisation count (Q12).
+tenant is 500 field workers and 25 to 63 supervisors depending on the span, and the ten together are 1,504 and 75 to 188.
+
+> **The co-tenant count is 513, not Q12's 986, and both numbers are right.** Q12 measured 986
+> organisations in production and **473 of them hold nothing** — no subjects, no encounters, no
+> rows for a sync to contend with. Generating a hierarchy, catchment and user for each would be
+> work to model nothing, so the dataset builds the **513 that hold data**. That is what
+> `co_tenants.py` names: `TOTAL_ORGANISATIONS = 986`, `ORGANISATIONS_WITH_SUBJECTS = 513`. Where
+> this document says 986 it means production's measured organisation count; where it says 513 it
+> means the tenants generated beside the customer's ten.
+>
+> **The other 473 are not loaded, and that is a decision rather than an oversight.**
+> `co_tenants.empty_rows()` builds them as bare `organisation` rows, and the argument for them is
+> in its docstring: RLS predicates evaluate against the full organisation set and the planner's
+> statistics span it, so leaving them out makes the co-tenant set look more uniform than production
+> is. Nothing calls that function — found 1 Oct 2026, its only callers are its tests — and
+> **decided the same day not to wire it up.** What it costs: 986 organisation rows' worth of RLS
+> and planner breadth is modelled by 513. Cases 6, 7, 12 and 13 should be read with that in mind,
+> alongside the larger gap that all 513 share one bundle.
 
 ### How many syncs are in flight at once
 
@@ -342,11 +358,11 @@ theirs — ten tenants, 1,692 users, 1.5 million beneficiaries. **Where it runs 
 | Hosting | What is in the database | Cases |
 |---|---|---|
 | **Separate** | The customer's tenants only | 1–5, 8–11 |
-| **Shared, co-tenants idle** | Plus production's 986 organisations | 6, 12 |
+| **Shared, co-tenants idle** | Plus the 513 of production's organisations that hold data | 6, 12 |
 | **Shared, co-tenants active** | Plus their traffic | 7, 13 |
 
 Every case except 5, 6 and 7 assumes separate hosting, because a single-tenant question does not need
-the other 986 organisations present to answer it. If the hosting comparison says sharing is free, the
+the other 513 data-holding organisations present to answer it. If the hosting comparison says sharing is free, the
 distinction stops mattering and the cases can all run on the shared platform.
 
 ### The tenants
@@ -619,11 +635,12 @@ one usage pattern covers them.
 5. **Timestamps per Q14** — median age near two years, and program encounters written twice.
 6. **Observation shape per Q6** — the measured key-count distributions, per form type.
 7. **Production's tenant skew** for cases 6 and 7: 986 organisations, 48% empty, the largest holding
-   21% of all subjects. Not optional — without it there is no hosting comparison, only a guess.
+   21% of all subjects — so **513 are built**, the ones with data. Not optional: without them there
+   is no hosting comparison, only a guess.
 
 **Cases 5 and 6 must differ in exactly one thing.** Same generated tenants, same seed, same growth
-point, same server build, same instance size — the only difference is whether the other 986
-organisations are present. Any second difference and the delta stops being attributable, which is
+point, same server build, same instance size — the only difference is whether the other 513
+data-holding organisations are present. Any second difference and the delta stops being attributable, which is
 the whole point of running both. Case 7 then differs from case 6 only by the co-tenant traffic.
 
 **What to record for the comparison.** Sync duration at p50 and p95 is the headline, but on its own

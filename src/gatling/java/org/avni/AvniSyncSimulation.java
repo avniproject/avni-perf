@@ -377,8 +377,9 @@ public class AvniSyncSimulation extends Simulation {
      * E7 - production's other organisations, syncing rather than merely present.
      *
      * That distinction is the whole difference between cases 6 and 7, and it separates a
-     * structural cost from a contention one. Case 6 asks what the presence of 986 co-tenants costs
-     * in RLS selectivity, planner statistics and index size; case 7 adds their traffic and asks
+     * structural cost from a contention one. Case 6 asks what the presence of 513 co-tenants costs
+     * in RLS selectivity, planner statistics and index size -- the 513 of production's 986 that
+     * hold data, since the other 473 hold nothing to contend with; case 7 adds their traffic and asks
      * what their activity costs on top, in pool, CPU and IO.
      *
      * Off by default. Cases 1 to 6 and 11 to 12 do not want it, and it needs its own user file.

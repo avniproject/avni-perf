@@ -212,9 +212,13 @@ At the projected ~21 min for a ten-tenant reset, **19 resets is about 7 hours** 
 across Phases 4 and 5; by the teardown path it is 11–12. So a mechanism that saves ten minutes a
 reset saves better than three hours of the exercise, which is what Day 9 is actually deciding.
 
-**The co-tenant datasets are the gap in that arithmetic.** Cases 6, 7, 12 and 13 need 986 further
-organisations present, and nobody has measured what loading them costs. If it is an hour, those
-four resets alone are half the total. **Size it before Day 10 commits to the shape.**
+**The co-tenant datasets are the gap in that arithmetic.** Cases 6, 7, 12 and 13 need 513 further
+organisations present — the ones of Q12's 986 that hold data. The other 473 would be bare
+`organisation` rows; `co_tenants.empty_rows()` builds them, nothing calls it, and 1 Oct 2026
+decided to leave it that way. `co-tenants-day-180` is 513 tenants and 3.13M
+encounters, so it is comparable in size to the pilot dataset itself, and nobody has measured what
+loading it costs. **Size it before Day 10 commits to the shape.** The ordering below is built so it
+is loaded once and never unloaded.
 
 **Measured, and `truncate` wins by a factor of three.**
 
@@ -410,21 +414,111 @@ Client cost varies by **organisation**, not day, which is why there are two stor
 Order is chosen so each case is interpretable when it runs, not so the calendar looks full. **Record
 every run's metadata; two runs that differ in more than one property answer nothing.**
 
-| Day | Cases | Why here |
-|---|---|---|
-| **12** | **1** (training cohort, 30 min), then **2** (field workers, 4 h) | Case 1 is config-only and the cheapest real load. Case 2 is the common case and the baseline everything else is read against |
-| **13** | **3** (supervisors, 2 h driven) and **4** (combined, 4 h) | Case 4 is *the* realistic case. Case 3 first so its per-device cost is known before the mix |
-| **14** | **5** (ten tenants, 2 h) and **6** (co-tenant data present, 2 h) | The delta between them is what tenancy costs structurally |
-| **15** | **7** (co-tenant load, 2 h). Analyse 5/6/7 together | 6→7 separates structural cost from contention. Both must be read before moving on |
-| **16** | **11, 12, 13** (clustered, 1 h each) | The same three tenancy shapes with the day compressed into an hour. The sync window is unconfirmed; these are the other end of the bracket |
-| **17** | **8** (growth, 2 h × 4 — day 60, 120, 180, 365) | Needs its own day and three extra restores. Day 180 can reuse case 4's result rather than re-running |
-| **18** | **9** (stress ramp, until it breaks) | Deliberately after the others: the knee is only interpretable once the unstressed shape is known |
-| **19–20** | **10** (soak, 12 h) | Overnight. Leaks and autovacuum interaction need hours, and it needs the instance to itself |
+### Run in blocks, and reset between blocks rather than between runs
+
+**Revised 1 Oct 2026.** The first ordering reset before every run — ~19 resets at ~21 minutes, about
+seven hours. Most of them were not buying anything.
+
+**A reset exists to remove push residue, and push residue is small.** Every case except 1 pushes, at
+about **27 rows a sync** on the customer profile (`Individual` 0.60 x 3.3, `ProgramEnrolment`
+0.33 x 4.0, `ProgramEncounter` 1.0 x 24.0). Against day 180's 6,891,600 rows:
+
+| case | syncs collected | rows pushed | share of the dataset |
+|---|---|---|---|
+| 2 | 167 | ~4,600 | 0.07% |
+| 4 | 187 | ~5,100 | 0.07% |
+| 5 | 282 | ~7,700 | 0.11% |
+| 10, soak | 562 | ~15,300 | 0.22% |
+| 11, 12, 13 | 1,692 each | ~46,200 each | 0.67% |
+
+Cases 2, 3, 4, 5, 11 and 10 back to back come to **about 80,000 rows — 1.2%**, which is below the
+run-to-run variance this document already attributes to autovacuum and to the reload's own spread.
+
+**So the reset is not mainly protecting against volume. It is protecting three specific things**,
+and only these:
+
+1. **The delta comparisons.** 5 -> 6 and 6 -> 7 are read as differences, so the customer's data has
+   to be identical across them. This is the binding constraint, not the 1.2%.
+2. **Case 8**, where dataset size *is* the independent variable, so residue contaminates the thing
+   being measured.
+3. **Case 9**, which runs until something breaks and leaves unknown state behind.
+
+Everything else can be blocked.
+
+### The ordering this replaces forced a co-tenant unload
+
+The first calendar ran case 7 on Day 15 and then **11, 12, 13** on Day 16. Case 11 is in the
+*separate* hosting group, so it needs the co-tenants **gone**, and 12 and 13 need them back. That is
+an unload of 513 organisations — a `DELETE` teardown of a dataset holding 3.13M encounters — and a
+reload, hidden inside one day of the calendar, to serve a single one-hour run.
+
+**Moving case 11 next to case 5, before the co-tenants are ever loaded, makes their presence a
+one-way door.** Load once, never unload. That is the single largest saving here and it costs
+nothing.
+
+### The blocks
+
+| Block | Reset | Runs, in order | Why this grouping |
+|---|---|---|---|
+| **A — separate, day 180** | one, at the front | **1, 2, 3, 4, 5, 11, 10, 9** | Case 1 pushes nothing, so it is free at either end. 3 before 4 so per-device cost is known before the mix. 11 here rather than after 7, so co-tenants are never unloaded. 10 overnight. **9 last, because it breaks things** and Block B's reset cleans up after it |
+| **B — co-tenants** | one, plus the co-tenant load | **6, 7, 12, 13** | The reset before 6 restores the customer's tenants to exactly case 5's starting state, which is what makes the 5 -> 6 delta mean anything. 6 -> 7 then carries ~7,700 rows of drift, 0.11% |
+| **C — growth** | three dataset swaps | **8** at day 60, 120, 365 | Day 180 reuses case 4's result. These are different datasets, so the loads are not avoidable |
+
+**Five resets for fifteen runs, against fifteen.** With Phase 5's four to six re-measurements, which
+stay one-per-run because re-measuring after a fix is the whole point, that is about **ten against
+nineteen — roughly 3.2 hours** — plus the co-tenant unload and reload that no longer happens.
+
+### What running in blocks costs
+
+**`CACHE_POLICY` stops being true, and it is recorded per run.** G2 records `warm-from-reload`.
+Inside a block every run after the first is `warm-from-previous-run`, which is a different thing:
+warmed by a read-mostly workload against the pages a sync touches, rather than by a bulk write
+through every page in the table. `archiveRun` needs the second value or it will record something
+false — which is worse than recording nothing.
+
+**Position within a block becomes a confounder.** Later runs sit on a more-bloated table, with
+autovacuum having fired at some point nobody chose. Compare adjacent positions, not distant ones,
+and treat a block boundary as the only place a clean comparison is guaranteed.
+
+**Record each run's actual starting row counts.** With a reset before every run they were knowable
+from the dataset; in a block they are not. Measuring the drift is the honest way to run this —
+inferring it from the table above is not.
+
+### The one measurement that would validate it
+
+Run **case 11 twice, back to back, with no reset**. One hour each. If per-sync record counts and p50
+duration agree within noise, the block strategy holds for every adjacency in it, because 11 is the
+heaviest pusher of the set at ~46,200 rows. **Two hours to de-risk the three, and it is the only
+part of this that is an assumption rather than arithmetic.**
+
+> **Considered and rejected: making case 8's growth datasets nest**, so day 60 could be appended to
+> rather than reloaded. It does not work as the generator stands. `band_width(tenant, days)` scales
+> with `days`, so day 60 and day 120 allocate different id bands and neither is a prefix of the
+> other. It could be made to work by sizing every band for day 365 — about 22M ids, comfortably
+> inside int4 — but it also needs rows emitted in day order so the smaller sets are genuine
+> prefixes. That is a generator change with real risk to save roughly an hour.
+
+| Day | Block | Cases | Why here |
+|---|---|---|---|
+| **12** | A | **1** (training cohort, 30 min), then **2** (field workers, 4 h) | Case 1 is config-only and the cheapest real load. Case 2 is the common case and the baseline everything else is read against |
+| **13** | A | **3** (supervisors, 2 h driven) and **4** (combined, 4 h) | Case 4 is *the* realistic case. Case 3 first so its per-device cost is known before the mix |
+| **14** | A | **5** (ten tenants, 2 h) and **11** (clustered, 1 h) | Both are separate-hosting, so they run before the co-tenants exist. 11 is case 5's day compressed into an hour; the sync window is unconfirmed and these are the two ends of the bracket |
+| **14–15** | A | **10** (soak, 12 h, overnight) | Needs the instance to itself. Case 4's load sustained, so the block's residue is immaterial to it |
+| **15** | A | **9** (stress ramp, until it breaks) | Last in the block: the knee is only interpretable once the unstressed shape is known, and whatever it leaves behind is cleared by Block B's reset |
+| **16** | B | Reset, load the co-tenants, then **6** (2 h) and **7** (2 h). Analyse 5/6/7 together | 5 -> 6 is the cost of their presence, 6 -> 7 the cost of their activity. The reset is what makes 6 comparable with 5 |
+| **17** | B | **12** and **13** (clustered, 1 h each) | The same two tenancy shapes with the day compressed. No reset: 12 and 13 are read against 11 and against each other |
+| **18–19** | C | **8** (growth, 2 h x 3 — day 60, 120, 365) | Three dataset loads, one per point. Day 180 reuses case 4 |
+| **20** | — | Slack | Day 9 measured the reset at a two-tenant scale; at ten tenants it is projected. If the projection is wrong this is where it is absorbed |
 
 > **Two supervisor spans, not one.** Cases 3 to 8 are specified across an 8-to-20 worker span, which
 > changes both the supervisor count and each catchment's width. **Run the ends, not the middle** —
 > the low end is the most concurrent, the high end holds the heaviest device. That doubles those
 > cases if both ends are wanted; decide at Day 13 whether the budget is there.
+>
+> **It also doubles the datasets, not just the runs.** The span changes how many supervisors exist
+> and how wide each catchment is, and both are structural rows — users and catchments, not
+> transactional. Switching spans is a re-provisioning rather than a reload, so the two ends are
+> two blocks, not two runs inside one.
 
 ---
 
