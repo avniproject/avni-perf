@@ -2304,8 +2304,22 @@ but no scenario that means to measure the write path can run twice until the res
 
 ### F7 — Calibration gate
 
-*Passes, 1 Oct 2026, after the refit it existed to force.* **8.83 ms/record against production's
-8.85 — 1.00x.**
+*Passes, 1 Oct 2026, against a measured anchor.* **5.20 ms/record against production's measured
+5.2 — 1.00x**, zero errors.
+
+It reconciles to its parts, which is what distinguishes this pass from the one before it: client
+pause 4.88 ms/record against the 4.76 the profiles specify, plus 0.33 for this environment's server
+and 0.11 for `MS_PER_PAGE`.
+
+> **It passed falsely once first, and the near-miss is worth keeping.** `StorageProfiles` was keyed
+> from the log's URI paths while the entity table uses different capitalisation, so every lookup
+> missed and every entity fell back to the uniform coefficient the profiles replace. F7 then scored
+> 8.80 against the old 8.85 anchor — 0.99x, a better result than any real one, produced by
+> measuring the thing that had just been superseded. Falling back is correct for the 70 entities
+> nobody measured, so a mis-keyed entry and an absent one are identical at runtime; it compiled,
+> the unit tests passed, the run completed and the gate said pass. Only the arithmetic caught it:
+> 124 s for 15,732 records is 7.88 ms/record, not the 4.76 the profiles imply. **A gate that
+> reconciles to its components would have caught it; one that reports a single ratio did not.**
 
 > Run a simulated user against the same per-entity record counts as a real production sync. The
 > simulated total sync duration should land inside the observed distribution of real sync durations
