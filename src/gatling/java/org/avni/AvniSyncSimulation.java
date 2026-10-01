@@ -88,8 +88,11 @@ public class AvniSyncSimulation extends Simulation {
      * ms/record, against free-intercept fits that gave -92s, +26.6s and +47.4s. All three are
      * impossible inside a 14.1s median sync, which is how we know they were the wrong model.
      *
-     * Both are calibration starting points, not measurements. F7 fits them by matching a simulated
-     * sync's duration against production's own: 14.1s + 8.85 ms x records.
+     * Both were calibration starting points rather than measurements, and the per-record term no
+     * longer is: the five observation-bearing entities take measured rates from
+     * {@link StorageProfiles}, and what remains here is the fallback for the entities that
+     * measurement did not reach. F7 grades the pair on marginal cost against production's
+     * measured 5.2 ms/record.
      *
      * **The default is 0.61, not Q1's 9.19, and the difference is not a disagreement with Q1.**
      * Q1 measured the marginal cost of a record across a *whole sync* — server time, network and
@@ -117,22 +120,26 @@ public class AvniSyncSimulation extends Simulation {
      */
     private static final double baseMsPerRecord =
     /**
-     * **Fitted against production's observed slope, 1 Oct 2026. Not measured on a device.**
+     * **Now a fallback, not the per-record cost. Validated against measurement, 1 Oct 2026.**
      *
-     * Was 0.60, and that number was circular: it was derived from a 2-second page ceiling, and the
-     * ceiling was the only thing constraining it. F7 then measured the pair against production and
-     * found the simulation charged 2.33 ms/record where production charges 8.85 -- 3.8x too fast,
-     * consistently across a 12x volume range, so every duration the instrument reported was wrong
-     * by that factor.
+     * Was 0.60, and that number was circular: derived from a 2-second page ceiling, with the
+     * ceiling the only thing constraining it. It was then fitted to 2.78 against a regression slope
+     * of 8.85 ms/record -- and both the slope and the single-coefficient shape turned out to be
+     * wrong. The slope came from total sync duration and matched neither of Q5's bands; the shape
+     * charged every observation-bearing entity the same rate when production says they differ by
+     * 2.2x. {@link StorageProfiles} replaced it with per-entity rates measured from production's
+     * own logs, anchored on 5.2 ms/record.
      *
-     * The fit is arithmetic once the sync is decomposed, which it now is (see recordSyncResult):
+     * **2.78 survives as the fallback because measurement endorsed it, not because it was already
+     * here.** The entities the logs reach well are the five with observations; for the rest the
+     * tiers come out close -- the 1.0 tier's 2.78 against a measured 2.27 to 3.13, the 0.2 tier's
+     * 0.56 against 0.46 to 0.76 -- so replacing them with figures from a thinner sample would buy
+     * nothing. It applies to metadata and lookup entities, which are a small share of any sync.
      *
-     *     total slope = MS_PER_PAGE/PAGE_SIZE + effective_weight x BASE_MS_PER_RECORD + server
-     *             8.85 = 0.112                + 3.003            x 2.78               + 0.383
-     *
-     * `effective_weight` is 3.003, measured across the entity mix at two volumes, and the server's
-     * 0.383 ms/record is this environment's own and not ours to set. Measured result: **8.83
-     * ms/record, 1.00x production**.
+     * **It is also the thing to watch when F7 moves.** A profile lookup that misses falls through
+     * to this value silently, which is how F7 passed in Sep 2026 while measuring the uniform cost
+     * the profiles existed to replace. The startup banner now lists every pulled entity's resolved
+     * rate and says whether it is measured or a tier.
      *
      * **What this is not.** It reproduces production's marginal cost; it does not measure what a
      * device does. D7's telemetry would settle that and is deferred on fleet rollout of client
@@ -746,13 +753,53 @@ public class AvniSyncSimulation extends Simulation {
                 StorageModel.pauseMillis(msPerPage, pageSize, 0.2, baseMsPerRecord, maxStoragePauseMs) / 1000.0,
                 StorageModel.pauseMillis(msPerPage, pageSize, 1.0, baseMsPerRecord, maxStoragePauseMs) / 1000.0,
                 StorageModel.pauseMillis(msPerPage, pageSize, 3.0, baseMsPerRecord, maxStoragePauseMs) / 1000.0));
+            // **Print what each entity will actually be charged, resolved.** The per-record cost
+            // is no longer one coefficient: the five observation-bearing entities take a measured
+            // rate from StorageProfiles and everything else falls back to the tier. F7 once passed
+            // because every lookup silently missed - the profile was keyed lowercase and the
+            // simulation looks up entity names - so the run paid the fallback it was meant to
+            // replace and nothing said so. A resolved listing is what makes that visible without
+            // doing arithmetic on the result.
+            String profileName = System.getProperty("STORAGE_PROFILE", "customer");
             out.println(String.format(
-                "  Both terms are calibration starting points, not measurements, and neither is "
-                + "Q1's raw slope. BASE_MS_PER_RECORD is set so the heaviest page a device can "
-                + "pull lands on the %.1fs ceiling; Q1's 9.19 is a whole-sync figure including "
-                + "server and network, which this simulation already pays for real. MS_PER_PAGE "
-                + "wants the same treatment - 174 minus the server's median response. F7 fits "
-                + "both against production's 14.1s + 8.85ms x records.",
+                "  Client cost per record, STORAGE_PROFILE=%s. Measured from production's "
+                + "AuthenticationFilter logs - 11 days, 24,667 confirmed full pages, server time "
+                + "and a 307ms network base netted out (tools/inter_request_gap.py). Entities the "
+                + "measurement did not reach take storageWeight x %.2f.",
+                profileName, baseMsPerRecord));
+            // Listed from the profile's side rather than the entities'. Every pulled entity would
+            // be 75 lines, 70 of them the same fallback, and the one that matters would scroll
+            // past. From this side a key the entity table does not have is a line of its own.
+            int unapplied = 0;
+            for (Map.Entry<String, Double> rate : storageProfile.entrySet()) {
+                AvniEntity match = entities.stream()
+                    .filter(e -> e.pullRequired && e.entityName.equals(rate.getKey()))
+                    .findFirst().orElse(null);
+                if (match == null) {
+                    unapplied++;
+                    out.println(String.format(
+                        "    %-18s %5.2f ms/record  NOT APPLIED - no pulled entity has this name",
+                        rate.getKey(), rate.getValue()));
+                } else {
+                    out.println(String.format("    %-18s %5.2f ms/record  (tier would charge %.2f)",
+                        match.entityName, rate.getValue(), match.storageWeight * baseMsPerRecord));
+                }
+            }
+            if (unapplied > 0) {
+                out.println(String.format(
+                    "  WARNING: %d of %d measured rates did not reach an entity, so those pages "
+                    + "will be charged the uniform fallback instead. This is the shape of the bug "
+                    + "that made F7 pass falsely in Sep 2026 - the profile was keyed in the wrong "
+                    + "case, every lookup missed, and the run measured what the profile replaced. "
+                    + "Check the keys against avni-entities.json.",
+                    unapplied, storageProfile.size()));
+            }
+            out.println(String.format(
+                "  MS_PER_PAGE is a calibration term, not a measurement: 174 double-counted the "
+                + "server's own response, which this simulation already pays for real, so it "
+                + "carries that net out. The %.1fs ceiling bounds a page, not the rate. F7 fits "
+                + "these against production's measured 5.2 ms/record marginal cost - re-measured "
+                + "1 Oct 2026, replacing a fitted 8.85 that matched neither of Q5's bands.",
                 maxStoragePauseMs / 1000.0));
             double heaviest = msPerPage + pageSize * 3.0 * baseMsPerRecord;
             if (heaviest > maxStoragePauseMs) {
@@ -1735,7 +1782,7 @@ public class AvniSyncSimulation extends Simulation {
                     //
                     // Computed into the session rather than inside `.pause` so the total is
                     // recoverable. F7 compares the simulated cost of one more record against
-                    // production's 8.85 ms, and a mismatch has two possible homes -- the client
+                    // production's measured 5.2 ms, and a mismatch has two possible homes -- the client
                     // model, or the server's own response time. Separating them is the difference
                     // between refitting a coefficient and guessing at one, and nothing else in the
                     // run reports it.

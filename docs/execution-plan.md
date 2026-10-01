@@ -332,14 +332,26 @@ survives any database-side restore, and `audit` grows regardless.
 **F7. Nothing before this produces evidence, and nothing after it is trustworthy until it passes.**
 
 Run a simulated user against the same per-entity record counts as a real production sync, and check
-the simulated duration lands inside the observed distribution for that volume and device class —
-production's `14.1s + 8.85ms × records`.
+the **marginal cost of one more record** matches production's — a measured **5.2 ms/record**.
+Marginal cost rather than total duration against a band: a band comparison passed a 15,732-record
+sync by grading it against band 1, which covers under 5,000.
 
-**Expect this to fail first time, and budget a day for it.** The coefficients it fits are deliberate
-upper bounds rather than measurements: `BASE_MS_PER_RECORD` at 0.60 is derived from a 2-second page
-ceiling, and `MS_PER_PAGE` at 174 still double-counts the server's own response time, which the
-simulation genuinely incurs. **Day 11 is when both get real values** — net the server's median
-response out of `MS_PER_PAGE`, refit `BASE_MS_PER_RECORD`, re-run.
+**Done, 1 Oct 2026: 5.20 ms/record, 1.00x, zero KO.** It took three attempts and two false passes,
+and both false passes are worth knowing about because neither showed up in the run.
+
+- **The band bug** above — the gate itself was wrong, not the simulation.
+- **A key mismatch.** `StorageProfiles` was keyed lowercase while the simulation looks up entity
+  names, so every lookup missed and fell through to the uniform `3 × 2.78 = 8.34` the profiles
+  existed to replace. It scored 8.80 against the then-anchor of 8.85 and passed. Caught by dividing
+  124 s by 15,732 records by hand. The startup banner now prints each pulled entity's resolved rate
+  and whether it is measured or a tier.
+
+**The anchor itself moved, from a fitted 8.85 to a measured 5.2.** 8.85 was a regression through
+total sync duration and fit neither of Q5's bands — 58.4 s predicted against 14.1 observed, 434.5
+against 1,076. The replacement was measured from production's `AuthenticationFilter` logs: 11 days,
+1.88M requests, the gap between a client's consecutive page requests with server time and a 307 ms
+network base netted out, counting only confirmed full pages. See `tools/inter_request_gap.py`.
+Client cost varies by **organisation**, not day, which is why there are two storage profiles.
 
 > If it cannot be made to pass, stop. A simulation that does not reproduce a known sync is not an
 > instrument, and every number after it is decoration.

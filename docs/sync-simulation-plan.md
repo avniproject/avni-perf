@@ -1271,6 +1271,13 @@ that large is dominated by observation-bearing rows — so its implied **22.4 ms
 fleet's 8.85 is a ratio of 2.5**, near the 3.0 the tier assigns. The tiering was judgement, but it is
 judgement the measurements support.
 
+> **What later measurement said about this tier, 1 Oct 2026.** The direction held and the magnitude
+> did not: the observation-bearing entities really are the expensive ones, but they differ by 2.2x
+> *between themselves* — `programEnrolment` 2.84 against `encounter` 5.17 ms/record — where one tier
+> of 3.0 charged them alike. A uniform heavy tier was close enough to survive a ratio check and not
+> close enough to model a mix. `StorageProfiles` now carries a measured rate per entity for these
+> five; the light and medium tiers measurement reached came out close and were left alone.
+
 > **`ProgramOutcome` was in this list and is not in the model.** The generator assigns tiers by
 > name, so it would have been a silent no-op — 14 light entities where the plan claimed 15. Removed.
 
@@ -1325,6 +1332,15 @@ Re-deriving the coefficient properly is what settled it. Anchoring the intercept
 gives **8.85 ms/record**, against Q1's 9.19 — a 4% difference, which is noise. The slope was never
 the problem; **the free intercept was**, and every unanchored fit returned a value that could not fit
 inside a 14.1 s sync.
+
+> **Superseded, 1 Oct 2026: the anchor is a measured 5.2 ms/record, not this 8.85.** The agreement
+> between 8.85 and Q1's 9.19 is real but says less than it looks — both are regressions through
+> *total sync duration*, so they agree because they share a method, not because they were confirmed
+> independently. 8.85 fits neither band it was derived from: 58.4 s predicted against 14.1 observed
+> in band 1, 434.5 s against 1,076 in band 10. The figure in use now was measured directly from
+> production's `AuthenticationFilter` logs rather than regressed out of durations. See F7 and
+> `tools/inter_request_gap.py`. **This section is kept because the reasoning about the intercept
+> still holds** — it is the quantity being regressed that was wrong.
 
 **`STORAGE_MODEL=zero` is not a neutral fallback**, which is worth stating because it looks like one.
 Removing the pause lets a virtual user issue its 81 requests back to back, bounded only by the
