@@ -243,9 +243,31 @@ echo "5. checking what actually landed"
 # Comparing against the bundle means reading the bundle, and in the common case it arrived as a
 # zip. Without this the comparison reads nothing, finds nothing to expect, and passes everything
 # — the check would have been decoration.
+#
+# **Extracted with python rather than `unzip`, because `unzip` cannot read some real bundles.**
+# A zip entry whose name carries non-ASCII characters without the UTF-8 flag set makes macOS
+# `unzip` mangle the name, fail to create the file, and stop -- reporting exit 50, "the disk is
+# full", which it is not. One of the production bundles has two such entries, a form name carrying
+# an en-dash, and `unzip` extracts 20 of its 157 files. The server's own importer reads it with Java's
+# zip support and is unaffected, so this breaks the *check* and not the import: the one place a
+# wrong answer would be invisible.
+#
+# The entry count is compared rather than the exit status trusted, because a partial extraction
+# that happened to exit 0 would make this check pass by having nothing to compare.
 if [ -z "$SRC_DIR" ]; then
   CLEANUP_SRC="$(mktemp -d "${TMPDIR:-/tmp}/bundlesrc.XXXXXX")"
-  unzip -qo "$BUNDLE" -d "$CLEANUP_SRC" || die "could not read $BUNDLE back to check the import against"
+  python3 - "$BUNDLE" "$CLEANUP_SRC" <<'EXTRACT' || die "could not read $BUNDLE back to check the import against"
+import sys, zipfile, pathlib
+src, dest = sys.argv[1], pathlib.Path(sys.argv[2])
+with zipfile.ZipFile(src) as zf:
+    entries = [n for n in zf.namelist() if not n.endswith("/")]
+    zf.extractall(dest)
+got = sum(1 for p in dest.rglob("*") if p.is_file())
+if got < len(entries):
+    print(f"error: extracted {got} of {len(entries)} entries from {src}", file=sys.stderr)
+    sys.exit(1)
+print(f"   read {got} entries back from the bundle to check the import against")
+EXTRACT
   SRC_DIR="$CLEANUP_SRC"
 fi
 sync_count() {

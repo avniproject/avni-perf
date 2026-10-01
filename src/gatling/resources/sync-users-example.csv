@@ -1,4 +1,4 @@
 userName,lastModifiedDateTime,password|token,pushScale
-joy@jnpct,1900-01-01T00:00:00.000Z,,1
-joy1@jnpct,1900-01-01T00:00:00.000Z,,0.2
-joy@jnpct,1900-01-01T00:00:00.000Z,,1
+worker1@org-a,1900-01-01T00:00:00.000Z,,1
+worker2@org-a,1900-01-01T00:00:00.000Z,,0.2
+worker1@org-a,1900-01-01T00:00:00.000Z,,1

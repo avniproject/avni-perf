@@ -37,9 +37,12 @@ import java.util.Random;
  *
  * Measured from `AuthenticationFilter` over 2026-09-10..19 and 09-28: 1,883,217 requests, of which
  * 1,143,308 are device sync (pull, push and syncDetails rather than `/api`, `executeQuery` or
- * media). `goonj` is the largest organisation by request count and is 88% media; `shelter` is
- * fourth and 59% `/api`. Ranking by request count would have modelled two integrations as device
- * fleets, which is why the classification is part of the measurement rather than an afterthought.
+ * media). **The classification is part of the measurement rather than an afterthought**: the
+ * largest organisation by request count is 88% media and the fourth is 59% `/api`, so ranking by
+ * request count alone would have modelled two integrations as device fleets.
+ *
+ * Organisations are referred to by rank and archetype rather than by name throughout this
+ * repository.
  *
  * **What this assumes, and it is not verified.** Rank here is traffic; the co-tenant dataset's rank
  * is subjects held. Mapping one onto the other assumes an organisation's share of traffic tracks
