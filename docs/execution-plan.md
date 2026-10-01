@@ -206,11 +206,18 @@ between runs.
 | cases 9–13 | 5 | ten-tenant ± co-tenants |
 | **Phase 4** | **15** | |
 | Phase 5, four to six iterations | 4–6 | |
-| **total** | **~20**, of which ~19 need a reset first | case 1 has no field data and does not push |
+| **total** | **~20**, of which ~19 would need a reset first | case 1 has no field data and does not push |
 
 At the projected ~21 min for a ten-tenant reset, **19 resets is about 7 hours** of reset time
 across Phases 4 and 5; by the teardown path it is 11–12. So a mechanism that saves ten minutes a
 reset saves better than three hours of the exercise, which is what Day 9 is actually deciding.
+
+> **Superseded by the block ordering, 1 Oct 2026: it is about ten resets, not nineteen.** Phase 4
+> needs five — one per block plus case 8's three dataset swaps — and Phase 5's four to six stay
+> one per run, because re-measuring after a fix is the point of them. The arithmetic above is kept
+> because it is what Day 9's decision was made against, and a mechanism that saves ten minutes a
+> reset is worth less when there are half as many resets. `truncate` still wins: at 388 s measured
+> against the teardown's 1,013 s, five resets is 32 min against 84.
 
 **The co-tenant datasets are the gap in that arithmetic.** Cases 6, 7, 12 and 13 need 513 further
 organisations present — the ones of Q12's 986 that hold data. The other 473 would be bare
@@ -224,11 +231,15 @@ is loaded once and never unloaded.
 
 | mechanism | clear | reload | total | |
 |---|---|---|---|---|
-| **truncate** | **1 s** | 334 s | **335 s** (5m35s) | whole database; no headroom, no artefact, no dead tuples |
+| **truncate**, 1 Oct | **50 s** | 338 s | **388 s** (6m28s) | the clear now includes the audit cleanup |
+| truncate, 30 Sep | 1 s | 334 s | 335 s (5m35s) | raw `TRUNCATE`, audit rows left to accumulate |
 | teardown | 611 s | 402 s | 1,013 s (16m53s) | per-organisation; leaves 2.3M dead tuples for vacuum |
 | regenerate | — | 402 s | 402 s | needs an empty target |
 | template | unmeasured | — | — | needs the application's connections to `openchs` dropped |
 | dump | unmeasured | — | — | needs `postgresql-client-16` on the host |
+
+`truncate` still wins by a factor of two and a half, and the audit cleanup costs **49 s** of the
+difference.
 
 **One second to clear 2.3M rows across four tables and everything `CASCADE` reached.** The 611 s
 `DELETE` did the same work by walking every row and updating all 15 indexes on `encounter` and 16
@@ -348,11 +359,46 @@ and the `VACUUM` marks them reusable, so the next cycle's inserts refill them in
 the file. `VACUUM FULL` would reclaim the space properly and take an `ACCESS EXCLUSIVE` lock to
 hand back space the next reload immediately asks for again.
 
-**Unmeasured, deliberately.** The capture is a sequential scan of the four tables and the delete
-touches one narrow table with one index, so it should be seconds rather than the `DELETE`
-benchmark's 611 s — but that is reasoning, not a number. `restore-benchmark.sh --only truncate`
-now times the whole reset rather than the bare truncate, which is where it will show up if the
-one-second clear has become something that changes the cadence.
+### Measured, 1 Oct 2026: the audit cleanup costs 49 seconds
+
+The reasoning said seconds rather than the `DELETE` benchmark's 611 s, because the capture is a
+sequential scan of four tables and the delete touches one narrow table with one index. **50 s
+against the raw truncate's 1 s**, so the reasoning held and the number is now a number.
+
+| | per reset | Phase 4, 5 resets | had it stayed 19 resets |
+|---|---|---|---|
+| raw `TRUNCATE` + reload | 335 s | — | — |
+| with the audit cleanup | 388 s (+16%) | **+4 min across the phase** | +16 min |
+
+So it is affordable, and the block ordering above makes it more so — the two changes were decided
+independently and compound in the same direction.
+
+**The full two-tenant cycle is 764 s, 12m44s**: 50 s reset, 338 s for the first dataset, 376 s for
+the second. That is the figure Phase 4's cadence should be planned on at this scale, not the 388 s
+the benchmark reports, because the benchmark reloads one dataset directory and the reset empties
+the whole database.
+
+**The reload was faithful**, which is the part worth checking rather than assuming: both state
+tenants came back at **501,000 subjects and 1,799,926 encounters** each, and day 180 specifies
+500 workers x 20 encounters x 180 days = 1,800,000. **Organisation 3 came back empty**, which is
+correct and is the mechanism's known cost — `TRUNCATE` cannot distinguish tenants and only the two
+state datasets were reloaded. Its small dataset needs its own reload if it is wanted.
+
+> **The `audit` row count is not yet reconciled, and this result should not be read as confirming
+> the cleanup is correct.** The run reported `audit` holding one row. That cannot be a row count:
+> the trigger writes one audit row per inserted row, and the reload had just written about 2.3M
+> rows into each of two organisations, so `audit` should hold roughly 4.6M. Two readings, and they
+> are not close together. Either the figure means the count query returned one row — in which case
+> the mechanism worked and the table is at its intended steady state — or `audit` really does hold
+> one row, in which case the delete removed the metadata's audit rows as well as the orphans, and
+> **it would have done so silently**, because referential integrity is suppressed for that
+> statement. 42 tables would be left with `audit_id` values pointing at nothing, reads would not
+> notice, and the environment would look healthy.
+>
+> Settling it needs `select count(*) from audit` and a dangling-reference check against `concept`,
+> `form` and `form_element`. Deferred 1 Oct 2026 with the environment down. **Until then the 49 s
+> is a measurement of something whose correctness is unestablished**, and the timing above should
+> be trusted ahead of the conclusion.
 
 `teardown_org.py` is not this. It stays the iteration-phase reset, where emptying one organisation
 without touching its neighbours is worth 611 s.
