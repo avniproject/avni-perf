@@ -12,6 +12,7 @@ import org.avni.helper.CognitoHelper;
 import org.avni.models.AvniEntity;
 import org.avni.models.PushSeed;
 import org.avni.models.PageInfo;
+import org.avni.models.StorageProfiles;
 import org.avni.models.PushProfiles;
 import org.avni.models.Rtt;
 import org.avni.models.StorageModel;
@@ -1651,13 +1652,38 @@ public class AvniSyncSimulation extends Simulation {
      * first record's. Modelling it as records x rate alone charges a 10-record page a tenth of a
      * 100-record page, when in reality they cost nearly the same.
      */
+    /**
+     * Milliseconds of client work this page costs, per record.
+     *
+     * **Measured where production's logs reach, and the uniform weight only where they do not.**
+     * The weight tiers charged every observation-bearing entity the same 3.0, and production says
+     * they differ by 2.2x between themselves -- see {@link StorageProfiles}. The lighter tiers the
+     * measurement did reach came out close to what the weights already gave, so they are left
+     * alone rather than being replaced with a figure from a thinner sample.
+     */
+    private static double msPerRecordFor(AvniEntity entity) {
+        Double measured = storageProfile.get(entity.entityName);
+        return measured != null ? measured : entity.storageWeight * baseMsPerRecord;
+    }
+
+    /**
+     * Which population's client cost to charge. `customer` for the customer's own cases, which is
+     * what three agreeing organisations at 79% of the sample do; `production` for cases 6, 7, 12
+     * and 13, where production's own organisations load the server alongside them and the pooled
+     * figure is the representative one. Defaults as `PUSH_PROFILE` does, to the customer.
+     */
+    private static final java.util.Map<String, Double> storageProfile =
+        StorageProfiles.byName(System.getProperty("STORAGE_PROFILE", "customer"));
+
     private static java.time.Duration storagePause(AvniEntity entity, Session session) {
         if (!"weighted".equals(storageModel)) {
             return java.time.Duration.ZERO;
         }
+        // The weight argument is 1.0 because `msPerRecordFor` has already applied whichever of
+        // the two it is: a measured per-entity rate, or the tier times the base.
         return java.time.Duration.ofMillis(StorageModel.pauseMillis(
-            msPerPage, pageInfo(session).recordCount, entity.storageWeight,
-            baseMsPerRecord, maxStoragePauseMs));
+            msPerPage, pageInfo(session).recordCount, 1.0,
+            msPerRecordFor(entity), maxStoragePauseMs));
     }
 
     private static ChainBuilder getAndPaginate(Workload workload, AvniEntity entity) {
