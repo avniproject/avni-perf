@@ -37,3 +37,7 @@ tools/entity-metadata/package-lock.json
 # data generator
 tools/data-generator/.venv
 tools/data-generator/**/__pycache__
+
+# Local-only: maps the code names and ranks used in this repository to the real production
+# organisations they came from. The measurements are publishable; the attribution is not.
+*.local.md

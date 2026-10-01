@@ -38,11 +38,14 @@ import java.util.Random;
  * Measured from `AuthenticationFilter` over 2026-09-10..19 and 09-28: 1,883,217 requests, of which
  * 1,143,308 are device sync (pull, push and syncDetails rather than `/api`, `executeQuery` or
  * media). **The classification is part of the measurement rather than an afterthought**: the
- * largest organisation by request count is 88% media and the fourth is 59% `/api`, so ranking by
- * request count alone would have modelled two integrations as device fleets.
+ * largest organisation by request count is 88% *not* device sync -- 58.8% of its requests are
+ * media and only 12.2% are a device syncing -- and the fourth by request count is 59.9% `/api`.
+ * Ranking by request count alone would have modelled two integrations as device fleets. Rank here
+ * is therefore share of device sync, which is a different ordering: the largest by that measure is
+ * second by request count.
  *
  * Organisations are referred to by rank and archetype rather than by name throughout this
- * repository.
+ * repository. The mapping is kept locally and is not committed.
  *
  * **What this assumes, and it is not verified.** Rank here is traffic; the co-tenant dataset's rank
  * is subjects held. Mapping one onto the other assumes an organisation's share of traffic tracks
