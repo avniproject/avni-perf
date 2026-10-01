@@ -59,8 +59,11 @@ def test_a_slope_needs_two_volumes_far_enough_apart():
     """Two points and hope is not a measurement. A field worker and a supervisor is enough."""
     assert cal.slope(cohort(10_000, 20.0)) is None
     assert cal.slope(cohort(10_000, 20.0) + cohort(12_000, 23.0)) is None, "only 1.2x apart"
+    # And it does not pass. This asserted `ok` until the day it mattered: a run with one cohort
+    # reported success having tested nothing.
     lines, ok = cal.slope_check(cohort(10_000, 20.0))
-    assert ok and "needs two cohorts" in " ".join(lines)
+    assert not ok
+    assert "INCONCLUSIVE" in " ".join(lines)
 
 
 def test_a_slope_four_times_too_fast_fails():
@@ -97,3 +100,20 @@ def test_the_gate_fails_when_the_slope_fails_even_though_no_band_did():
     assert "FAIL --" in text
     assert "FAIL" not in text.split("Marginal cost")[0].replace("FAIL --", ""), \
         "no band verdict failed; the slope is what caught it"
+
+
+def test_an_unmeasurable_slope_is_inconclusive_not_a_pass():
+    """It returned a pass once. With one cohort the band checks cannot fail either -- every
+    verdict is unbanded or ungraded -- so the run printed "the simulation reproduces production"
+    having tested nothing at all."""
+    text, ok = cal.report(cohort(15_732, 40.1))
+    assert not ok
+    assert "INCONCLUSIVE" in text
+    assert "PASS --" not in text and "FAIL --" not in text
+
+
+def test_an_inconclusive_run_reads_differently_from_a_failing_one():
+    bad = cal.report(cohort(15_732, 40.1) + cohort(70_844, 168.6))[0]
+    thin = cal.report(cohort(15_732, 40.1))[0]
+    assert "FAIL --" in bad and "INCONCLUSIVE" not in bad
+    assert "INCONCLUSIVE" in thin and "FAIL --" not in thin

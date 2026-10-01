@@ -164,9 +164,15 @@ def slope_check(rows: list[tuple[str, int, float]]) -> tuple[list[str], bool]:
     """Whether one more record costs what it costs production."""
     got = slope(rows)
     if got is None:
-        return (["", "  Slope not measured: needs two cohorts at least "
-                 f"{SLOPE_MIN_SPAN:g}x apart in record count. Run a light and a heavy user "
-                 "together -- a field worker and a supervisor is enough."], True)
+        # **Not measured is not passed.** This returned True once, so a run with a single cohort
+        # printed "the simulation reproduces production" having tested nothing -- the band checks
+        # alone cannot fail a volume Q5 never measured, so every verdict in such a run is
+        # unbanded or ungraded and the gate was unanimous about nothing.
+        return (["", "  INCONCLUSIVE: the slope needs two cohorts at least "
+                 f"{SLOPE_MIN_SPAN:g}x apart in record count, and this run has one. A field "
+                 "worker and a supervisor together is enough.",
+                 "  Nothing here has tested whether one more record costs what it costs "
+                 "production."], False)
 
     ms, r_lo, r_hi = got
     ratio = ms / PRODUCTION_MS_PER_RECORD
@@ -313,9 +319,14 @@ def report(rows: list[tuple[str, int, float]]) -> tuple[str, bool]:
     lines += slope_lines
     ok = ok and slope_ok
 
-    lines += ["", "  PASS -- the simulation reproduces production for these volumes." if ok
-                  else "  FAIL -- the simulation is not an instrument yet. Its findings are not "
-                       "evidence."]
+    if ok:
+        lines += ["", "  PASS -- the simulation reproduces production for these volumes."]
+    elif any("INCONCLUSIVE" in l for l in lines):
+        lines += ["", "  INCONCLUSIVE -- the gate did not run, so this is neither a pass nor a "
+                      "failure.", "  Treat it as untested."]
+    else:
+        lines += ["", "  FAIL -- the simulation is not an instrument yet. Its findings are not "
+                      "evidence."]
     return "\n".join(lines), ok
 
 

@@ -14,13 +14,26 @@ import java.util.Map;
  * is out of scope. The entities the datasets do generate are cheaper, so the instrument was
  * pausing too long and the server was seeing roughly 60% of the request rate a real fleet produces.
  *
- * **How they were measured.** `AuthenticationFilter` logs every request with its user, its page and
- * size, and the server's own time. The interval between consecutive requests from one user, less
- * that server time, is the client's parse-and-persist plus one round trip. A client only asks for
- * page N+1 if page N came back full, so where the next request is the next page of the same entity
- * at the same size, the gap before it covers exactly `size` records -- which is how the response
- * size is known when the log does not carry it. 11 days of production, 2026-09-10 to 2026-09-19 and
- * 2026-09-28: 1.88M requests, 24,667 confirmed full pages. `tools/inter_request_gap.py`.
+ * **How they were measured.** `AuthenticationFilter` logs every request with its user, its page
+ * and size, and the server's own time, at completion. So the interval between two of those
+ * timestamps contains the response travelling out, the client's work, the next request travelling
+ * in, and the server's time on *that next request* -- which is the one to subtract, not the
+ * previous one's. Getting that index wrong moved these rates by up to 12%.
+ *
+ * A client only asks for page N+1 if page N came back full, so where the next request is the next
+ * page of the same entity at the same size, the gap before it covers exactly `size` records. That
+ * is how the response size is known when the log does not carry it.
+ *
+ * **Network is netted out, because the simulation pays its own.** What remains after subtracting
+ * the server is still client work *plus one round trip*, and setting the pause to that would
+ * double-count the network exactly as `MS_PER_PAGE` once double-counted the server. The subtracted
+ * constant is 307 ms, measured as the median gap following a page that returned almost nothing
+ * (page 0, not continued, server under 60 ms) across 180,628 such pages: network plus the client's
+ * per-request overhead, with no records persisted. Differencing against a full page cancels both,
+ * so these figures are persistence per record and nothing else.
+ *
+ * 11 days of production, 2026-09-10 to 2026-09-19 and 2026-09-28: 1.88M requests, 24,667 confirmed
+ * full pages. `tools/inter_request_gap.py`.
  *
  * **Why two profiles rather than one.** The variation is between organisations, not days: three
  * organisations hold 79% of the observations and agree to within 6% of each other, while a handful
@@ -52,19 +65,19 @@ public final class StorageProfiles {
 
     static {
         Map<String, Double> m = new LinkedHashMap<>();
-        m.put("individual", 3.61);                // fast3 n=534, pooled n=1668
-        m.put("programEnrolment", 2.88);          // fast3 n=149, pooled n=589
-        m.put("encounter", 5.21);                 // fast3 n=1077, pooled n=1346
-        m.put("groupSubject", 5.42);              // fast3 n=160, pooled n=1344
-        m.put("programEncounter", 4.53);          // fast3 n=136, pooled n=2243
+        m.put("individual", 3.28);
+        m.put("programEnrolment", 2.84);
+        m.put("encounter", 5.17);
+        m.put("groupSubject", 5.45);
+        m.put("programEncounter", 4.76);
         CUSTOMER = Collections.unmodifiableMap(m);
 
         m = new LinkedHashMap<>();
-        m.put("individual", 4.08);                // fast3 n=534, pooled n=1668
-        m.put("programEnrolment", 3.74);          // fast3 n=149, pooled n=589
-        m.put("encounter", 6.36);                 // fast3 n=1077, pooled n=1346
-        m.put("groupSubject", 7.36);              // fast3 n=160, pooled n=1344
-        m.put("programEncounter", 8.29);          // fast3 n=136, pooled n=2243
+        m.put("individual", 3.63);
+        m.put("programEnrolment", 3.54);
+        m.put("encounter", 6.14);
+        m.put("groupSubject", 7.36);
+        m.put("programEncounter", 8.44);
         PRODUCTION = Collections.unmodifiableMap(m);
     }
 
