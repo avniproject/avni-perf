@@ -167,6 +167,13 @@ fi
 # **CASCADE reaches further than the four named tables**, to anything referencing them: sync
 # telemetry, approval statuses, comments, checklists. For a reset that is correct -- those are run
 # artefacts, which is what is being cleared -- but it is worth knowing rather than discovering.
+# reset-transactional.sql computes that closure from pg_constraint and stops if it ever reaches a
+# table the reload cannot restore.
+#
+# **The timing here now includes the audit cleanup**, which is the point of measuring it: a
+# TRUNCATE orphans one audit row per row it drops, and clearing them is a DELETE rather than a
+# second TRUNCATE for reasons reset-transactional.sql sets out. If that delete turns the one-second
+# clear into something that changes the cadence, this is where it shows up rather than in a run.
 #
 # Sequences are deliberately not restarted. They sit above the dataset and the reload's own setval
 # keeps them there; winding them back would hand out ids the application has already used.
@@ -182,16 +189,18 @@ if wants_explicitly truncate && [ -n "$DATASET" ]; then
   } > "$TX"
   COPIES=$(grep -c '^\\copy' "$TX")
   [ "$COPIES" -ge 2 ] || die "found only $COPIES transactional \\copy lines in $DATASET/load.sql"
-  if t=$(timed psql "$DB" -v ON_ERROR_STOP=1 \
-           -c "TRUNCATE individual, encounter, program_enrolment, program_encounter CASCADE"); then
+  RESET_SQL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/reset-transactional.sql"
+  [ -f "$RESET_SQL" ] || die "no reset-transactional.sql beside this script"
+  if t=$(timed psql "$DB" -v ON_ERROR_STOP=1 -f "$RESET_SQL"); then
     if l=$(timed psql "$DB" -v ON_ERROR_STOP=1 -f "$TX"); then
-      echo "   truncate ${t}s + reload ${l}s = $((t + l))s   (${COPIES} tables)"
-      record truncate "$((t + l))" "truncate ${t}s + reload ${l}s; whole database, no headroom, no artefact"
+      echo "   reset ${t}s + reload ${l}s = $((t + l))s   (${COPIES} tables)"
+      echo "   the reset is truncate + audit cleanup; /tmp/g4-step.log has the split"
+      record truncate "$((t + l))" "reset ${t}s (truncate + audit) + reload ${l}s; whole database, no headroom, no artefact"
     else
       echo "   reload failed after ${l}s"; record truncate "-" "reload failed"
     fi
   else
-    echo "   truncate failed after ${t}s"; record truncate "-" "truncate failed"
+    echo "   reset failed after ${t}s"; record truncate "-" "reset failed"
   fi
   rm -f "$TX"
 fi

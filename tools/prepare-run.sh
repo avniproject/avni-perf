@@ -15,7 +15,8 @@
 #
 # **What it does not do.** It prints the SQL rather than running it, for the same reason the
 # teardown does: the connection string belongs to whoever is at the keyboard, and the reset
-# truncates tables across every organisation in the database.
+# truncates tables across every organisation in the database. The reset itself lives in
+# reset-transactional.sql so the benchmark measures the same thing a run performs.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -45,7 +46,7 @@ bold "G2 — before a measured run"
 if [ "$SKIP_RESET" = "0" ]; then
   step "1. Reset the database (G4). Run these, in order:"
   note ""
-  note "psql -d \$DB -c 'TRUNCATE individual, encounter, program_enrolment, program_encounter CASCADE'"
+  note "psql -d \$DB -v ON_ERROR_STOP=1 -f $HERE/reset-transactional.sql"
   if [ -n "$DATASET" ]; then
     for d in "$DATASET"/*/; do
       [ -f "$d/reload.sql" ] && note "psql -d \$DB -v ON_ERROR_STOP=1 -f ${d}reload.sql"
@@ -59,6 +60,11 @@ if [ "$SKIP_RESET" = "0" ]; then
   note ""
   note "Every dataset in the database needs reloading, not just the one under test."
   note "TRUNCATE cannot distinguish tenants, which is the cost of it being one second."
+  note ""
+  note "The reset clears the audit rows the truncate orphans, which is why it is a file and"
+  note "not one line. \`audit\` is not truncated and must not be: 42 foreign keys point at it"
+  note "from the metadata tables, so CASCADE there would empty concept, form and the rest,"
+  note "and reload.sql restores only transactional rows. The file explains the rest."
 else
   step "1. Reset — skipped"
   note "Only correct if the previous run did not push. Every case except 1 pushes."

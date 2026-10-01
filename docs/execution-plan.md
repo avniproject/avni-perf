@@ -293,15 +293,62 @@ the application's connections to `openchs` dropped, and whether the 2x storage h
 a provisioning question for avni-infra#112. Phase 4 can be planned on 20 minutes a reset; if
 `template` is arranged later it shortens the cadence without changing anything else.
 
-**What the mechanism consists of**, so it is not reassembled from this prose later:
+**What the mechanism consists of**, so it is not reassembled from this prose later. It lives in
+`tools/reset-transactional.sql`, one file, because the benchmark has to measure what a run
+performs and two copies of a truncate list drift:
 
-1. `TRUNCATE individual, encounter, program_enrolment, program_encounter CASCADE` — one second,
+1. Capture the `audit` ids held by every table the truncate is about to empty — the four, plus
+   the `CASCADE` closure, read from `pg_constraint` rather than listed.
+2. `TRUNCATE individual, encounter, program_enrolment, program_encounter CASCADE` — one second,
    and `CASCADE` clears the run artefacts that reference them: sync telemetry, approval statuses,
    comments, checklists.
-2. `reload.sql` per dataset the database holds — emitted beside `load.sql`, transactional tables
+3. Delete those captured `audit` rows, then `VACUUM` the table.
+4. `reload.sql` per dataset the database holds — emitted beside `load.sql`, transactional tables
    only, because the structural rows survive the truncate and reloading them collides.
-3. Sequences are not restarted. They sit above the dataset and each reload's own `setval` keeps
+5. Sequences are not restarted. They sit above the dataset and each reload's own `setval` keeps
    them there; winding them back would hand out ids the application has already used.
+
+### Why `audit` is cleared by DELETE and never by TRUNCATE
+
+**Added 1 Oct 2026.** A BEFORE INSERT trigger on 63 tables writes one `audit` row per inserted
+row, so a 2.3M-row load creates 2.3M audit rows, the truncate orphans every one of them, and the
+next cycle adds 2.3M more. Left alone that is the only part of the reset that grows without bound
+— roughly 200 MB a cycle, reclaimed by nothing.
+
+**It still cannot go in the `TRUNCATE` list, and the gap between those two facts is the whole
+point.** 42 foreign keys reference `audit(id)`, and they are not the transactional tables: they
+are `concept`, `form`, `form_element`, `form_mapping`, `subject_type`, `address_level`,
+`organisation_config` and the rest of the metadata. `TRUNCATE audit CASCADE` empties all of them.
+`reload.sql` carries transactional rows only, so recovery would mean provisioning the organisation
+again from its bundle — and the dangerous command is two words longer than the safe one.
+
+**The delete suppresses referential integrity, and the reason is arithmetic rather than
+convenience.** Every one of those 42 constraints is `NO ACTION` with no index on the referencing
+`audit_id` column, so deleting a referenced row costs one sequential scan per constraint per row.
+At 2.3M rows that is not slow, it is infeasible. `SET LOCAL session_replication_role = replica`
+suppresses the checks, and it is safe for a specific reason rather than a general one: the rows
+deleted are exactly those whose owning tables the `TRUNCATE` on the previous line has just
+emptied, so by construction nothing references them. That argument holds only while the capture
+set is the truncate's own cascade closure, which is why the closure is computed from the
+catalogue. `SET LOCAL` confines it to the transaction, so the reload that follows still fires the
+trigger.
+
+**A guard, because `CASCADE`'s reach is the thing that can change under this silently.** The
+script refuses if the closure ever includes a table the reload cannot restore — `users`,
+`concept`, `address_level`, `audit` itself. Today none of them reference the four. A foreign key
+added next release would turn a reset into a re-provisioning, and the first sign would be a
+scenario failing to authenticate.
+
+**It leaves the table at a steady size rather than a small one.** The delete leaves dead tuples
+and the `VACUUM` marks them reusable, so the next cycle's inserts refill them instead of extending
+the file. `VACUUM FULL` would reclaim the space properly and take an `ACCESS EXCLUSIVE` lock to
+hand back space the next reload immediately asks for again.
+
+**Unmeasured, deliberately.** The capture is a sequential scan of the four tables and the delete
+touches one narrow table with one index, so it should be seconds rather than the `DELETE`
+benchmark's 611 s — but that is reasoning, not a number. `restore-benchmark.sh --only truncate`
+now times the whole reset rather than the bare truncate, which is where it will show up if the
+one-second clear has become something that changes the cadence.
 
 `teardown_org.py` is not this. It stays the iteration-phase reset, where emptying one organisation
 without touching its neighbours is worth 611 s.

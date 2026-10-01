@@ -298,12 +298,55 @@ def test_the_reload_script_keeps_everything_else_the_load_script_does():
     assert "setval" in r and "COMMIT;" in r
 
 
-def test_the_transactional_set_matches_what_a_reset_truncates():
-    """One named set, so the reload script and restore-benchmark.sh's TRUNCATE cannot disagree
-    about which tables a reset clears."""
+def _reset_sql():
     from pathlib import Path as P
-    bench = (P(__file__).resolve().parents[2] / "restore-benchmark.sh").read_text()
-    truncate = [l for l in bench.splitlines() if "TRUNCATE " in l and "CASCADE" in l]
-    assert truncate, "the benchmark no longer truncates"
+    return (P(__file__).resolve().parents[2] / "reset-transactional.sql").read_text()
+
+
+def test_the_transactional_set_matches_what_a_reset_truncates():
+    """One named set, so the reload script and the reset's TRUNCATE cannot disagree about which
+    tables a reset clears."""
+    truncate = [l for l in _reset_sql().splitlines()
+                if l.startswith("TRUNCATE ") and "CASCADE" in l]
+    assert truncate, "reset-transactional.sql no longer truncates"
     for table in cw.TRANSACTIONAL:
         assert table in truncate[0], f"{table} is reloaded but not truncated"
+
+
+def test_the_reset_never_truncates_audit():
+    """**The one line in this repo that could empty the whole schema.**
+
+    `audit` reads like a transactional table -- a trigger writes one row per inserted row, a
+    truncate orphans them, and they are the thing that grows between cycles. It is not one. 42
+    foreign keys reference `audit(id)` and they come from the metadata: `concept`, `form`,
+    `form_element`, `form_mapping`, `subject_type`, `address_level`. `TRUNCATE audit CASCADE`
+    empties all of them, and `reload.sql` restores only transactional rows, so the organisation
+    would have to be provisioned again from its bundle.
+
+    The orphans are deleted instead. This asserts the cheap-looking version never comes back.
+    """
+    sql = _reset_sql()
+    for line in sql.splitlines():
+        if line.startswith("TRUNCATE "):
+            assert "audit" not in line, f"audit must never be truncated: {line}"
+    assert "DELETE FROM audit" in sql, "the reset no longer clears the orphaned audit rows"
+
+
+def test_the_reset_captures_audit_ids_before_it_truncates():
+    """Order is the whole correctness argument. After the TRUNCATE nothing records which audit
+    rows belonged to the rows that were dropped, so a capture afterwards finds nothing and the
+    delete silently removes none of them -- a no-op that looks exactly like success."""
+    sql = _reset_sql()
+    assert sql.index("INSERT INTO doomed_audit") < sql.index("TRUNCATE individual")
+    assert sql.index("TRUNCATE individual") < sql.index("DELETE FROM audit")
+
+
+def test_the_reset_disables_referential_integrity_only_inside_the_transaction():
+    """`session_replication_role = replica` suppresses the foreign key checks that make the
+    delete infeasible -- 42 unindexed constraints, one sequential scan each per row. SET LOCAL
+    confines it to the transaction, so the reload that follows still fires the audit trigger. A
+    bare SET would leak into the rest of the session."""
+    sql = _reset_sql()
+    assert "SET LOCAL session_replication_role = replica;" in sql
+    assert sql.index("SET LOCAL session_replication_role") < sql.index("DELETE FROM audit")
+    assert "\nSET session_replication_role" not in sql
