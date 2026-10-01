@@ -27,13 +27,29 @@ public class Workload {
     public final Map<String, PushVolume> volumes;
     /** Media files each encounter queues, which differs sharply between the two. */
     public final double mediaPerEncounter;
+    /**
+     * Whether this population's users are drawn in proportion to measured per-organisation shares
+     * rather than evenly.
+     *
+     * True for the co-tenants and false for the customer, and the asymmetry is the point: every
+     * customer user syncs about once a day, so an even walk of the file is the shape. Production's
+     * organisations divide their traffic 16% to the largest and nothing at all to four fifths of
+     * those holding data -- see CoTenantLoad.
+     */
+    public final boolean concentrated;
 
     public Workload(String name, String feederFile, Map<String, PushVolume> volumes,
                     double mediaPerEncounter) {
+        this(name, feederFile, volumes, mediaPerEncounter, false);
+    }
+
+    public Workload(String name, String feederFile, Map<String, PushVolume> volumes,
+                    double mediaPerEncounter, boolean concentrated) {
         this.name = name;
         this.feederFile = feederFile;
         this.volumes = volumes;
         this.mediaPerEncounter = mediaPerEncounter;
+        this.concentrated = concentrated;
     }
 
     /** Request name for this population. Empty prefix when only one workload is running. */

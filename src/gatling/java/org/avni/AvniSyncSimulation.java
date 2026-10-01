@@ -10,6 +10,7 @@ import io.gatling.javaapi.core.*;
 import io.gatling.javaapi.http.*;
 import org.avni.helper.CognitoHelper;
 import org.avni.models.AvniEntity;
+import org.avni.models.CoTenantLoad;
 import org.avni.models.PushSeed;
 import org.avni.models.PageInfo;
 import org.avni.models.StorageProfiles;
@@ -395,6 +396,13 @@ public class AvniSyncSimulation extends Simulation {
     private static final int coTenantSyncsPerHour =
         Integer.getInteger("CO_TENANT_SYNCS_PER_HOUR", 792);
 
+    /**
+     * Seed for the weighted co-tenant draw, so two runs differing in nothing else draw the same
+     * sequence of tenants. Change it to ask whether a result depended on the draw.
+     */
+    private static final long coTenantSeed =
+        Long.getLong("CO_TENANT_SEED", 42L);
+
     /** How long to sustain that rate. Defaults to the customer ramp, so the two overlap. */
     private static final int coTenantSeconds =
         Integer.getInteger("CO_TENANT_SECONDS", rampPeriod);
@@ -486,8 +494,11 @@ public class AvniSyncSimulation extends Simulation {
         coTenants ? "Customer" : "", "sync-users.csv",
         pushVolumesWithOverrides(), mediaPerEncounter);
 
+    // PushProfiles.coTenant() rather than production(): the same organisations, counted from the
+    // server's log rather than from the client's sync_telemetry. 11.2 records a sync against 6.5,
+    // which is the write pressure cases 7 and 13 were short of. See PushProfiles#coTenant.
     private final Workload coTenantWorkload = new Workload(
-        "Co-tenant", coTenantFeeder, PushProfiles.production(), coTenantMediaPerEncounter);
+        "Co-tenant", coTenantFeeder, PushProfiles.coTenant(), coTenantMediaPerEncounter, true);
 
     /** The active profile, with any per-entity system property applied. */
     private static Map<String, PushVolume> pushVolumesWithOverrides() {
@@ -721,9 +732,62 @@ public class AvniSyncSimulation extends Simulation {
     private ScenarioBuilder scenarioFor(Workload workload) {
         // `lastModifiedDateTime` stays on the session for SYNC_MODE=csv, which reads it from the
         // feeder. Every other mode computes the window per entity in syncStatusBody.
-        return scenario(workload.name.isEmpty() ? "Sync " + syncMode : workload.name)
-            .feed(csv(workload.feederFile).circular())
+        //
+        // **The customer's feeder is circular and the co-tenants' is not.** Every customer user
+        // syncs once a day, so walking the file evenly is the shape. Production's organisations do
+        // not divide their traffic that way -- rank 1 holds 16% of device sync and four fifths of
+        // the tenants holding data sync nothing at all -- so an even draw across 513 tenants
+        // reproduces the rate and not the working set. See CoTenantLoad.
+        ScenarioBuilder sc = scenario(workload.name.isEmpty() ? "Sync " + syncMode : workload.name);
+        return (workload.concentrated
+                    ? sc.feed(CoTenantLoad.feeder(feederRows(workload.feederFile),
+                                                  "organisationUUID", coTenantSeed))
+                    : sc.feed(csv(workload.feederFile).circular()))
             .exec(syncChainFor(workload));
+    }
+
+    /**
+     * A feeder file's rows, read directly rather than through Gatling's `csv()`.
+     *
+     * The weighted draw needs to group rows by organisation before the run starts, and a
+     * `FeederBuilder` only yields rows one at a time once it has. Minimal CSV on purpose: these
+     * files are written by `deployment.feeder_csv`, which quotes nothing and embeds no commas.
+     */
+    /** Share of production's device sync held by the top `n` organisations, measured. */
+    private static double cumulativeShare(int n) {
+        double total = 0;
+        for (int r = 1; r <= n; r++) {
+            total += CoTenantLoad.shareAtRank(r);
+        }
+        return total;
+    }
+
+    private static List<java.util.Map<String, String>> feederRows(String resource) {
+        try (java.io.InputStream in =
+                 AvniSyncSimulation.class.getClassLoader().getResourceAsStream(resource)) {
+            if (in == null) {
+                throw new IllegalStateException("no feeder file on the classpath: " + resource);
+            }
+            List<String> lines = new java.io.BufferedReader(
+                new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8))
+                .lines().filter(l -> !l.isBlank()).collect(java.util.stream.Collectors.toList());
+            if (lines.isEmpty()) {
+                throw new IllegalStateException(resource + " is empty");
+            }
+            String[] header = lines.get(0).split(",", -1);
+            List<java.util.Map<String, String>> rows = new java.util.ArrayList<>();
+            for (String line : lines.subList(1, lines.size())) {
+                String[] cells = line.split(",", -1);
+                java.util.Map<String, String> row = new java.util.LinkedHashMap<>();
+                for (int i = 0; i < header.length; i++) {
+                    row.put(header[i].trim(), i < cells.length ? cells[i].trim() : "");
+                }
+                rows.add(row);
+            }
+            return rows;
+        } catch (java.io.IOException e) {
+            throw new UncheckedIOException("could not read " + resource, e);
+        }
     }
 
     {
@@ -924,8 +988,36 @@ public class AvniSyncSimulation extends Simulation {
                 "Co-tenants: ON | %d syncs/hour for %ds from %s (%d users) | ~%.1f of their syncs "
                 + "in flight at production's 14.1s median",
                 coTenantSyncsPerHour, coTenantSeconds, coTenantFeeder, coTenantRows, inFlight));
+            // The concentration is the thing a reader cannot infer from the rate, and the thing
+            // that changed on 1 Oct 2026. Print what the draw will actually do, resolved against
+            // this feeder, rather than the measured curve in the abstract.
+            java.util.List<java.util.Map<String, String>> rows = feederRows(coTenantFeeder);
+            int[] cover = CoTenantLoad.coverage(rows, "organisationUUID");
             out.println(String.format(
-                "  They push on Q17's measured profile (%.1f records/sync) and media at %.4f per "
+                "  Concentrated draw, seed %d: %d of %d organisations in the file will ever sync. "
+                + "Production's shares, measured: rank 1 takes %.1f%%, the top 3 %.1f%%, the top 16 "
+                + "%.1f%%. An even draw across all %d would reproduce the rate and not the working "
+                + "set, which is what cases 7 and 13 measure.",
+                coTenantSeed, cover[0], cover[1],
+                CoTenantLoad.shareAtRank(1) * 100,
+                (CoTenantLoad.shareAtRank(1) + CoTenantLoad.shareAtRank(2)
+                 + CoTenantLoad.shareAtRank(3)) * 100,
+                cumulativeShare(16) * 100, cover[1]));
+            // **The condition that actually catches it.** The first version warned only when more
+            // organisations drew a share than production has active, which a feeder missing the
+            // column never trips: every row collapses into one organisation, draws rank 1, and the
+            // draw is uniform again -- silently the behaviour this replaces.
+            boolean hasColumn = !rows.isEmpty() && rows.get(0).containsKey("organisationUUID");
+            if (!hasColumn || (cover[1] == 1 && rows.size() > 1)) {
+                out.println(
+                    "  WARNING: this feeder carries no usable organisationUUID, so every row fell "
+                    + "into one organisation and the draw is uniform - the behaviour the "
+                    + "concentration replaces. deployment.feeder_csv writes the column; the "
+                    + "committed co-tenant-users.csv is a stub for CI. Cases 7 and 13 need a "
+                    + "generated feeder.");
+            }
+            out.println(String.format(
+                "  They push on the log-measured profile (%.1f records/sync) and media at %.4f per "
                 + "encounter, not the customer's. Both populations are named apart in the report, "
                 + "so the customer's percentiles stay separable - which is the case 7 result.",
                 coTenantWorkload.recordsPerSync(), coTenantMediaPerEncounter));
@@ -1133,6 +1225,14 @@ public class AvniSyncSimulation extends Simulation {
             co.put("seconds", coTenantSeconds);
             co.put("feeder", coTenantFeeder);
             co.put("mediaPerEncounter", coTenantMediaPerEncounter);
+            // Both are run properties now, so a result that differs can be traced to the draw
+            // rather than attributed to the server.
+            co.put("seed", coTenantSeed);
+            co.put("concentrated", true);
+            int[] cover = CoTenantLoad.coverage(feederRows(coTenantFeeder), "organisationUUID");
+            co.put("organisationsSyncing", cover[0]);
+            co.put("organisationsPresent", cover[1]);
+            co.put("pushRecordsPerSync", coTenantWorkload.recordsPerSync());
             co.put("recordsPerSync", round(coTenantWorkload.recordsPerSync()));
         }
         settings.put("coTenants", co);
