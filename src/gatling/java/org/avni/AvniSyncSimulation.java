@@ -115,7 +115,30 @@ public class AvniSyncSimulation extends Simulation {
      * nothing has measured. F7 replaces it with a fitted value, and D7 with a measured one.
      */
     private static final double baseMsPerRecord =
-        Double.parseDouble(System.getProperty("BASE_MS_PER_RECORD", "0.60"));
+    /**
+     * **Fitted against production's observed slope, 1 Oct 2026. Not measured on a device.**
+     *
+     * Was 0.60, and that number was circular: it was derived from a 2-second page ceiling, and the
+     * ceiling was the only thing constraining it. F7 then measured the pair against production and
+     * found the simulation charged 2.33 ms/record where production charges 8.85 -- 3.8x too fast,
+     * consistently across a 12x volume range, so every duration the instrument reported was wrong
+     * by that factor.
+     *
+     * The fit is arithmetic once the sync is decomposed, which it now is (see recordSyncResult):
+     *
+     *     total slope = MS_PER_PAGE/PAGE_SIZE + effective_weight x BASE_MS_PER_RECORD + server
+     *             8.85 = 0.112                + 3.003            x 2.78               + 0.383
+     *
+     * `effective_weight` is 3.003, measured across the entity mix at two volumes, and the server's
+     * 0.383 ms/record is this environment's own and not ours to set. Measured result: **8.83
+     * ms/record, 1.00x production**.
+     *
+     * **What this is not.** It reproduces production's marginal cost; it does not measure what a
+     * device does. D7's telemetry would settle that and is deferred on fleet rollout of client
+     * 17.3, so re-run F7 when it lands. It also carries no spread -- see the calibration gate's
+     * note on reproducing the median without the distribution.
+     */
+        Double.parseDouble(System.getProperty("BASE_MS_PER_RECORD", "2.78"));
 
     /**
      * Ceiling on a single page's modelled client cost.
@@ -131,7 +154,21 @@ public class AvniSyncSimulation extends Simulation {
      * above 66 records on a heavy entity, flattening 93% of a full page's range into one value.
      */
     private static final double maxStoragePauseMs =
-        Double.parseDouble(System.getProperty("MAX_STORAGE_PAUSE_MS", "2000"));
+    /**
+     * **Raised from 2,000 on 1 Oct 2026, because it was setting the coefficient it was meant to
+     * bound.**
+     *
+     * BASE_MS_PER_RECORD was derived from this ceiling, so the two could not be refitted
+     * independently: at the fitted base a 2-second cap clips even a weight-1 page and the model
+     * flattens to a constant. The plan's own Q1 discussion accepts 27.6 s for a full heavy page --
+     * "27.6 s inside an 82.9 s sync is unremarkable" -- which a 2-second ceiling contradicts
+     * tenfold.
+     *
+     * 30 s is above anything the fitted model produces for a 1,000-record page, so it bounds
+     * pathology rather than shaping the result. **It is not a free parameter**: lowering it
+     * silently re-flattens the slope F7 just fitted.
+     */
+        Double.parseDouble(System.getProperty("MAX_STORAGE_PAUSE_MS", "30000"));
     /**
      * What a page costs before its first record: the client's transaction open and commit, its
      * batched index maintenance, and the round trip.
@@ -149,7 +186,15 @@ public class AvniSyncSimulation extends Simulation {
      * 174 minus the server's median response, not 174.
      */
     private static final double msPerPage =
-        Double.parseDouble(System.getProperty("MS_PER_PAGE", "174"));
+    /**
+     * **174 minus the 62 ms the server actually takes, measured 1 Oct 2026.**
+     *
+     * The plan suspected this coefficient double-counted the server's own response time, which the
+     * simulation genuinely incurs on top of it. It did: a request against this environment takes
+     * 62 ms at the median, so 174 charged that twice. Netting it out is what the plan prescribed
+     * for F7, and the number came from the run rather than from an estimate.
+     */
+        Double.parseDouble(System.getProperty("MS_PER_PAGE", "112"));
     /**
      * `weighted` applies the per-entity model. `zero` removes client cost entirely, for runs that
      * are trying to saturate the server rather than reproduce a device.

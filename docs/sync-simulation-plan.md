@@ -2303,17 +2303,55 @@ but no scenario that means to measure the write path can run twice until the res
 
 ### F7 — Calibration gate
 
-**Prove the simulation reproduces reality before trusting any finding.** `sync_telemetry` records
-real sync durations alongside per-entity record counts and local data volumes, which makes this a
-concrete, passable test rather than an aspiration:
+*Passes, 1 Oct 2026, after the refit it existed to force.* **8.83 ms/record against production's
+8.85 — 1.00x.**
 
 > Run a simulated user against the same per-entity record counts as a real production sync. The
 > simulated total sync duration should land inside the observed distribution of real sync durations
 > for that data volume and device class.
 
-If it does not, the simulation is not yet an instrument and its findings are not evidence. This gates
-believing results, not producing them — run it after D6 and again after D7, and re-run it whenever
-the client changes something the simulation models.
+**It passed once before it should have, and the gate was what was wrong.** Band 1 covers under
+5,000 records; a 15,732-record sync was graded against it, cleared its 14.1 s p50, and passed —
+while production's own slope puts a sync that size near 153 s, outside the band entirely. The gate
+now reports volumes between Q5's two measured bands rather than grading them, and compares **the
+marginal cost of one more record**, which needs no band and is the quantity the storage model
+actually sets. A band asks whether one duration is plausible and answers weakly, because band 1
+spans five-fold and almost anything passes.
+
+**Decomposing the sync is what made the refit arithmetic rather than guesswork.** The simulation
+records, per sync, what it spent in client pauses against what it spent waiting for the server --
+nothing else reported it, Gatling 3.15's report has no scrapable per-request stats, and
+`simulation.log` is binary. The answer was unambiguous: **84% pause, 16% server**, so the gap was
+the client model rather than an idle test server, which was the one outcome no coefficient could
+have fixed.
+
+| | was | is | where it came from |
+|---|---|---|---|
+| `MS_PER_PAGE` | 174 | **112** | measured: a request against this environment takes 62 ms, which 174 charged twice |
+| `MAX_STORAGE_PAUSE_MS` | 2,000 | **30,000** | it was setting the coefficient it was meant to bound |
+| `BASE_MS_PER_RECORD` | 0.60 | **2.78** | fitted: `8.85 = 0.112 + 3.003 x base + 0.383` |
+
+`effective_weight` 3.003 is measured across the entity mix at two volumes. The server's 0.383
+ms/record is this environment's own and not ours to set.
+
+**The cap was circular and that is why one number could not be fixed alone.** `BASE_MS_PER_RECORD`
+was derived *from* the 2-second ceiling, so at any fitted base the cap clips even a weight-1 page
+and the model flattens to a constant. The plan's own Q1 discussion accepts 27.6 s for a full heavy
+page, which a 2-second ceiling contradicts tenfold. **30,000 is not a free parameter**: lowering it
+silently re-flattens the slope.
+
+**What this is and is not.** It reproduces production's *marginal cost*. It does not measure what a
+device does — D7's telemetry would settle that and is deferred on fleet rollout of client 17.3, so
+**re-run F7 when it lands**. And it carries no spread: nine field-worker syncs span 1.01x where
+production's light band spans 5.7x, so the simulation reproduces the median and almost none of the
+distribution. Arrivals are more regular than production's and contention at a given concurrency is
+understated. That is in F5.2's parity record.
+
+**One thing chased and dropped.** A 502 appeared on the supervisor's heaviest request on the first
+refit iteration, and the supervisor is the only user crossing Tomcat's default
+`maxKeepAliveRequests` of 100 at ~101 requests. It did not reproduce across two further runs with
+the same volumes and pauses, so it is recorded as transient rather than kept as a theory that fits.
+The ALB was ruled out separately: its idle timeout is 300 s, matched to production.
 
 **Both injector positions are supported; they are not interchangeable.** The customer has asked to
 be able to run from a local machine, and F4's allowlist makes that possible. Worth being explicit
