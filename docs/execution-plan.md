@@ -378,27 +378,44 @@ the second. That is the figure Phase 4's cadence should be planned on at this sc
 the benchmark reports, because the benchmark reloads one dataset directory and the reset empties
 the whole database.
 
-**The reload was faithful**, which is the part worth checking rather than assuming: both state
-tenants came back at **501,000 subjects and 1,799,926 encounters** each, and day 180 specifies
-500 workers x 20 encounters x 180 days = 1,800,000. **Organisation 3 came back empty**, which is
-correct and is the mechanism's known cost — `TRUNCATE` cannot distinguish tenants and only the two
-state datasets were reloaded. Its small dataset needs its own reload if it is wanted.
+**The reload was faithful**, which is the part worth checking rather than assuming:
 
-> **The `audit` row count is not yet reconciled, and this result should not be read as confirming
-> the cleanup is correct.** The run reported `audit` holding one row. That cannot be a row count:
-> the trigger writes one audit row per inserted row, and the reload had just written about 2.3M
-> rows into each of two organisations, so `audit` should hold roughly 4.6M. Two readings, and they
-> are not close together. Either the figure means the count query returned one row — in which case
-> the mechanism worked and the table is at its intended steady state — or `audit` really does hold
-> one row, in which case the delete removed the metadata's audit rows as well as the orphans, and
-> **it would have done so silently**, because referential integrity is suppressed for that
-> statement. 42 tables would be left with `audit_id` values pointing at nothing, reads would not
-> notice, and the environment would look healthy.
+| org | | individuals | encounters | addresses | catchments | users | groups |
+|---|---|---|---|---|---|---|---|
+| 10 | state-1 | 501,000 | 1,799,926 | 227 | 210 | 542 | 13 |
+| 11 | state-2 | 501,000 | 1,799,926 | 227 | 210 | 542 | 13 |
+| 3 | the customer's | 0 | 0 | 21 | 7 | 11 | 13 |
+| 1, 9 | platform, fixtures | 0 | 0 | 16 | 4 | 2 | 14 |
+
+Day 180 specifies 500 workers x 20 encounters x 180 days = 1,800,000, so both state tenants came
+back whole.
+
+**The other organisations show the mechanism working exactly as designed, and that is the useful
+part of this table.** They lost their transactional rows and kept every structural one: the
+customer's organisation still holds its 21 addresses, 7 catchments, 11 users and 13 groups. That is
+`TRUNCATE` on the four transactional tables and nothing else, which is why `reload.sql` carries
+transactional rows only — reloading the full `load.sql` would now collide on all seven structural
+tables. Recovering the customer's organisation is a `reload.sql` away, not a re-provisioning.
+
+> **On the `audit` figure the run reported as "one row".** It cannot be a post-reload row count,
+> and the confirmed counts above are what settle it rather than an assumption: `audit.id` is the
+> target of a NOT NULL `audit_id` on every one of these tables, and only the trigger sets it, so a
+> reload of 4.6M rows either wrote 4.6M audit rows or failed on the constraint. It did not fail —
+> the counts are exact. So `audit` holds at least 4.6M rows and the figure is the count query
+> reporting one row of output. The cleanup is at the steady state it was built for.
 >
-> Settling it needs `select count(*) from audit` and a dangling-reference check against `concept`,
-> `form` and `form_element`. Deferred 1 Oct 2026 with the environment down. **Until then the 49 s
-> is a measurement of something whose correctness is unestablished**, and the timing above should
-> be trusted ahead of the conclusion.
+> **What the counts also rule out** is the way this could have gone badly. The delete suppresses
+> referential integrity, so an over-wide capture would have removed referenced rows in silence.
+> Three things say it did not: the `survives` guard did not fire, so the CASCADE closure contained
+> no protected table; every organisation kept its structural rows, so the cascade did not reach
+> `address_level`, `catchment`, `users` or `groups`; and those tables' audit rows were therefore
+> never captured.
+>
+> **One check is still outstanding** and is worth doing once rather than reasoning about again: a
+> dangling-reference count against `concept`, `form` and `form_element`, which are metadata the
+> truncate never touches and whose audit rows the reload does not recreate. Deferred 1 Oct 2026
+> with the environment down. The reasoning above makes a problem unlikely rather than impossible,
+> and the difference matters because the failure would be invisible to reads.
 
 `teardown_org.py` is not this. It stays the iteration-phase reset, where emptying one organisation
 without touching its neighbours is worth 611 s.
