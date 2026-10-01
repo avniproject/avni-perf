@@ -66,13 +66,20 @@ def test_a_slope_needs_two_volumes_far_enough_apart():
     assert "INCONCLUSIVE" in " ".join(lines)
 
 
-def test_a_slope_four_times_too_fast_fails():
-    """The measured case: 2.33 ms/record against production's 8.85."""
+def test_a_slope_far_under_production_fails():
+    """2.33 ms/record against the measured 5.2 is 2.2x too fast, past the 2.0 fail factor."""
     r = cohort(15_732, 40.1) + cohort(70_844, 168.6)
     lines, ok = cal.slope_check(r)
     assert not ok
     text = " ".join(lines)
-    assert "2.33 ms/record" in text and "3.8x too fast" in text
+    assert "2.33 ms/record" in text and "too fast" in text
+
+
+def test_the_anchor_is_the_measured_rate_not_the_old_regression():
+    """8.85 was a regression through total sync duration that missed both of Q5's own bands --
+    58.4s predicted against 14.1 observed, 434.5 against 1,076. 5.2 is the interval between a
+    client taking a page and asking for the next, measured across 24,667 of them."""
+    assert cal.PRODUCTION_MS_PER_RECORD == 5.2
 
 
 def test_the_tolerance_is_a_factor_and_is_symmetric():

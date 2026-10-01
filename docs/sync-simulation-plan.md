@@ -2180,6 +2180,7 @@ read rather than merely what the environment costs:
 | **Storage IOPS** (measured 30 Sep 2026) | The dataset load is **IOPS-bound, not CPU-bound** — 250 GB gp3 at the baseline 3,000, with `encounter` 83% of it at 5,100–5,400 rows/s. Two consequences for reading any result: a larger instance class does not change storage throughput, so a finding that turns out to be IO-bound cannot be relieved that way here; and **whether this environment's IOPS match production's decides whether an IO-bound finding transfers at all**. G4 already requires IO parity and that the characteristics stay stable for the life of the environment — this is the measurement saying why |
 | **Pristine indexes** (quantified 30 Sep 2026) | *Index parity itself is closed.* Production carries five `sync_N` indexes per table that no migration defines; they were added through `db-bootstrap` in avni-infra, and the set now matches production by name and count on all four sync tables. A catchment-scoped pull uses `encounter_sync_1_index` on address, both time bounds and organisation in 18 ms, so **the sync path exercises production's access shape**. What remains is size: 417 bytes/row against production's 1,283 on `encounter`, because these were built by `CREATE INDEX` over loaded data and pack near 90% fillfactor with no dead entries, while production's grew through years of inserts — page splits settle a b-tree near 70% and dead entries persist until a `REINDEX` these tables rarely get. **Understates index scan and maintenance cost**, and understates the memory pressure behind G4's 21x-`shared_buffers` finding |
 | **A full sync does not use the address index** (found 30 Sep 2026) | `FULL_SYNC_SINCE` is `1900-01-01`, and against a range that wide the planner takes `encounter_last_modified_time_idx` and filters on address instead of using `encounter_sync_1_index` — 37 ms against 18 ms for the same rows, with 10,912 discarded by the filter. An incremental sync passes a real `loadedSince` and plans correctly, so this affects **case 1, which is entirely full sync, and the 1% full syncs inside cases 2–7**. Not an environment defect: it is the plan production gets for the same query. Worth watching as the tables grow, because the filtered row count grows with them |
+| **Only the paged download is modelled** (1 Oct 2026) | A band-2 production sync spends ~190 s of its 1,076 s persisting pulled records at the measured rate. The rest is not paged download — most likely media upload and push, which scale with what a device created rather than what it pulled. The simulation reproduces the download and models push and media on their own measured profiles, so it does not reproduce whatever else occupies a heavy sync. **Per-record cost is calibrated; total sync duration for heavy devices is not** |
 | **Injector position** | Runs from different positions are not comparable: a sync is ~109 requests, so 25 ms of extra round trip adds 2.7 s to a 14.1 s median. Recorded per run in `run-metadata.json` (A11) |
 
 **A narrow registration form makes the index heavier per row, not lighter, and that is worth
@@ -2318,6 +2319,37 @@ marginal cost of one more record**, which needs no band and is the quantity the 
 actually sets. A band asks whether one duration is plausible and answers weakly, because band 1
 spans five-fold and almost anything passes.
 
+**Re-anchored on measurement, 1 Oct 2026: 5.2 ms/record, not 8.85.**
+
+8.85 was a regression slope through total sync duration, and it describes neither end of the data
+it came from. Against Q5's own bands it predicts 58.4 s where band 1 observed 14.1, and 434.5 s
+where band 2 observed 1,076. Production's *average* cost per record is 2.82 ms in band 1 and 22.65
+in band 2 — **eight times apart** — so no single slope fits, which is what an r² of 0.186 was
+saying all along.
+
+5.2 is a direct measurement of the quantity the storage model represents: the interval between a
+client receiving a page and asking for the next, across 24,667 confirmed full pages over 11 days,
+with the server's time and the network both differenced out.
+
+**The difference between the two is not missing client work.** A band-2 sync pulls 47,500 records;
+at the measured rate that is 190 s of persistence against 1,076 s observed. The remainder is not
+paged download at all. Media upload and push are the strongest candidates — they scale with what a
+device *created*, not what it pulled, and correlate with download volume without being caused by
+it, because wide catchments both pull a lot and generate a lot. So 8.85 conflated two correlated
+quantities, which is precisely why it missed both bands in opposite directions.
+
+> **Three hypotheses were tested against the logs and discarded, which is why this is a
+> re-anchoring rather than a convenience.** Client-side local database growth: the gap per record
+> *falls* with page depth, 4.19 ms at page 0 against 2.29 at page 37, and is flat across the volume
+> a user pulls — so persistence does not slow as the device fills. Deep paging: the limit/offset
+> penalty is real but accounts for about 7% of a band-2 sync. And the measurement itself was
+> corrected twice before being trusted — the server's time was being subtracted at the wrong index,
+> and the network round trip was not being netted out at all.
+
+**What the simulation therefore does not reproduce** is whatever occupies the remaining seconds of
+a heavy production sync. That is a fidelity gap rather than a calibration one, and it belongs in
+F5.2 alongside the others: this anchor is a floor on realism, not a certificate of it.
+
 **Decomposing the sync is what made the refit arithmetic rather than guesswork.** The simulation
 records, per sync, what it spent in client pauses against what it spent waiting for the server --
 nothing else reported it, Gatling 3.15's report has no scrapable per-request stats, and
@@ -2434,6 +2466,30 @@ around it.
 never destroys them. And **H5's gates come before the snapshot, not after**: a snapshot of an
 unblessed dataset propagates the problem into every run that restores it, and by then the cost of
 finding out has multiplied.
+
+### Which way to lean when a number is uncertain
+
+*Decided 1 Oct 2026.* **Toward more load, not less.**
+
+Several of the simulation's inputs are measured with real uncertainty — the client's per-record
+cost spans p50 5.2 to p99 168 ms on `encounter` alone, and the choice of which percentile to model
+is a choice about how hard the server is pushed. When a correction could reasonably go either way,
+take the one that loads the server harder.
+
+**Because the two errors are not symmetric.** A test that over-loads finds a choke point early, and
+the cost is an hour spent on something that turns out to have headroom. A test that under-loads
+returns a green result for a server that will fall over in production, and the cost is the whole
+exercise having said the wrong thing. This is a search for choke points, not a capacity
+certification, so a finding that arrives slightly too early is cheap and one that never arrives is
+not.
+
+It also bounds the claim a green run supports. "The server handled this" is safe when the load was
+if anything heavier than the fleet produces; it is worthless if the load might have been lighter.
+
+Applies to reading results too: where a parity gap makes the environment *easier* than production —
+no non-sync load, no index bloat, a faster server — that is the asterisk on a green run. Where it
+makes it harder, as the supervisor's page-70 depth does against production's 99.91st percentile,
+that is headroom rather than a problem.
 
 ### G2 — Per run, before
 

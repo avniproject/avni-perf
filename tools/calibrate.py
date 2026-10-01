@@ -109,18 +109,35 @@ def judge(records: int, seconds: float, band: Band | None, outside: bool = False
                    f"{seconds:,.1f}s inside p50 {band.p50:,.1f}s .. p95 {band.p95:,.1f}s")
 
 
-# **Production's marginal cost of one more record, and the check that discriminates.**
+# **What one more record costs production, measured from its own server logs.**
 #
-# Anchoring the intercept at band 1's p50 gives 8.85 ms/record, against Q1's regression at 9.19 --
-# a 4% difference, which is noise. The slope was never the contested part; the free intercept was,
-# and every unanchored fit returned a value that could not fit inside a 14.1 s sync.
+# *Re-anchored 1 Oct 2026, from 8.85 to 5.2.* 8.85 was a regression slope through total sync
+# duration, and it describes neither end of the data it came from: against Q5's own bands it
+# predicts 58.4 s where band 1 observed 14.1, and 434.5 s where band 2 observed 1,076. Production's
+# average cost per record is 2.82 ms in band 1 and 22.65 in band 2 -- eight times apart -- so no
+# single slope fits, which is consistent with the r2 of 0.186 that fit reported.
+#
+# 5.2 is a direct measurement of the quantity the storage model actually represents: the interval
+# between a client receiving a page and asking for the next, across 24,667 confirmed full pages in
+# 11 days of production, with the server's own time and the network both differenced out. See
+# `StorageProfiles` and `tools/inter_request_gap.py`.
+#
+# **The gap between the two is not missing client work.** A band-2 sync pulls 47,500 records; at
+# the measured rate that is 190 s of persistence against 1,076 s observed. The remainder is not
+# paged download at all -- most likely media upload and push, which scale with what a device
+# created rather than what it pulled, and correlate with download volume without being caused by
+# it. Heavy-download syncs come from wide catchments, which also create a great deal. So 8.85
+# conflated two correlated quantities, and that is why it missed both bands in opposite directions.
+#
+# **What the simulation therefore does not reproduce** is whatever occupies those remaining
+# seconds. That is a fidelity gap rather than a calibration one, recorded in F5.2, and it is the
+# reason this anchor is a floor on realism rather than a certificate of it.
 #
 # **This is the check the bands could not make.** A band asks whether one sync's duration is
 # plausible for its volume, and answers weakly: band 1 spans five-fold, so almost anything passes.
-# The slope asks what one more record costs, which is exactly the quantity the storage model sets
-# and the only one an upper-bound coefficient gets wrong in a direction that matters. It also needs
-# no band, so it covers the volumes Q5 never measured.
-PRODUCTION_MS_PER_RECORD = 8.85
+# The slope asks what one more record costs, which is exactly the quantity the storage model sets.
+# It also needs no band, so it covers the volumes Q5 never measured.
+PRODUCTION_MS_PER_RECORD = 5.2
 
 # How far the simulated slope may sit from production's, **as a factor either way**.
 #

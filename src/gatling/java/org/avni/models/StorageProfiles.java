@@ -65,19 +65,19 @@ public final class StorageProfiles {
 
     static {
         Map<String, Double> m = new LinkedHashMap<>();
-        m.put("individual", 3.28);
-        m.put("programEnrolment", 2.84);
-        m.put("encounter", 5.17);
-        m.put("groupSubject", 5.45);
-        m.put("programEncounter", 4.76);
+        m.put("Individual", 3.28);
+        m.put("ProgramEnrolment", 2.84);
+        m.put("Encounter", 5.17);
+        m.put("GroupSubject", 5.45);
+        m.put("ProgramEncounter", 4.76);
         CUSTOMER = Collections.unmodifiableMap(m);
 
         m = new LinkedHashMap<>();
-        m.put("individual", 3.63);
-        m.put("programEnrolment", 3.54);
-        m.put("encounter", 6.14);
-        m.put("groupSubject", 7.36);
-        m.put("programEncounter", 8.44);
+        m.put("Individual", 3.63);
+        m.put("ProgramEnrolment", 3.54);
+        m.put("Encounter", 6.14);
+        m.put("GroupSubject", 7.36);
+        m.put("ProgramEncounter", 8.44);
         PRODUCTION = Collections.unmodifiableMap(m);
     }
 
