@@ -47,7 +47,7 @@ from datetime import datetime
 # thread name, logger, MDC -- because that varies by deployment and none of it is needed.
 LINE = re.compile(
     r"^(?P<ts>\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[.,]\d{3})"
-    r".*?(?P<method>GET|POST|PUT|DELETE)\s+(?P<uri>/\S*?)"
+    r".*?(?P<method>GET|POST|PUT|PATCH|DELETE)\s+(?P<uri>/\S*?)"
     r"(?:\?(?P<query>\S*))?\s+Status:\s*(?P<status>\d+)"
     r"\s+User:\s*(?P<user>\S+)"
     r".*?Time:\s*(?P<ms>\d+)\s*ms"
@@ -121,7 +121,7 @@ def gaps(records):
             # The previous request's server time is inside that wall-clock gap, so netting it out
             # leaves the client's own work plus one round trip. Attributed to the request that
             # *preceded* the gap, because that is the page the client was persisting.
-            out.append({**prev, "user": user,
+            out.append({**prev, "user": user, "next": cur,
                         "gap_ms": wall - prev["server_ms"], "wall_ms": wall})
     return out
 
@@ -150,7 +150,8 @@ def stream_gaps(records, *, stale_after=STALE_AFTER_SECONDS):
         if prev is not None:
             wall = (r["ts"] - prev["ts"]).total_seconds() * 1000
             if 0 <= wall <= stale_after * 1000 or wall < 0:
-                yield {**prev, "gap_ms": wall - prev["server_ms"], "wall_ms": wall}
+                yield {**prev, "next": r,
+                       "gap_ms": wall - prev["server_ms"], "wall_ms": wall}
         # Prune occasionally rather than every line: the dict is the only unbounded thing here.
         if seen % 1_000_000 == 0:
             cutoff = r["ts"]
@@ -175,6 +176,29 @@ def match_report(stats: dict) -> tuple[list[str], bool]:
             "  logs span deployments. Samples:"]
     out += [f"    {x}" for x in samples]
     return out, share < 0.10
+
+
+def confirmed_full_pages(gap_records):
+    """Gaps where the page just persisted is known to have been **full**.
+
+    **`size` is what the client asked for, not what came back**, and an incremental sync mostly
+    returns empty pages -- so dividing a gap by `size` is meaningless in general. That was the
+    first reading of this log and it was wrong by orders of magnitude.
+    
+    But a client only requests `page=N+1` if page N came back full: that is what paging means. So
+    when the next request from the same user is the next page of the same entity at the same size,
+    the gap before it covers exactly `size` records. The response size is not in the log; this
+    infers it from the client's own behaviour instead.
+    """
+    out = []
+    for g in gap_records:
+        nxt = g.get("next")
+        if not nxt or g["size"] is None or g["page"] is None:
+            continue
+        if (nxt["entity"] == g["entity"] and nxt["size"] == g["size"]
+                and nxt["page"] == g["page"] + 1 and g["gap_ms"] >= 0):
+            out.append(g)
+    return out
 
 
 def report(records, *, model_base=2.78, model_page=112.0, stats=None) -> tuple[str, bool]:
@@ -216,7 +240,29 @@ def report(records, *, model_base=2.78, model_page=112.0, stats=None) -> tuple[s
         lines.append(f"  {entity:<26} {len(xs):>5} {med:>9,.0f}ms {per:>9.2f}ms  "
                      f"{modelled:>8,.0f}ms at weight 3")
 
-    allgaps = sorted(x["gap_ms"] for x in g if x["gap_ms"] >= 0)
+    full = confirmed_full_pages(g)
+    if full:
+        lines += ["", "  Confirmed full pages — the client asked for the next page, so the one",
+                  "  before it returned `size` records. This is the measurement that means",
+                  "  something; the table above divides by a size that may not have been sent.",
+                  "",
+                  f"  {'entity':<22} {'size':>5} {'n':>5} {'p50 gap':>9} {'p50/rec':>9} "
+                  f"{'p90/rec':>9}  modelled/rec"]
+        groups = defaultdict(list)
+        for x in full:
+            groups[(x["entity"], x["size"])].append(x["gap_ms"])
+        for (entity, size), xs in sorted(groups.items(), key=lambda kv: -len(kv[1]))[:12]:
+            xs.sort()
+            p50, p90 = statistics.median(xs), xs[int(len(xs) * 0.9)]
+            modelled = (model_page + size * 3.0 * model_base) / size
+            lines.append(f"  {entity:<22} {size:>5} {len(xs):>5} {p50:>7,.0f}ms "
+                         f"{p50 / size:>7.2f}ms {p90 / size:>7.2f}ms  {modelled:>9.2f}ms")
+
+    # Bounded by the same staleness rule the streaming path uses: a user whose previous request
+    # was hours ago started a new sync, and counting that silence as think time put a 17-hour gap
+    # in this summary on the first real log.
+    allgaps = sorted(x["gap_ms"] for x in g
+                     if 0 <= x["gap_ms"] <= STALE_AFTER_SECONDS * 1000)
     if allgaps:
         lines += ["", f"  all gaps: p50 {statistics.median(allgaps):,.0f}ms, "
                       f"p90 {allgaps[int(len(allgaps) * 0.9)]:,.0f}ms, "
