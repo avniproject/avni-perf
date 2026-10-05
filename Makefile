@@ -4,6 +4,11 @@ build_perf:
 run_perf:
 	./gradlew gatlingRun
 
+## Regenerate docs/run-log.md from the artefacts bucket. Idempotent; back-fills.
+## BUCKET=... to override the default avni-loadtest-<account>.
+run_log:
+	./tools/update-run-log.sh $(if $(BUCKET),--bucket $(BUCKET))
+
 run_perf_local:
 	./gradlew gatlingRun -DBASE_URL=http://localhost:8021
 
