@@ -218,6 +218,74 @@ def test_the_feeder_spans_every_tenant():
     assert text.count("field_worker") > text.count("supervisor")
 
 
+# Names must match the establishment chain, because `from_target_types` matches the target's
+# levels against it by name to recover the ratios. "Sub-Centre" is `tiny()`'s supervisor level.
+# `parent_id` is what makes it a chain rather than a set: without it the spine collapses to the
+# root and a tenant gets one level and no supervisors.
+SHALLOW_TYPES = [{"id": 11, "name": "State", "level": 6.0, "parent_id": None},
+                 {"id": 12, "name": "Sub-Centre", "level": 5.0, "parent_id": 11},
+                 {"id": 13, "name": "Village", "level": 4.0, "parent_id": 12}]
+DEEP_TYPES = [{"id": 21, "name": "State", "level": 6.0, "parent_id": None},
+              {"id": 22, "name": "PHC", "level": 5.5, "parent_id": 21},
+              {"id": 23, "name": "Sub-Centre", "level": 5.0, "parent_id": 22},
+              {"id": 24, "name": "Village", "level": 4.0, "parent_id": 23}]
+
+
+def _per_org(path, orgs):
+    rows = Path(path).read_text().splitlines()[1:]
+    return {o: sum(1 for r in rows if r.endswith(f"org-{o}")) for o in orgs}
+
+
+def test_the_feeder_uses_each_tenants_own_refs():
+    """**A feeder built from the wrong tenant's refs is well-formed and names nobody.**
+
+    `build_tenant` derives the hierarchy from the target's address level types, and
+    `from_target_types` truncates it at the deepest permitted registration type -- so the
+    sub-centre count, and therefore how many supervisors exist, follows from them. Tenants on
+    different bundles have different types. Passing one tenant's for all of them produces a file
+    the simulation reads happily, in which rows name users the server has never heard of.
+    """
+    out = Path(tempfile.mkdtemp()) / "sync-users.csv"
+    # Bigger than `tiny()`: two villages and one village give one sub-centre whichever way the
+    # chain is cut, so the difference this is testing for cannot appear at that size.
+    deployment = dep.DeploymentSpec(
+        tenants=(dep.TenantSpec(name="a", organisation_id=1, field_workers=60,
+                                beneficiaries_per_village=5),
+                 dep.TenantSpec(name="b", organisation_id=2, field_workers=60,
+                                beneficiaries_per_village=5)),
+        days=60, reference=REFERENCE, seed=7)
+    orgs = [t.organisation_id for t in deployment.tenants]
+
+    # Varied by registration depth rather than by chain shape, because that is the difference
+    # that actually occurs: refs.json carries `registration_locations` per organisation, and
+    # `from_target_types` truncates the chain at the deepest type a subject may be registered at.
+    # Village for one tenant, Sub-Centre for the other.
+    n_same = dep.feeder_csv(deployment, out,
+                            refs_by_organisation={o: (SHALLOW_TYPES, [13]) for o in orgs})
+    per_org_same = _per_org(out, orgs)
+
+    n_mixed = dep.feeder_csv(deployment, out,
+                             refs_by_organisation={orgs[0]: (SHALLOW_TYPES, [13]),
+                                                   orgs[1]: (SHALLOW_TYPES, [12])})
+    per_org_mixed = _per_org(out, orgs)
+
+    assert n_same != n_mixed, (
+        f"a tenant on a different hierarchy must generate differently; both gave {n_same}")
+    assert per_org_same[orgs[0]] == per_org_mixed[orgs[0]], "the unchanged tenant must not move"
+    assert per_org_same[orgs[1]] != per_org_mixed[orgs[1]], "the changed tenant must"
+
+
+def test_the_feeder_falls_back_to_the_shared_refs():
+    """`refs_by_organisation` is an override, not a requirement: a deployment whose tenants share
+    a bundle passes one set and every tenant uses it."""
+    out = Path(tempfile.mkdtemp()) / "sync-users.csv"
+    a = dep.feeder_csv(tiny(), out, address_level_types=SHALLOW_TYPES)
+    b = dep.feeder_csv(tiny(), out, address_level_types=SHALLOW_TYPES, refs_by_organisation={})
+    c = dep.feeder_csv(tiny(), out, address_level_types=SHALLOW_TYPES,
+                       refs_by_organisation={999: (DEEP_TYPES, None)})
+    assert a == b == c, "an override for an organisation not in the deployment changes nothing"
+
+
 def test_the_feeder_carries_every_column_the_simulation_reads():
     """The columns are a contract with the simulation, and it drifted once already.
 

@@ -102,6 +102,10 @@ def main(argv: list[str]) -> int:
                     help="generate even though the bundle is not the one the recipe names")
     ap.add_argument("--no-hash", action="store_true",
                     help="skip content hashing in the manifest, for a quick throwaway build")
+    ap.add_argument("--feeder-only", action="store_true",
+                    help="write only sync-users.csv, for a dataset that is already loaded")
+    ap.add_argument("--supervisor-push-scale", type=float, default=1.0,
+                    help="pushScale for supervisors in the feeder (default 1.0)")
     args = ap.parse_args(argv)
 
     recipe = recipe_mod.Recipe.load(args.recipe)
@@ -170,6 +174,13 @@ def main(argv: list[str]) -> int:
                   f"{len(b.mappings):>3} mappings  orgs {orgs}  {path}")
     print()
 
+    # **--feeder-only still runs every check above.** The bundle has to be present and match the
+    # recipe, because the point of the feeder is that it names the users the load actually created
+    # -- and that guarantee comes from building it from the same inputs, not from skipping to it.
+    if args.feeder_only:
+        _write_feeder(deployment, refs, args)
+        return 0
+
     # One tenant at a time, because each has its own metadata ids.
     #
     # **The bases come from the whole deployment, not from each slice of it.** `plan_ids` hands
@@ -200,7 +211,35 @@ def main(argv: list[str]) -> int:
     print(f"\n  {total:,} rows written under {args.out}")
     print(f"  load each tenant's directory in turn, then run validate.py -- H5 is the gate, "
           f"not this script")
+    _write_feeder(deployment, refs, args)
     return 0
+
+
+def _write_feeder(deployment, refs, args) -> None:
+    """The simulation's user file, spanning every tenant.
+
+    **This was documented as happening and did not happen.** The README said generate.py writes
+    `sync-users.csv` via `feeder_csv`; nothing called it, and the file in the repository was a
+    ten-row hand-made one naming a single organisation while the cases need 500 to 1,692 users.
+    The function existed and was tested, so it read as wired up.
+
+    **Built from the same refs the dataset was**, which is the whole reason it belongs here rather
+    than in a script of its own: `build_tenant` derives the hierarchy from the target's address
+    level types, so a feeder built from anything else names users the server has never heard of,
+    in a file that is perfectly well-formed.
+    """
+    feeder = Path(args.out) / "sync-users.csv"
+    n = dep.feeder_csv(
+        deployment, feeder,
+        supervisor_push_scale=args.supervisor_push_scale,
+        refs_by_organisation={org: (r[3], r[4]) for org, r in refs.items()})
+    print(f"\n  {n:,} users written to {feeder}")
+    print(f"  copy it to src/gatling/resources/sync-users.csv to run against this dataset")
+    if args.supervisor_push_scale == 1.0:
+        print("  SUPERVISOR_PUSH_SCALE is 1.0, so every supervisor pushes as much as a field "
+              "worker.\n  The deployment says that is wrong in a known direction -- a supervisor "
+              "pulls a wide\n  catchment and creates almost nothing. Pass --supervisor-push-scale "
+              "if a better figure exists.")
 
 
 if __name__ == "__main__":

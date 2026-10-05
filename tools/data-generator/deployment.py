@@ -461,7 +461,7 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
 
 def feeder_csv(deployment: DeploymentSpec, path: str | Path, *,
                supervisor_push_scale: float = 1.0, address_level_types=None,
-               registration_type_ids=None) -> int:
+               registration_type_ids=None, refs_by_organisation=None) -> int:
     """The simulation's `sync-users.csv`, spanning every tenant (E4).
 
     **The columns are the simulation's contract, not this module's convenience.** It reads
@@ -482,6 +482,14 @@ def feeder_csv(deployment: DeploymentSpec, path: str | Path, *,
     just as fabricated while looking more authoritative. Callers should set it. The overstatement
     is about 11% of total write load in the mixed cases, where supervisors are 62 of 562 users,
     and **all** of it in case 3, which runs supervisors alone.
+
+    **`refs_by_organisation` maps organisation_id to that tenant's `(address_level_types,
+    registration_type_ids)`** and wins over the single-value arguments. It matters because the
+    usernames here have to be the ones already in the database: `build_tenant` derives the
+    hierarchy from the target's own address level types, `from_target_types` truncates it at the
+    deepest permitted registration type, and villages, catchments and therefore users all follow.
+    Build the feeder from different refs than the load used and the file is still well-formed --
+    every row just names a user the server has never heard of.
     """
     import csv
     bases = plan_ids(deployment)
@@ -492,8 +500,14 @@ def feeder_csv(deployment: DeploymentSpec, path: str | Path, *,
         w.writeheader()
         n = 0
         for spec in deployment.tenants:
-            build = build_tenant(spec, bases[spec.organisation_id], address_level_types,
-                                 registration_type_ids)
+            # Per-tenant refs win. Tenants on different bundles have different address level
+            # types, and `build_tenant` derives the hierarchy from them -- so a feeder built from
+            # one tenant's refs would name users that do not exist in the others. That is silent:
+            # the file is well-formed and every row 401s or syncs an empty catchment.
+            alts, reg = address_level_types, registration_type_ids
+            if refs_by_organisation and spec.organisation_id in refs_by_organisation:
+                alts, reg = refs_by_organisation[spec.organisation_id]
+            build = build_tenant(spec, bases[spec.organisation_id], alts, reg)
             for u in build.users:
                 w.writerow({"userName": u.username,
                             "lastModifiedDateTime": "1900-01-01T00:00:00.000Z",

@@ -400,6 +400,18 @@ one village's subjects rather than the deployment's 6.9 million rows.
 It also writes `load.sql`, a `manifest.txt` recording what was produced, and — via `feeder_csv` —
 one `sync-users.csv` spanning every tenant, which is what E4 needs.
 
+> **This was documented before it was true** (fixed 5 Oct 2026). Nothing called `feeder_csv`: the
+> function existed and was tested, so it read as wired up, and the `sync-users.csv` in the
+> repository was a ten-row hand-made file naming one organisation while the cases need 500 to
+> 1,692 users. It is written now, from the same refs the dataset is built from — `build_tenant`
+> derives the hierarchy from the target's address level types, so a feeder built from anything
+> else names users the server has never heard of, in a file that is perfectly well-formed.
+>
+> **`--feeder-only` writes it for a dataset that is already loaded**, skipping the rows but
+> running every check first. The bundle still has to be present and match the recipe, because the
+> guarantee that these are the users the load created comes from building them from the same
+> inputs — not from skipping to the cheap part.
+
 **Two ratios in it are weaker than they look.** `enrolment_rate` (0.22) and
 `program_encounter_share` (0.59) come from Q3's per-device medians — 100 enrolments to 464 subjects,
 89 program encounters to 62 encounters. Those are ratios of medians, not measurements of enrolment
