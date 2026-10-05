@@ -192,7 +192,9 @@ def test_each_row_is_found_by_the_uuid_it_inserts():
     guards = re.findall(r"select id into (\w+) from (\w+) where uuid = '([^']+)'", s)
     assert len(guards) >= 5
     for var, table, uuid in guards:
-        insert = re.search(rf"insert into {table} \(([^)]*)\) values \(([^)]*)\)", s)
+        # `re.S` and `\s*`: address_level's insert spans two lines, because its id comes from
+        # the sequence before the row exists and the column list no longer fits on one.
+        insert = re.search(rf"insert into {table} \(([^)]*)\)\s*values \(([^)]*)\)", s, re.S)
         assert insert, table
         assert f"'{uuid}'" in insert.group(2), f"{table} guards on {uuid} but inserts something else"
 
@@ -285,3 +287,31 @@ def test_an_existing_bootstrap_location_is_repointed():
     sql = "\n".join(bu.statements(3, "cohort@org3"))
     assert "update address_level set type_id = v_type_id" in sql
     assert "type_id is distinct from v_type_id" in sql
+
+
+def test_every_find_is_scoped_to_the_organisation():
+    """The uuids this file mints carry the organisation, so the uuid alone is unambiguous today.
+    The guarantee lives in the values rather than the query, and `address_level_type` is where it
+    would not hold: a bundle's uuids are reused in every organisation it is imported into, so the
+    bundle's Village exists once per tenant with a different id each time."""
+    sql = "\n".join(bu.statements(3, "cohort@org3"))
+    finds = [l.strip() for l in sql.splitlines() if l.strip().startswith("select id into")]
+    assert len(finds) >= 6, finds
+    for line in finds:
+        assert "organisation_id = 3" in line, line
+
+
+def test_a_root_location_is_inserted_with_its_lineage_already_right():
+    """**`address_level` carries a CHECK that a root's lineage equals its own id**, evaluated on
+    the insert. This wrote `lineage = '0'` and corrected it on the next statement, which a CHECK
+    never allows and PostgreSQL cannot defer -- so the whole transaction rolled back and nothing
+    was written. The id comes from the sequence first instead."""
+    sql = "\n".join(bu.statements(3, "cohort@org3"))
+    assert "nextval(pg_get_serial_sequence('address_level', 'id'))" in sql
+    insert = next(l for l in sql.splitlines() if "insert into address_level (" in l)
+    assert insert.index("id,") < insert.index("lineage"), "the id is written, not left to default"
+    values = sql[sql.index("insert into address_level ("):]
+    values = values[values.index("values ("):values.index(";")]
+    assert "v_loc_id::text" in values, "lineage must be the row's own id at insert time"
+    assert "'0'" not in values, "the placeholder lineage is what the CHECK rejected"
+    assert "parent_id" not in insert, "a root has no parent, which is the branch of the CHECK used"

@@ -97,8 +97,17 @@ def upsert(table: str, row: dict, var: str, uuid: str | None = None) -> list[str
     assert uuid == row["uuid"], f"{table}: guarded on {uuid!r} but inserting {row['uuid']!r}"
     cols = ", ".join(row)
     vals = ", ".join(quote(v) for v in row.values())
+    # **Scoped to the organisation as well as the uuid.** Every uuid this file mints carries the
+    # organisation already, so today the uuid alone is unambiguous -- but the guarantee lives in
+    # the values rather than in the query, and `address_level_type` is precisely where it would
+    # not hold: a bundle's uuids are reused in every organisation it is imported into, so the
+    # bundle's Village exists three times over with three different ids. Point this helper at a
+    # bundle uuid without the scope and it adopts whichever tenant's row came back first.
+    scope = ""
+    if "organisation_id" in row and not isinstance(row["organisation_id"], Raw):
+        scope = f" and organisation_id = {quote(row['organisation_id'])}"
     return [
-        f"    select id into {var} from {table} where uuid = {quote(uuid)};",
+        f"    select id into {var} from {table} where uuid = {quote(uuid)}{scope};",
         f"    if {var} is null then",
         f"      insert into {table} ({cols}) values ({vals}) returning id into {var};",
         f"    end if;",
@@ -232,15 +241,33 @@ def statements(organisation_id: int, username: str, audit_user_id: int = 1,
     # `address_level` has no `level` column -- that is on `address_level_type`, where it is
     # nullable. Here depth is carried by `lineage` and `type_id`, and the name column is `title`.
     #
-    # `lineage` is the row's own id for a root location, which is only known once the sequence has
-    # assigned it, so it is written in a second step rather than guessed.
-    out += upsert("address_level", {
-        "uuid": village.uuid, "title": village.title, "lineage": "0",
-        "type_id": Raw("v_type_id"), "organisation_id": org, "is_voided": False, "version": 0,
-        "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id, **cat._stamps(),
-    }, "v_loc_id")
-    out.append("    update address_level set lineage = v_loc_id::text "
-               "where id = v_loc_id and lineage <> v_loc_id::text;")
+    # **`lineage` has to be right in the INSERT itself**, so the id is taken from the sequence
+    # first rather than corrected afterwards.
+    #
+    # `address_level` carries a CHECK that a root row's lineage equals its own id:
+    #
+    #     (parent_id IS NULL AND lineage ~ (''||id)::lquery)
+    #
+    # This wrote `lineage = '0'` and fixed it on the next statement, which a CHECK never allows --
+    # it is evaluated on the insert, not at commit, and CHECK constraints cannot be DEFERRABLE in
+    # PostgreSQL. So the whole transaction rolled back and nothing was written. `nextval` on the
+    # column's own sequence gives the id before the row exists, which is one extra statement and
+    # no constraint to fight.
+    loc_row = {
+        "id": Raw("v_loc_id"), "uuid": village.uuid, "title": village.title,
+        "lineage": Raw("v_loc_id::text"), "type_id": Raw("v_type_id"), "organisation_id": org,
+        "is_voided": False, "version": 0, "created_by_id": audit_user_id,
+        "last_modified_by_id": audit_user_id, **cat._stamps(),
+    }
+    out += [
+        f"    select id into v_loc_id from address_level where uuid = {quote(village.uuid)}"
+        f" and organisation_id = {org};",
+        "    if v_loc_id is null then",
+        "      v_loc_id := nextval(pg_get_serial_sequence('address_level', 'id'));",
+        f"      insert into address_level ({', '.join(loc_row)})",
+        f"      values ({', '.join(quote(v) for v in loc_row.values())});",
+        "    end if;",
+    ]
     # **Re-point an existing bootstrap location at the permitted type.** The upsert above finds
     # it by uuid, so an organisation where the earlier version of this script already ran keeps
     # the invented type it was created with -- and keeps the syncDetails failure with it. Without
