@@ -184,6 +184,16 @@ tasks.register('archiveRun') {
             logger.lifecycle("archiveRun: WARNING - working tree is dirty, so this run cannot be "
                 + "reproduced from ${metadata.simulation.gitSha} alone")
         }
+        // **Fixing the false gitDirty removed the only signal this case had.** Before the archive
+        // case was handled, a run with no .git recorded gitSha=unknown *and* gitDirty=true, and the
+        // warning above is how the first run's missing provenance got noticed at all. With dirty
+        // correctly false, an unknown sha now passes in silence -- a run that cannot be traced to
+        // the code that produced it, and nothing says so. The sha needs its own check.
+        if (metadata.simulation.gitSha == 'unknown') {
+            logger.lifecycle("archiveRun: WARNING - no harness commit recorded, so this run cannot "
+                + "be traced to the code that produced it. On an injector the tarball carries no "
+                + ".git: pass -DSIMULATION_SHA=\$(cat .harness-sha)")
+        }
         def unrecorded = [
             'DATASET_ID'  : metadata.dataset,
             'SERVER_BUILD': metadata.target.serverBuild,
