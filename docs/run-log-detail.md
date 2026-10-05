@@ -1,6 +1,6 @@
 # Run log — detail
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-05 11:11 UTC.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-05 11:19 UTC.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script, as [`run-log.md`](run-log.md) is. That file is the index and carries the results table and any caveats; this one records what each run was configured with and what environment it met, which is what makes a number interpretable once the environment is gone.
 
@@ -27,6 +27,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T08-38-47Z-case1
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
+| sync duration | not archived — predates sync-durations.csv (5 Oct 2026) |
 | cache policy | warm-incidental-no-reset |
 | autovacuum | on |
 
@@ -53,6 +54,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-43-14Z-case1
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
+| sync duration | not archived — predates sync-durations.csv (5 Oct 2026) |
 | cache policy | warm-incidental-no-reset |
 | autovacuum | on |
 
@@ -79,6 +81,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-53-13Z-case1
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
+| sync duration | not archived — predates sync-durations.csv (5 Oct 2026) |
 | cache policy | warm-incidental-no-reset |
 | autovacuum | on |
 
@@ -105,6 +108,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-28-06Z-case1
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 11.8 / 11.8 / 12.4 (100 syncs) |
 | cache policy | warm-incidental-no-reset |
 | autovacuum | on |
 
@@ -131,6 +135,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-30-01Z-case1
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 10.8 / 10.8 / 11.2 (100 syncs) |
 | cache policy | warm-incidental-no-reset |
 | autovacuum | on |
 
@@ -157,5 +162,6 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-32-25Z-case1
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 10.4 / 10.5 / 10.7 (100 syncs) |
 | cache policy | warm-incidental-no-reset |
 | autovacuum | on |
