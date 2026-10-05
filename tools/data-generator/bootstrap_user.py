@@ -171,11 +171,63 @@ def statements(organisation_id: int, username: str, audit_user_id: int = 1,
         "  v_user_id int; v_user_group_id int;",
         "begin",
     ]
-    out += upsert("address_level_type", {
+    # **The type has to be one the organisation permits registration at.**
+    #
+    # This invented its own -- `bootstrap-type-3`, name "Village", nothing to do with the bundle's
+    # Village. Where an organisation sets `customRegistrationLocations`, that is the exact failure
+    # found on 30 Sep 2026: the rule names the bundle's Village uuid, the catchment resolves to a
+    # location of a type that is not on the list, and
+    # `getAddressLevelsForCatchmentAndMatchingAddressLevelTypeIds` returns empty. The server then
+    # drops every entity keyed by `subjectTypeUuid` -- Individual, ProgramEnrolment,
+    # ProgramEncounter, the subject approval statuses -- from `syncDetails`. `Encounter` is keyed
+    # on encounter type and never applies the filter, so the user still syncs *something* and the
+    # run looks fine.
+    #
+    # So resolve a permitted type first and only invent one where the organisation has no rule.
+    # Deepest permitted type, by level ascending: a village rather than a state, which is what a
+    # field worker's catchment looks like.
+    out += [
+        "    -- A type this organisation permits subject registration at, if it restricts them.",
+        "    select alt.id into v_type_id",
+        "      from organisation_config oc",
+        "      cross join lateral jsonb_array_elements(",
+        "             oc.settings::jsonb -> 'customRegistrationLocations') e",
+        "      cross join lateral jsonb_array_elements_text(e -> 'locationTypeUUIDs') u",
+        "      join address_level_type alt",
+        "        on alt.uuid = u and alt.organisation_id = oc.organisation_id",
+        "       and alt.is_voided = false",
+        f"     where oc.organisation_id = {org}",
+        "       and oc.settings::jsonb ? 'customRegistrationLocations'",
+        "       and jsonb_typeof(oc.settings::jsonb -> 'customRegistrationLocations') = 'array'",
+        "     order by alt.level",
+        "     limit 1;",
+        "",
+        "    if v_type_id is null then",
+        "      -- No permitted type resolved. If the organisation has a rule at all, inventing a",
+        "      -- type here would hand back a user whose Individual never syncs, which is worse",
+        "      -- than no user: the run completes and the result is wrong rather than absent.",
+        "      if exists (select 1 from organisation_config oc",
+        f"                  where oc.organisation_id = {org}",
+        "                    and oc.settings::jsonb ? 'customRegistrationLocations'",
+        "                    and jsonb_typeof(",
+        "                          oc.settings::jsonb -> 'customRegistrationLocations') = 'array'",
+        "                    and jsonb_array_length(",
+        "                          oc.settings::jsonb -> 'customRegistrationLocations') > 0) then",
+        f"        raise exception 'organisation {org} restricts registration to location types "
+        "that do not resolve to any address_level_type it owns. A bootstrap user built on an "
+        "invented type would be dropped from syncDetails for every subject-typed entity. Fix the "
+        "rule or the types before bootstrapping.';",
+        "      end if;",
+        "    end if;",
+        "",
+        "    if v_type_id is null then",
+    ]
+    out += ["  " + line for line in upsert("address_level_type", {
         "uuid": village.uuid.replace("location", "type"), "name": "Village", "level": 1.0,
         "organisation_id": org, "is_voided": False, "version": 0,
         "created_by_id": audit_user_id, "last_modified_by_id": audit_user_id, **cat._stamps(),
-    }, "v_type_id")
+    }, "v_type_id")]
+    out += ["    end if;"]
 
     # `address_level` has no `level` column -- that is on `address_level_type`, where it is
     # nullable. Here depth is carried by `lineage` and `type_id`, and the name column is `title`.
@@ -189,6 +241,13 @@ def statements(organisation_id: int, username: str, audit_user_id: int = 1,
     }, "v_loc_id")
     out.append("    update address_level set lineage = v_loc_id::text "
                "where id = v_loc_id and lineage <> v_loc_id::text;")
+    # **Re-point an existing bootstrap location at the permitted type.** The upsert above finds
+    # it by uuid, so an organisation where the earlier version of this script already ran keeps
+    # the invented type it was created with -- and keeps the syncDetails failure with it. Without
+    # this the fix would only reach organisations nobody had bootstrapped yet, which are the ones
+    # that did not have the problem.
+    out.append("    update address_level set type_id = v_type_id "
+               "where id = v_loc_id and type_id is distinct from v_type_id;")
 
     for row in cat.catchment_rows([catchment], audit_user_id):
         out += upsert("catchment", without_id(row), "v_catchment_id")

@@ -250,3 +250,38 @@ def test_bootstrap_users_survive_a_teardown():
     sql = "\n".join(bu.statements(3, "cohort@org3", count=3))
     for uuid in re.findall(r"'(bootstrap-user-3-[^']+)'", sql):
         assert not uuid.startswith("user-3-"), uuid
+
+
+def test_the_registration_type_is_resolved_before_one_is_invented():
+    """**The 30 Sep failure, in the one tool that could reintroduce it.**
+
+    This invented an `address_level_type` of its own. Where an organisation sets
+    `customRegistrationLocations` -- org 3 names the bundle's Village uuid -- a catchment on an
+    invented type is not on the permitted list, so
+    `getAddressLevelsForCatchmentAndMatchingAddressLevelTypeIds` returns empty and the server
+    drops every entity keyed by `subjectTypeUuid` from syncDetails. `Encounter` is keyed on
+    encounter type and survives, so the user still syncs something and the run looks ordinary.
+    """
+    sql = "\n".join(bu.statements(3, "cohort@org3", count=2))
+    lookup = sql.index("customRegistrationLocations")
+    invent = sql.index("insert into address_level_type")
+    assert lookup < invent, "a permitted type must be resolved before one is invented"
+    assert "order by alt.level" in sql, "deepest permitted type: a village, not a state"
+
+
+def test_it_refuses_rather_than_inventing_a_type_under_a_registration_rule():
+    """Inventing one would hand back a user whose Individual never syncs -- worse than no user,
+    because the run completes and the result is wrong rather than absent."""
+    sql = "\n".join(bu.statements(3, "cohort@org3"))
+    assert "raise exception" in sql
+    guard = sql.index("jsonb_array_length")
+    assert guard < sql.index("insert into address_level_type")
+
+
+def test_an_existing_bootstrap_location_is_repointed():
+    """The location upsert finds it by uuid, so an organisation bootstrapped by the earlier
+    version keeps the invented type and the failure with it. Without this the fix reaches only
+    the organisations that never had the problem."""
+    sql = "\n".join(bu.statements(3, "cohort@org3"))
+    assert "update address_level set type_id = v_type_id" in sql
+    assert "type_id is distinct from v_type_id" in sql
