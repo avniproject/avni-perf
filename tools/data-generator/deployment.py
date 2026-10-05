@@ -459,6 +459,14 @@ def write_dataset(deployment: DeploymentSpec, bundle: Bundle | dict[int, Bundle]
     return counts
 
 
+# The simulation's contract, in one place because two writers emit it: this module for a generated
+# deployment and `bootstrap_user.py` for a cohort with no dataset behind it. It drifted once when
+# only one of them knew the list -- `pushScale` was missing and its absence is silent, since a null
+# column reads as 1.0.
+FEEDER_FIELDS = ["userName", "lastModifiedDateTime", "password|token", "pushScale",
+                 "deviceId", "role", "organisationUUID"]
+
+
 def feeder_csv(deployment: DeploymentSpec, path: str | Path, *,
                supervisor_push_scale: float = 1.0, address_level_types=None,
                registration_type_ids=None, refs_by_organisation=None) -> int:
@@ -495,8 +503,7 @@ def feeder_csv(deployment: DeploymentSpec, path: str | Path, *,
     bases = plan_ids(deployment)
     path = Path(path)
     with path.open("w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=["userName", "lastModifiedDateTime", "password|token",
-                                           "pushScale", "deviceId", "role", "organisationUUID"])
+        w = csv.DictWriter(fh, fieldnames=FEEDER_FIELDS)
         w.writeheader()
         n = 0
         for spec in deployment.tenants:

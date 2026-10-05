@@ -350,3 +350,43 @@ def test_membership_is_keyed_on_the_username_not_an_index():
     ua = set(re.findall(r"'(usergroup-3-[^']+@org3)'", a))
     ub = set(re.findall(r"'(usergroup-3-[^']+@org3)'", b))
     assert ua and ub and not (ua & ub), f"cohorts must not share membership uuids: {ua & ub}"
+
+
+def test_the_feeder_names_exactly_the_users_the_sql_creates():
+    """**The durable version of a check I did once by hand.** A feeder naming a user the database
+    does not have is not an error the simulation can see: it reads the row, authenticates as
+    nobody, and the run reports whatever the server says to an unknown user. Both come from
+    `cohort_usernames` now, and this is what holds them together."""
+    import csv
+    import tempfile
+    out = Path(tempfile.mkdtemp()) / "cohort.csv"
+    n = bu.write_feeder(3, "cohort@org3", 7, str(out))
+    assert n == 7
+    sql = "\n".join(bu.statements(3, "cohort@org3", count=7))
+    feeder = list(csv.DictReader(out.open()))
+    assert {r["userName"] for r in feeder} == set(re.findall(r"'(cohort\d+@org3)'", sql))
+
+
+def test_the_cohort_feeder_carries_the_shared_column_contract():
+    """One definition of the columns, because two writers emit them -- deployment.feeder_csv for a
+    generated deployment and this for a cohort with no dataset. It drifted once when only one knew
+    the list, and `pushScale`'s absence is silent: a null column reads as 1.0."""
+    import csv
+    import tempfile
+    import deployment as dep
+    out = Path(tempfile.mkdtemp()) / "cohort.csv"
+    bu.write_feeder(3, "cohort@org3", 2, str(out))
+    assert list(csv.DictReader(out.open()).fieldnames) == dep.FEEDER_FIELDS
+
+
+def test_the_cohort_feeder_carries_no_credential_and_one_device_each():
+    """These files are committed. And a device id shared between users would make two devices look
+    like one to the server, which is the thing deviceId exists to distinguish."""
+    import csv
+    import tempfile
+    out = Path(tempfile.mkdtemp()) / "cohort.csv"
+    bu.write_feeder(3, "cohort@org3", 9, str(out))
+    rows = list(csv.DictReader(out.open()))
+    assert not any(r["password|token"] for r in rows)
+    assert len({r["deviceId"] for r in rows}) == 9
+    assert {r["organisationUUID"] for r in rows} == {"org-3"}

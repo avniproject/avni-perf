@@ -340,9 +340,45 @@ def main() -> int:
                     help="an existing user id for created_by/last_modified_by; usually the admin")
     ap.add_argument("--count", type=int, default=1,
                     help="how many users; the index goes before the @ (default 1)")
+    ap.add_argument("--feeder", default=None,
+                    help="also write the simulation's user file for this cohort")
     a = ap.parse_args()
     print("\n".join(statements(a.organisation, a.username, a.audit_user, a.count)))
+    if a.feeder:
+        n = write_feeder(a.organisation, a.username, a.count, a.feeder)
+        print(f"\n-- {n} users also written to {a.feeder}", file=sys.stderr)
     return 0
+
+
+def write_feeder(organisation_id: int, username: str, count: int, path: str) -> int:
+    """The feeder for this cohort, from the same usernames the SQL creates.
+
+    **Written here because it has to agree with the SQL, exactly.** The first version of this
+    cohort had a hand-rolled CSV checked against the SQL once, by comparing the two name sets --
+    which is a check that holds until the next time either changes. A feeder naming a user the
+    database does not have is not an error the simulation can see: it reads the row, authenticates
+    as nobody, and the run reports whatever the server says to an unknown user.
+    """
+    import csv
+    import deployment as dep
+
+    users = cohort_usernames(username, count)
+    with open(path, "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=dep.FEEDER_FIELDS)
+        w.writeheader()
+        for u in users:
+            w.writerow({
+                "userName": u,
+                "lastModifiedDateTime": "1900-01-01T00:00:00.000Z",
+                "password|token": "",
+                "pushScale": 1.0,
+                # The same device id the UserSpec carries in `statements`, so a run and the rows
+                # it ran against describe one device each rather than two.
+                "deviceId": f"bootstrap-device-{organisation_id}-{u}",
+                "role": cat.FIELD_WORKER,
+                "organisationUUID": f"org-{organisation_id}",
+            })
+    return len(users)
 
 
 if __name__ == "__main__":
