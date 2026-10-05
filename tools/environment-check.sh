@@ -204,8 +204,32 @@ if body is not None:
     if missing:
         # Not necessarily a defect: an entity with no rows is filtered out of the response, so on
         # an empty organisation most of the table is legitimately absent.
-        note = ("— expected while the organisation has no data; it means something only after a "
-                "dataset is loaded" if not (gated & served) else "")
+        # **`gated & served` was the wrong discriminator and withheld the note exactly where it
+        # was needed.** `Encounter` is keyed on encounter type rather than on `subjectTypeUuid`, so
+        # it never applies the registration-location filter and is served by an organisation
+        # holding no rows at all. That made `gated & served` non-empty for an empty organisation,
+        # the explanation was suppressed, and a bare "47 absent" read as a broken scope -- a
+        # config-only organisation in exactly the state case 1 wants, diagnosed on 5 Oct 2026 as a
+        # regression of the 30 Sep scope bug.
+        # `not (scoped & served)`, not `scoped - served`: the note is about an *ambiguous*
+        # response, and one scoped entity being served resolves the ambiguity on its own -- the
+        # intersection cannot be empty if Individual came back. The first version of this fired on
+        # a populated organisation too, where it reads as a warning about a scope that is visibly
+        # fine.
+        scoped = {"Individual", "ProgramEnrolment", "ProgramEncounter"}
+        if not (scoped & served) and "Encounter" in served:
+            note = ("— Individual, ProgramEnrolment and ProgramEncounter are keyed by "
+                    "subjectTypeUuid and are dropped both when the catchment's scope intersection "
+                    "is empty and when the organisation simply holds no subjects. Encounter is "
+                    "keyed on encounter type, never applies that filter, and is served either "
+                    "way, so its presence does not tell the two apart. Load one subject at a "
+                    "permitted address level and re-check: if Individual appears, the scope was "
+                    "always fine and the organisation was empty")
+        elif not (gated & served):
+            note = ("— expected while the organisation has no data; it means something only "
+                    "after a dataset is loaded")
+        else:
+            note = ""
         print(f"  {YELLOW}WARN{OFF}  {'entity coverage':<34} {len(served)} served, {len(missing)} "
               f"the simulation pulls are absent {note}")
         warned = True
