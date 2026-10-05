@@ -63,6 +63,10 @@ for r in $RUNS; do
   # than the megabyte is worth.
   aws s3 cp --only-show-errors "s3://$BUCKET/$PREFIX/$r/run-metadata.json" "$WORK/$r/" 2>/dev/null || true
   aws s3 cp --only-show-errors "s3://$BUCKET/$PREFIX/$r/gradle.log"        "$WORK/$r/" 2>/dev/null || true
+  # Additive corrections. A completed run's own run-metadata.json is never
+  # rewritten -- editing it to say something it did not say would falsify the
+  # record -- so a field found to be wrong afterwards is corrected alongside it.
+  aws s3 cp --only-show-errors "s3://$BUCKET/$PREFIX/$r/provenance-correction.json" "$WORK/$r/" 2>/dev/null || true
 done
 
 RUNS="$RUNS" WORK="$WORK" BUCKET="$BUCKET" PREFIX="$PREFIX" OUT="$OUT" python3 - <<'PY'
@@ -117,6 +121,7 @@ rows, details, problems = [], [], []
 for r in runs:
     meta  = jload(work/r/'run-metadata.json')
     stats = gatling_stats(work/r/'gradle.log')
+    corr  = jload(work/r/'provenance-correction.json')
     link  = f"s3://{bucket}/{prefix}/{r}/"
 
     # The run id is this repo's own construction: <utc>-<label>-<sha7>. It is
@@ -129,9 +134,16 @@ for r in runs:
     if not meta:   problems.append((r, "no run-metadata.json — the run died before archiveRun, or the upload was incomplete"))
     if not stats:  problems.append((r, "no Global Information block in gradle.log — the simulation did not reach its summary"))
     if meta and at(meta, 'simulation.gitSha', 'unknown') == 'unknown':
-        problems.append((r, f"harness commit recorded as `unknown` (the run id says `{sha7}`) — "
-                            "the tarball delivery strips .git, so `git rev-parse` inside the "
-                            "harness finds nothing and also reports the tree as dirty"))
+        if corr:
+            fixed = (corr.get('actual') or {}).get('simulation.gitSha', '?')
+            problems.append((r, f"harness commit was recorded as `unknown`; **corrected to "
+                                f"`{fixed[:7]}`** by `provenance-correction.json` in the same "
+                                f"prefix. The run's own metadata is left as written — see that "
+                                f"file for the basis and the cause"))
+        else:
+            problems.append((r, f"harness commit recorded as `unknown` (the run id says `{sha7}`) — "
+                                "the tarball delivery strips .git, so `git rev-parse` inside the "
+                                "harness finds nothing and also reports the tree as dirty"))
 
     rows.append(dict(
         run=r, date=date, label=label,
@@ -144,7 +156,7 @@ for r in runs:
         rps=stats.get('rps','—'),
         link=link,
     ))
-    details.append((r, link, meta, stats, sha7))
+    details.append((r, link, meta, stats, sha7, corr))
 
 now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
 L = []
@@ -176,7 +188,7 @@ if problems:
     L.append("")
 
 L.append("## Detail\n")
-for r, link, meta, stats, sha7 in details:
+for r, link, meta, stats, sha7, corr in details:
     L.append(f"### `{r}`\n")
     L.append(f"Artefacts: `{link}`\n")
     L.append("| | |")
@@ -190,9 +202,19 @@ for r, link, meta, stats, sha7 in details:
         L.append(f"| mean ms | {stats.get('mean_ms','—')} |")
         L.append(f"| mean throughput rps | {stats.get('rps','—')} |")
     if meta:
-        L.append(f"| harness commit | {at(meta,'simulation.gitSha','—')} "
-                 f"(run id says `{sha7}`) |")
-        L.append(f"| tree dirty | {at(meta,'simulation.gitDirty','—')} |")
+        cs = (corr.get('actual') or {}).get('simulation.gitSha') if corr else None
+        cd = (corr.get('actual') or {}).get('simulation.gitDirty') if corr else None
+        if cs:
+            L.append(f"| harness commit | `{cs}` — **corrected**, the run recorded "
+                     f"`{at(meta,'simulation.gitSha','—')}` |")
+        else:
+            L.append(f"| harness commit | {at(meta,'simulation.gitSha','—')} "
+                     f"(run id says `{sha7}`) |")
+        if cd is not None:
+            L.append(f"| tree dirty | {cd} — **corrected**, the run recorded "
+                     f"`{at(meta,'simulation.gitDirty','—')}` |")
+        else:
+            L.append(f"| tree dirty | {at(meta,'simulation.gitDirty','—')} |")
         L.append(f"| target | {at(meta,'target.baseUrl','—')} |")
         L.append(f"| server build | {at(meta,'target.serverBuild','—')} |")
         L.append(f"| dataset | {at(meta,'dataset','—')} |")

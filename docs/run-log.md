@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-05 08:58 UTC.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-05 09:07 UTC.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -14,7 +14,7 @@ Artefacts are **not** copied into the repo. Each run directory holds Gatling's `
 
 Listed rather than left blank, because a blank column reads as a measurement and not as a missing one:
 
-- `2026-10-05T08-38-47Z-case1-f76d110` — harness commit recorded as `unknown` (the run id says `f76d110`) — the tarball delivery strips .git, so `git rev-parse` inside the harness finds nothing and also reports the tree as dirty
+- `2026-10-05T08-38-47Z-case1-f76d110` — harness commit was recorded as `unknown`; **corrected to `f76d110`** by `provenance-correction.json` in the same prefix. The run's own metadata is left as written — see that file for the basis and the cause
 
 ## Detail
 
@@ -29,8 +29,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T08-38-47Z-case1
 | response time p50 / p95 / p99 / max ms | 19 / 202 / 297 / 716 |
 | mean ms | 45 |
 | mean throughput rps | 4.77 |
-| harness commit | unknown (run id says `f76d110`) |
-| tree dirty | True |
+| harness commit | `f76d1103e56c8da0078b4d3aa2097a00acaf8c14` — **corrected**, the run recorded `unknown` |
+| tree dirty | False — **corrected**, the run recorded `True` |
 | target | https://loadtest.avniproject.org |
 | server build | 17.3.0-SNAPSHOT |
 | dataset | tanuh-small-v2 |
