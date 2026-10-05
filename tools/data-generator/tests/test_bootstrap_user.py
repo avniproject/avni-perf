@@ -312,6 +312,8 @@ def test_a_root_location_is_inserted_with_its_lineage_already_right():
     assert insert.index("id,") < insert.index("lineage"), "the id is written, not left to default"
     values = sql[sql.index("insert into address_level ("):]
     values = values[values.index("values ("):values.index(";")]
-    assert "v_loc_id::text" in values, "lineage must be the row's own id at insert time"
+    assert "v_loc_id::text::ltree" in values, (
+        "lineage must be the row's own id at insert time, cast to ltree -- the column is ltree "
+        "and PostgreSQL has no implicit or assignment cast from text")
     assert "'0'" not in values, "the placeholder lineage is what the CHECK rejected"
     assert "parent_id" not in insert, "a root has no parent, which is the branch of the CHECK used"

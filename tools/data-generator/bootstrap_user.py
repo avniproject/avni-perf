@@ -253,9 +253,17 @@ def statements(organisation_id: int, username: str, audit_user_id: int = 1,
     # PostgreSQL. So the whole transaction rolled back and nothing was written. `nextval` on the
     # column's own sequence gives the id before the row exists, which is one extra statement and
     # no constraint to fight.
+    #
+    # The second rollback was the cast: `lineage` is `ltree`, and there is no implicit or
+    # assignment cast from text, so `v_loc_id::text` is rejected and it needs `::text::ltree`.
+    # Both failures were in the same INSERT, and the first hid the second.
     loc_row = {
         "id": Raw("v_loc_id"), "uuid": village.uuid, "title": village.title,
-        "lineage": Raw("v_loc_id::text"), "type_id": Raw("v_type_id"), "organisation_id": org,
+        # `::text::ltree`, not `::text`. The column is `ltree` -- which the CHECK gives away, since
+        # `nlevel()` and `subltree()` only take one -- and PostgreSQL has no implicit or assignment
+        # cast from text to it, so an int cast to text is rejected on the way in.
+        "lineage": Raw("v_loc_id::text::ltree"), "type_id": Raw("v_type_id"),
+        "organisation_id": org,
         "is_voided": False, "version": 0, "created_by_id": audit_user_id,
         "last_modified_by_id": audit_user_id, **cat._stamps(),
     }
