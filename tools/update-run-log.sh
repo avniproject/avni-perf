@@ -67,6 +67,10 @@ for r in $RUNS; do
   # rewritten -- editing it to say something it did not say would falsify the
   # record -- so a field found to be wrong afterwards is corrected alongside it.
   aws s3 cp --only-show-errors "s3://$BUCKET/$PREFIX/$r/provenance-correction.json" "$WORK/$r/" 2>/dev/null || true
+  # One row per completed sync, archived from runs after 5 Oct 2026. It is what makes
+  # device concurrency and the per-sync spread measured rather than derived; absent
+  # for earlier runs, and the columns read as absent rather than being invented.
+  aws s3 cp --only-show-errors "s3://$BUCKET/$PREFIX/$r/sync-durations.csv" "$WORK/$r/" 2>/dev/null || true
 done
 
 RUNS="$RUNS" WORK="$WORK" BUCKET="$BUCKET" PREFIX="$PREFIX" OUT="$OUT" python3 - <<'PY'
@@ -79,6 +83,35 @@ bucket, prefix, out = os.environ['BUCKET'], os.environ['PREFIX'], os.environ['OU
 def jload(p):
     try: return json.loads(p.read_text())
     except Exception: return None
+
+def sync_durations(path):
+    """Mean and p95 of a run's per-sync durations, in seconds, from sync-durations.csv.
+
+    Returns None where the file is absent -- every run before 5 Oct 2026 -- so the caller can
+    print nothing rather than a figure derived from an aggregate. The spread matters as much as
+    the mean here: a cohort's question is what the device that arrived mid-herd experienced, and
+    that is invisible in a per-request percentile.
+    """
+    try:
+        lines = path.read_text().splitlines()
+    except OSError:
+        return None
+    ms = []
+    for line in lines[1:]:
+        c = line.split(',')
+        if len(c) < 6:
+            continue
+        try:
+            ms.append(int(c[2]))
+        except ValueError:
+            continue
+    if not ms:
+        return None
+    ms.sort()
+    return dict(n=len(ms), mean=sum(ms) / len(ms) / 1000.0,
+                p50=ms[len(ms) // 2] / 1000.0,
+                p95=ms[min(int(len(ms) * 0.95), len(ms) - 1)] / 1000.0)
+
 
 def at(d, path, default=None):
     """Exact dotted path. Verified against a real run-metadata.json rather than
@@ -181,12 +214,14 @@ for r in runs:
     # against a population of 100, because once arrival x service exceeds the
     # cohort the cohort is the limit and the formula does not know that.
     #
-    # `sync-durations.csv` is archived from runs after 5 Oct 2026, so where it is
-    # present the device figure is measured rather than derived: the mean sync
-    # duration times the arrival rate, capped by the cohort. Runs before that have
-    # no such file and the column reads as absent, which is the honest answer --
-    # the three case 1 runs keep their derived figures in findings-case1.md, where
-    # the derivation is shown.
+    # `sync-durations.csv` is archived from runs after 5 Oct 2026. Where it is present
+    # the device figure is measured rather than derived -- the mean sync duration
+    # times the arrival rate, capped by the cohort -- and where it is not, the column
+    # reads as absent, which is the honest answer. The three case 1 runs that predate
+    # it keep their derived figures in findings-case1.md, where the derivation is
+    # shown and reconciled against the request depth.
+    #
+    # This paragraph described behaviour that did not exist for one commit. It does now.
     #
     # Two decimal-free digits would print run 1 as `0`, which reads as a missing
     # value rather than an idle server, so this keeps one decimal below 10.
@@ -196,8 +231,17 @@ for r in runs:
     except (KeyError, TypeError, ValueError):
         inflight = '—'
 
+    # The arrival window in seconds, whichever unit the run recorded it in.
+    secs = bs if bs is not None else (bm * 60 if bm is not None else None)
+    syncs = sync_durations(work / r / 'sync-durations.csv')
+    if syncs and secs and users_n:
+        devices = min(users_n / secs * syncs['mean'], users_n)
+        indevices = f"~{devices:.1f}" if devices < 10 else f"~{devices:.0f}"
+    else:
+        indevices = '—'
+
     rows.append(dict(
-        run=r, date=date, label=label,
+        run=r, date=date, label=label, indevices=indevices, syncs=syncs,
         profile=at(meta,'settings.injection.profile','—'),
         users=at(meta,'settings.injection.userCount','—'),
         mode=at(meta,'settings.sync.syncMode','—'),
@@ -238,15 +282,21 @@ L.append("Artefacts are **not** copied into the repo. Each run directory holds G
          "been destroyed.\n")
 L.append("Findings drawn from these runs are written up separately, by hand, in "
          "`findings-case1.md` and its siblings — this file is the index, not the analysis.\n")
-L.append("| run | date | scenario | profile | users | arrival window | ~requests in flight | requests | failed | p95 ms | rps |")
-L.append("|---|---|---|---|---|---|---|---|---|---|---|")
+# Two concurrency columns because they answer different questions. Requests in flight is the
+# server's queue depth, exact from `rps x mean`, and it is what p95 responds to. Devices in flight
+# is the scenario's narrative -- how much of the cohort is mid-sync -- and needs the archived
+# per-sync durations, so it is blank for runs before 5 Oct 2026 rather than guessed at.
+L.append("| run | date | scenario | profile | users | arrival window | ~requests in flight "
+         "| ~devices in flight | requests | failed | p95 ms | rps |")
+L.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
 for x in rows:
     # The run id links to its detail section rather than to S3: the bucket is where the
     # artefacts are, and the detail file is where a reader can actually look something up.
     # The S3 prefix is one line down in that section.
     L.append(f"| [`{x['run']}`]({DETAIL_NAME}#{anchor(x['run'])}) | {x['date']} | {x['label']} | "
              f"{x['profile']} | {x['users']} | {x['window']} | {x['inflight']} | "
-             f"{x['requests']} | {x['failed_pct']}% | {x['p95']} | {x['rps']} |")
+             f"{x['indevices']} | {x['requests']} | {x['failed_pct']}% | {x['p95']} | "
+             f"{x['rps']} |")
 L.append("")
 # **The detail is a separate file, because the index has to stay readable.** One run contributes
 # a dozen rows of settings and environment, so at thirty runs this file would be four hundred
@@ -323,6 +373,14 @@ for r, link, meta, stats, sha7, corr in details:
                  f"{at(meta,'entityTable.total','—')} ({at(meta,'entityTable.source','—')}) |")
         D.append(f"| push / co-tenants | {at(meta,'settings.push.enabled','—')} / "
                  f"{at(meta,'settings.coTenants.enabled','—')} |")
+        syncs = next((x['syncs'] for x in rows if x['run'] == r), None)
+        if syncs:
+            # **Per *sync*, not per request.** Every percentile above is a request; a cohort's
+            # question is what a device experienced, and the two diverge once requests queue.
+            D.append(f"| sync duration p50 / mean / p95 s | {syncs['p50']:.1f} / "
+                     f"{syncs['mean']:.1f} / {syncs['p95']:.1f} ({syncs['n']} syncs) |")
+        else:
+            D.append("| sync duration | not archived — predates sync-durations.csv (5 Oct 2026) |")
         D.append(f"| cache policy | {at(meta,'environment.cachePolicy','—')} |")
         D.append(f"| autovacuum | {at(meta,'environment.autovacuum','—')} |")
     D.append("")
