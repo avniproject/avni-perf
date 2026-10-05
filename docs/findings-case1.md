@@ -181,8 +181,20 @@ for a 90-second run** — below that, the injector's own timings are the only ho
 **The database was not working hard.** RDS CPU peaked at 36%. `pg_stat_statements` was reset
 immediately before the run, and every statement came back between 0.03 ms and 1.3 ms mean. Total
 database execution time was roughly 41 seconds against 4,300 × 1,254 ms ≈ **5,392 seconds** of
-cumulative client wait — under 1%. There is no slow query to find here; at this dataset size the
-database has headroom.
+cumulative client wait — under 1%. There is no slow query to find here.
+
+**And the database was not small.** Verified against the live instance after the runs: **1,002,900
+individuals and 3,610,652 encounters**, plus 66 indexes across the four big tables — the same count
+prod carries, up from 39 before the 5 Oct parity work. Most of that volume belongs to orgs 10 and
+11 (`states-day-180`, state-1 and state-2), not to the org 3 cohort being synced, but index depth,
+table size and the buffer cache are shared regardless. So "the database has headroom" is a
+stronger claim than it first reads: 36% CPU with zero read IOPS was achieved *at* that size, not
+at a toy one. `program_enrolment` and `program_encounter` are empty database-wide, which is why the
+program entities pull nothing.
+
+`max_connections` is **829** and `pending_restart` is false on every parameter, so the 100 that
+`DatabaseConnections` pegged at during the cold runs was the application pool with 729 connections
+of headroom unused — the pool, not the server, is the limit worth tuning.
 
 **The injector was idle**: load average 0.35 across 4 CPUs on an `m6g.xlarge`. Worth stating
 because a saturated injector produces the same curve as a saturated server, and the two are only
@@ -206,9 +218,11 @@ the things that stop being trivial, and this is the largest one in the trace by 
   config and metadata sync path. A field worker's sync pulls subjects too. 75 of 79 entities were
   pulled; the subject-keyed ones were empty.
 * **No push.** `PUSH` disabled, so this is read-path only.
-* **No co-tenant load.** `enable_etl = false`, and the ETL host, export/import jobs and webapp are
-  absent (#112 F5.4, deferred). They share the instance, the pool and the IOPS budget in
-  production, so **every number here is optimistic by an unmeasured margin**.
+* **No co-tenant load — but co-tenant _data_ is present.** `enable_etl = false`, and the ETL host,
+  export/import jobs and webapp are absent (#112 F5.4, deferred). They share the instance, the pool
+  and the IOPS budget in production, so **every number here is optimistic by an unmeasured margin**.
+  The *data* of other organisations is there, though — see the million individuals above — so what
+  is missing is contention for CPU, connections and IOPS, not a realistically sized table.
 * **Cache state was incidental**, not warm-from-reload: the environment had been restarted and
   then variously queried. Recorded as `warm-incidental-no-reset` on each run — accurately for the
   six morning runs and the two warm re-runs, wrongly for the two cold ones, where the label is
