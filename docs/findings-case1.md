@@ -186,8 +186,10 @@ cumulative client wait — under 1%. There is no slow query to find here.
 **And the database was not small.** Verified against the live instance after the runs: **1,002,900
 individuals and 3,610,652 encounters**, plus 66 indexes across the four big tables — the same count
 prod carries, up from 39 before the 5 Oct parity work. Most of that volume belongs to orgs 10 and
-11 (`states-day-180`, state-1 and state-2), not to the org 3 cohort being synced, but index depth,
-table size and the buffer cache are shared regardless. So "the database has headroom" is a
+11 (`states-day-180`, state-1 and state-2) rather than to the org 3 cohort being synced — though
+the per-organisation split has not actually been measured, only inferred from the relative size of
+the datasets loaded. Index depth, table size and the buffer cache are shared regardless, so
+"the database has headroom" is a
 stronger claim than it first reads: 36% CPU with zero read IOPS was achieved *at* that size, not
 at a toy one. `program_enrolment` and `program_encounter` are empty database-wide, which is why the
 program entities pull nothing.
@@ -248,13 +250,17 @@ reproduces to 4.7% and p95 to 23%, on an idle single-tenant environment with not
 p95 at the knee is a steep function of queue depth, so quote it as "roughly 2-3 s at a 60 s
 window", not as a four-digit figure. The 15 s window, further onto the plateau, reproduced to 0.4%.
 
-**One thing here is still unverified.** The context files archived with each run —
-`parity-report.md`, `pg_settings.csv`, `stats.json` — are staged by hand into
-`/opt/avni-perf/context` and copied verbatim, so they are byte-identical across all ten runs
-because they were staged once, not because the live database was re-checked. The parameter *group*
-was confirmed from the AWS API; whether the two `static` parameters are actually in effect, and
-whether the 38 parity indexes still exist, needs a query nobody has run since. Staged context
-records what was staged — worth a refresh step before the next campaign.
+**The archived context was checked against the live database, and it holds.** `stats.json` matches
+to the row — 1,002,900 individuals and 3,610,652 encounters, both program tables empty.
+`parity-report.md` is borne out by the 66-index count. `pg_settings.csv` agrees with `pg_settings`,
+and every parameter reports `pending_restart = false`, with `max_connections` at 829.
+
+That is a confirmation after the fact rather than a property of the method, and the distinction
+still matters: the context directory is staged by hand, so all ten runs carried byte-identical
+files because they were staged once, not because anything re-checked them. They happened to be
+right. `tools/verify-live-env.sql` is the deliberate version of this check — static parameters
+actually in effect, and row counts broken out by organisation, which `stats.json` cannot give
+because it counts database-wide.
 
 ## What to do next
 
