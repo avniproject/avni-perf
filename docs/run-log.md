@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-05 12:06 UTC.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-05 13:31 UTC.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -28,3 +28,7 @@ Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md)
 Listed rather than left blank, because a blank column reads as a measurement and not as a missing one:
 
 - `2026-10-05T08-38-47Z-case1-f76d110` — harness commit was recorded as `unknown`; **corrected to `f76d110`** by `provenance-correction.json` in the same prefix. The run's own metadata is left as written — see that file for the basis and the cause
+- `2026-10-05T11-37-03Z-case1-burst60-d9eac3e` — **failed 0.21% of requests against its own `MAX_FAILED_PERCENT` gate of 0.05%** — Gatling asserted and failed at the time. Read its throughput and latency as a run that broke, not as a point on a curve
+- `2026-10-05T11-37-03Z-case1-burst60-d9eac3e` — only **91 of 100 devices completed a sync** — the per-sync figures describe the ones that finished, and the request count is short of a full cohort by the rest
+- `2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e` — recorded no `AUTOVACUUM` — so it cannot be compared with a run that differs in it
+- `2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e` — recorded no `AUTOVACUUM` — so it cannot be compared with a run that differs in it
