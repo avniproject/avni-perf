@@ -317,3 +317,36 @@ def test_a_root_location_is_inserted_with_its_lineage_already_right():
         "and PostgreSQL has no implicit or assignment cast from text")
     assert "'0'" not in values, "the placeholder lineage is what the CHECK rejected"
     assert "parent_id" not in insert, "a root has no parent, which is the branch of the CHECK used"
+
+
+def test_every_user_gets_its_own_membership_row():
+    """**The defect that made 89 of 90 cohort users useless.** `user_group_rows` keys the row
+    `usergroup-<org>-<user.id>`, and every UserSpec built here has `id=0` because the sequence
+    assigns the real one. So all of them produced `usergroup-3-0`: the first created it, the rest
+    found it by uuid and skipped their insert, and ended up with no membership, no privileges and
+    26 entities in syncDetails against 40. Same cause as the shared user uuid, one table over."""
+    sql = "\n".join(bu.statements(3, "cohort@org3", count=5))
+    uuids = set(re.findall(r"'(usergroup-3-[^']+)'", sql))
+    keyed = {u for u in uuids if "@" in u}
+    assert len(keyed) == 5, f"expected five distinct membership uuids, got {sorted(uuids)}"
+    for n in range(1, 6):
+        assert f"usergroup-3-cohort{n}@org3" in uuids
+
+
+def test_the_shared_membership_row_is_repaired():
+    """`usergroup-<org>-0` can only have come from this bug: `plan_ids` allocates generator ids
+    well above two million and never 0. So deleting it is safe, and without it the user that had
+    the shared row keeps a stale membership alongside its new one."""
+    sql = "\n".join(bu.statements(3, "cohort@org3", count=3))
+    assert "delete from user_group where organisation_id = 3 and uuid = 'usergroup-3-0';" in sql
+    assert sql.index("delete from user_group") < sql.index("insert into user_group")
+
+
+def test_membership_is_keyed_on_the_username_not_an_index():
+    """Two cohorts in one organisation would collide on an index while their user rows stayed
+    distinct -- the same failure again, one level of indirection away."""
+    a = "\n".join(bu.statements(3, "alpha@org3", count=2))
+    b = "\n".join(bu.statements(3, "beta@org3", count=2))
+    ua = set(re.findall(r"'(usergroup-3-[^']+@org3)'", a))
+    ub = set(re.findall(r"'(usergroup-3-[^']+@org3)'", b))
+    assert ua and ub and not (ua & ub), f"cohorts must not share membership uuids: {ua & ub}"

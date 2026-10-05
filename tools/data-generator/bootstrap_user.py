@@ -288,14 +288,31 @@ def statements(organisation_id: int, username: str, audit_user_id: int = 1,
         out += upsert("catchment", without_id(row), "v_catchment_id")
     for row in cat.group_rows({org: 0}, audit_user_id):
         out += upsert("groups", without_id(row), "v_group_id")
+    # **One-time repair, and the reason the membership uuid is overridden below.**
+    #
+    # `user_group_rows` keys the row `usergroup-<org>-<user.id>`, and every UserSpec built here has
+    # `id=0` -- the sequence assigns the real one. So all 90 users produced `usergroup-3-0`, the
+    # first created it, and the other 89 found it by uuid and skipped their insert: no membership,
+    # no privileges, 26 entities in syncDetails against 40. Found 5 Oct 2026 when one cohort user
+    # answered differently from another.
+    #
+    # A generator user cannot produce this uuid -- `plan_ids` allocates ids well above two million
+    # and never 0 -- so `usergroup-<org>-0` is unambiguously the artefact, and deleting it is safe.
+    # Every user then gets a correctly keyed row below, including the one that had the shared one.
+    out += [
+        f"    delete from user_group where organisation_id = {org}"
+        f" and uuid = {quote(f'usergroup-{org}-0')};",
+    ]
     for u in users:
         for row in cat.user_rows([u], audit_user_id):
             out += upsert("users", without_id(row, catchment_id=Raw("v_catchment_id")),
                           "v_user_id")
         for row in cat.user_group_rows([u], audit_user_id, group_ids={org: 0}):
-            out += upsert("user_group", without_id(row, user_id=Raw("v_user_id"),
-                                                   group_id=Raw("v_group_id")),
-                          "v_user_group_id")
+            # Keyed on the username, as the user row is. An index would collide between two
+            # cohorts in one organisation while their user rows stayed distinct.
+            out += upsert("user_group", without_id(
+                row, uuid=f"usergroup-{org}-{u.username}",
+                user_id=Raw("v_user_id"), group_id=Raw("v_group_id")), "v_user_group_id")
 
     # `catchment_address_mapping` has no uuid to be found by, so it is guarded on the pair it
     # carries. Both sides are ids the sequence has just assigned.
