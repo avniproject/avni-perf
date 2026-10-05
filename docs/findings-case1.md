@@ -158,8 +158,12 @@ two saturating runs later the same two windows returned 50.00 and 56.58 rps.
 **This morning's gentle 15-minute run was an accidental warm-up.** It pushed 4,300 requests through
 at 4.77 rps an hour before the 09:43 run, which is why the morning sweep never met this. A warm-up
 belongs in the protocol rather than in the luck of the ordering — and the two cold runs record
-`cachePolicy: warm-incidental-no-reset`, which is simply wrong, because `CACHE_POLICY` was left
-unset and that is the default. The field exists to make this distinguishable.
+`cachePolicy: warm-incidental-no-reset`, which is simply wrong. It was not a default: `build.gradle`
+defaults the field to `unrecorded`, and that value appears nowhere in either repository, so it was
+passed explicitly on all ten runs of the day including the two it was false for. That is the worse
+version of the problem — an unset field announces itself, an asserted one does not — and it is why
+the fix is a discarded warm-up pass in `prepare-run.sh` step 6 rather than a better default. The
+field exists to make this distinguishable; it can only do that if what it says was done.
 
 **In production, this is a deploy.** Every avni-server deploy restarts the JVM, and a cohort
 syncing in the first minutes after one meets the cold curve rather than the warm one: at 100

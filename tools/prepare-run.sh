@@ -112,15 +112,51 @@ note "  realistic  draws from Q2's measured gaps (p50 16 min, p75 12.5 h — two
 note "  incremental / full / csv  a fixed window"
 note "Set SYNC_MODE for the case. There are no cached baselines to rewrite."
 
-# ---- 6. the two decisions ----------------------------------------------------------------------
+# ---- 6. warm the app server ---------------------------------------------------------------------
+#
+# **Measured 5 Oct 2026: a restarted server delivers a third of its warm throughput**, and the
+# decision from that day is that every measured run is a warm one. The two runs started 2m49s
+# after the JVM came up managed 18.43 rps against 50.00 for the same window twenty minutes later,
+# with nine times the p95 and the only failures this environment has produced.
+#
+# It is the JVM, not the database and not the reset's reload. RDS ReadIOPS and ReadLatency were
+# 0.0 throughout, so the buffer cache had already refilled; the cold runs sat at 99.2% app CPU and
+# simply bought less with it. That is why the old advice here -- "the reset's own reload leaves the
+# caches warm, so no separate warm-up" -- was true about the database and silent about the part
+# that mattered.
+#
+# **Warmth has to be produced, not declared.** All ten runs that day passed
+# `-DCACHE_POLICY=warm-incidental-no-reset`, including the two it was false for, and nothing could
+# contradict it. A discarded pass makes the claim true before it is made.
+step "6. Warm the app server, and discard the pass"
+cat <<'WARMUP'
+  Every measured run is a warm run. Discard a gentle pass first:
+
+    ./gradlew gatlingRun -DBASE_URL=$URL -DPROFILE=burst -DBURST_SECONDS=900 \
+        -DSYNC_USERS=case1-users.csv -DUSER_COUNT=100 -DCACHE_POLICY=discarded-warmup
+
+  That is ~4,300 requests at ~5/s, which is what the accidental warm-up on 5 Oct turned out to be.
+  It takes fifteen minutes and costs less than the run it protects: the first cold measurement
+  that day was unusable and the sweep had to be repeated.
+
+  Then wait for the app server CPU to settle before the measured run. Do not start one within
+  five minutes of a deploy or a stop/start -- in production that window is a deploy, and a cohort
+  syncing into it meets the cold curve, which is a finding in its own right rather than something
+  to measure a ceiling with.
+
+  **How long warm lasts is unmeasured.** Twenty minutes and two saturating runs was warm; 2m49s
+  was not. Nothing establishes where between those it crosses, so a long gap between runs is a
+  reason to warm again rather than to assume.
+WARMUP
+
+# ---- 7. the two decisions ----------------------------------------------------------------------
 # G2's cache policy and G3's autovacuum. Both change how a result reads and neither is visible in
 # the run, so they are recorded rather than remembered.
-step "6. Record the two decisions with the run"
+step "7. Record the two decisions with the run"
 cat <<'DECISIONS'
-  The reset's own reload leaves the caches warm -- it has just written every page through
-  shared_buffers and the OS page cache -- which is closer to production than a cold start, and
-  closer than a snapshot restore could be. So: no separate warm-up, and the policy is named
-  rather than assumed.
+  Cache policy is `warm-after-discarded-warmup` once step 6 has run. Name what was actually done:
+  the value is the only record that the run was warm, and on 5 Oct a wrong one survived into the
+  archive for every run of the day.
 
   Autovacuum stays on. Production runs it, and an autovacuum storm mid-run is a genuine
   production failure mode worth catching rather than engineering away. It is a known source of
@@ -129,7 +165,7 @@ cat <<'DECISIONS'
   Pass both to the run, or archiveRun will say they are unrecorded:
 
     ./gradlew gatlingRun -DBASE_URL=... \
-        -DCACHE_POLICY=warm-from-reload -DAUTOVACUUM=on \
+        -DCACHE_POLICY=warm-after-discarded-warmup -DAUTOVACUUM=on \
         -DDATASET_ID=<recipe and generator commit> -DSERVER_BUILD=<server sha>
 DECISIONS
 
