@@ -16,20 +16,34 @@ server's 2 vCPU is what names it. Not the database, not the injector.
 | demand rps | 4.8 | 23.9 | 35.8 | 47.8 | 71.7 | 286.7 |
 | achieved rps | 4.77 | 22.75 | 33.33 | 43.00 | 52.44 | 56.58 |
 | **keeping up with demand** | **100%** | **95%** | **93%** | **90%** | **73%** | **20%** |
-| p95 ms | 202 | 196 | 222 | 366 | 2,223 | 6,745 |
-| p99 ms | 297 | 331 | 437 | 641 | 3,974 | 8,773 |
+| p95 ms | 202 | 196 | 222 | 376 | 2,242 | 6,768 |
+| p99 ms | 297 | 330 | 437 | 868 | 4,014 | 9,013 |
 | mean ms | 45 | 42 | 50 | 74 | 417 | 1,254 |
 | **requests in flight** | 0.2 | 1.0 | 1.7 | 3.2 | 21.9 | 71.0 |
-| devices in flight | ~1 | 5.5 | 8.4 | 11.8 | ~27 | ~80 |
+| devices in flight | ~1 † | 5.5 | 8.4 | 11.8 | ~27 † | ~80 † |
 | per-sync duration s | — | **10.5** | **10.8** | **11.8** | ~22 | ~61 |
 | failures | 0 | 0 | 0 | 0 | 0 | 0 |
+
+† Derived, not measured. `sync-durations.csv` was only archived from the 90 s run onwards
+(9bfb8dc), so for the 15 min, 60 s and 15 s runs the sync duration comes from wall time minus the
+arrival window. `run-log.md` leaves those cells empty rather than deriving them; the derivation is
+kept here because this is where it can be shown. The three measured runs agree with it exactly —
+5.5, 8.4, 11.8 in both documents.
+
+**Percentiles are Gatling's OK column, matching `run-log.md`.** Worth stating because the console
+summary prints Total and OK side by side and they are not the same number: 2,223 against 2,242 at
+60 s, and 641 against 868 for p99 at 90 s — a 35% gap. Every run had zero failures, so the two
+cover an identical population; they diverge because Gatling keeps separate histograms and the
+bucket width grows with magnitude, which is why they agree exactly at 202 ms and not at all at
+2 s. An earlier revision of this document quoted Total while the generated log quoted OK, which is
+how the two came to disagree.
 
 Every run issued the same 4,300 requests from the same 100 users against the same dataset. Only
 the arrival window differed.
 
 **The fall-off is abrupt.** From 180 s to 90 s the system tracks demand within 10% and latency
-barely moves — p95 of 196, 222, 366 ms against 202 ms on an effectively idle baseline. Then one
-step to 60 s raises demand 50% and **p95 jumps 6x**, 366 to 2,223 ms, while throughput gains 22%.
+barely moves — p95 of 196, 222, 376 ms against 202 ms on an effectively idle baseline. Then one
+step to 60 s raises demand 50% and **p95 jumps 6x**, 376 to 2,242 ms, while throughput gains 22%.
 Requests in flight go 3.2 to 21.9: a 7x rise for a 1.5x increase in demand. That is queue growth,
 not work.
 
