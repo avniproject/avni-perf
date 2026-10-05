@@ -145,11 +145,35 @@ for r in runs:
                                 "the tarball delivery strips .git, so `git rev-parse` inside the "
                                 "harness finds nothing and also reports the tree as dirty"))
 
+    # **The arrival window is what distinguishes two otherwise identical runs.**
+    # Case 1 ran twice on 2026-10-05 with the same 100 users, the same feeder and
+    # the same 4,300 requests, and p95 went from 202 ms to 2,242 ms -- because the
+    # first spread arrivals over 15 minutes and the second over 60 seconds. Leaving
+    # that out of the table makes the two rows look like a regression.
+    #
+    # The field was renamed burstMinutes -> burstSeconds when the harness changed
+    # the default, so both are read: a run is described in the units it recorded.
+    bs = at(meta, 'settings.injection.burstSeconds') if meta else None
+    bm = at(meta, 'settings.injection.burstMinutes') if meta else None
+    users_n = at(meta, 'settings.injection.userCount') if meta else None
+    if bs is not None:
+        window = f"{bs}s"
+    elif bm is not None:
+        window = f"{bm}min"
+    else:
+        window = '—'
+    # Little's law against the harness's own ~6s reference-data sync. Approximate
+    # and labelled as such, but it is the number that explains the latency.
+    secs = bs if bs is not None else (bm * 60 if bm is not None else None)
+    inflight = (f"~{users_n / secs * 6.0:.0f}"
+                if secs and users_n else '—')
+
     rows.append(dict(
         run=r, date=date, label=label,
         profile=at(meta,'settings.injection.profile','—'),
         users=at(meta,'settings.injection.userCount','—'),
         mode=at(meta,'settings.sync.syncMode','—'),
+        window=window, inflight=inflight,
         requests=stats.get('requests','—'),
         failed_pct=stats.get('failed_pct','—'),
         p95=stats.get('p95_ms','—'),
@@ -172,11 +196,14 @@ L.append("Artefacts are **not** copied into the repo. Each run directory holds G
          "context captured at run time — `parity-report.md`, `pg_settings.csv`, `stats.json`. "
          "Those are what make a number interpretable once the environment that produced it has "
          "been destroyed.\n")
-L.append("| run | date | scenario | profile | users | mode | requests | failed | p95 ms | rps |")
-L.append("|---|---|---|---|---|---|---|---|---|---|")
+L.append("Findings drawn from these runs are written up separately, by hand, in "
+         "`findings-case1.md` and its siblings — this file is the index, not the analysis.\n")
+L.append("| run | date | scenario | profile | users | arrival window | ~in flight | requests | failed | p95 ms | rps |")
+L.append("|---|---|---|---|---|---|---|---|---|---|---|")
 for x in rows:
     L.append(f"| [`{x['run']}`]({x['link']}) | {x['date']} | {x['label']} | {x['profile']} | "
-             f"{x['users']} | {x['mode']} | {x['requests']} | {x['failed_pct']}% | {x['p95']} | {x['rps']} |")
+             f"{x['users']} | {x['window']} | {x['inflight']} | {x['requests']} | "
+             f"{x['failed_pct']}% | {x['p95']} | {x['rps']} |")
 L.append("")
 
 if problems:
@@ -225,8 +252,8 @@ for r, link, meta, stats, sha7, corr in details:
                  f"{at(meta,'settings.injector.rtt.medianMillis','—')} |")
         L.append(f"| est. sync overhead s | {at(meta,'settings.injector.rtt.estimatedSyncOverheadSeconds','—')} |")
         L.append(f"| injection | profile {at(meta,'settings.injection.profile','—')}, "
-                 f"{at(meta,'settings.injection.userCount','—')} users, "
-                 f"burst {at(meta,'settings.injection.burstMinutes','—')} min, "
+                 f"{at(meta,'settings.injection.userCount','—')} users arriving over "
+                 f"{window}, ~{inflight.lstrip('~')} in flight at a 6s sync, "
                  f"ramp {at(meta,'settings.injection.rampPeriodSeconds','—')} s |")
         L.append(f"| sync | mode {at(meta,'settings.sync.syncMode','—')}, "
                  f"feeder {at(meta,'settings.sync.feeder','—')} "
