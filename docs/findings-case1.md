@@ -1,62 +1,79 @@
 # Case 1 — findings, 5 October 2026
 
 Case 1 is the training cohort: a trainer says "sync now" and a hundred devices, all empty, pull
-the same reference data at once. Three runs on 5 Oct 2026 swept the arrival window and found the
-limit. Artefacts and the per-run table are in [`run-log.md`](run-log.md).
+the same reference data at once. Six runs on 5 Oct 2026 swept the arrival window from 15 minutes
+down to 15 seconds and located the knee. Artefacts and the per-run table are in [`run-log.md`](run-log.md).
 
 ## The answer
 
-**The environment saturates at about 55 requests per second, and the app server's 2 vCPU is what
-names it.** Not the database, not the injector.
+**100 devices arriving over 90 seconds or more is comfortable. 60 seconds is not.** The knee sits
+between those two windows — between roughly 48 and 72 requests per second of demand — and the app
+server's 2 vCPU is what names it. Not the database, not the injector.
 
-| arrival window | 15 min | 60 s | 15 s |
-|---|---|---|---|
-| devices arriving per second | 0.11 | 1.67 | 6.67 |
-| **requests in flight** (rps x mean) | **0.2** | **22** | **71** |
-| devices in flight (derived) | ~1 | ~27 | ~80 |
-| p50 ms | 19 | 152 | 486 |
-| p95 ms | 202 | 2,242 | 6,768 |
-| p99 ms | 297 | 4,014 | 9,013 |
-| max ms | 716 | 5,860 | 16,195 |
-| mean ms | 45 | 417 | 1,254 |
-| throughput rps | 4.77 | 52.44 | 56.58 |
-| failures | 0 | 0 | 0 |
-
-**Two concurrency figures, because they answer different questions.** Requests in flight is the
-server's mean queue depth and is exact: `rps x mean response`, no assumed durations. It is what p95
-responds to, and it is the mechanism. Devices in flight is the scenario's narrative — how much of
-the cohort is mid-sync — and it is derived rather than measured: wall time minus the arrival window
-gives the sync duration (~22 s and ~61 s against ~6 s unloaded), and `users x duration / wall` gives
-the count. The two differ by a device's duty cycle: it issues ~43 requests in sequence with a
-modelled storage pause between them, so it is not in flight continuously. The derivation checks
-out against the measurement both ways — 27 devices at 80% request-time predicts 21.6 requests
-against 21.9 measured; 80 at 88% predicts 70.4 against 71.0.
-
-Earlier revisions of this document read `~10` and `~40` devices. That came from
-`users / window x 6.0` — Little's law against the *unloaded* sync — which understates concurrency
-exactly where contention makes it interesting. `update-run-log.sh` now reports the measured
-request depth instead.
+| arrival window | 15 min | 180 s | 120 s | 90 s | 60 s | 15 s |
+|---|---|---|---|---|---|---|
+| devices arriving per second | 0.11 | 0.56 | 0.83 | 1.11 | 1.67 | 6.67 |
+| demand rps | 4.8 | 23.9 | 35.8 | 47.8 | 71.7 | 286.7 |
+| achieved rps | 4.77 | 22.75 | 33.33 | 43.00 | 52.44 | 56.58 |
+| **keeping up with demand** | **100%** | **95%** | **93%** | **90%** | **73%** | **20%** |
+| p95 ms | 202 | 196 | 222 | 366 | 2,223 | 6,745 |
+| p99 ms | 297 | 331 | 437 | 641 | 3,974 | 8,773 |
+| mean ms | 45 | 42 | 50 | 74 | 417 | 1,254 |
+| **requests in flight** | 0.2 | 1.0 | 1.7 | 3.2 | 21.9 | 71.0 |
+| devices in flight | ~1 | 5.5 | 8.4 | 11.8 | ~27 | ~80 |
+| per-sync duration s | — | **10.5** | **10.8** | **11.8** | ~22 | ~61 |
+| failures | 0 | 0 | 0 | 0 | 0 | 0 |
 
 Every run issued the same 4,300 requests from the same 100 users against the same dataset. Only
 the arrival window differed.
 
-**Quadrupling the arrival rate — 1.67 to 6.67 devices a second — bought 8% more throughput and
-tripled p95.** That is queueing past a knee, not work being done: beyond saturation, added load
-converts into latency rather than throughput. Concurrency itself rose ~3x (27 to 80 devices, 22 to
-71 requests), not 4x, because the cohort is finite: at ~80 of 100 devices mid-sync there is little
-left to recruit.
+**The fall-off is abrupt.** From 180 s to 90 s the system tracks demand within 10% and latency
+barely moves — p95 of 196, 222, 366 ms against 202 ms on an effectively idle baseline. Then one
+step to 60 s raises demand 50% and **p95 jumps 6x**, 366 to 2,223 ms, while throughput gains 22%.
+Requests in flight go 3.2 to 21.9: a 7x rise for a 1.5x increase in demand. That is queue growth,
+not work.
 
-**The knee is below the 60-second run, not between it and the 15-second one.** Demand in requests
-is `requests per device x arrival rate`, which needs no assumption about how long a sync takes:
+**The usable ceiling is 45-50 rps, not the 55 an earlier revision reported.** 55 is what the
+environment achieves while *saturated* — 52.44 at 60 s, 56.58 at 15 s — and the last 20% of
+throughput costs six times the latency. The honest figure is what it sustains while still keeping
+up with demand, which tops out near 43-48.
 
-| arrival window | demand rps | achieved rps | keeping up |
-|---|---|---|---|
-| 15 min | 4.78 | 4.77 | **99.8%** |
-| 60 s | 71.7 | 52.44 | **73.1%** |
-| 15 s | 286.7 | 56.58 | **19.7%** |
+**Two concurrency figures, because they answer different questions.** Requests in flight is the
+server's mean queue depth and is exact: `rps x mean response`, no assumed durations. It is what p95
+responds to. Devices in flight is the scenario's narrative — how much of the cohort is mid-sync —
+and for the three runs at and above 90 s it is now *measured* rather than derived, from
+`sync-durations.csv`.
 
-At 60 seconds the environment is already 27% short of demand, so that run is past the knee rather
-than below it. Both measured points above 1.67 devices a second sit on the plateau.
+**Earlier revisions got the knee wrong twice.** The first put it between the 60 s and 15 s runs,
+reading their flat throughput as a bracket — but 60 s was already 27% short of its own demand, so
+both sat on the plateau. The second correctly moved it below 60 s without saying where. These
+three runs settle it. Note the departure from linear begins *before* 90 s — a 10% shortfall is
+still a shortfall — so 90 s is the left edge of the knee, not a clean pass.
+
+## Per-sync duration is ~10.5 s, not the 6 s the harness assumes
+
+The runs at and above 90 s are the first to archive `sync-durations.csv`, so this is measured per
+sync rather than inferred from wall time:
+
+| window | mean | p50 | p95 | max |
+|---|---|---|---|---|
+| 180 s | 10,468 ms | 10,447 | 10,715 | 10,840 |
+| 120 s | 10,792 ms | 10,772 | 11,156 | 11,470 |
+| 90 s | 11,766 ms | 11,790 | 12,315 | 12,587 |
+
+**A full case-1 sync costs about 10.5 seconds uncontended**, stretching 12% by 90 s. The profile
+banner's "~N in flight at a 6s reference-data sync" therefore understates device concurrency by
+roughly two: at 90 s it prints ~7 where the measured figure is 11.8. Six seconds is a fair estimate
+of *server* time within a sync; it is not the sync.
+
+The distribution is tight — p95 within 5% of the median at every window — so these are not means
+hiding a tail. Every device in the cohort has much the same experience.
+
+**The duty cycle is measured too**, and it reconciles the two concurrency figures. Requests in
+flight over devices in flight gives the share of a sync spent awaiting a response: 17% at 180 s,
+20% at 120 s, 27% at 90 s, rising to ~82% and ~88% past the knee. Below the knee a device is mostly
+in its modelled storage pause; above it, mostly waiting on the server. That shift is saturation
+seen from the device's side.
 
 ## Why the app server, and not the other two
 
@@ -99,9 +116,12 @@ the things that stop being trivial, and this is the largest one in the trace by 
 * **Cache state was incidental**, not warm-from-reload: the environment had been restarted and
   then variously queried. Recorded as `warm-incidental-no-reset` on each run.
 * **The first run is not a cohort measurement.** Its 15-minute window spread 100 arrivals one
-  every nine seconds, which at a ~6-second sync is one device at a time. Its comfortable 202 ms
-  p95 is the per-sync cost, and it says nothing about a herd. The harness has since renamed
-  `BURST_MINUTES` to `BURST_SECONDS` and defaulted it to 60 for this reason.
+  every nine seconds, and a sync takes ~10.5 s, so barely more than one device was ever in flight.
+  Its comfortable 202 ms p95 is the per-sync cost and says nothing about a herd. The harness has
+  since renamed `BURST_MINUTES` to `BURST_SECONDS` and defaulted it to 60 for this reason.
+* **The 180 s run is marginally faster than the idle baseline** — p95 196 vs 202 ms, mean 42 vs 45.
+  That is cache warmth from six runs in succession, not a real effect, and it is why `CACHE_POLICY`
+  is recorded per run. Treat the two as equal.
 
 ## Before quoting any of this
 
@@ -112,12 +132,17 @@ unreadable at that granularity, and a knee is a shape.
 
 ## What to do next
 
-* **`app_instance_class` is the variable that moves this.** The database has headroom; the app
-  server does not. A run at the next size up would say whether throughput scales with vCPU or
-  whether something else takes over as the constraint.
-* **Fill in the curve with *longer* windows, not shorter ones.** `BURST_SECONDS` of 120, 180 and
-  300 give 0.83, 0.56 and 0.33 devices a second — demand of 35.8, 23.9 and 14.3 rps, which is the
-  interval the knee is in. 30 and 20 would give 3.33 and 5.0 a second, both above the 60-second
-  run and both on the plateau: two more points confirming a ceiling already measured twice.
-* **Then add the co-tenants** (F5.4). Everything above is a quiet system, and production is not
+* **Narrow the knee to 60-90 s** if a sharper number is wanted. 75 s gives 57.3 rps of demand,
+  between the 90 s run that keeps up and the 60 s one that does not; one run halves the remaining
+  interval. Worth it only if the question is "what is the smallest window that works" rather than
+  "does a minute work" — it does not.
+* **`app_instance_class` moves the ceiling.** The database peaked at 36% CPU with every statement
+  under 1.3 ms; the app server hit 99.25%. A run at the next size up would say whether throughput
+  scales with vCPU or whether something else takes over.
+* **Enable EC2 detailed monitoring first.** The knee is a shape and 5-minute buckets cannot show
   one.
+* **Then add the co-tenants** (F5.4). Everything above is a quiet system; production is not. The
+  knee will move left.
+
+The 300 s window an earlier revision suggested is not worth running: 180 s already keeps up with
+95% of demand at idle-baseline latency, so 300 s would only confirm that less load is easier.
