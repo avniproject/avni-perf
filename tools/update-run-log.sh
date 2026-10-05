@@ -225,18 +225,31 @@ for r in runs:
     #
     # Two decimal-free digits would print run 1 as `0`, which reads as a missing
     # value rather than an idle server, so this keeps one decimal below 10.
+    # One decimal below 20, because at these magnitudes the first one carries meaning: the
+    # difference between 1.0 and 1.7 devices is the difference between two arrival windows.
+    fmt = lambda v: f"~{v:.1f}" if v < 20 else f"~{v:.0f}"
     try:
+        wall = float(stats['requests']) / float(stats['rps'])
         depth = float(stats['rps']) * float(stats['mean_ms']) / 1000.0
-        inflight = f"~{depth:.1f}" if depth < 10 else f"~{depth:.0f}"
-    except (KeyError, TypeError, ValueError):
-        inflight = '—'
+        inflight = fmt(depth)
+    except (KeyError, TypeError, ValueError, ZeroDivisionError):
+        wall, inflight = None, '—'
 
-    # The arrival window in seconds, whichever unit the run recorded it in.
-    secs = bs if bs is not None else (bm * 60 if bm is not None else None)
+    # **Both figures are means over the whole run, which is what makes them comparable.**
+    #
+    # `users x duration / wall`, not `arrival_rate x duration`. The second is the steady-state
+    # concurrency during the arrival window and is the larger number -- 13.1 against 11.8 for the
+    # 90 s run -- because it ignores the drain after arrivals stop. `rps x mean` beside it is a
+    # run-mean, so pairing it with a steady-state figure would make the duty cycle between the two
+    # columns incoherent, and that ratio is the thing that shows a device moving from waiting on
+    # its own storage pause to waiting on the server.
+    #
+    # The cap cannot bind on a run-mean -- wall is at least the arrival window plus one sync, so
+    # duration/wall is at most 1 -- and is kept as a guard against a malformed pair of inputs
+    # rather than as a correction.
     syncs = sync_durations(work / r / 'sync-durations.csv')
-    if syncs and secs and users_n:
-        devices = min(users_n / secs * syncs['mean'], users_n)
-        indevices = f"~{devices:.1f}" if devices < 10 else f"~{devices:.0f}"
+    if syncs and wall and users_n:
+        indevices = fmt(min(users_n * syncs['mean'] / wall, users_n))
     else:
         indevices = '—'
 
