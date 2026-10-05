@@ -162,11 +162,34 @@ for r in runs:
         window = f"{bm}min"
     else:
         window = '—'
-    # Little's law against the harness's own ~6s reference-data sync. Approximate
-    # and labelled as such, but it is the number that explains the latency.
-    secs = bs if bs is not None else (bm * 60 if bm is not None else None)
-    inflight = (f"~{users_n / secs * 6.0:.0f}"
-                if secs and users_n else '—')
+    # **Concurrency measured from the run, not estimated from a constant.**
+    #
+    # This was `users / window * 6.0` -- Little's law against the harness's ~6s
+    # reference-data sync, which is the duration measured when nothing was
+    # contending. Under load the sync stretches and open injection turns that into
+    # more overlap, so the estimate understates exactly where concurrency matters:
+    # it read ~10 and ~40 for runs that ran at ~27 and ~80 devices.
+    #
+    # `rps * mean` needs no constant and is exact: it is the server's mean queue
+    # depth in requests, which is what p95 actually responds to. It is **requests,
+    # not devices** -- a device issues ~43 of them in sequence with a modelled
+    # storage pause between, so it is not in flight continuously, and the two
+    # differ by that duty cycle.
+    #
+    # Devices are deliberately not computed here. `arrival_rate * requests * mean`
+    # looks like it would, and breaks in saturation: for the 15s run it gives 359
+    # against a population of 100, because once arrival x service exceeds the
+    # cohort the cohort is the limit and the formula does not know that. Getting it
+    # right needs the per-sync durations the simulation writes to
+    # sync-durations.csv, which the artefacts do not yet carry.
+    #
+    # Two decimal-free digits would print run 1 as `0`, which reads as a missing
+    # value rather than an idle server, so this keeps one decimal below 10.
+    try:
+        depth = float(stats['rps']) * float(stats['mean_ms']) / 1000.0
+        inflight = f"~{depth:.1f}" if depth < 10 else f"~{depth:.0f}"
+    except (KeyError, TypeError, ValueError):
+        inflight = '—'
 
     rows.append(dict(
         run=r, date=date, label=label,
@@ -198,7 +221,7 @@ L.append("Artefacts are **not** copied into the repo. Each run directory holds G
          "been destroyed.\n")
 L.append("Findings drawn from these runs are written up separately, by hand, in "
          "`findings-case1.md` and its siblings — this file is the index, not the analysis.\n")
-L.append("| run | date | scenario | profile | users | arrival window | ~in flight | requests | failed | p95 ms | rps |")
+L.append("| run | date | scenario | profile | users | arrival window | ~requests in flight | requests | failed | p95 ms | rps |")
 L.append("|---|---|---|---|---|---|---|---|---|---|---|")
 for x in rows:
     L.append(f"| [`{x['run']}`]({x['link']}) | {x['date']} | {x['label']} | {x['profile']} | "
@@ -253,7 +276,7 @@ for r, link, meta, stats, sha7, corr in details:
         L.append(f"| est. sync overhead s | {at(meta,'settings.injector.rtt.estimatedSyncOverheadSeconds','—')} |")
         L.append(f"| injection | profile {at(meta,'settings.injection.profile','—')}, "
                  f"{at(meta,'settings.injection.userCount','—')} users arriving over "
-                 f"{window}, ~{inflight.lstrip('~')} in flight at a 6s sync, "
+                 f"{window}, ~{inflight.lstrip('~')} requests in flight (rps x mean), "
                  f"ramp {at(meta,'settings.injection.rampPeriodSeconds','—')} s |")
         L.append(f"| sync | mode {at(meta,'settings.sync.syncMode','—')}, "
                  f"feeder {at(meta,'settings.sync.feeder','—')} "

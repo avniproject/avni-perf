@@ -9,23 +9,54 @@ limit. Artefacts and the per-run table are in [`run-log.md`](run-log.md).
 **The environment saturates at about 55 requests per second, and the app server's 2 vCPU is what
 names it.** Not the database, not the injector.
 
-| ~devices in flight | 1 | 10 | 40 |
-|---|---|---|---|
 | arrival window | 15 min | 60 s | 15 s |
-| p50 ms | 19 | 152 | 488 |
-| p95 ms | 202 | 2,223 | 6,745 |
-| p99 ms | 297 | 3,974 | 8,773 |
+|---|---|---|---|
+| devices arriving per second | 0.11 | 1.67 | 6.67 |
+| **requests in flight** (rps x mean) | **0.2** | **22** | **71** |
+| devices in flight (derived) | ~1 | ~27 | ~80 |
+| p50 ms | 19 | 152 | 486 |
+| p95 ms | 202 | 2,242 | 6,768 |
+| p99 ms | 297 | 4,014 | 9,013 |
 | max ms | 716 | 5,860 | 16,195 |
 | mean ms | 45 | 417 | 1,254 |
 | throughput rps | 4.77 | 52.44 | 56.58 |
 | failures | 0 | 0 | 0 |
 
+**Two concurrency figures, because they answer different questions.** Requests in flight is the
+server's mean queue depth and is exact: `rps x mean response`, no assumed durations. It is what p95
+responds to, and it is the mechanism. Devices in flight is the scenario's narrative — how much of
+the cohort is mid-sync — and it is derived rather than measured: wall time minus the arrival window
+gives the sync duration (~22 s and ~61 s against ~6 s unloaded), and `users x duration / wall` gives
+the count. The two differ by a device's duty cycle: it issues ~43 requests in sequence with a
+modelled storage pause between them, so it is not in flight continuously. The derivation checks
+out against the measurement both ways — 27 devices at 80% request-time predicts 21.6 requests
+against 21.9 measured; 80 at 88% predicts 70.4 against 71.0.
+
+Earlier revisions of this document read `~10` and `~40` devices. That came from
+`users / window x 6.0` — Little's law against the *unloaded* sync — which understates concurrency
+exactly where contention makes it interesting. `update-run-log.sh` now reports the measured
+request depth instead.
+
 Every run issued the same 4,300 requests from the same 100 users against the same dataset. Only
 the arrival window differed.
 
-**Going from ~10 to ~40 devices — four times the concurrency — bought 8% more throughput and
-tripled p95.** That is queueing past a knee, not work being done: beyond saturation, added
-concurrency converts into latency rather than throughput. The knee is between 10 and 40.
+**Quadrupling the arrival rate — 1.67 to 6.67 devices a second — bought 8% more throughput and
+tripled p95.** That is queueing past a knee, not work being done: beyond saturation, added load
+converts into latency rather than throughput. Concurrency itself rose ~3x (27 to 80 devices, 22 to
+71 requests), not 4x, because the cohort is finite: at ~80 of 100 devices mid-sync there is little
+left to recruit.
+
+**The knee is below the 60-second run, not between it and the 15-second one.** Demand in requests
+is `requests per device x arrival rate`, which needs no assumption about how long a sync takes:
+
+| arrival window | demand rps | achieved rps | keeping up |
+|---|---|---|---|
+| 15 min | 4.78 | 4.77 | **99.8%** |
+| 60 s | 71.7 | 52.44 | **73.1%** |
+| 15 s | 286.7 | 56.58 | **19.7%** |
+
+At 60 seconds the environment is already 27% short of demand, so that run is past the knee rather
+than below it. Both measured points above 1.67 devices a second sit on the plateau.
 
 ## Why the app server, and not the other two
 
@@ -84,7 +115,9 @@ unreadable at that granularity, and a knee is a shape.
 * **`app_instance_class` is the variable that moves this.** The database has headroom; the app
   server does not. A run at the next size up would say whether throughput scales with vCPU or
   whether something else takes over as the constraint.
-* **Fill in the curve between 10 and 40** devices — `BURST_SECONDS` of 30 and 20 — to locate the
-  knee rather than bracket it.
+* **Fill in the curve with *longer* windows, not shorter ones.** `BURST_SECONDS` of 120, 180 and
+  300 give 0.83, 0.56 and 0.33 devices a second — demand of 35.8, 23.9 and 14.3 rps, which is the
+  interval the knee is in. 30 and 20 would give 3.33 and 5.0 a second, both above the 60-second
+  run and both on the plateau: two more points confirming a ceiling already measured twice.
 * **Then add the co-tenants** (F5.4). Everything above is a quiet system, and production is not
   one.
