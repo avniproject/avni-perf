@@ -253,6 +253,41 @@ for r in runs:
     else:
         indevices = '—'
 
+    # **A run that breached its own gate reads as a data point unless something says so.**
+    #
+    # `case1-burst60-d9eac3e` failed 0.21% of requests against a recorded gate of 0.05%, and
+    # completed 91 syncs where it had 100 users -- so its 4,183 requests and 18.43 rps sit in the
+    # table beside complete runs at 4,300. Gatling asserted and failed at the time; nothing
+    # downstream remembered. The gate is in the metadata, so the check costs nothing and does not
+    # depend on anyone recalling what it was.
+    gate = at(meta, 'settings.gates.maxFailedPercent')
+    try:
+        if gate is not None and float(stats['failed_pct']) > float(gate):
+            problems.append((r, f"**failed {stats['failed_pct']}% of requests against its own "
+                                f"`MAX_FAILED_PERCENT` gate of {gate}%** — Gatling asserted and "
+                                f"failed at the time. Read its throughput and latency as a run "
+                                f"that broke, not as a point on a curve"))
+    except (KeyError, TypeError, ValueError):
+        pass
+
+    # Fewer completed syncs than users is the same thing from the device's side: the requests that
+    # happened are real, but the run did not do what its row says it did.
+    if syncs and users_n and syncs['n'] < users_n:
+        problems.append((r, f"only **{syncs['n']} of {users_n} devices completed a sync** — the "
+                            f"per-sync figures describe the ones that finished, and the request "
+                            f"count is short of a full cohort by the rest"))
+
+    # Each of these changes how a result reads and is invisible in the run itself. archiveRun
+    # prints a NOTE when one is missing; this is the half of that which survives the run.
+    absent = [k for k, v in (('CACHE_POLICY', at(meta, 'environment.cachePolicy')),
+                             ('AUTOVACUUM', at(meta, 'environment.autovacuum')),
+                             ('DATASET_ID', at(meta, 'dataset')),
+                             ('SERVER_BUILD', at(meta, 'target.serverBuild')))
+              if v in (None, 'unrecorded')]
+    if absent:
+        problems.append((r, "recorded no " + ", ".join(f"`{k}`" for k in absent)
+                            + " — so it cannot be compared with a run that differs in it"))
+
     rows.append(dict(
         run=r, date=date, label=label, indevices=indevices, syncs=syncs,
         profile=at(meta,'settings.injection.profile','—'),
