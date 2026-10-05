@@ -26,11 +26,18 @@ hs_err_pid*
 build
 
 /.idea/
-# Real user lists - never commit. The *-example.csv files are the only tracked ones, and they
-# do not match the pattern below, so a new cohort file is ignored by default rather than by
-# someone remembering to add it. SYNC_USERS and CO_TENANT_USERS name these per run.
+# User lists. The scenario feeders below are committed: they are generated, they carry no
+# password or token, and having them in the tree is what lets a result be traced to the cohort it
+# ran as. Everything else stays ignored by default -- a feeder built under AUTH_MODE=cognito
+# carries real tokens in `password|token`, and default-allow would make committing those the easy
+# path. Un-ignore a new one deliberately, after looking at that column.
 /src/gatling/resources/*-users.csv
 /src/gatling/resources/sync-users.*.csv
+!/src/gatling/resources/sync-users.csv
+!/src/gatling/resources/case1-users.csv
+!/src/gatling/resources/case2-users.csv
+!/src/gatling/resources/case3-users.csv
+!/src/gatling/resources/case4-users.csv
 !/gradle/wrapper/gradle-wrapper.jar
 tools/entity-metadata/node_modules
 tools/entity-metadata/package-lock.json

@@ -49,6 +49,26 @@ of the two populations rather than with the server.
 Arrival rate is derived, not configured: one sync per user per day spread over `SYNC_WINDOW_HOURS`.
 That is what makes cases 11 to 13 a single property away from 5 to 7.
 
+**The user file is per case and is committed**, under `src/gatling/resources/`, named with
+`-DSYNC_USERS=`. They carry no password or token, so a result can be traced to the cohort it ran
+as rather than to whichever file happened to be in place.
+
+| case | feeder | users | who |
+|---|---|---|---|
+| 1 | `case1-users.csv` | 90 | a bootstrap cohort in an organisation holding no field data |
+| 2 | `case2-users.csv` | 501 | one state tenant, field workers |
+| 3 | `case3-users.csv` | 40 | one state tenant, supervisors alone |
+| 4, 8, 10 | `case4-users.csv` | 541 | one state tenant, both |
+| 5, 9, 11 | — | — | needs the ten-tenant deployment; `tools/scenario-feeders.py` writes it once the input has ten |
+| 6, 7, 12, 13 | `co-tenant-users.csv` | — | pending the co-tenant build |
+
+> **Why not one file for all of them.** `generate.py` writes every user of every tenant -- 1,082
+> across two organisations for `states-day-180`. Cases 2, 3 and 4 are each *one state tenant*, and
+> case 3 is its supervisors alone, so a run pointed at the whole file drives a case that is not in
+> this table: it completes, the report looks ordinary, and the number belongs to nothing.
+> `tools/scenario-feeders.py` cuts the slices, and it refuses to write `case5-users.csv` from a
+> two-tenant input rather than producing the same trap one layer down.
+
 | # | Properties beyond the dataset and user file | Syncs/hour | Syncs collected |
 |---|---|---|---|
 | **1** | `PROFILE=burst -DUSER_COUNT=100 -DBURST_MINUTES=15` | — | 100 |
