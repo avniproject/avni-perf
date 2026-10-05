@@ -827,6 +827,28 @@ public class AvniSyncSimulation extends Simulation {
 
     {
         int feederRows = csv(syncUsersFile).recordsCount();
+        // **Start the calibration file empty, so it describes this run.**
+        //
+        // `recordSyncResult` appends and writes the header only when the file is absent, so on a
+        // host that runs twice the second run's file holds both. That is how the three case 1 runs
+        // of 5 Oct 2026 shared one, and it is why the rows carry a `profile` column at all --
+        // someone had already needed to tell them apart. Now that the file is archived beside the
+        // run that produced it, mixing them would attribute one run's syncs to another.
+        //
+        // Truncated here rather than on first write: this block runs once, at construction, before
+        // any virtual user starts.
+        try {
+            java.nio.file.Path parent = SYNC_RESULTS.toAbsolutePath().getParent();
+            if (parent != null) {
+                java.nio.file.Files.createDirectories(parent);
+            }
+            java.nio.file.Files.deleteIfExists(SYNC_RESULTS);
+        } catch (java.io.IOException e) {
+            out.println("  WARNING: could not clear " + SYNC_RESULTS + " (" + e.getMessage()
+                + "), so it may still hold an earlier run's syncs. Check the row count against "
+                + "this run's before calibrating.");
+        }
+
         out.println(String.format(
             "Sync mode: %s | users: %d | feeder: %s (%d rows) | page size: %d | auth: %s",
             syncMode, userCount, syncUsersFile, feederRows, pageSize, authMode));

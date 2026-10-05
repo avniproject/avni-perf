@@ -177,6 +177,26 @@ tasks.register('archiveRun') {
             ]
         ]
 
+        // **sync-durations.csv belongs with the run, not in build/.**
+        //
+        // The simulation writes it to build/sync-durations.csv, outside the report directory --
+        // and avni-infra's run-scenario.sh publishes the report directory, so it never reached
+        // the artefacts. Without it a run's per-sync distribution is gone once the host is
+        // recreated, and concurrency has to be derived from aggregates rather than measured: the
+        // case 1 findings had to infer sync duration from wall time minus the arrival window.
+        //
+        // Copied rather than moved, so `make validate_dataset` and calibrate.py keep working
+        // against the conventional path straight after a run.
+        def syncResults = file(prop('SYNC_RESULTS', "$buildDir/sync-durations.csv").toString())
+        if (syncResults.isFile()) {
+            def rows = Math.max(syncResults.readLines().size() - 1, 0)
+            new File(latest, "sync-durations.csv").text = syncResults.text
+            logger.lifecycle("archiveRun: copied sync-durations.csv (${rows} syncs) into the report")
+        } else {
+            logger.lifecycle("archiveRun: NOTE - no ${syncResults} to archive, so this run keeps "
+                + "no per-sync durations. Expected only for a run that pulled nothing.")
+        }
+
         def target = new File(latest, "run-metadata.json")
         target.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata)) + "\n"
         logger.lifecycle("archiveRun: wrote ${target}")

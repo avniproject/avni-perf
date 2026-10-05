@@ -176,12 +176,17 @@ for r in runs:
     # storage pause between, so it is not in flight continuously, and the two
     # differ by that duty cycle.
     #
-    # Devices are deliberately not computed here. `arrival_rate * requests * mean`
+    # Devices are not computed from the aggregates. `arrival_rate * requests * mean`
     # looks like it would, and breaks in saturation: for the 15s run it gives 359
     # against a population of 100, because once arrival x service exceeds the
-    # cohort the cohort is the limit and the formula does not know that. Getting it
-    # right needs the per-sync durations the simulation writes to
-    # sync-durations.csv, which the artefacts do not yet carry.
+    # cohort the cohort is the limit and the formula does not know that.
+    #
+    # `sync-durations.csv` is archived from runs after 5 Oct 2026, so where it is
+    # present the device figure is measured rather than derived: the mean sync
+    # duration times the arrival rate, capped by the cohort. Runs before that have
+    # no such file and the column reads as absent, which is the honest answer --
+    # the three case 1 runs keep their derived figures in findings-case1.md, where
+    # the derivation is shown.
     #
     # Two decimal-free digits would print run 1 as `0`, which reads as a missing
     # value rather than an idle server, so this keeps one decimal below 10.
@@ -216,7 +221,8 @@ L.append("**Do not edit by hand.** Rewritten wholesale on every run of that scri
          "means its upload did not happen, not that the log is stale.\n")
 L.append("Artefacts are **not** copied into the repo. Each run directory holds Gatling's "
          "`simulation.log`, the HTML report and `run-metadata.json`, plus the environment "
-         "context captured at run time — `parity-report.md`, `pg_settings.csv`, `stats.json`. "
+         "context captured at run time — `parity-report.md`, `pg_settings.csv`, `stats.json` — "
+         "and `sync-durations.csv`, one row per completed sync. "
          "Those are what make a number interpretable once the environment that produced it has "
          "been destroyed.\n")
 L.append("Findings drawn from these runs are written up separately, by hand, in "
