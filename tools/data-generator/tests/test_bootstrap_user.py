@@ -3,7 +3,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import re
+
 import bootstrap_user as boot
+bu = boot
 import catchments as cat
 
 
@@ -208,3 +211,42 @@ def test_it_is_one_transaction_and_says_what_it_made():
     s = sql()
     assert s.index("begin;") < s.index("do $$") < s.rindex("commit;")
     assert "raise notice" in s, "a run that creates nothing should still say so"
+
+
+def test_a_cohort_gives_every_user_its_own_identity():
+    """**The defect this replaces reported success and created nobody.** `upsert` finds a row by
+    its uuid, and the uuid was `bootstrap-user-<org>` -- one per organisation. A second call with
+    a different username found the first user and did nothing. Fine while this made one user for
+    environment-check.sh; wrong the moment case 1 wanted a hundred."""
+    sql = "\n".join(bu.statements(3, "cohort@org3", count=5))
+    uuids = set(re.findall(r"bootstrap-user-3-[A-Za-z0-9@.]+", sql))
+    assert len(uuids) == 5, f"expected five distinct user uuids, got {sorted(uuids)}"
+    # Not deviceId: `users` has no such column -- it lives in the feeder, not the database.
+    # The uuid and the username are what identify a user here.
+    names = set(re.findall(r"'(cohort\d+@org3)'", sql))
+    assert len(names) == 5, f"expected five distinct usernames, got {sorted(names)}"
+
+
+def test_a_cohort_shares_one_catchment_location_and_group():
+    """A training cohort is a hundred new workers in one village, which is what case 1 models.
+    Only the user and its membership are per user; a catchment each would be a different case."""
+    sql = "\n".join(bu.statements(3, "cohort@org3", count=5))
+    assert sql.count("bootstrap-catchment-3") == 2, "one catchment, found once and inserted once"
+    assert sql.count("bootstrap-location-3") == 2
+
+
+def test_the_index_goes_before_the_at_sign():
+    """The part after `@` is how the server finds the organisation. A suffix on the whole string
+    would produce users belonging nowhere."""
+    assert bu.cohort_usernames("cohort@org3", 3) == [
+        "cohort1@org3", "cohort2@org3", "cohort3@org3"]
+    assert bu.cohort_usernames("solo@org3", 1) == ["solo@org3"], "one user keeps its exact name"
+
+
+def test_bootstrap_users_survive_a_teardown():
+    """`teardown_org.py` cuts generated users on `user-<org>-%`. These are deliberately outside
+    it: a teardown should not remove the user the next environment check runs as."""
+    import teardown_org as td
+    sql = "\n".join(bu.statements(3, "cohort@org3", count=3))
+    for uuid in re.findall(r"'(bootstrap-user-3-[^']+)'", sql):
+        assert not uuid.startswith("user-3-"), uuid

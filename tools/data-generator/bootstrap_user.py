@@ -105,7 +105,22 @@ def upsert(table: str, row: dict, var: str, uuid: str | None = None) -> list[str
     ]
 
 
-def statements(organisation_id: int, username: str, audit_user_id: int = 1) -> list[str]:
+def cohort_usernames(username: str, count: int) -> list[str]:
+    """`cohort@org3` and 3 gives `cohort1@org3`, `cohort2@org3`, `cohort3@org3`.
+
+    The index goes before the `@` because the part after it is how the server finds the
+    organisation. A suffix on the whole string would produce users belonging nowhere.
+    """
+    if count < 1:
+        raise ValueError("count starts at 1")
+    if count == 1:
+        return [username]
+    local, at, domain = username.partition("@")
+    return [f"{local}{i}{at}{domain}" for i in range(1, count + 1)]
+
+
+def statements(organisation_id: int, username: str, audit_user_id: int = 1,
+               count: int = 1) -> list[str]:
     org = organisation_id
     # **One location, not a hierarchy.** The generator's six-level tree is the right shape for a
     # dataset and the wrong shape here: every level needs an `address_level_type` row to point at,
@@ -121,9 +136,18 @@ def statements(organisation_id: int, username: str, audit_user_id: int = 1) -> l
     catchment = cat.CatchmentSpec(id=0, uuid=f"bootstrap-catchment-{org}",
                                   name="Bootstrap catchment", organisation_id=org,
                                   locations=(village,), role=cat.FIELD_WORKER)
-    user = cat.UserSpec(id=0, uuid=f"bootstrap-user-{org}", username=username,
-                        organisation_id=org, catchment_id=0, role=cat.FIELD_WORKER,
-                        device_id=f"bootstrap-device-{org}")
+    # **Identity is per user, and it was per organisation.** `upsert` finds a row by its uuid, so
+    # one uuid for the whole organisation meant a second invocation with a different username
+    # found the first user and did nothing -- reporting success and creating nobody. Fine while
+    # this only ever made one user for environment-check.sh; wrong the moment case 1 wanted a
+    # hundred. The `bootstrap-user-` prefix stays, because `teardown_org.py` cuts generated users
+    # on `user-<org>-%` and these are deliberately outside that: a teardown should not remove the
+    # user the next environment check runs as.
+    usernames = cohort_usernames(username, count)
+    users = [cat.UserSpec(id=0, uuid=f"bootstrap-user-{org}-{u}", username=u,
+                          organisation_id=org, catchment_id=0, role=cat.FIELD_WORKER,
+                          device_id=f"bootstrap-device-{org}-{u}")
+             for u in usernames]
 
     def without_id(row: dict, **overrides) -> dict:
         out = {k: v for k, v in row.items() if k != "id"}
@@ -131,8 +155,11 @@ def statements(organisation_id: int, username: str, audit_user_id: int = 1) -> l
         return out
 
     out = [
-        "-- One syncable user for environment-check.sh. No dataset, no bundle, no metadata.",
-        f"-- Organisation {org}, user {username}.",
+        f"-- {len(usernames)} syncable user(s). No dataset, no bundle, no metadata.",
+        f"-- Organisation {org}, user(s) {usernames[0]}"
+        + (f" .. {usernames[-1]}" if len(usernames) > 1 else "") + ".",
+        "-- They share one location, one catchment and one group: a training cohort in one",
+        "-- village, which is what case 1 models. Only the user and its membership are per user.",
         "--",
         "-- Re-runnable, and safe to run for several organisations: every row is found by a uuid",
         "-- that carries the organisation, and created only when absent. Ids come from the",
@@ -167,13 +194,14 @@ def statements(organisation_id: int, username: str, audit_user_id: int = 1) -> l
         out += upsert("catchment", without_id(row), "v_catchment_id")
     for row in cat.group_rows({org: 0}, audit_user_id):
         out += upsert("groups", without_id(row), "v_group_id")
-    for row in cat.user_rows([user], audit_user_id):
-        out += upsert("users", without_id(row, catchment_id=Raw("v_catchment_id")),
-                      "v_user_id")
-    for row in cat.user_group_rows([user], audit_user_id, group_ids={org: 0}):
-        out += upsert("user_group", without_id(row, user_id=Raw("v_user_id"),
-                                               group_id=Raw("v_group_id")),
-                      "v_user_group_id")
+    for u in users:
+        for row in cat.user_rows([u], audit_user_id):
+            out += upsert("users", without_id(row, catchment_id=Raw("v_catchment_id")),
+                          "v_user_id")
+        for row in cat.user_group_rows([u], audit_user_id, group_ids={org: 0}):
+            out += upsert("user_group", without_id(row, user_id=Raw("v_user_id"),
+                                                   group_id=Raw("v_group_id")),
+                          "v_user_group_id")
 
     # `catchment_address_mapping` has no uuid to be found by, so it is guarded on the pair it
     # carries. Both sides are ids the sequence has just assigned.
@@ -184,8 +212,8 @@ def statements(organisation_id: int, username: str, audit_user_id: int = 1) -> l
         "      values (v_catchment_id, v_loc_id);",
         "    end if;",
         "",
-        "    raise notice 'organisation %: user % (id %), catchment %, location %',",
-        f"      {org}, {quote(username)}, v_user_id, v_catchment_id, v_loc_id;",
+        "    raise notice 'organisation %: % user(s), last id %, catchment %, location %',",
+        f"      {org}, {len(usernames)}, v_user_id, v_catchment_id, v_loc_id;",
         "end $$;",
         "commit;",
     ]
@@ -199,8 +227,10 @@ def main() -> int:
     ap.add_argument("--username", required=True, help="e.g. loadtest@openchs")
     ap.add_argument("--audit-user", type=int, default=1,
                     help="an existing user id for created_by/last_modified_by; usually the admin")
+    ap.add_argument("--count", type=int, default=1,
+                    help="how many users; the index goes before the @ (default 1)")
     a = ap.parse_args()
-    print("\n".join(statements(a.organisation, a.username, a.audit_user)))
+    print("\n".join(statements(a.organisation, a.username, a.audit_user, a.count)))
     return 0
 
 

@@ -26,9 +26,10 @@ hs_err_pid*
 build
 
 /.idea/
-# Real user lists - never commit. Only sync-users-example.csv is tracked.
-/src/gatling/resources/sync-users.csv
-/src/gatling/resources/co-tenant-users.csv
+# Real user lists - never commit. The *-example.csv files are the only tracked ones, and they
+# do not match the pattern below, so a new cohort file is ignored by default rather than by
+# someone remembering to add it. SYNC_USERS and CO_TENANT_USERS name these per run.
+/src/gatling/resources/*-users.csv
 /src/gatling/resources/sync-users.*.csv
 !/gradle/wrapper/gradle-wrapper.jar
 tools/entity-metadata/node_modules

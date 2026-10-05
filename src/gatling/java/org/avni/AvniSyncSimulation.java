@@ -40,8 +40,21 @@ public class AvniSyncSimulation extends Simulation {
     private static final ObjectMapper om = new ObjectMapper();
 
     private static final String baseUrl = System.getProperty("BASE_URL", "https://loadtest.avniproject.org");
-    private static final Integer userCount = Integer.getInteger("USER_COUNT", csv("sync-users.csv").recordsCount());
-    private static final Integer rampPeriod = Integer.getInteger("RAMP_PERIOD", csv("sync-users.csv").recordsCount() * 20);
+
+    /**
+     * The customer population's user file, as `CO_TENANT_USERS` already was for the other one.
+     *
+     * **Cases do not all run as the same people.** Case 1 is a hundred-device training cohort in
+     * an organisation holding no field data; cases 2 to 4 are the state tenant's five hundred
+     * workers and their supervisors. Without this the file has to be swapped by hand between runs,
+     * which is a step that fails silently -- the run completes, against the wrong cohort, and the
+     * result is a number for a case nobody asked about. Named here, it lands in the run metadata
+     * and in the startup banner instead.
+     */
+    private static final String syncUsersFile = System.getProperty("SYNC_USERS", "sync-users.csv");
+
+    private static final Integer userCount = Integer.getInteger("USER_COUNT", csv(syncUsersFile).recordsCount());
+    private static final Integer rampPeriod = Integer.getInteger("RAMP_PERIOD", csv(syncUsersFile).recordsCount() * 20);
     // The client ships pageSize 1000 (avni-client config/initialSettings.json). It cannot be read from
     // the pinned openchs-models package - it lives in the client app, not the models library - so it
     // is mirrored here and must be updated if the client changes it. Older installs may still be on
@@ -249,7 +262,7 @@ public class AvniSyncSimulation extends Simulation {
         }
     }
 
-    private static final boolean feederHasDeviceIds = feederHasColumn("sync-users.csv", "deviceId");
+    private static final boolean feederHasDeviceIds = feederHasColumn(syncUsersFile, "deviceId");
 
     private static String deviceIdOf(Session session) {
         String fromFeeder = session.getString("deviceId");
@@ -499,7 +512,7 @@ public class AvniSyncSimulation extends Simulation {
      * request names every earlier report used.
      */
     private final Workload customerWorkload = new Workload(
-        coTenants ? "Customer" : "", "sync-users.csv",
+        coTenants ? "Customer" : "", syncUsersFile,
         pushVolumesWithOverrides(), mediaPerEncounter);
 
     // PushProfiles.coTenant() rather than production(): the same organisations, counted from the
@@ -645,7 +658,7 @@ public class AvniSyncSimulation extends Simulation {
     // in the file never run at all. circular() walks the file in order and wraps, which makes a run
     // repeatable and spreads load evenly. It only overlaps users when USER_COUNT exceeds the file,
     // which is warned about below.
-    FeederBuilder<String> feeder = csv("sync-users.csv").circular();
+    FeederBuilder<String> feeder = csv(syncUsersFile).circular();
 
     HttpProtocolBuilder baseProtocol = http.baseUrl(baseUrl)
         .acceptHeader("application/json")
@@ -799,10 +812,10 @@ public class AvniSyncSimulation extends Simulation {
     }
 
     {
-        int feederRows = csv("sync-users.csv").recordsCount();
+        int feederRows = csv(syncUsersFile).recordsCount();
         out.println(String.format(
-            "Sync mode: %s | users: %d | feeder rows: %d | page size: %d | auth: %s",
-            syncMode, userCount, feederRows, pageSize, authMode));
+            "Sync mode: %s | users: %d | feeder: %s (%d rows) | page size: %d | auth: %s",
+            syncMode, userCount, syncUsersFile, feederRows, pageSize, authMode));
         out.println(describeInjection());
         if (slicing) {
             long sliced = slicedEntityCount();
@@ -1208,6 +1221,10 @@ public class AvniSyncSimulation extends Simulation {
         sync.put("paging", paging);
         sync.put("slicedEntities", slicedEntityCount());
         sync.put("syncMode", syncMode);
+        // Which cohort this ran as. Two runs of the same case against different user files are a
+        // difference nothing else in the archive would record.
+        sync.put("feeder", syncUsersFile);
+        sync.put("feederRows", csv(syncUsersFile).recordsCount());
         sync.put("authMode", authMode);
         sync.put("pageSize", pageSize);
         sync.put("incrementalSinceHours", incrementalSinceHours);
