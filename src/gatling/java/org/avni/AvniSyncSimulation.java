@@ -827,6 +827,8 @@ public class AvniSyncSimulation extends Simulation {
 
     {
         int feederRows = csv(syncUsersFile).recordsCount();
+        rejectPropertiesTheProfileIgnores();
+
         // **Start the calibration file empty, so it describes this run.**
         //
         // `recordSyncResult` appends and writes the header only when the file is absent, so on a
@@ -1405,6 +1407,58 @@ public class AvniSyncSimulation extends Simulation {
                     + "check's shape, not a load shape: it cannot express an arrival rate, which "
                     + "is how every test case is specified. PROFILE=steady for those.",
                     userCount, rampPeriod);
+        }
+    }
+
+    /**
+     * Which injection properties each profile actually reads.
+     *
+     * **A property that is read, recorded and ignored is worse than one that is rejected**, and
+     * this cost a run on 5 Oct 2026: a re-run passed `-DBURST_SECONDS` without `-DPROFILE=burst`,
+     * got the default `ramp`, and started a 1,082-user structural check that ran six minutes
+     * before the banner gave it away. `BURST_SECONDS` was parsed and written into the run
+     * metadata, so the archive would have described a burst that never happened. It is the same
+     * shape as the `BURST_MINUTES` rename: a name accepted into a field nothing consults.
+     *
+     * `USER_COUNT` is absent deliberately -- every profile uses it, including `ramp`, where it
+     * defaults to the feeder's row count.
+     */
+    private static final Map<String, java.util.Set<String>> PROFILE_PROPERTIES = Map.of(
+        "burst",  java.util.Set.of("BURST_SECONDS"),
+        "steady", java.util.Set.of("SYNCS_PER_HOUR", "DURATION_MINUTES", "SYNC_WINDOW_HOURS"),
+        "stress", java.util.Set.of("SYNCS_PER_HOUR", "DURATION_MINUTES", "STRESS_TO_SYNCS_PER_HOUR"),
+        "ramp",   java.util.Set.of("RAMP_PERIOD"),
+        "smoke",  java.util.Set.of());
+
+    /**
+     * Refuse a run configured for a profile it is not running.
+     *
+     * Thrown rather than warned: a warning scrolls past in the six minutes before someone reads
+     * the banner, and the run that prompted this was killed by eye rather than by the harness.
+     */
+    private static void rejectPropertiesTheProfileIgnores() {
+        java.util.Set<String> honoured = PROFILE_PROPERTIES.getOrDefault(
+            profile, java.util.Set.of());
+        java.util.List<String> ignored = new ArrayList<>();
+        for (java.util.Set<String> all : PROFILE_PROPERTIES.values()) {
+            for (String name : all) {
+                if (!honoured.contains(name) && System.getProperty(name) != null
+                        && !ignored.contains(name)) {
+                    ignored.add(name);
+                }
+            }
+        }
+        if (!ignored.isEmpty()) {
+            java.util.Collections.sort(ignored);
+            throw new IllegalStateException(String.format(
+                "PROFILE=%s does not read %s. %s set but ignored, which is how a re-run became a "
+                + "six-hour structural check on 5 Oct 2026 -- the property was parsed and written "
+                + "into the run metadata, so the archive would have described a shape that never "
+                + "ran. Set -DPROFILE for the shape you want, or drop the property. Profiles and "
+                + "what each reads: %s",
+                profile, String.join(", ", ignored),
+                ignored.size() == 1 ? "It was" : "They were",
+                PROFILE_PROPERTIES));
         }
     }
 
