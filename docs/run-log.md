@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-05 11:24 UTC.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-05 12:06 UTC.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -16,6 +16,10 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-05T10-28-06Z-case1-burst90-d9eac3e`](run-log-detail.md#2026-10-05t10-28-06z-case1-burst90-d9eac3e) | 2026-10-05 10:28 | case1-burst90 | burst | 100 | 90s | ~3.2 | ~11.8 | 4300 | 0.0% | 376 | 43 |
 | [`2026-10-05T10-30-01Z-case1-burst120-d9eac3e`](run-log-detail.md#2026-10-05t10-30-01z-case1-burst120-d9eac3e) | 2026-10-05 10:30 | case1-burst120 | burst | 100 | 120s | ~1.7 | ~8.4 | 4300 | 0.0% | 222 | 33.33 |
 | [`2026-10-05T10-32-25Z-case1-burst180-d9eac3e`](run-log-detail.md#2026-10-05t10-32-25z-case1-burst180-d9eac3e) | 2026-10-05 10:32 | case1-burst180 | burst | 100 | 180s | ~1.0 | ~5.5 | 4300 | 0.0% | 196 | 22.75 |
+| [`2026-10-05T11-37-03Z-case1-burst60-d9eac3e`](run-log-detail.md#2026-10-05t11-37-03z-case1-burst60-d9eac3e) | 2026-10-05 11:37 | case1-burst60 | burst | 100 | 60s | ~75 | ~80 | 4183 | 0.21% | 25635 | 18.43 |
+| [`2026-10-05T11-41-10Z-case1-burst15-d9eac3e`](run-log-detail.md#2026-10-05t11-41-10z-case1-burst15-d9eac3e) | 2026-10-05 11:41 | case1-burst15 | burst | 100 | 15s | ~83 | ~86 | 4300 | 0.0% | 14214 | 30.94 |
+| [`2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e`](run-log-detail.md#2026-10-05t12-01-03z-case1-burst60-warm-d9eac3e) | 2026-10-05 12:01 | case1-burst60-warm | burst | 100 | 60s | ~27 | ~36 | 4300 | 0.0% | 2767 | 50 |
+| [`2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e`](run-log-detail.md#2026-10-05t12-02-47z-case1-burst15-warm-d9eac3e) | 2026-10-05 12:02 | case1-burst15-warm | burst | 100 | 15s | ~71 | ~80 | 4300 | 0.0% | 6741 | 56.58 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 
