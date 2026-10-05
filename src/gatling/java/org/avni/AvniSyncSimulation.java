@@ -1369,14 +1369,30 @@ public class AvniSyncSimulation extends Simulation {
                     + "production's 14.1s median | %d users over a %.0fh window",
                     syncsPerHour, durationMinutes, syncsPerHour * durationMinutes / 60.0,
                     syncsPerHour / 3600.0 * 14.1, userCount, syncWindowHours);
-            case "burst":
+            case "burst": {
+                double syncSeconds = priorSyncSeconds.orElse(BURST_SYNC_SECONDS);
+                String basis = priorSyncSeconds.isPresent()
+                    ? "the previous burst run on this host"
+                    : "5 Oct 2026's measured burst runs";
+                // Capped at the cohort, because arrival x duration does not know the population
+                // is finite: at a 15s window and the 61s sync saturation actually produced, it
+                // computes 407 of 100 devices. It does not bind at the windows measured so far.
+                //
+                // **And it understates above the knee, unavoidably.** This is an a priori figure
+                // using an unloaded duration, so it is close below the knee -- ~12 against 11.8
+                // measured at 90s -- and low above it, where the sync stretches: ~70 against ~80
+                // for the 15s run. The measured figure is in the run log; this one is for deciding
+                // what to run.
+                double inFlight = Math.min(
+                    userCount / (double) Math.max(burstSeconds, 1) * syncSeconds, userCount);
                 return String.format(
-                    "Profile: burst | %d devices arriving over %ds, one every %.1fs | ~%.0f in "
-                    + "flight at a 6s reference-data sync. Case 1's training cohort: every device "
-                    + "starts empty, so every sync is a full pull of the same reference data. "
-                    + "Raise BURST_SECONDS to spread them, lower it to make the herd sharper.",
+                    "Profile: burst | %d devices arriving over %ds, one every %.2fs | ~%.0f in "
+                    + "flight at a %.1fs sync (%s). Case 1's training cohort: every device starts "
+                    + "empty, so every sync is a full pull of the same reference data. Raise "
+                    + "BURST_SECONDS to spread them, lower it to make the herd sharper.",
                     userCount, burstSeconds, burstSeconds / (double) Math.max(userCount, 1),
-                    userCount / (double) Math.max(burstSeconds, 1) * 6.0);
+                    inFlight, syncSeconds, basis);
+            }
             case "stress":
                 return String.format(
                     "Profile: stress | %.0f to %.0f syncs/hour over %d min. No steady state by "
@@ -1611,6 +1627,63 @@ public class AvniSyncSimulation extends Simulation {
      * deliberately: a run that cannot write its calibration file should still produce its load
      * result, and the missing file is obvious at the point someone runs the gate.
      */
+    /**
+     * How long a burst-profile sync takes, for the arrival banner's concurrency figure.
+     *
+     * **Measured, 5 Oct 2026: 10.5 s. This was 6.0 and the 6 was the wrong quantity.** It came
+     * from the first case 1 run's server time -- 43 requests at a 45 ms mean, about 1.9 s, plus
+     * the modelled storage pause -- which is a fair account of what a sync *costs the server* and
+     * is not how long the sync lasts. The three runs that first archived `sync-durations.csv`
+     * measured it directly: 10,468 ms mean at a 180 s window, stretching 12% to 11,766 ms by 90 s.
+     * At 6.0 the banner printed ~7 devices in flight for the 90 s run where the measured figure
+     * was 11.8, understating concurrency by about 1.75x.
+     *
+     * Only the `burst` profile used this. `steady` already estimates from production's 14.1 s
+     * median and `stress` has no steady state to estimate for.
+     */
+    private static final double BURST_SYNC_SECONDS = 10.5;
+
+    /**
+     * The previous run's mean sync duration on this host, when it ran the same profile.
+     *
+     * **A measurement in hand beats a constant, and the `profile` column is what makes it safe to
+     * use.** A case 4 sync has nothing to say about a case 1 banner, so a row is only counted when
+     * its profile matches this run's. Read in a static initialiser deliberately: class load
+     * happens before construction, and construction is where the file is truncated so that it
+     * describes one run.
+     *
+     * It is still an estimate -- duration varies with the arrival window, by 12% across the three
+     * measured ones -- but it is this environment's own figure rather than one carried in source.
+     */
+    private static final java.util.OptionalDouble priorSyncSeconds = priorSyncSeconds();
+
+    private static java.util.OptionalDouble priorSyncSeconds() {
+        String wanted = System.getProperty("PROFILE", "ramp");
+        java.nio.file.Path path = java.nio.file.Paths.get(
+            System.getProperty("SYNC_RESULTS", "build/sync-durations.csv"));
+        try {
+            if (!java.nio.file.Files.isRegularFile(path)) {
+                return java.util.OptionalDouble.empty();
+            }
+            java.util.List<String> lines = java.nio.file.Files.readAllLines(path);
+            double total = 0;
+            int n = 0;
+            for (String line : lines.subList(Math.min(1, lines.size()), lines.size())) {
+                String[] c = line.split(",", -1);
+                // userName,records,durationMs,pausedMs,serverMs,profile
+                if (c.length < 6 || !c[5].trim().equals(wanted)) {
+                    continue;
+                }
+                total += Long.parseLong(c[2].trim());
+                n++;
+            }
+            return n > 0 ? java.util.OptionalDouble.of(total / n / 1000.0)
+                         : java.util.OptionalDouble.empty();
+        } catch (java.io.IOException | NumberFormatException | IndexOutOfBoundsException e) {
+            return java.util.OptionalDouble.empty();
+        }
+    }
+
     private static final java.nio.file.Path SYNC_RESULTS =
         java.nio.file.Paths.get(System.getProperty("SYNC_RESULTS", "build/sync-durations.csv"));
     private static final Object SYNC_RESULTS_LOCK = new Object();

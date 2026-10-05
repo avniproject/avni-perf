@@ -2,7 +2,7 @@
 
 Case 1 is the training cohort: a trainer says "sync now" and a hundred devices, all empty, pull
 the same reference data at once. Six runs on 5 Oct 2026 swept the arrival window from 15 minutes
-down to 15 seconds and located the knee. Artefacts and the per-run table are in [`run-log.md`](run-log.md).
+down to 15 seconds and located the knee. Artefacts and the per-run table are in [`run-log.md`](run-log.md); each run's settings and environment in [`run-log-detail.md`](run-log-detail.md).
 
 ## The answer
 

@@ -211,6 +211,17 @@ for r in runs:
     details.append((r, link, meta, stats, sha7, corr))
 
 now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+INDEX_NAME = pathlib.Path(out).name
+DETAIL_NAME = pathlib.Path(out).stem + "-detail" + pathlib.Path(out).suffix
+
+
+def anchor(run_id):
+    """GitHub's slug for `### \u0060<run id>\u0060`: lowercased, backticks dropped, dots and other
+    punctuation dropped, spaces to hyphens. Run ids are already hyphen-separated and carry dots in
+    neither position, so this is the whole rule for them."""
+    return "".join(c for c in run_id.lower() if c.isalnum() or c == "-")
+
+
 L = []
 L.append("# Run log\n")
 L.append(f"Generated from `s3://{bucket}/{prefix}/` by `tools/update-run-log.sh` "
@@ -230,10 +241,21 @@ L.append("Findings drawn from these runs are written up separately, by hand, in 
 L.append("| run | date | scenario | profile | users | arrival window | ~requests in flight | requests | failed | p95 ms | rps |")
 L.append("|---|---|---|---|---|---|---|---|---|---|---|")
 for x in rows:
-    L.append(f"| [`{x['run']}`]({x['link']}) | {x['date']} | {x['label']} | {x['profile']} | "
-             f"{x['users']} | {x['window']} | {x['inflight']} | {x['requests']} | "
-             f"{x['failed_pct']}% | {x['p95']} | {x['rps']} |")
+    # The run id links to its detail section rather than to S3: the bucket is where the
+    # artefacts are, and the detail file is where a reader can actually look something up.
+    # The S3 prefix is one line down in that section.
+    L.append(f"| [`{x['run']}`]({DETAIL_NAME}#{anchor(x['run'])}) | {x['date']} | {x['label']} | "
+             f"{x['profile']} | {x['users']} | {x['window']} | {x['inflight']} | "
+             f"{x['requests']} | {x['failed_pct']}% | {x['p95']} | {x['rps']} |")
 L.append("")
+# **The detail is a separate file, because the index has to stay readable.** One run contributes
+# a dozen rows of settings and environment, so at thirty runs this file would be four hundred
+# lines of which the first forty are the part anyone reads. The index answers "what has been run
+# and how did it do"; the detail answers "what exactly was that run", which is a question about
+# one run at a time and belongs where it can be linked to. Placed here rather than at the foot:
+# it tells the reader where to go next, and the caveats below are about the table above it.
+L.append(f"Per-run settings and environment are in [`{DETAIL_NAME}`]({DETAIL_NAME}), linked "
+         "from each run id in the table.\n")
 
 if problems:
     L.append("## Caveats on the runs above\n")
@@ -243,61 +265,72 @@ if problems:
         L.append(f"- `{r}` — {why}")
     L.append("")
 
-L.append("## Detail\n")
+D = []
+D.append("# Run log — detail\n")
+D.append(f"Generated from `s3://{bucket}/{prefix}/` by `tools/update-run-log.sh` "
+         f"(`make run_log`) — last refreshed {now}.\n")
+D.append("**Do not edit by hand.** Rewritten wholesale on every run of that script, as "
+         f"[`{INDEX_NAME}`]({INDEX_NAME}) is. That file is the index and carries the results "
+         "table and any caveats; this one records what each run was configured with and what "
+         "environment it met, which is what makes a number interpretable once the environment "
+         "is gone.\n")
 for r, link, meta, stats, sha7, corr in details:
-    L.append(f"### `{r}`\n")
-    L.append(f"Artefacts: `{link}`\n")
-    L.append("| | |")
-    L.append("|---|---|")
+    D.append(f"## `{r}`\n")
+    D.append(f"Artefacts: `{link}`\n")
+    D.append("| | |")
+    D.append("|---|---|")
     if stats:
-        L.append(f"| requests (ok) | {stats.get('requests','—')} |")
-        L.append(f"| failed | {stats.get('failed','—')} ({stats.get('failed_pct','—')}%) |")
-        L.append(f"| response time p50 / p95 / p99 / max ms | "
+        D.append(f"| requests (ok) | {stats.get('requests','—')} |")
+        D.append(f"| failed | {stats.get('failed','—')} ({stats.get('failed_pct','—')}%) |")
+        D.append(f"| response time p50 / p95 / p99 / max ms | "
                  f"{stats.get('p50_ms','—')} / {stats.get('p95_ms','—')} / "
                  f"{stats.get('p99_ms','—')} / {stats.get('max_ms','—')} |")
-        L.append(f"| mean ms | {stats.get('mean_ms','—')} |")
-        L.append(f"| mean throughput rps | {stats.get('rps','—')} |")
+        D.append(f"| mean ms | {stats.get('mean_ms','—')} |")
+        D.append(f"| mean throughput rps | {stats.get('rps','—')} |")
     if meta:
         cs = (corr.get('actual') or {}).get('simulation.gitSha') if corr else None
         cd = (corr.get('actual') or {}).get('simulation.gitDirty') if corr else None
         if cs:
-            L.append(f"| harness commit | `{cs}` — **corrected**, the run recorded "
+            D.append(f"| harness commit | `{cs}` — **corrected**, the run recorded "
                      f"`{at(meta,'simulation.gitSha','—')}` |")
         else:
-            L.append(f"| harness commit | {at(meta,'simulation.gitSha','—')} "
+            D.append(f"| harness commit | {at(meta,'simulation.gitSha','—')} "
                      f"(run id says `{sha7}`) |")
         if cd is not None:
-            L.append(f"| tree dirty | {cd} — **corrected**, the run recorded "
+            D.append(f"| tree dirty | {cd} — **corrected**, the run recorded "
                      f"`{at(meta,'simulation.gitDirty','—')}` |")
         else:
-            L.append(f"| tree dirty | {at(meta,'simulation.gitDirty','—')} |")
-        L.append(f"| target | {at(meta,'target.baseUrl','—')} |")
-        L.append(f"| server build | {at(meta,'target.serverBuild','—')} |")
-        L.append(f"| dataset | {at(meta,'dataset','—')} |")
-        L.append(f"| injector | {at(meta,'settings.injector.label','—')} "
+            D.append(f"| tree dirty | {at(meta,'simulation.gitDirty','—')} |")
+        D.append(f"| target | {at(meta,'target.baseUrl','—')} |")
+        D.append(f"| server build | {at(meta,'target.serverBuild','—')} |")
+        D.append(f"| dataset | {at(meta,'dataset','—')} |")
+        D.append(f"| injector | {at(meta,'settings.injector.label','—')} "
                  f"({at(meta,'settings.injector.os','—')}, {at(meta,'settings.injector.cpus','—')} cpu, "
                  f"heap {at(meta,'settings.injector.maxHeapMb','—')} MB) |")
-        L.append(f"| injector RTT min / median ms | {at(meta,'settings.injector.rtt.minMillis','—')} / "
+        D.append(f"| injector RTT min / median ms | {at(meta,'settings.injector.rtt.minMillis','—')} / "
                  f"{at(meta,'settings.injector.rtt.medianMillis','—')} |")
-        L.append(f"| est. sync overhead s | {at(meta,'settings.injector.rtt.estimatedSyncOverheadSeconds','—')} |")
-        L.append(f"| injection | profile {at(meta,'settings.injection.profile','—')}, "
+        D.append(f"| est. sync overhead s | {at(meta,'settings.injector.rtt.estimatedSyncOverheadSeconds','—')} |")
+        D.append(f"| injection | profile {at(meta,'settings.injection.profile','—')}, "
                  f"{at(meta,'settings.injection.userCount','—')} users arriving over "
                  f"{window}, ~{inflight.lstrip('~')} requests in flight (rps x mean), "
                  f"ramp {at(meta,'settings.injection.rampPeriodSeconds','—')} s |")
-        L.append(f"| sync | mode {at(meta,'settings.sync.syncMode','—')}, "
+        D.append(f"| sync | mode {at(meta,'settings.sync.syncMode','—')}, "
                  f"feeder {at(meta,'settings.sync.feeder','—')} "
                  f"({at(meta,'settings.sync.feederRows','—')} rows), "
                  f"auth {at(meta,'settings.sync.authMode','—')}, "
                  f"page {at(meta,'settings.sync.pageSize','—')} |")
-        L.append(f"| entities | {at(meta,'entityTable.pulled','—')} pulled of "
+        D.append(f"| entities | {at(meta,'entityTable.pulled','—')} pulled of "
                  f"{at(meta,'entityTable.total','—')} ({at(meta,'entityTable.source','—')}) |")
-        L.append(f"| push / co-tenants | {at(meta,'settings.push.enabled','—')} / "
+        D.append(f"| push / co-tenants | {at(meta,'settings.push.enabled','—')} / "
                  f"{at(meta,'settings.coTenants.enabled','—')} |")
-        L.append(f"| cache policy | {at(meta,'environment.cachePolicy','—')} |")
-        L.append(f"| autovacuum | {at(meta,'environment.autovacuum','—')} |")
-    L.append("")
+        D.append(f"| cache policy | {at(meta,'environment.cachePolicy','—')} |")
+        D.append(f"| autovacuum | {at(meta,'environment.autovacuum','—')} |")
+    D.append("")
 
 pathlib.Path(out).parent.mkdir(parents=True, exist_ok=True)
 pathlib.Path(out).write_text("\n".join(L))
+detail_path = pathlib.Path(out).with_name(DETAIL_NAME)
+detail_path.write_text("\n".join(D))
 print(f"wrote {out}: {len(rows)} run(s), {len(problems)} caveat(s)")
+print(f"wrote {detail_path}: {len(details)} run(s)")
 PY
