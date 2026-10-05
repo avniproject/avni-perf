@@ -479,8 +479,22 @@ public class AvniSyncSimulation extends Simulation {
     /** How long to hold that rate. Two hours covers most cases; the soak wants twelve. */
     private static final int durationMinutes = Integer.getInteger("DURATION_MINUTES", 120);
 
-    /** `burst` only: how long the cohort takes to arrive. Case 1 is 100 devices in 15 minutes. */
-    private static final int burstMinutes = Integer.getInteger("BURST_MINUTES", 15);
+    /**
+     * `burst` only: how long the cohort takes to arrive, in **seconds**.
+     *
+     * **Was 15 minutes, and that is not a burst.** `rampUsers` spreads arrivals linearly, so 100
+     * devices over 15 minutes is one every nine seconds. A case-1 sync costs about six seconds --
+     * 1.6 s of server time and roughly 4.3 s of modelled storage pause across 38 paged requests --
+     * so by Little's law the concurrency was 6/9, and the first run peaked at **two** devices in
+     * flight. One device at a time measures per-sync cost and says nothing about a cohort, which
+     * is what the case is named for: a trainer says "sync now" and a hundred devices pull the same
+     * reference data at once, against the same queries, the same rows and one pool.
+     *
+     * Seconds rather than minutes because at this size a minute is already the interesting end of
+     * the range, and the old unit could not express anything below it. 60 s puts ~10 devices in
+     * flight; 15 s puts ~40.
+     */
+    private static final int burstSeconds = Integer.getInteger("BURST_SECONDS", 60);
 
     /** `stress` only: the rate to climb to. Ten times the starting rate unless told otherwise. */
     private static final double stressToSyncsPerHour = Double.parseDouble(
@@ -1207,7 +1221,10 @@ public class AvniSyncSimulation extends Simulation {
         injection.put("syncWindowHours", syncWindowHours);
         injection.put("syncsPerHour", syncsPerHour);
         injection.put("durationMinutes", durationMinutes);
-        injection.put("burstMinutes", burstMinutes);
+        injection.put("burstSeconds", burstSeconds);
+        // The derived figure, because it is the one that makes a burst a burst and nothing else
+        // in the archive records it.
+        injection.put("burstArrivalsPerSecond", userCount / (double) Math.max(burstSeconds, 1));
         injection.put("stressToSyncsPerHour", stressToSyncsPerHour);
         injection.put("rampPeriodSeconds", rampPeriod);
         settings.put("injection", injection);
@@ -1332,9 +1349,12 @@ public class AvniSyncSimulation extends Simulation {
                     syncsPerHour / 3600.0 * 14.1, userCount, syncWindowHours);
             case "burst":
                 return String.format(
-                    "Profile: burst | %d devices arriving over %d min. Case 1's training cohort: "
-                    + "every device starts empty, so every sync is a full pull of the same "
-                    + "reference data at the same moment.", userCount, burstMinutes);
+                    "Profile: burst | %d devices arriving over %ds, one every %.1fs | ~%.0f in "
+                    + "flight at a 6s reference-data sync. Case 1's training cohort: every device "
+                    + "starts empty, so every sync is a full pull of the same reference data. "
+                    + "Raise BURST_SECONDS to spread them, lower it to make the herd sharper.",
+                    userCount, burstSeconds, burstSeconds / (double) Math.max(userCount, 1),
+                    userCount / (double) Math.max(burstSeconds, 1) * 6.0);
             case "stress":
                 return String.format(
                     "Profile: stress | %.0f to %.0f syncs/hour over %d min. No steady state by "
@@ -1369,10 +1389,11 @@ public class AvniSyncSimulation extends Simulation {
                     constantUsersPerSec(syncsPerHour / 3600.0).during(duration)};
 
             case "burst":
-                // Case 1: a training cohort logging in together. Every device starts empty, so
-                // every sync is a full pull of the same reference data at the same moment.
+                // Case 1: a training cohort logging in together. `rampUsers` spreads arrivals
+                // linearly across the window, so the window *is* the concurrency knob -- at 15
+                // minutes it put two devices in flight and measured one sync at a time.
                 return new OpenInjectionStep[]{
-                    rampUsers(userCount).during(java.time.Duration.ofMinutes(burstMinutes))};
+                    rampUsers(userCount).during(java.time.Duration.ofSeconds(burstSeconds))};
 
             case "stress":
                 // Case 9: climb until something breaks. The knee and the resource that names it

@@ -23,7 +23,7 @@ are parameters with a documented range, defaulted to their conservative end.
 
 | # | Case | Tenants | Users | Dataset | Mode | Run for | What it answers |
 |---|---|---|---|---|---|---|---|
-| **1** | Training cohort | 1 | 100 field workers, first login within 15 min | Config only, **no field data** | Full | **30 min** | Reference-data sync and `syncDetails` cost, isolated from catchment volume. **Gives the per-row cost**, from which a wider configuration is arithmetic |
+| **1** | Training cohort | 1 | 100 field workers, first login within 60 s | Config only, **no field data** | Full | **30 min** | Reference-data sync and `syncDetails` cost, isolated from catchment volume. **Gives the per-row cost**, from which a wider configuration is arithmetic |
 | **2** | Field worker steady state | 1 state | 500 | Day 180 | Incremental, 1% full | **4 h** | The common case |
 | **3** | Supervisor steady state | 1 state | 25–63 | Day 180 | Incremental, 1% full | **2 h, driven** | Whether 3× the volume per device changes anything |
 | **4** | **Combined** | 1 state | 500 + 25–63 | Day 180 | Incremental, 1% full | **4 h** | **The realistic case.** Wide and frequent syncs competing for one pool |
@@ -71,7 +71,7 @@ as rather than to whichever file happened to be in place.
 
 | # | Properties beyond the dataset and user file | Syncs/hour | Syncs collected |
 |---|---|---|---|
-| **1** | `PROFILE=burst -DUSER_COUNT=100 -DBURST_MINUTES=15` | — | 100 |
+| **1** | `PROFILE=burst -DUSER_COUNT=100 -DBURST_SECONDS=60` | — | 100 |
 | **2** | `PROFILE=steady -DUSER_COUNT=500 -DDURATION_MINUTES=240` | 42 | 167 |
 | **3** | `PROFILE=steady -DUSER_COUNT=63 -DSYNCS_PER_HOUR=…` at span 8, `-DUSER_COUNT=25` at span 20 | 5 natural | **10** — see below |
 | **4** | `PROFILE=steady -DUSER_COUNT=563 -DDURATION_MINUTES=240` at span 8, `-DUSER_COUNT=525` at span 20 | 47 | 187 |
@@ -209,11 +209,22 @@ incremental sync costs about the same whether it carries 15 records or 500.
 | 10 · soak, same load sustained | 47 | **0.18** |
 | 5, 6 · all ten tenants | 141 | **0.55** |
 | 7 · ten tenants plus production's own traffic | 933 | **3.65** |
-| 1 · training cohort, 100 logins in 15 min | — | **~3** |
+| 1 · training cohort, 100 logins in 60 s | — | **~10** |
 | 11 · ten tenants, clustered into one hour | 1,692 | **6.63** |
 | 12 · plus co-tenant data, clustered | 1,692 | **6.63** |
 | 13 · plus co-tenant load, clustered | 2,484 | **9.73** |
 | 9 · stress ramp | — | unbounded by design |
+
+> **The burst window was 15 minutes and that is not a burst (corrected 5 Oct 2026).** `rampUsers`
+> spreads arrivals linearly, so 100 devices over 15 minutes is one every nine seconds. A case-1
+> sync costs about six seconds — 1.6 s of server time and ~4.3 s of modelled storage pause across
+> 38 paged requests — so the concurrency was 6/9 and the first run peaked at **two** devices in
+> flight. That measures per-sync cost well and says nothing about a cohort, which is what the case
+> is named for. The window is `BURST_SECONDS` now, defaulting to 60, which puts ~10 in flight; 15 s
+> puts ~40. **The in-flight figure above was ~3 and assumed production's 14.1 s median sync** —
+> these syncs are faster because the cohort reaches no field data, so the same arrival shape gave
+> less than a quarter of it.
+
 
 **Case 6 sits with case 5, not with case 7.** Its co-tenants hold data but sync nothing — that is
 the whole difference between them — so its arrival rate is the customer's alone. Only case 7 adds
