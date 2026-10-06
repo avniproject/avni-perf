@@ -2,9 +2,11 @@
 
 Case 1 is the training cohort: a trainer says "sync now" and a hundred devices, all empty, pull
 the same reference data at once. Six runs on 5 Oct 2026 swept the arrival window from 15 minutes
-down to 15 seconds and located the knee. Four further runs the same afternoon reproduced the two
+down to 15 seconds and located the knee. **Times here are IST, matching the date column of
+[`run-log.md`](run-log.md); run ids remain UTC**, so the 17:07 run is `...T11-37-03Z...`. Four
+further runs later the same day reproduced the two
 harshest windows: two against a just-restarted server, which is its own finding below, and two
-against a warm one that **reproduced the morning's numbers** — 56.58 rps against 56.58, p95 6,741
+against a warm one that **reproduced the earlier numbers** — 56.58 rps against 56.58, p95 6,741
 against 6,768. Artefacts and the per-run table are in [`run-log.md`](run-log.md); each run's
 settings and environment in [`run-log-detail.md`](run-log-detail.md).
 
@@ -34,7 +36,7 @@ server's 2 vCPU is what names it. Not the database, not the injector.
 this is where it can be shown. The three measured runs agree with it exactly — 5.5, 8.4, 11.8 in
 both documents.
 
-‡ Measured, but from the **re-run** of that window at 12:01 and 12:02, not from the 09:43 and 09:53
+‡ Measured, but from the **re-run** of that window at 17:31 and 17:32, not from the 15:13 and 15:23
 runs the rest of the column describes. Those two predate `sync-durations.csv`. The substitution is
 honest for the 15 s window, which the re-run reproduced to within 0.4% on every other figure, and
 is the best available for 60 s, which came back 4.7% slower — see the reproduction note below.
@@ -127,13 +129,13 @@ three points is the reason to trust either.
 
 ## A restarted server delivers a third of its warm throughput
 
-The runs at 11:37 and 11:41 were started seven minutes after the environment came back from a
+The runs at 17:07 and 17:11 were started seven minutes after the environment came back from a
 stop/start. They are listed under "Runs that are not measurements" in `run-log.md` — out of the
 table, because a row beside comparable runs reads as comparable — and each carries a
 `provenance-correction.json` in its own prefix recording what it asserted and what was true. They
 are not comparable to anything above:
 
-| 60 s window | cold | warm, 20 min later | this morning |
+| 60 s window | cold | warm, 20 min later | the 15:13 run |"
 |---|---|---|---|
 | achieved rps | 18.43 | 50.00 | 52.44 |
 | p95 ms | 25,635 | 2,767 | 2,242 |
@@ -147,14 +149,14 @@ this environment has produced**: nine requests hit the 60 s client timeout, and 
 user's chain, 108 of the 4,300 were never issued. Same host, same instance class, same parameter
 group, same dataset, same harness commit — `gitSha d9eac3e`, `gitDirty false` on both.
 
-The app server's JVM started at **11:34:14**. The first run began at **11:37:03** — two minutes and
+The app server's JVM started at **17:04:14**. The first run began at **17:07:03** — two minutes and
 49 seconds later.
 
 What rules out the alternatives, all at 1-minute resolution:
 
 * **Not the database.** RDS CPU 14-33%, `ReadIOPS` 0.0 and `ReadLatency` 0.0 throughout — the
   buffer cache had already refilled before the runs started, so whatever was cold was not there.
-  Connections pegged at exactly 100 for four minutes where the morning's harshest run reached
+  Connections pegged at exactly 100 for four minutes where the sweep's harshest run reached
   95-96: the application pool fully exhausted, which is a consequence of slow requests rather than
   a cause, since `max_connections` is in the hundreds either way.
 * **Not the injector.** 3-22% CPU across 4 vCPU, load average 0.00.
@@ -168,8 +170,8 @@ Two signs pointed at warm-up rather than damage before the re-run settled it: wi
 the *second* run beat the first by 67% despite four times the arrival rate, and twenty minutes and
 two saturating runs later the same two windows returned 50.00 and 56.58 rps.
 
-**This morning's gentle 15-minute run was an accidental warm-up.** It pushed 4,300 requests through
-at 4.77 rps an hour before the 09:43 run, which is why the morning sweep never met this. A warm-up
+**The 14:08 gentle 15-minute run was an accidental warm-up.** It pushed 4,300 requests through
+at 4.77 rps an hour before the 15:13 run, which is why the sweep never met this. A warm-up
 belongs in the protocol rather than in the luck of the ordering — and the two cold runs record
 `cachePolicy: warm-incidental-no-reset`, which is simply wrong. It was not a default: `build.gradle`
 defaults the field to `unrecorded`, and that value appears nowhere in either repository, so it was
@@ -188,7 +190,7 @@ before it takes sync traffic.
 
 Three independent measurements agree, which is what makes this a finding rather than a guess.
 
-**App server CPU reached 99.25%** during the morning's 15-second-burst run — an `m6g.large`, 2
+**App server CPU reached 99.25%** during the 15:23 15-second-burst run — an `m6g.large`, 2
 vCPU, 8 GiB, fixed-performance. At the 1-minute resolution now enabled, the clearest sustained
 curve comes from the cold runs, which were long enough to fill whole buckets: 99.19, 99.19, 97.38
 and 99.22 across six consecutive minutes. The warm runs finish in 92 and 103 seconds, so their
@@ -244,7 +246,7 @@ the things that stop being trivial, and this is the largest one in the trace by 
   is missing is contention for CPU, connections and IOPS, not a realistically sized table.
 * **Cache state was incidental**, not warm-from-reload: the environment had been restarted and
   then variously queried. Recorded as `warm-incidental-no-reset` on each run — accurately for the
-  six morning runs and the two warm re-runs, wrongly for the two cold ones — where it was not a
+  six sweep runs and the two warm re-runs, wrongly for the two cold ones — where it was not a
   default but an assertion, passed explicitly on a server three minutes old. The cold-start section
   is the measurement of how much this matters.
 * **The first run is not a cohort measurement.** Its 15-minute window spread 100 arrivals one
