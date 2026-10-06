@@ -1,6 +1,6 @@
 # Run log — detail
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-05 13:31 UTC.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-06 03:53 UTC.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script, as [`run-log.md`](run-log.md) is. That file is the index and carries the results table and any caveats; this one records what each run was configured with and what environment it met, which is what makes a number interpretable once the environment is gone.
 
@@ -109,6 +109,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-28-06Z-case1
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
 | sync duration p50 / mean / p95 s | 11.8 / 11.8 / 12.4 (100 syncs) |
+| full syncs p50 / p95 s | 11.8 / 12.4 (100 of 100, back-calculated from SYNC_MODE=full) |
 | cache policy | warm-incidental-no-reset |
 | autovacuum | on |
 
@@ -136,6 +137,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-30-01Z-case1
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
 | sync duration p50 / mean / p95 s | 10.8 / 10.8 / 11.2 (100 syncs) |
+| full syncs p50 / p95 s | 10.8 / 11.2 (100 of 100, back-calculated from SYNC_MODE=full) |
 | cache policy | warm-incidental-no-reset |
 | autovacuum | on |
 
@@ -163,6 +165,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-32-25Z-case1
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
 | sync duration p50 / mean / p95 s | 10.4 / 10.5 / 10.7 (100 syncs) |
+| full syncs p50 / p95 s | 10.4 / 10.7 (100 of 100, back-calculated from SYNC_MODE=full) |
 | cache policy | warm-incidental-no-reset |
 | autovacuum | on |
 
@@ -190,6 +193,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-37-03Z-case1
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
 | sync duration p50 / mean / p95 s | 186.7 / 182.3 / 199.7 (91 syncs) |
+| full syncs p50 / p95 s | 186.7 / 199.7 (91 of 91, back-calculated from SYNC_MODE=full) |
 | cache policy | warm-incidental-no-reset |
 | autovacuum | on |
 
@@ -217,6 +221,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-41-10Z-case1
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
 | sync duration p50 / mean / p95 s | 120.6 / 120.2 / 129.8 (100 syncs) |
+| full syncs p50 / p95 s | 120.6 / 129.8 (100 of 100, back-calculated from SYNC_MODE=full) |
 | cache policy | warm-incidental-no-reset |
 | autovacuum | on |
 
@@ -244,6 +249,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-01-03Z-case1
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
 | sync duration p50 / mean / p95 s | 31.8 / 31.0 / 40.2 (100 syncs) |
+| full syncs p50 / p95 s | 31.8 / 40.2 (100 of 100, back-calculated from SYNC_MODE=full) |
 | cache policy | warm-jvm-30min-after-two-saturating-runs |
 | autovacuum | unrecorded |
 
@@ -271,5 +277,6 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-02-47Z-case1
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
 | sync duration p50 / mean / p95 s | 61.4 / 60.9 / 64.0 (100 syncs) |
+| full syncs p50 / p95 s | 61.4 / 64.0 (100 of 100, back-calculated from SYNC_MODE=full) |
 | cache policy | warm-jvm-30min-after-two-saturating-runs |
 | autovacuum | unrecorded |

@@ -84,7 +84,7 @@ def jload(p):
     try: return json.loads(p.read_text())
     except Exception: return None
 
-def sync_durations(path):
+def sync_durations(path, sync_mode=None):
     """Mean and p95 of a run's per-sync durations, in seconds, from sync-durations.csv.
 
     Returns None where the file is absent -- every run before 5 Oct 2026 -- so the caller can
@@ -106,10 +106,21 @@ def sync_durations(path):
         except ValueError:
             continue
         ms.append(v)
-        # Column 7 from 6 Oct 2026. Absent on earlier runs, which is not the same as false:
-        # those runs have no full/incremental split recorded, so `full` stays empty and the
-        # column reads as absent rather than as "no full syncs".
-        if len(c) >= 7 and c[6].strip().lower() == 'true':
+        # Column 7 from 6 Oct 2026.
+        if len(c) >= 7:
+            if c[6].strip().lower() == 'true':
+                full.append(v)
+        elif sync_mode == 'full':
+            # **Back-calculated, and exactly rather than approximately.** A file without the
+            # column predates it, and under SYNC_MODE=full every entity of every sync pulls from
+            # 1900 -- so every row in it is a full sync and the figure is the same arithmetic over
+            # the same numbers. All ten runs to 6 Oct 2026 were mode full, which is why this is
+            # worth doing rather than leaving seven runs blank.
+            #
+            # Only `full` is recoverable this way. `incremental` and pre-6-Oct `realistic` produced
+            # no full syncs at all, which is a different statement from "unknown" and is made
+            # separately below. `csv` decides per user from the feeder, so the split cannot be
+            # recovered from this file alone.
             full.append(v)
     if not ms:
         return None
@@ -117,7 +128,11 @@ def sync_durations(path):
     out = dict(n=len(ms), mean=sum(ms) / len(ms) / 1000.0,
                p50=pct(ms, 0.50), p95=pct(ms, 0.95))
     if full:
-        out.update(full_n=len(full), full_p50=pct(full, 0.50), full_p95=pct(full, 0.95))
+        out.update(full_n=len(full), full_p50=pct(full, 0.50), full_p95=pct(full, 0.95),
+                   full_source=('recorded' if any(len(l.split(',')) >= 7 for l in lines[1:])
+                                else 'back-calculated from SYNC_MODE=full'))
+    elif sync_mode in ('incremental', 'realistic'):
+        out['full_none'] = sync_mode
     return out
 
 
@@ -255,11 +270,24 @@ for r in runs:
     # The cap cannot bind on a run-mean -- wall is at least the arrival window plus one sync, so
     # duration/wall is at most 1 -- and is kept as a guard against a malformed pair of inputs
     # rather than as a correction.
-    syncs = sync_durations(work / r / 'sync-durations.csv')
+    syncs = sync_durations(work / r / 'sync-durations.csv',
+                           at(meta, 'settings.sync.syncMode'))
     if syncs and wall and users_n:
         indevices = fmt(min(users_n * syncs['mean'] / wall, users_n))
     else:
         indevices = '—'
+
+    # **A warm-up is a state change, not a measurement.**
+    #
+    # Step 6 and avni-infra's env-warmup.sh both run ./gradlew directly, so a discarded pass does
+    # not reach this prefix at all and normally none of these rows is one. This catches the case
+    # where somebody warms through run-scenario.sh instead, which publishes. Worth catching rather
+    # than assuming: a warm-up is deliberately gentle, so its numbers look *good*, and a row that
+    # is not broken in any visible way is the kind most likely to be read as a point on a curve.
+    if 'warmup' in label.lower() or 'warmup' in str(at(meta, 'environment.cachePolicy', '')).lower():
+        problems.append((r, "is a **warm-up**, not a measurement — a deliberately gentle pass run "
+                            "to take the cold-JVM penalty off the first real run. It belongs to no "
+                            "curve, and is normally discarded rather than published"))
 
     # **A run that breached its own gate reads as a data point unless something says so.**
     #
@@ -447,10 +475,14 @@ for r, link, meta, stats, sha7, corr in details:
                      f"{syncs['mean']:.1f} / {syncs['p95']:.1f} ({syncs['n']} syncs) |")
             if 'full_p95' in syncs:
                 D.append(f"| full syncs p50 / p95 s | {syncs['full_p50']:.1f} / "
-                         f"{syncs['full_p95']:.1f} ({syncs['full_n']} of {syncs['n']}) |")
+                         f"{syncs['full_p95']:.1f} ({syncs['full_n']} of {syncs['n']}, "
+                         f"{syncs['full_source']}) |")
+            elif 'full_none' in syncs:
+                D.append(f"| full syncs | none — `SYNC_MODE={syncs['full_none']}` produced no "
+                         f"sync that pulled from 1900 |")
             else:
-                D.append("| full syncs | none recorded — a run before 6 Oct 2026 carries no "
-                         "full/incremental split |")
+                D.append("| full syncs | unknown — the run recorded no split and its mode does "
+                         "not settle it |")
         else:
             D.append("| sync duration | not archived — predates sync-durations.csv (5 Oct 2026) |")
         D.append(f"| cache policy | {at(meta,'environment.cachePolicy','—')} |")
