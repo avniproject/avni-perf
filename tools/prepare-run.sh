@@ -128,25 +128,30 @@ note "Set SYNC_MODE for the case. There are no cached baselines to rewrite."
 # **Warmth has to be produced, not declared.** All ten runs that day passed
 # `-DCACHE_POLICY=warm-incidental-no-reset`, including the two it was false for, and nothing could
 # contradict it. A discarded pass makes the claim true before it is made.
-step "6. Warm the app server, and discard the pass"
+step "6. Confirm the app server is warm"
 cat <<'WARMUP'
-  Every measured run is a warm run. Discard a gentle pass first:
+  Every measured run is a warm run. **Starting the environment now warms it for you**:
+  avni-infra's `env-teardown.sh start` runs `env-warmup.sh` once the instances are up, pushing
+  ~4,300 requests over a 180 s window and discarding them. It invokes ./gradlew rather than
+  run-scenario.sh, so the pass never reaches the artefacts prefix.
 
-    ./gradlew gatlingRun -DBASE_URL=$URL -DPROFILE=burst -DBURST_SECONDS=900 \
+  So this step is a check, not a task -- unless one of these is true:
+
+    * the app server has restarted since the environment started: a deploy, a crash, a manual
+      bounce. Nothing re-warms it, and in production that window *is* a deploy, which is a
+      finding in its own right rather than a state to measure a ceiling in
+    * AVNI_SKIP_WARMUP was set when the environment came up
+    * a long gap since the last run. **How long warm lasts is unmeasured** -- twenty minutes and
+      two saturating runs was warm, 2m49s was not, and nothing establishes where it crosses
+
+  Warm by hand in any of those cases:
+
+    ./gradlew gatlingRun -DBASE_URL=$URL -DPROFILE=burst -DBURST_SECONDS=180 \
         -DSYNC_USERS=case1-users.csv -DUSER_COUNT=100 -DCACHE_POLICY=discarded-warmup
 
-  That is ~4,300 requests at ~5/s, which is what the accidental warm-up on 5 Oct turned out to be.
-  It takes fifteen minutes and costs less than the run it protects: the first cold measurement
-  that day was unusable and the sweep had to be repeated.
-
-  Then wait for the app server CPU to settle before the measured run. Do not start one within
-  five minutes of a deploy or a stop/start -- in production that window is a deploy, and a cohort
-  syncing into it meets the cold curve, which is a finding in its own right rather than something
-  to measure a ceiling with.
-
-  **How long warm lasts is unmeasured.** Twenty minutes and two saturating runs was warm; 2m49s
-  was not. Nothing establishes where between those it crosses, so a long gap between runs is a
-  reason to warm again rather than to assume.
+  180 s matches the automated pass. Before a campaign where the numbers matter, 900 s is the
+  shape measured on 5 Oct -- the minimum sufficient warm-up is unmeasured, so the longer pass is
+  the conservative one rather than the known-correct one.
 WARMUP
 
 # ---- 7. the two decisions ----------------------------------------------------------------------
