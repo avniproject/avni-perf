@@ -299,6 +299,52 @@ for pair in "formMapping:formMappings.json" "subjectType:subjectTypes.json" \
     printf '  \033[32mok\033[0m    %-16s %s in the organisation, %s in the bundle\n' "$ep" "${got:-0}" "${want:-0}"
   fi
 done
+# **organisationConfig needs a different comparison, and its absence cost a day.**
+#
+# The four checks above count rows against the bundle's own arrays. A config is one object, not a
+# list, so it was left out -- and on 6 Oct 2026 that is precisely what did not land: eight
+# organisations provisioned from a bundle carrying `customRegistrationLocations` ended up without
+# it. The import reported COMPLETED, all four checks passed, and the one unverified thing was the
+# one that failed. Each organisation already had a config row created during its own provisioning
+# which the bundle's settings never replaced, so even a row-exists check would have passed.
+#
+# So this compares the settings *keys*: every key the bundle ships must be present on the
+# organisation. Keys the organisation has and the bundle does not are fine -- the server stamps
+# its own, `enabledSqliteSnapshotGenerationAt` among them.
+if [ -f "$SRC_DIR/organisationConfig.json" ]; then
+  CONFIG_JSON=$(api "$URL/organisationConfig/search/lastModified?lastModifiedDateTime=1900-01-01T00:00:00.000Z&now=2099-01-01T00:00:00.000Z&size=1&page=0" \
+      -H "USER-NAME: $ADMIN" -H "ORGANISATION-UUID: $ORG_UUID" | sed '$d')
+  CONFIG_RESULT=$(SRC_DIR="$SRC_DIR" python3 -c "
+import json, os, sys
+try:
+    want = set((json.load(open(os.environ['SRC_DIR'] + '/organisationConfig.json')).get('settings') or {}))
+except Exception as e:
+    print('SKIP|organisationConfig.json is absent or unreadable (%s)' % type(e).__name__)
+    raise SystemExit
+try:
+    body = json.load(sys.stdin)
+except Exception:
+    print('FAIL|%d key(s) in the bundle, and the organisation returned no readable config' % len(want))
+    raise SystemExit
+items = (body.get('_embedded') or {}).get('organisationConfig') or []
+if not items:
+    print('FAIL|%d key(s) in the bundle, and the organisation has no config at all' % len(want))
+    raise SystemExit
+got = set(items[0].get('settings') or {})
+missing = sorted(want - got)
+if missing:
+    print('FAIL|%d of %d setting(s) missing: %s' % (len(missing), len(want), ', '.join(missing)))
+else:
+    print('OK|%d of %d bundle settings present' % (len(want & got), len(want)))
+" <<< "$CONFIG_JSON")
+  CONFIG_STATE="${CONFIG_RESULT%%|*}"; CONFIG_MSG="${CONFIG_RESULT#*|}"
+  case "$CONFIG_STATE" in
+    OK)   printf '  \033[32mok\033[0m    %-16s %s\n' "organisationConfig" "$CONFIG_MSG" ;;
+    SKIP) printf '  ----  %-16s %s\n' "organisationConfig" "$CONFIG_MSG" ;;
+    *)    printf '  \033[31mFAIL\033[0m  %-16s %s\n' "organisationConfig" "$CONFIG_MSG"; SHORT=1 ;;
+  esac
+fi
+
 [ "$SHORT" -eq 0 ] || die "the import reported COMPLETED but did not bring everything. Voided entries explain a smaller count; none at all does not."
 
 echo
