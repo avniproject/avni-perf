@@ -741,6 +741,13 @@ public class AvniSyncSimulation extends Simulation {
                 // surfaces them: the duration went only into the syncTelemetry POST, which means
                 // reading the gate's own result back required querying the server's database.
                 .set("syncStartMillis", System.currentTimeMillis())
+                // **Decided once here, per sync, and read everywhere else.** A full sync is a
+                // property of the sync, not of one entity: if a device is catching up from
+                // scratch it does so for everything it tracks. Deciding inside `loadedSinceFor`,
+                // which runs once per entity, would have given a device a 1% chance of pulling
+                // each entity from 1900 independently -- 75 entities, so about half of all syncs
+                // would carry at least one full pull and none would be a full sync.
+                .set("fullSync", drawFullSync(session))
                 .set("recordsPulled", 0)
                 .set("pausedMs", 0L))
             // The client uploads before it asks what changed: dataServerSync runs pushData, then
@@ -1537,7 +1544,50 @@ public class AvniSyncSimulation extends Simulation {
      * entities - Individual, Encounter, ProgramEncounter, ProgramEnrolment - still fall through to
      * the server's 1900 default and still full-sync. Reference data does honour the window.
      */
+    /**
+     * Share of syncs that start from scratch, as a percentage. E2: "fresh sync is 1% of syncs
+     * daily", which is the mix cases 2 to 7 are specified against.
+     */
+    private static final double fullSyncPercent =
+        Double.parseDouble(System.getProperty("FULL_SYNC_PERCENT", "1.0"));
+
+    /**
+     * Whether this sync pulls from the beginning of time.
+     *
+     * **`realistic` had no full syncs at all until 6 Oct 2026**, which is not what the cases say:
+     * 2 to 7 are "incremental, 1% full", and the 1% is the expensive end. Q2's gap distribution
+     * that `realisticLoadedSince` draws from is a distribution of *gaps between syncs* and has no
+     * mass at "never synced before", so a device that has just been wiped or newly enrolled was
+     * absent from every run of those cases.
+     *
+     * Drawn per sync rather than per user: a device does a fresh sync when it is re-enrolled or
+     * its data is cleared, which can happen to any device at any time, not to a fixed 1% of the
+     * fleet forever.
+     *
+     * `ThreadLocalRandom` as the push volumes and media counts already use -- a run is not
+     * bit-reproducible and this does not change that. At 1% of a 167-sync case 2 that is one or
+     * two full syncs, so expect the count to vary run to run; `FULL_SYNC_PERCENT` raises it when
+     * a case wants the full-sync path exercised rather than merely represented.
+     */
+    private static boolean drawFullSync(Session session) {
+        switch (syncMode) {
+            case "full":
+                return true;
+            case "csv":
+                return FULL_SYNC_SINCE.equals(session.getString("lastModifiedDateTime"));
+            case "realistic":
+                return ThreadLocalRandom.current().nextDouble() * 100.0 < fullSyncPercent;
+            default:
+                return false;
+        }
+    }
+
     private static String loadedSinceFor(Session session, String entityName) {
+        // The per-sync draw wins over the mode's own window: a sync chosen to be full pulls
+        // everything from 1900, whatever `realistic` would otherwise have computed per entity.
+        if (session.contains("fullSync") && session.getBoolean("fullSync")) {
+            return FULL_SYNC_SINCE;
+        }
         switch (syncMode) {
             case "full":
                 return FULL_SYNC_SINCE;
@@ -2063,14 +2113,10 @@ public class AvniSyncSimulation extends Simulation {
      *                full share the scenarios describe, so a `realistic` run has none at all
      */
     private static boolean isFullSync(Session session) {
-        switch (syncMode) {
-            case "full":
-                return true;
-            case "csv":
-                return FULL_SYNC_SINCE.equals(session.getString("lastModifiedDateTime"));
-            default:
-                return false;
-        }
+        // Reads the decision rather than repeating it. The draw happens once per sync; deriving
+        // it a second time here would disagree with the window the sync actually used under
+        // `realistic`, where the answer is random.
+        return session.contains("fullSync") && session.getBoolean("fullSync");
     }
 
     private static java.time.Duration storagePause(AvniEntity entity, Session session) {

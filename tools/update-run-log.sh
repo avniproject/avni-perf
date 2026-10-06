@@ -184,8 +184,19 @@ for r in runs:
     # reliable even when a run died before the harness wrote metadata.
     m = re.match(r'(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-\d{2}Z-(.+)-([0-9a-f]{7})$', r)
     date  = f"{m.group(1)} {m.group(2)}:{m.group(3)}" if m else ''
-    label = m.group(4) if m else r
+    run_label = m.group(4) if m else r
     sha7  = m.group(5) if m else '?'
+
+    # **The scenario column names the case and nothing else.** Run ids carry what distinguished one
+    # invocation from another -- `case1-burst15`, `case1-burst60-warm` -- and those appendages are
+    # already columns: the arrival window has its own, and cache policy is in the detail. Repeating
+    # them in the scenario made `case1` look like six scenarios, and sorting or grouping by it
+    # separated runs of the same case.
+    #
+    # The full label stays available in `run_label` for the checks below, which read it for
+    # markers like `warmup` that have nowhere else to live.
+    case_m = re.match(r'(case\d+)', run_label)
+    label = case_m.group(1) if case_m else run_label
 
     if not meta:   problems.append((r, "no run-metadata.json — the run died before archiveRun, or the upload was incomplete"))
     if not stats:  problems.append((r, "no Global Information block in gradle.log — the simulation did not reach its summary"))
@@ -284,7 +295,7 @@ for r in runs:
     # where somebody warms through run-scenario.sh instead, which publishes. Worth catching rather
     # than assuming: a warm-up is deliberately gentle, so its numbers look *good*, and a row that
     # is not broken in any visible way is the kind most likely to be read as a point on a curve.
-    if 'warmup' in label.lower() or 'warmup' in str(at(meta, 'environment.cachePolicy', '')).lower():
+    if 'warmup' in run_label.lower() or 'warmup' in str(at(meta, 'environment.cachePolicy', '')).lower():
         problems.append((r, "is a **warm-up**, not a measurement — a deliberately gentle pass run "
                             "to take the cold-JVM penalty off the first real run. It belongs to no "
                             "curve, and is normally discarded rather than published"))
