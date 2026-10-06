@@ -24,10 +24,10 @@ are parameters with a documented range, defaulted to their conservative end.
 | # | Case | Tenants | Users | Dataset | Mode | Run for | What it answers |
 |---|---|---|---|---|---|---|---|
 | **1** | Training cohort | 1 | 100 field workers, first login within 60 s | Config only, **no field data** | Full | **30 min** | Reference-data sync and `syncDetails` cost, isolated from catchment volume. **Gives the per-row cost**, from which a wider configuration is arithmetic |
-| **2** | Field worker steady state | 1 state | 500 | Day 180 | Incremental, 1% full | **4 h** | The common case |
-| **3** | Supervisor steady state | 1 state | 25–63 | Day 180 | Incremental, 1% full | **2 h, driven** | Whether 3× the volume per device changes anything |
-| **4** | **Combined** | 1 state | 500 + 25–63 | Day 180 | Incremental, 1% full | **4 h** | **The realistic case.** Wide and frequent syncs competing for one pool |
-| **5** | **Separate infrastructure** | **10** | 1,504 + 188 | Day 180 | Incremental, 1% full | **2 h** | The customer's own load with nobody else's data in the tables. **The baseline the next two are measured against** |
+| **2** | Field worker steady state | 1 state | 501 | Day 180 | Incremental, 1% full | **4 h** | The common case |
+| **3** | Supervisor steady state | 1 state | 25–60 | Day 180 | Incremental, 1% full | **2 h, driven** | Whether 3× the volume per device changes anything |
+| **4** | **Combined** | 1 state | 501 + 25–60 | Day 180 | Incremental, 1% full | **4 h** | **The realistic case.** Wide and frequent syncs competing for one pool |
+| **5** | **Separate infrastructure** | **10** | 1,506 + 74–176 | Day 180 | Incremental, 1% full | **2 h** | The customer's own load with nobody else's data in the tables. **The baseline the next two are measured against** |
 | **6** | **Shared — co-tenant data** | **10 + 513** | 1,504 + 188 | Day 180 **plus production's organisations**, which sync nothing | Incremental, 1% full | **2 h** | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
 | **7** | **Shared — co-tenant load** | **10 + 513** | Case 6, plus `CO_TENANTS=on` at 792 syncs/hour | Same as case 6 | Incremental, 1% full | **2 h** | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
 | **8** | Growth comparison | 1 state | Case 4 | Day 60, 120, 180, **365** | Incremental, 1% full | **2 h × 4** | The shape of the curve. A knee between two points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
@@ -36,6 +36,7 @@ are parameters with a documented range, defaulted to their conservative end.
 | **11** | **Clustered — separate** | **10** | Case 5 | Day 180 | Incremental, 1% full | **1 h** | Case 5's day compressed into one hour |
 | **12** | **Clustered — co-tenant data** | **10 + 513** | Case 6 | Same as case 6 | Incremental, 1% full | **1 h** | Case 6 compressed: **6.6 syncs in flight against 0.55** |
 | **13** | **Clustered — co-tenant load** | **10 + 513** | Case 7 | Same as case 6 | Incremental, 1% full | **1 h** | Case 7 compressed: **9.7 in flight**, three times production's peak and the heaviest sustained load in the suite |
+| **14** | **Re-enrolled device** | 1 state | Case 2's 501 | Day 180 | **Full** | **90 min** | What a full sync costs when the catchment actually holds data — the expensive path the 1% stands for |
 
 **Cases 6 and 7 are the same run with one property changed**, which is what makes their difference
 readable: `CO_TENANTS=on` adds production's organisations as a second syncing population at Q4's
@@ -95,6 +96,35 @@ is `pilot-day-180` at span 8.4, `-span20` is `pilot-day-180-span20`.
 > the clash. `--force` is there for when replacing is meant, and re-splitting the same dataset is
 > unchanged output, so it stays a no-op rather than a nuisance.
 
+### Case 14 exists because nothing else measures a full sync that pulls anything
+
+**Case 1 is already `SYNC_MODE=full`** — but its organisation holds no field data, which is the
+point of case 1. Its full syncs pull reference data and `syncDetails` and stop there. Cases 2 to 7
+are `realistic`, which draws a full sync for 1% of syncs, and 1% of a case is one or two:
+
+| case | syncs collected | full syncs at 1% |
+|---|---|---|
+| 2 | 167 | **1.7** |
+| 4 | 187 | 1.9 |
+| 5 | 281 | 2.8 |
+| 10 · soak | 561 | 5.6 |
+| 11 · clustered | 1,682 | 16.8 |
+
+**So the `full sync p95 s` column is a p95 of one or two samples in every case that reports one**,
+and the heaviest sync a real device performs — a wipe or a re-enrolment against a catchment with
+180 days in it — is measured nowhere. At case 2's own arrival rate, 90 minutes collects about 63
+of them, which is a distribution rather than a data point.
+
+**Push is off, and that is not a simplification.** A device doing a full sync is one that was just
+wiped or newly enrolled, so it has nothing local to push; `PUSH` already defaults to false. That
+also makes case 14 **reset-free, like case 1** — it mutates nothing, so it is free at either end of
+a block and costs no reset to place.
+
+**Read it as per-sync cost, not as system load.** Every device on the expensive path at once is
+heavier than any real mix, which is the opposite of case 2's job. The number to take from it is
+what one full sync costs against real data; the number to take from case 2 is what an ordinary
+hour costs.
+
 | # | Properties beyond the dataset and user file | Syncs/hour | Syncs collected |
 |---|---|---|---|
 | **1** | `PROFILE=burst -DUSER_COUNT=100 -DBURST_SECONDS=60` | — | 100 |
@@ -108,6 +138,7 @@ is `pilot-day-180` at span 8.4, `-span20` is `pilot-day-180-span20`.
 | **9** | `PROFILE=stress -DUSER_COUNT=1682 -DSTRESS_TO_SYNCS_PER_HOUR=…` | 140 → up | — |
 | **10** | case 4 at `-DDURATION_MINUTES=720` | 47 | 561 |
 | **11–13** | cases 5–7 plus `-DSYNC_WINDOW_HOURS=1 -DDURATION_MINUTES=60` | **1,682** | 1,682 |
+| **14** | `PROFILE=steady -DSYNC_MODE=full -DUSER_COUNT=501 -DDURATION_MINUTES=90`, feeder `case2-users-pilot.csv` | 42 | ~63, every one of them full |
 
 **Where a cell carries two figures they are `pilot-day-180` (span 8.4) and `pilot-day-180-span20`, in that order** — the span changes the cohort, so it changes the arrival rate with it. **Only cases 3, 4 and 5 repeat at both spans**: the rest vary tenancy, growth or clustering, and sweeping two factors at once makes a difference unattributable to either. Every other figure here is span 8.4. Cases 1 and 2 run on `states-day-180` and have no span at all.
 

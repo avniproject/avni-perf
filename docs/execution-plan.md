@@ -195,18 +195,26 @@ organisation without touching its neighbours and a restore would be far too slow
 > coincidence is worth stating rather than hiding, because it means the earlier number was right
 > by accident and the reasoning behind it was not.
 
-**How many times this is paid.** Every case except 1 runs with the push path on, so every run
-leaves the dataset mutated and the next needs a pristine start. There is no sharing a reset
+**How many times this is paid.** Every case except 1 and 14 runs with the push path on, so every
+such run leaves the dataset mutated and the next needs a pristine start. There is no sharing a reset
 between runs.
 
 | | runs | on |
 |---|---|---|
-| cases 1–7 | 7 | one empty, three on two-state day-180, three on ten-tenant ± co-tenants |
+| cases 1–7 | 7 | one empty, three on **one state tenant of** the ten-tenant pilot, three on all ten ± co-tenants |
 | case 8, growth | 3 | day 60, 120, 365 — day 180 reuses case 4's result |
 | cases 9–13 | 5 | ten-tenant ± co-tenants |
-| **Phase 4** | **15** | |
+| case 14, full sync | 1 | one state tenant; pulls only, so it mutates nothing |
+| **Phase 4** | **16** | |
 | Phase 5, four to six iterations | 4–6 | |
-| **total** | **~20**, of which ~19 would need a reset first | case 1 has no field data and does not push |
+| **total** | **~21**, of which ~19 would need a reset first | cases 1 and 14 have no push, so neither does |
+
+> **Cases 2, 3 and 4 are not on a separate two-tenant dataset (corrected 6 Oct 2026).** This table
+> said "two-state day-180", which predates the block ordering below. Block A takes **one** reset
+> and contains cases 5 and 11, which need ten tenants — so Block A loads `pilot-day-180`, and
+> cases 2, 3 and 4 run against **one state tenant inside it**. `states-day-180` and the pilot share
+> organisation ids 10 and 11 but no usernames at all, so the distinction is not academic: it is why
+> the feeders are named for their dataset.
 
 At the projected ~21 min for a ten-tenant reset, **19 resets is about 7 hours** of reset time
 across Phases 4 and 5; by the teardown path it is 11–12. So a mechanism that saves ten minutes a
@@ -603,11 +611,11 @@ nothing.
 
 | Block | Reset | Runs, in order | Why this grouping |
 |---|---|---|---|
-| **A — separate, day 180** | one, at the front | **1, 2, 3, 4, 5, 11, 10, 9** | Case 1 pushes nothing, so it is free at either end. 3 before 4 so per-device cost is known before the mix. 11 here rather than after 7, so co-tenants are never unloaded. 10 overnight. **9 last, because it breaks things** and Block B's reset cleans up after it |
+| **A — separate, day 180** | one, at the front | **1, 14, 2, 3, 4, 5, 11, 10, 9** | Case 1 pushes nothing, so it is free at either end. 3 before 4 so per-device cost is known before the mix. 11 here rather than after 7, so co-tenants are never unloaded. 10 overnight. **9 last, because it breaks things** and Block B's reset cleans up after it |
 | **B — co-tenants** | one, plus the co-tenant load | **6, 7, 12, 13** | The reset before 6 restores the customer's tenants to exactly case 5's starting state, which is what makes the 5 -> 6 delta mean anything. 6 -> 7 then carries ~7,700 rows of drift, 0.11% |
 | **C — growth** | three dataset swaps | **8** at day 60, 120, 365 | Day 180 reuses case 4's result. These are different datasets, so the loads are not avoidable |
 
-**Five resets for fifteen runs, against fifteen.** With Phase 5's four to six re-measurements, which
+**Five resets for sixteen runs, against sixteen.** With Phase 5's four to six re-measurements, which
 stay one-per-run because re-measuring after a fix is the whole point, that is about **ten against
 nineteen — roughly 3.2 hours** — plus the co-tenant unload and reload that no longer happens.
 
@@ -643,7 +651,7 @@ part of this that is an assumption rather than arithmetic.**
 
 | Day | Block | Cases | Why here |
 |---|---|---|---|
-| **12** | A | **1** (training cohort, 30 min), then **2** (field workers, 4 h) | Case 1 is config-only and the cheapest real load. Case 2 is the common case and the baseline everything else is read against |
+| **12** | A | **1** (training cohort, 30 min), **14** (full sync, 90 min), then **2** (field workers, 4 h) | Case 1 is config-only and the cheapest real load. 14 next because it pulls only — neither it nor case 1 mutates anything, so both are free before the first pushing run. Case 2 is the common case and the baseline everything else is read against |
 | **13** | A | **3** (supervisors, 2 h driven) and **4** (combined, 4 h) | Case 4 is *the* realistic case. Case 3 first so its per-device cost is known before the mix |
 | **14** | A | **5** (ten tenants, 2 h) and **11** (clustered, 1 h) | Both are separate-hosting, so they run before the co-tenants exist. 11 is case 5's day compressed into an hour; the sync window is unconfirmed and these are the two ends of the bracket |
 | **14–15** | A | **10** (soak, 12 h, overnight) | Needs the instance to itself. Case 4's load sustained, so the block's residue is immaterial to it |
