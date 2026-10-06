@@ -125,6 +125,23 @@ heavier than any real mix, which is the opposite of case 2's job. The number to 
 what one full sync costs against real data; the number to take from case 2 is what an ordinary
 hour costs.
 
+**What it needs is a populated day-180 state tenant, not a particular dataset.** `states-day-180`
+and the pilot's `state-1` carry the same 500 field workers, 3,000 beneficiaries per village and 20
+encounters per worker per day at the same growth point, so a full sync against either pulls the
+same shape of catchment. That makes case 14 runnable before the pilot is ever loaded — which is
+most of its value, because it is the one case here that needs no ten-tenant database. Use the
+feeder that matches whatever is loaded: the two datasets share organisation ids 10 and 11 and **no
+usernames at all**, so the wrong one returns 401 for every user.
+
+> **A feeder the deployed harness does not have fails the run at startup, not at the first
+> request.** avni-infra ships the harness to the injector as a `git archive` of one commit — the
+> host is disposable and must never hold a deploy key — so the injector's feeders are the ones
+> that existed at *that* commit. Renaming `case2-users.csv` to `case2-users-states.csv` in 96a2ff0
+> therefore invalidated every saved run command against an injector deployed before it, under both
+> the old name and the new one. **Check the deployed sha against the commit that introduced the
+> feeder before using a name**, and redeploy first if it is older; `run-metadata.json` records the
+> sha the run actually used.
+
 | # | Properties beyond the dataset and user file | Syncs/hour | Syncs collected |
 |---|---|---|---|
 | **1** | `PROFILE=burst -DUSER_COUNT=100 -DBURST_SECONDS=60` | — | 100 |
@@ -138,7 +155,7 @@ hour costs.
 | **9** | `PROFILE=stress -DUSER_COUNT=1682 -DSTRESS_TO_SYNCS_PER_HOUR=…` | 140 → up | — |
 | **10** | case 4 at `-DDURATION_MINUTES=720` | 47 | 561 |
 | **11–13** | cases 5–7 plus `-DSYNC_WINDOW_HOURS=1 -DDURATION_MINUTES=60` | **1,682** | 1,682 |
-| **14** | `PROFILE=steady -DSYNC_MODE=full -DUSER_COUNT=501 -DDURATION_MINUTES=90`, feeder `case2-users-pilot.csv` | 42 | ~63, every one of them full |
+| **14** | `PROFILE=steady -DSYNC_MODE=full -DUSER_COUNT=501 -DDURATION_MINUTES=90`, feeder `case2-users-pilot.csv` in Block A or `case2-users-states.csv` against `states-day-180` | 42 | ~63, every one of them full |
 
 **Where a cell carries two figures they are `pilot-day-180` (span 8.4) and `pilot-day-180-span20`, in that order** — the span changes the cohort, so it changes the arrival rate with it. **Only cases 3, 4 and 5 repeat at both spans**: the rest vary tenancy, growth or clustering, and sweeping two factors at once makes a difference unattributable to either. Every other figure here is span 8.4. Cases 1 and 2 run on `states-day-180` and have no span at all.
 

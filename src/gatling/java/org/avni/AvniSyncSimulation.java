@@ -51,7 +51,45 @@ public class AvniSyncSimulation extends Simulation {
      * result is a number for a case nobody asked about. Named here, it lands in the run metadata
      * and in the startup banner instead.
      */
-    private static final String syncUsersFile = System.getProperty("SYNC_USERS", "sync-users.csv");
+    private static final String syncUsersFile =
+        requireFeeder(System.getProperty("SYNC_USERS", "sync-users.csv"));
+
+    /**
+     * **A feeder this injector does not have fails in a static initialiser**, as an
+     * ExceptionInInitializerError wrapping a file-not-found -- which names neither the file nor
+     * the reason. The injector receives the harness as a `git archive` of one commit (see
+     * build.gradle: the host is disposable and must never hold a deploy key), so a feeder added
+     * or renamed after the deployed sha is simply absent, and the fix is a redeploy rather than
+     * anything about the run.
+     *
+     * Renaming `case2-users.csv` to `case2-users-states.csv` on 6 Oct 2026 broke both names at
+     * once for every injector deployed before it. Listing what *is* present turns that diagnosis
+     * into one line.
+     */
+    private static String requireFeeder(String name) {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        if (cl.getResource(name) != null) return name;
+        String available = "";
+        try {
+            // Anchored on a resource the harness always ships, because the classpath root is not
+            // reliably listable. The listing is a courtesy; the refusal is the point.
+            java.net.URL anchor = cl.getResource("avni-entities.json");
+            if (anchor != null && "file".equals(anchor.getProtocol())) {
+                String[] csvs = new java.io.File(anchor.toURI()).getParentFile()
+                    .list((d, n) -> n.endsWith(".csv"));
+                if (csvs != null) {
+                    java.util.Arrays.sort(csvs);
+                    available = " This injector has: " + String.join(", ", csvs) + ".";
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        throw new IllegalArgumentException(
+            "SYNC_USERS=" + name + " is not on this injector." + available
+            + " The harness ships as a git archive of one commit, so a feeder added or renamed"
+            + " after the deployed sha is absent from it -- redeploy the harness at a commit that"
+            + " has this feeder. run-metadata.json records the sha a run actually used.");
+    }
 
     private static final Integer userCount = Integer.getInteger("USER_COUNT", csv(syncUsersFile).recordsCount());
     private static final Integer rampPeriod = Integer.getInteger("RAMP_PERIOD", csv(syncUsersFile).recordsCount() * 20);
