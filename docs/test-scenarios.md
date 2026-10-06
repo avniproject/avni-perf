@@ -59,7 +59,7 @@ as rather than to whichever file happened to be in place.
 | 2 | `case2-users.csv` | 501 | one state tenant, field workers |
 | 3 | `case3-users.csv` | 40 | one state tenant, supervisors alone |
 | 4, 8, 10 | `case4-users.csv` | 541 | one state tenant, both |
-| 5, 9, 11 | — | — | needs the ten-tenant deployment; `tools/scenario-feeders.py` writes it once the input has ten |
+| 5, 9, 11 | — | — | needs the ten-tenant deployment; `tools/scenario-feeders.py` writes it once the input has ten. Both pilot spans are ten-tenant — see below |
 | 6, 7, 12, 13 | `co-tenant-users.csv` | — | pending the co-tenant build |
 
 > **Why not one file for all of them.** `generate.py` writes every user of every tenant -- 1,082
@@ -69,22 +69,37 @@ as rather than to whichever file happened to be in place.
 > `tools/scenario-feeders.py` cuts the slices, and it refuses to write `case5-users.csv` from a
 > two-tenant input rather than producing the same trap one layer down.
 
+> **The two spans collide in these names.** Block A′ re-runs cases 3, 4 and 5 on
+> `pilot-day-180-span20`, which is also a ten-tenant pilot, so splitting it writes
+> `case3-users.csv`, `case4-users.csv` and `case5-users.csv` straight over Block A's. The slices
+> differ — case 3 is 60 users at span 8.4 and 25 at span 20, case 4 is 561 against 526, case 5
+> 1,682 against 1,580 — but the names do not, so a run meant for the measured point picks up the
+> survivor, drives 25 users and reports as if it were 60.
+>
+> **Split the second span with `--variant span20`**, which writes `case3-users-span20.csv` and so
+> on. **And forgetting it is refused, not obeyed**: the splitter renders every slice before writing
+> any, and if one would replace an existing file whose contents differ it writes nothing and names
+> the clash. `--force` is there for when replacing is meant, and re-splitting the same dataset is
+> unchanged output, so it stays a no-op rather than a nuisance.
+
 | # | Properties beyond the dataset and user file | Syncs/hour | Syncs collected |
 |---|---|---|---|
 | **1** | `PROFILE=burst -DUSER_COUNT=100 -DBURST_SECONDS=60` | — | 100 |
 | **2** | `PROFILE=steady -DUSER_COUNT=500 -DDURATION_MINUTES=240` | 42 | 167 |
-| **3** | `PROFILE=steady -DUSER_COUNT=63 -DSYNCS_PER_HOUR=…` at span 8, `-DUSER_COUNT=25` at span 20 | 5 natural | **10** — see below |
-| **4** | `PROFILE=steady -DUSER_COUNT=563 -DDURATION_MINUTES=240` at span 8, `-DUSER_COUNT=525` at span 20 | 47 | 187 |
-| **5** | `PROFILE=steady -DUSER_COUNT=1692 -DDURATION_MINUTES=120` at span 8, `-DUSER_COUNT=1579` at span 20 | 141 | 282 |
-| **6** | case 5, against the co-tenant dataset | 141 | 282 |
-| **7** | case 6 plus `-DCO_TENANTS=on` | 141 + 792 | 282 |
-| **8** | case 4 at `-DDURATION_MINUTES=120`, once per dataset | 47 | 94 each |
-| **9** | `PROFILE=stress -DUSER_COUNT=1692 -DSTRESS_TO_SYNCS_PER_HOUR=…` | 141 → up | — |
-| **10** | case 4 at `-DDURATION_MINUTES=720` | 47 | 562 |
-| **11–13** | cases 5–7 plus `-DSYNC_WINDOW_HOURS=1 -DDURATION_MINUTES=60` | **1,692** | 1,692 |
+| **3** | `PROFILE=steady -DUSER_COUNT=60 -DSYNCS_PER_HOUR=…` on `pilot-day-180`, `-DUSER_COUNT=25` on `pilot-day-180-span20` | 5 natural | **10** — see below |
+| **4** | `PROFILE=steady -DUSER_COUNT=561 -DDURATION_MINUTES=240` on `pilot-day-180`, `-DUSER_COUNT=526` on `pilot-day-180-span20` | 47 / 44 | 187 / 175 |
+| **5** | `PROFILE=steady -DUSER_COUNT=1682 -DDURATION_MINUTES=120` on `pilot-day-180`, `-DUSER_COUNT=1580` on `pilot-day-180-span20` | 140 / 132 | 281 / 263 |
+| **6** | case 5, against the co-tenant dataset | 140 | 281 |
+| **7** | case 6 plus `-DCO_TENANTS=on` | 140 + 792 | 281 |
+| **8** | case 4 at `-DDURATION_MINUTES=120`, once per growth dataset | 47 | 94 each |
+| **9** | `PROFILE=stress -DUSER_COUNT=1682 -DSTRESS_TO_SYNCS_PER_HOUR=…` | 140 → up | — |
+| **10** | case 4 at `-DDURATION_MINUTES=720` | 47 | 561 |
+| **11–13** | cases 5–7 plus `-DSYNC_WINDOW_HOURS=1 -DDURATION_MINUTES=60` | **1,682** | 1,682 |
+
+**Where a cell carries two figures they are `pilot-day-180` (span 8.4) and `pilot-day-180-span20`, in that order** — the span changes the cohort, so it changes the arrival rate with it. **Only cases 3, 4 and 5 repeat at both spans**: the rest vary tenancy, growth or clustering, and sweeping two factors at once makes a difference unattributable to either. Every other figure here is span 8.4. Cases 1 and 2 run on `states-day-180` and have no span at all.
 
 **Case 3 is the one this table exposes.** At its natural rate it collects ten syncs in two hours,
-because 25 to 63 supervisors syncing once a day produce that many syncs in a whole window and no duration
+because 25 to 60 supervisors syncing once a day produce that many syncs in a whole window and no duration
 changes that. `SYNCS_PER_HOUR` has to be set well above the derived figure — which is sound,
 because the case measures per-sync cost rather than system load.
 
@@ -97,7 +112,7 @@ because the case measures per-sync cost rather than system load.
 > Nothing has measured the right figure — the platform-wide push distributions do not split by
 > role — so it is left at 1 rather than guessed. **Quote case 3's pull numbers; do not quote its
 > push numbers until a supervisor's real write volume is known.** The other multi-role cases
-> carry the same bias at roughly a twentieth to a tenth of the size, since supervisors are 25 to 63 of 525 to 563 users there.
+> carry the same bias at roughly a twentieth to a tenth of the size, since supervisors are 25 to 60 of 526 to 561 users there.
 >
 > This is the one open input that affects a case's headline result rather than its shape.
 
@@ -207,12 +222,12 @@ incremental sync costs about the same whether it carries 15 records or 500.
 | 2 · field workers, one tenant | 42 | **0.16** |
 | 4 · combined, one tenant | 47 | **0.18** |
 | 10 · soak, same load sustained | 47 | **0.18** |
-| 5, 6 · all ten tenants | 141 | **0.55** |
-| 7 · ten tenants plus production's own traffic | 933 | **3.65** |
+| 5, 6 · all ten tenants | 140 | **0.55** |
+| 7 · ten tenants plus production's own traffic | 932 | **3.65** |
 | 1 · training cohort, 100 logins in 60 s | — | **~10** |
-| 11 · ten tenants, clustered into one hour | 1,692 | **6.63** |
-| 12 · plus co-tenant data, clustered | 1,692 | **6.63** |
-| 13 · plus co-tenant load, clustered | 2,484 | **9.73** |
+| 11 · ten tenants, clustered into one hour | 1,682 | **6.59** |
+| 12 · plus co-tenant data, clustered | 1,682 | **6.59** |
+| 13 · plus co-tenant load, clustered | 2,474 | **9.69** |
 | 9 · stress ramp | — | unbounded by design |
 
 > **The burst window was 15 minutes and that is not a burst (corrected 5 Oct 2026).** `rampUsers`
@@ -225,6 +240,8 @@ incremental sync costs about the same whether it carries 15 records or 500.
 > these syncs are faster because the cohort reaches no field data, so the same arrival shape gave
 > less than a quarter of it.
 
+
+**The figures above are the span-8.4 cohort of 1,682.** At span 20 the cohort is 1,580, so every rate and in-flight figure is ~6% lower; none of it moves a case across a threshold.
 
 **Case 6 sits with case 5, not with case 7.** Its co-tenants hold data but sync nothing — that is
 the whole difference between them — so its arrival rate is the customer's alone. Only case 7 adds
@@ -241,10 +258,10 @@ cluster, if workers sync when they return to signal or at the end of a shift.
 
 | Sync window | Syncs/hour | Cases 5, 6 | Case 7 |
 |---|---|---|---|
-| 12 hours (assumed) | 141 | 0.55 | 3.65 |
-| 4 hours | 423 | 1.66 | 4.76 |
-| 2 hours | 846 | 3.31 | 6.42 |
-| **1 hour** | 1,692 | **6.63** | **9.73** |
+| 12 hours (assumed) | 140 | 0.55 | 3.65 |
+| 4 hours | 420 | 1.65 | 4.75 |
+| 2 hours | 841 | 3.29 | 6.40 |
+| **1 hour** | 1,682 | **6.59** | **9.69** |
 
 **Compressed into one hour, case 6 reaches 6.6 in flight — about twice production's peak, and
 twelve times the spread figure.** So the conclusion that this is not a concurrency exercise holds
@@ -321,11 +338,35 @@ and they are not.
 
 | Workers per supervisor | Supervisors per 500-worker tenant | Subjects each | Records at day 180 | Full sync | vs Q3's heaviest device |
 |---|---|---|---|---|---|
-| **8** (low end) | **63** | 7,950 | 35,400 | 5.4 min | 0.13× |
-| 8.4 (the measured establishment) | 60 | 8,400 | 37,200 | 5.7 min | 0.14× |
+| 8 (low end) | 63 | 7,950 | 35,400 | 5.4 min | 0.13× |
+| **8.4** (the measured establishment — `pilot-day-180`) | **60** | 8,400 | 37,200 | 5.7 min | 0.14× |
 | 12 | 42 | 11,900 | 53,100 | 8.1 min | 0.20× |
 | 16 | 31 | 16,200 | 71,900 | 11.0 min | 0.27× |
-| **20** (high end) | **25** | 20,000 | 89,200 | 13.7 min | **0.34×** |
+| **20** (high end — `pilot-day-180-span20`) | **25** | 20,000 | 89,200 | 13.7 min | **0.34×** |
+
+> **Settled 6 Oct 2026: two datasets, 8.4 and 20, and the sweep is a reload rather than a flag.**
+> The span changes how many supervisors exist and how wide each catchment is. Both are structural
+> rows, so a run cannot switch between them — each span is its own generated dataset.
+>
+> | dataset | span | supervisors per state tenant | per NGO | supervisors | users |
+> |---|---|---|---|---|---|
+> | `pilot-day-180` | **8.4**, the measured establishment | 60 | 7 | 176 | 1,682 |
+> | `pilot-day-180-span20` | **20**, the high end | 25 | 3 | 74 | 1,580 |
+>
+> Both are ten tenants — two state (501 field workers each) and eight NGO (63 each).
+>
+> **Span 8 was generated and dropped.** It gives 63 supervisors per state tenant against 8.4's 60,
+> 5% apart, because the measured establishment sits almost on the low end of the specified range.
+> Running both would spend a run re-measuring a point already covered; 8.4 and 20 bracket it.
+>
+> **And the measured value has to be stated, because the default cannot express it here.**
+> `pilot-day-180` carried `workers_per_supervisor: null` until this was folded in, which takes
+> `hy.ESTABLISHMENT` — and that supervises at Sub-Centre, a tier this bundle's hierarchy does not
+> have. Supervision falls back to Taluka, and the span lands at **12.5**: 40 supervisors per state
+> tenant, 120 in all, which is neither end of the range nor the measurement.
+>
+> **The two datasets are the same volume.** 6,896,792 rows against 6,896,276 — 0.007% apart, the
+> same beneficiaries and encounters differently supervised. The span moves structure, not data.
 
 **The span moves two things in opposite directions, which is why it is a sweep and not a guess.**
 Doubling it halves the number of supervisors and doubles each one's catchment. Total
@@ -337,9 +378,11 @@ supervisor holds a third of Q3's heaviest real device. Nothing in this range pro
 heavier than something already in the field, which is what the old PHC and block rows would have
 done at 0.78× and 3.5×.
 
-**So the span changes the user counts, not the verdict.** Case 3 runs 25 to 63 users rather than 62;
-case 4 runs 525 to 563; the ten tenants together are 1,579 to 1,692. Run the ends, not the middle —
-the low end is the most concurrent and the high end holds the heaviest device.
+**So the span changes the user counts, not the verdict.** Case 3 runs 25 to 60 users rather than 62;
+case 4 runs 526 to 561; the ten tenants together are 1,580 to 1,682. Run two points, not five — the
+low one is the most concurrent and the high one holds the heaviest device, and everything between
+is interpolation. The two built are **8.4 and 20**: 8.4 rather than 8 because the measurement lands
+there and the two differ by 5%, which is not worth a run.
 
 **And over what window the daily syncs fall**, which sets the arrival rate — see the sensitivity
 table above. Unlike the tier question this one needs no answer to proceed — **cases 11 to 13 are
@@ -383,7 +426,7 @@ Running only case 5 would leave the decision exactly where it started.
 ## The deployment being modelled
 
 **Two things vary across the cases, and only one of them is the customer's.** The deployment below is
-theirs — ten tenants, 1,692 users, 1.5 million beneficiaries. **Where it runs is ours**, and cases 5,
+theirs — ten tenants, 1,682 users, 1.5 million beneficiaries. **Where it runs is ours**, and cases 5,
 6 and 7 measure both answers rather than picking one:
 
 | Hosting | What is in the database | Cases |
@@ -454,8 +497,8 @@ within-session behaviour.
 
 | | Syncs/day | Average hour | Peak hour |
 |---|---|---|---|
-| One state tenant (525–563 users) | 525–563 | 44–47 | ~55–58 |
-| Whole platform (1,692 users) | 1,692 | 141 | ~175 |
+| One state tenant (526–561 users) | 526–561 | 44–47 | ~55–58 |
+| Whole platform (1,580–1,682 users) | 1,580–1,682 | 132–140 | ~165–175 |
 
 Production's busiest hour ever recorded was 792 syncs, so **the whole deployment runs at about a
 fifth of production's peak**.

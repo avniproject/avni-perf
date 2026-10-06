@@ -1,6 +1,7 @@
 """Split the generated user file into one feeder per test case.
 
     python3 tools/scenario-feeders.py src/gatling/resources/sync-users.csv
+    python3 tools/scenario-feeders.py /tmp/pilot-day-180-span20/sync-users.csv --variant span20
 
 **Why the generated file is not itself a case's feeder.** `generate.py` writes every user of every
 tenant in the deployment -- for `states-day-180` that is 1,082 across two organisations. Cases 2, 3
@@ -19,33 +20,71 @@ number belongs to nothing. `SYNC_USERS` names the slice per run; this writes the
     case 10  case 4's users, sustained
     case 5,  every tenant -- needs the ten-tenant deployment. Written only when the input has
     9, 11    ten, because a two-tenant file under that name is the same trap one layer down.
+
+**--variant exists because the supervisor span is a second dataset, not a flag.** Block A runs
+cases 3 to 5 on `pilot-day-180` (span 8.4) and Block A' repeats them on `pilot-day-180-span20`.
+Both are ten-tenant pilots, so both split to the same four names -- and the slices differ: case 3
+is 60 users at span 8.4 and 25 at span 20. A run that picked up the wrong one would complete and
+report 25 users as the measured point. `--variant span20` writes `case3-users-span20.csv` instead.
+
+**Forgetting it is the case that actually bites**, so it is not only a flag. Writing a slice over
+an existing file whose contents differ is refused; `--force` is there for when that is meant.
 """
 from __future__ import annotations
 
+import argparse
 import csv
+import io
+import re
 import sys
 from collections import OrderedDict
 from pathlib import Path
 
+# The csv module's own default. Named because the overwrite check renders a slice and compares it
+# with the file on disk, and a mismatched line terminator would make every comparison differ.
+LINE_TERMINATOR = "\r\n"
 
-def slices(rows: list[dict]) -> "OrderedDict[str, list[dict]]":
+VARIANT = re.compile(r"[a-z0-9][a-z0-9-]*\Z")
+
+
+def slices(rows: list[dict], variant: str | None = None) -> "OrderedDict[str, list[dict]]":
+    suffix = f"-{variant}" if variant else ""
     orgs = list(OrderedDict.fromkeys(r["organisationUUID"] for r in rows))
     first = orgs[0]
     one_tenant = [r for r in rows if r["organisationUUID"] == first]
     out: "OrderedDict[str, list[dict]]" = OrderedDict()
-    out["case2-users.csv"] = [r for r in one_tenant if r["role"] == "field_worker"]
-    out["case3-users.csv"] = [r for r in one_tenant if r["role"] == "supervisor"]
-    out["case4-users.csv"] = one_tenant
+    out[f"case2-users{suffix}.csv"] = [r for r in one_tenant if r["role"] == "field_worker"]
+    out[f"case3-users{suffix}.csv"] = [r for r in one_tenant if r["role"] == "supervisor"]
+    out[f"case4-users{suffix}.csv"] = one_tenant
     if len(orgs) >= 10:
-        out["case5-users.csv"] = rows
+        out[f"case5-users{suffix}.csv"] = rows
     return out
 
 
+def render(fields: list[str], subset: list[dict]) -> str:
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=fields, lineterminator=LINE_TERMINATOR)
+    w.writeheader()
+    w.writerows(subset)
+    return buf.getvalue()
+
+
 def main(argv: list[str]) -> int:
-    if len(argv) != 1:
-        print(__doc__, file=sys.stderr)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("source", type=Path, help="a generated sync-users.csv")
+    p.add_argument("--variant", metavar="LABEL",
+                   help="suffix the slices, e.g. --variant span20 writes case3-users-span20.csv")
+    p.add_argument("--force", action="store_true",
+                   help="overwrite a differing slice instead of refusing")
+    args = p.parse_args(argv)
+
+    if args.variant is not None and not VARIANT.match(args.variant):
+        print(f"error: --variant {args.variant!r} is not a file-name fragment; use lower-case "
+              f"letters, digits and hyphens", file=sys.stderr)
         return 2
-    src = Path(argv[0])
+
+    src = args.source
     with src.open() as fh:
         reader = csv.DictReader(fh)
         fields = reader.fieldnames or []
@@ -61,17 +100,37 @@ def main(argv: list[str]) -> int:
         return 2
 
     orgs = list(OrderedDict.fromkeys(r["organisationUUID"] for r in rows))
-    print(f"{src}: {len(rows):,} users across {len(orgs)} tenant(s)")
-    for name, subset in slices(rows).items():
-        path = src.parent / name
-        with path.open("w", newline="") as fh:
-            w = csv.DictWriter(fh, fieldnames=fields)
-            w.writeheader()
-            w.writerows(subset)
-        print(f"  {name:<20} {len(subset):>6,} users")
+    print(f"{src}: {len(rows):,} users across {len(orgs)} tenant(s)"
+          + (f", variant {args.variant}" if args.variant else ""))
+
+    # Rendered and checked before anything is written, so a refusal does not leave half the
+    # slices replaced and half not.
+    planned = [(src.parent / name, render(fields, subset), len(subset))
+               for name, subset in slices(rows, args.variant).items()]
+    if not args.force:
+        clashes = [(path, text) for path, text, _ in planned
+                   if path.exists() and path.open(newline="").read() != text]
+        if clashes:
+            print(f"\nerror: {len(clashes)} slice(s) already exist here with different contents, "
+                  f"and nothing distinguishes them by name:", file=sys.stderr)
+            for path, text in clashes:
+                was = sum(1 for _ in path.open(newline="")) - 1
+                now = text.count(LINE_TERMINATOR) - 1
+                print(f"  {path.name:<28} {was:>6,} users on disk, {now:,} from this input",
+                      file=sys.stderr)
+            print("\n  Two datasets split to the same four names -- the supervisor spans do, and\n"
+                  "  so does any pair of ten-tenant pilots. A run pointed at the survivor drives\n"
+                  "  the wrong cohort and reports it as the right one.\n"
+                  "\n  Pass --variant LABEL to keep both, or --force if replacing is meant.",
+                  file=sys.stderr)
+            return 2
+
+    for path, text, count in planned:
+        path.open("w", newline="").write(text)
+        print(f"  {path.name:<28} {count:>6,} users")
     if len(orgs) < 10:
         print(f"\n  cases 5, 9 and 11 need the ten-tenant deployment; this input has {len(orgs)}, "
-              f"so no case5-users.csv was written.")
+              f"so no case5-users{'-' + args.variant if args.variant else ''}.csv was written.")
     print("\n  run a case with -DSYNC_USERS=<file>")
     return 0
 

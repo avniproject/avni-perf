@@ -20,7 +20,7 @@
    "encounters_per_worker_per_day": 20,
    "supervisor_level": "Taluka",
    "bundle_path": null,
-   "workers_per_supervisor": null,
+   "workers_per_supervisor": 8.4,
    "total_encounters": null
   },
   {
@@ -32,7 +32,7 @@
    "encounters_per_worker_per_day": 20,
    "supervisor_level": "Taluka",
    "bundle_path": null,
-   "workers_per_supervisor": null,
+   "workers_per_supervisor": 8.4,
    "total_encounters": null
   },
   {
@@ -44,7 +44,7 @@
    "encounters_per_worker_per_day": 20,
    "supervisor_level": "Taluka",
    "bundle_path": null,
-   "workers_per_supervisor": null,
+   "workers_per_supervisor": 8.4,
    "total_encounters": null
   },
   {
@@ -56,7 +56,7 @@
    "encounters_per_worker_per_day": 20,
    "supervisor_level": "Taluka",
    "bundle_path": null,
-   "workers_per_supervisor": null,
+   "workers_per_supervisor": 8.4,
    "total_encounters": null
   },
   {
@@ -68,7 +68,7 @@
    "encounters_per_worker_per_day": 20,
    "supervisor_level": "Taluka",
    "bundle_path": null,
-   "workers_per_supervisor": null,
+   "workers_per_supervisor": 8.4,
    "total_encounters": null
   },
   {
@@ -80,7 +80,7 @@
    "encounters_per_worker_per_day": 20,
    "supervisor_level": "Taluka",
    "bundle_path": null,
-   "workers_per_supervisor": null,
+   "workers_per_supervisor": 8.4,
    "total_encounters": null
   },
   {
@@ -92,7 +92,7 @@
    "encounters_per_worker_per_day": 20,
    "supervisor_level": "Taluka",
    "bundle_path": null,
-   "workers_per_supervisor": null,
+   "workers_per_supervisor": 8.4,
    "total_encounters": null
   },
   {
@@ -104,7 +104,7 @@
    "encounters_per_worker_per_day": 20,
    "supervisor_level": "Taluka",
    "bundle_path": null,
-   "workers_per_supervisor": null,
+   "workers_per_supervisor": 8.4,
    "total_encounters": null
   },
   {
@@ -116,7 +116,7 @@
    "encounters_per_worker_per_day": 20,
    "supervisor_level": "Taluka",
    "bundle_path": null,
-   "workers_per_supervisor": null,
+   "workers_per_supervisor": 8.4,
    "total_encounters": null
   },
   {
@@ -128,13 +128,13 @@
    "encounters_per_worker_per_day": 20,
    "supervisor_level": "Taluka",
    "bundle_path": null,
-   "workers_per_supervisor": null,
+   "workers_per_supervisor": 8.4,
    "total_encounters": null
   }
  ],
  "enrolment_rate": 0.22,
  "program_encounter_share": 0.59,
- "notes": "E6 test case dataset. Two state tenants of 500 field workers, eight NGO tenants sharing 500, at day 60. Only encounter volume differs between the three; beneficiary population does not grow with programme activity. bundle_path and bundle_revision must be filled in before generating. A tenant may also carry its own bundle_path, which is how H1's 'cover the range of organisation size' is done -- config size drives the syncDetails row count -- without them this recipe cannot be reproduced. Organisation ids recorded 6 Oct 2026, after provisioning: state-1 and state-2 already existed at 10 and 11, and ngo-1 to ngo-8 were created with the server assigning 12 to 19 -- read back from GET /organisation rather than inferred from the sequence. They held 1-10 before, which named four live organisations; see docs/execution-plan.md. supervisor_level is Taluka, not the TenantSpec default of Sub-Centre: the bundle's hierarchy has no Sub-Centre, and after `from_target_types` truncates at the deepest permitted registration type the chain is State > District > Taluka > Village. Taluka is the tier above a field worker's village, which is what the scenarios mean by supervision one tier up. states-day-180 has carried this since it was built; the pilots inherited the default and would have failed at `cat.plan`.",
+ "notes": "E6 test case dataset. Two state tenants of 500 field workers, eight NGO tenants sharing 500, at day 60. Only encounter volume differs between the growth points; beneficiary population does not grow with programme activity. bundle_path and bundle_revision must be filled in before generating. A tenant may also carry its own bundle_path, which is how H1's 'cover the range of organisation size' is done -- config size drives the syncDetails row count -- without them this recipe cannot be reproduced. Organisation ids recorded 6 Oct 2026, after provisioning: state-1 and state-2 already existed at 10 and 11, and ngo-1 to ngo-8 were created with the server assigning 12 to 19 -- read back from GET /organisation rather than inferred from the sequence. They held 1-10 before, which named four live organisations; see docs/execution-plan.md. supervisor_level is Taluka, not the TenantSpec default of Sub-Centre: the bundle's hierarchy has no Sub-Centre, and after `from_target_types` truncates at the deepest permitted registration type the chain is State > District > Taluka > Village. Taluka is the tier above a field worker's village, which is what the scenarios mean by supervision one tier up. states-day-180 has carried this since it was built; the pilots inherited the default and would have failed at `cat.plan`. **workers_per_supervisor is 8.4 on every growth point**, set 6 Oct 2026 so case 8's curve varies encounter volume alone: it was null here, which resolves to 12.5 against this hierarchy, and a growth comparison that also changed supervision would not be one. pilot-day-180-span20 is the only recipe at a different span, deliberately.",
  "schema_version": 1,
  "tenant_bundle_fingerprints": {}
 }

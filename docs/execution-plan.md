@@ -262,23 +262,28 @@ this way.
 **And `supervisor_level` was the `TenantSpec` default**, `Sub-Centre`, which this bundle's hierarchy
 does not contain: truncated at the deepest permitted registration type the chain is
 State > District > Taluka > Village, so `cat.plan` raised. `states-day-180` has carried `Taluka`
-since it was built and the pilots inherited the default. Set on all four.
+since it was built and the pilots inherited the default. Set on every pilot recipe.
 
-**The ten-tenant pilot now builds**: 1,626 users across organisations 10–19, and
+**The ten-tenant pilot now builds**: 1,682 users across organisations 10–19, and
 `scenario-feeders.py` writes `case5-users.csv` for the first time.
 
 > **The scenarios' 188 supervisors assumed the low end of the span, which is now established
-> rather than inferred.** `pilot-day-180` leaves `workers_per_supervisor` null and takes Q13's
-> measured establishment of 8.4, which lands at 12.5 workers per supervisor and gives 120. Fixing
-> the span at 8 gives **190** — 63 per state tenant and 8 per NGO, against the scenarios' 1,504
-> workers and 188 supervisors. That is the table's own arithmetic reproduced, so the figure was
-> never wrong; it was a different point on the range.
+> rather than inferred.** Fixing the span at 8 gives **190** — 63 per state tenant and 8 per NGO,
+> against the scenarios' 1,504 workers and 188 supervisors. That is the table's own arithmetic
+> reproduced, so the figure was never wrong; it was a different point on the range.
 >
-> All three are generated: `pilot-day-180-span8` (1,696 users, 190 supervisors),
-> `pilot-day-180` (1,626 / 120) and `pilot-day-180-span20` (1,580 / 74). Row counts differ by
-> 0.01% across them — 6,896,276 to 6,896,864 — because the span moves structure and not volume:
-> the same beneficiaries and encounters, differently supervised. **Switching spans is a reload,
-> not a flag**, which is why all three exist rather than one parameterised at run time.
+> **The span that was actually unstated was the recipe's.** `pilot-day-180` left
+> `workers_per_supervisor` null, which takes `hy.ESTABLISHMENT` — and that supervises at
+> Sub-Centre, a tier this bundle does not have, so supervision fell back to Taluka and the span
+> landed at **12.5**, 120 supervisors. Neither an end of the range nor the measurement. Q13's
+> measured 8.4 is now written into the recipe rather than inherited.
+>
+> **Two spans are built, 8.4 and 20** — `pilot-day-180` (1,682 users, 176 supervisors) and
+> `pilot-day-180-span20` (1,580 / 74), 6,896,792 and 6,896,276 rows, 0.007% apart: the same
+> beneficiaries and encounters, differently supervised. **Span 8 was generated and dropped** — 63
+> supervisors per state tenant against 8.4's 60 is a 5% difference and not worth a run, because the
+> measurement sits almost on the low end already. **Switching spans is a reload, not a flag**,
+> which is why both exist rather than one parameterised at run time; see Phase 4's ordering.
 
 **The co-tenant datasets are the gap in that arithmetic.** Cases 6, 7, 12 and 13 need 513 further
 organisations present — the ones of Q12's 986 that hold data. The other 473 would be bare
@@ -631,18 +636,30 @@ part of this that is an assumption rather than arithmetic.**
 | **15** | A | **9** (stress ramp, until it breaks) | Last in the block: the knee is only interpretable once the unstressed shape is known, and whatever it leaves behind is cleared by Block B's reset |
 | **16** | B | Reset, load the co-tenants, then **6** (2 h) and **7** (2 h). Analyse 5/6/7 together | 5 -> 6 is the cost of their presence, 6 -> 7 the cost of their activity. The reset is what makes 6 comparable with 5 |
 | **17** | B | **12** and **13** (clustered, 1 h each) | The same two tenancy shapes with the day compressed. No reset: 12 and 13 are read against 11 and against each other |
-| **18–19** | C | **8** (growth, 2 h x 3 — day 60, 120, 365) | Three dataset loads, one per point. Day 180 reuses case 4 |
-| **20** | — | Slack | Day 9 measured the reset at a two-tenant scale; at ten tenants it is projected. If the projection is wrong this is where it is absorbed |
+| **18–19** | C | **8** (growth, 2 h x 3 — day 60, 120, 365) | Three dataset loads, one per point. Day 180 reuses case 4, so all four recipes are pinned at span 8.4 and the curve varies encounter volume alone |
+| **20** | A′ | Reload `pilot-day-180-span20`, split it with `--variant span20`, re-run **3**, **4**, **5** | The span sweep's other end. Last because it answers a sensitivity rather than a target, and because it is the day Block B's reset borrows if Day 9's projection was wrong — see below |
 
-> **Two supervisor spans, not one.** Cases 3 to 8 are specified across an 8-to-20 worker span, which
-> changes both the supervisor count and each catchment's width. **Run the ends, not the middle** —
-> the low end is the most concurrent, the high end holds the heaviest device. That doubles those
-> cases if both ends are wanted; decide at Day 13 whether the budget is there.
+> **The supervisor span is the outermost loop, and it is settled at two points.** Blocks A, B and
+> C above all run on `pilot-day-180` — span **8.4**, Q13's measured establishment. Block A′ repeats
+> the span-sensitive cases on `pilot-day-180-span20`. Both datasets are generated and staged; what
+> the sweep still costs is runs and one reload.
 >
-> **It also doubles the datasets, not just the runs.** The span changes how many supervisors exist
-> and how wide each catchment is, and both are structural rows — users and catchments, not
-> transactional. Switching spans is a re-provisioning rather than a reload, so the two ends are
-> two blocks, not two runs inside one.
+> **Why it is a block and not a flag.** The span sets how many supervisors exist and how wide each
+> catchment is — users, catchments and their address mappings, all structural rows loaded with the
+> dataset. A run cannot switch between them, so the span cannot vary inside a block; it has to
+> bracket them.
+>
+> **Only cases 3, 4 and 5 repeat.** They are the ones whose cohort the span defines. Cases 6, 7 and
+> 12–13 vary tenancy and 8 varies growth, and running either against a second span makes a
+> difference unattributable to one cause — a two-factor sweep costs four blocks to answer a
+> question nobody asked. If one span-20 result shows the span matters more than this expects, that
+> is the finding that justifies widening it, in Phase 5.
+>
+> **It costs a day, and the plan has exactly one.** Block A′ is Day 20's slack. That is a real
+> trade: if Day 9's reset projection is wrong at ten tenants, the absorption and the span sweep
+> want the same day. **Drop the span sweep, not the reset** — a wrong reset makes every Block B
+> number incomparable, while a missing span-20 point leaves the span an interpolation between a
+> measured 8.4 and a specified 20, which is what it was before.
 
 ---
 
