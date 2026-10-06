@@ -135,7 +135,7 @@ table, because a row beside comparable runs reads as comparable — and each car
 `provenance-correction.json` in its own prefix recording what it asserted and what was true. They
 are not comparable to anything above:
 
-| 60 s window | cold | warm, 20 min later | the 15:13 run |"
+| 60 s window | cold | warm, 20 min later | the 15:13 run |
 |---|---|---|---|
 | achieved rps | 18.43 | 50.00 | 52.44 |
 | p95 ms | 25,635 | 2,767 | 2,242 |
