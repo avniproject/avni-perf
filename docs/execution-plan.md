@@ -243,10 +243,34 @@ rather than inferred from the sequence. Each carries the full bundle, verified a
 bundle's own JSON by `provision-org.sh` step 5: 39 form mappings, 2 subject types, 16 encounter
 types, 406 concepts, in all eight. The four pilot recipes now hold those ids and build.
 
-**Still outstanding before the ten-tenant cases can run:** `refs.json` has to be re-dumped, since
-it carries only organisations 1, 3, 9, 10 and 11 and the generator refuses a tenant missing from
-it. `provision-org.sh` prints a grant for each new `db_user` which may be needed if reads fail
-with `permission denied for table users`.
+**`refs.json` re-dumped, and two further defects surfaced on the way to generating.**
+
+**The bundle's `organisationConfig` did not reach the eight new organisations.** `refs.json` showed
+`customRegistrationLocations` for 3, 10 and 11 but not 12–19, while the bundle ships it. The file
+was in the zip, first in import order, matched `OrganisationConfigRequest` exactly, and
+`saveOrganisationConfig` scopes by `organisationId` — and each organisation already had a config
+row created during its own provisioning, which the bundle's settings never replaced. Applied
+through `POST /organisationConfig` for all eight and confirmed by a re-dump: 11 rows, every pilot
+tenant covered.
+
+**What let it through is a gap in the check, not bad luck.** `provision-org.sh` step 5 verifies form
+mappings, subject types, encounter types and concepts against the bundle's own JSON. It does not
+verify organisation config, so the import reported COMPLETED, four checks passed, and the one thing
+that did not land was the one thing unverified. It likely affects every organisation provisioned
+this way.
+
+**And `supervisor_level` was the `TenantSpec` default**, `Sub-Centre`, which this bundle's hierarchy
+does not contain: truncated at the deepest permitted registration type the chain is
+State > District > Taluka > Village, so `cat.plan` raised. `states-day-180` has carried `Taluka`
+since it was built and the pilots inherited the default. Set on all four.
+
+**The ten-tenant pilot now builds**: 1,626 users across organisations 10–19, and
+`scenario-feeders.py` writes `case5-users.csv` for the first time.
+
+> **Supervisors come out at 120 against the scenarios' 188.** The state tenants give 40 each, inside
+> the specified 25–63; the NGO tenants give 5 each against 8. The count follows from the
+> hierarchy's own ratios rather than from a parameter, and the two-span sweep would move it again,
+> so it is recorded rather than forced.
 
 **The co-tenant datasets are the gap in that arithmetic.** Cases 6, 7, 12 and 13 need 513 further
 organisations present — the ones of Q12's 986 that hold data. The other 473 would be bare
