@@ -123,7 +123,18 @@ def test_the_ceiling_sits_above_everything_the_generator_writes():
     import recipe as recipe_mod
     import deployment as dep
     from pathlib import Path as P
-    pilot = P(__file__).resolve().parents[1] / "datasets" / "pilot-day-180.json"
+    # The committed recipe carries `organisation_id: null` and `to_deployment` refuses it, since
+    # the ids are the server's to assign and the placeholders it once held named live
+    # organisations. The id *band* a tenant occupies is a function of its size, not of which
+    # organisation it is, so arbitrary ids answer this question exactly.
+    import json as _json
+    import tempfile as _tempfile
+    src = _json.loads((P(__file__).resolve().parents[1]
+                       / "datasets" / "pilot-day-180.json").read_text())
+    for i, t in enumerate(src["tenants"]):
+        t["organisation_id"] = t.get("organisation_id") or 9000 + i
+    pilot = P(_tempfile.mkdtemp()) / "pilot-day-180.json"
+    pilot.write_text(_json.dumps(src))
     d = recipe_mod.Recipe.load(pilot).to_deployment()
     top = max(dep.plan_ids(d).values()) + dep.ID_STRIDE
     assert boot.GENERATED_ID_CEILING > top, (

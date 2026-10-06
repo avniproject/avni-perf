@@ -126,9 +126,36 @@ class Recipe:
             notes=notes,
         )
 
+    def unassigned_organisations(self) -> list[str]:
+        """Tenants whose `organisation_id` has not been filled in.
+
+        **A recipe cannot choose its own organisation ids.** They are `SERIAL`, assigned by the
+        server when the organisation is provisioned, so a committed recipe can only hold a
+        placeholder until that has happened. The pilot recipes held 1 to 10, which read as
+        plausible and are not free: on the load environment 1 is the platform organisation, 3 the
+        customer's, 9 a fixture and 10 the first state tenant. Generating against them would have
+        written a pilot dataset into four live organisations, and `_refs` only catches it while
+        *some* of the ten are missing from refs.json -- provision the other six and it would have
+        gone through.
+
+        Null now, and refused rather than defaulted, because a default here is a guess at which
+        organisation to overwrite.
+        """
+        return [t.get("name", "?") for t in self.tenants
+                if t.get("organisation_id") in (None, "", 0)]
+
     def to_deployment(self):
         """Rebuild the deployment this recipe describes."""
         from datetime import date
+
+        unassigned = self.unassigned_organisations()
+        if unassigned:
+            raise ValueError(
+                f"{self.name}: no organisation_id for {', '.join(unassigned)}. Organisation ids "
+                f"are assigned by the server when a tenant is provisioned, so they cannot be "
+                f"committed in advance. Provision the tenants, re-dump refs.json, and record the "
+                f"ids the server gave them. Do not reuse the placeholders this recipe shipped "
+                f"with -- they named live organisations.")
 
         import deployment as dep
         return dep.DeploymentSpec(

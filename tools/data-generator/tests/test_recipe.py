@@ -16,6 +16,25 @@ REFERENCE = date(2026, 9, 18)
 DATASETS = Path(__file__).resolve().parents[1] / "datasets"
 
 
+def filled(name):
+    """A committed recipe with organisation ids filled in, for tests about its *shape*.
+
+    The pilot recipes carry `organisation_id: null` and `to_deployment` refuses them, because the
+    ids are assigned by the server and the placeholders they once held named live organisations.
+    These tests are about beneficiaries, encounters and tenant counts, none of which depend on
+    which organisation a tenant lands in -- so they fill arbitrary ids rather than relax the
+    refusal, which is the thing being protected.
+    """
+    d = json.loads((DATASETS / name).read_text())
+    for i, t in enumerate(d["tenants"]):
+        if t.get("organisation_id") is None:
+            t["organisation_id"] = 9000 + i
+    f = Path(tempfile.mkdtemp()) / name
+    f.write_text(json.dumps(d))
+    return recipe_mod.Recipe.load(f)
+
+
+
 def a_recipe(**kw):
     d = dep.pilot_deployment(180, REFERENCE)
     return recipe_mod.Recipe.from_deployment(
@@ -26,7 +45,7 @@ def a_recipe(**kw):
 
 @pytest.mark.parametrize("days", [60, 120, 180, 365])
 def test_a_committed_recipe_rebuilds_the_deployment_it_describes(days):
-    r = recipe_mod.Recipe.load(DATASETS / f"pilot-day-{days}.json")
+    r = filled(f"pilot-day-{days}.json")
     d = r.to_deployment()
     reference = dep.pilot_deployment(days, date.fromisoformat(r.reference_date))
     assert d.beneficiaries == reference.beneficiaries
@@ -36,7 +55,7 @@ def test_a_committed_recipe_rebuilds_the_deployment_it_describes(days):
 
 def test_the_committed_recipes_differ_only_in_growth_point():
     """Only encounter volume grows between the growth points."""
-    rs = {d: recipe_mod.Recipe.load(DATASETS / f"pilot-day-{d}.json") for d in (60, 120, 180, 365)}
+    rs = {d: filled(f"pilot-day-{d}.json") for d in (60, 120, 180, 365)}
     assert {r.days for r in rs.values()} == {60, 120, 180, 365}
     assert len({json.dumps(r.tenants, sort_keys=True) for r in rs.values()}) == 1
     assert len({r.seed for r in rs.values()}) == 1
@@ -455,3 +474,55 @@ def test_committed_recipes_claim_disjoint_id_bands():
         assert hi <= next_lo, (
             f"{name} claims {lo:,}..{hi:,} and {next_name} starts at {next_lo:,}; "
             f"loading both into one database collides on the primary key")
+
+
+def test_a_recipe_without_organisation_ids_refuses_to_build():
+    """**The committed pilot recipes held organisation ids 1 to 10, which are not free.** On the
+    load environment 1 is the platform organisation, 3 the customer's, 9 a fixture and 10 the
+    first state tenant, so generating against them would have written a pilot dataset into four
+    live organisations.
+
+    `_refs` only catches that while some of the ten are missing from refs.json. Provision the
+    other six and it goes through. The ids are SERIAL and assigned by the server, so a recipe
+    cannot hold real ones until the tenants exist -- which means the honest state is null, and
+    null has to refuse rather than default, because a default here is a guess at which
+    organisation to overwrite.
+    """
+    import json
+    import tempfile
+    from pathlib import Path as P
+    import recipe as recipe_mod
+
+    src = json.loads((P(__file__).resolve().parents[1]
+                      / "datasets" / "pilot-day-180.json").read_text())
+    assert all(t["organisation_id"] is None for t in src["tenants"]), \
+        "the committed pilot recipe must not carry organisation ids"
+
+    r = recipe_mod.Recipe.load(P(__file__).resolve().parents[1]
+                               / "datasets" / "pilot-day-180.json")
+    assert len(r.unassigned_organisations()) == 10
+    with pytest.raises(ValueError, match="no organisation_id"):
+        r.to_deployment()
+
+    # Filled in, it builds.
+    for i, t in enumerate(src["tenants"]):
+        t["organisation_id"] = 2100 + i
+    f = P(tempfile.mkdtemp()) / "filled.json"
+    f.write_text(json.dumps(src))
+    filled = recipe_mod.Recipe.load(f)
+    assert filled.unassigned_organisations() == []
+    assert len(filled.to_deployment().tenants) == 10
+
+
+def test_every_committed_recipe_either_has_real_ids_or_none():
+    """A half-filled recipe is the dangerous state: it would generate for the tenants that have
+    ids and silently skip the question for the rest."""
+    import json
+    from pathlib import Path as P
+    for f in sorted((P(__file__).resolve().parents[1] / "datasets").glob("*.json")):
+        if "waiver" in f.name:
+            continue
+        tenants = json.loads(f.read_text()).get("tenants", [])
+        ids = [t.get("organisation_id") for t in tenants]
+        assert not ids or all(i is None for i in ids) or all(i for i in ids), \
+            f"{f.name} has some tenants with organisation ids and some without: {ids[:12]}"
