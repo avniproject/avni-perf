@@ -337,6 +337,37 @@ encounters, so it is comparable in size to the pilot dataset itself, and nobody 
 loading it costs. **Size it before Day 10 commits to the shape.** The ordering below is built so it
 is loaded once and never unloaded.
 
+> **The co-tenants are provisioned after Block A, not before it (decided 6 Oct 2026).** Generating
+> their data needs their organisations to exist first: `refs.sql` reads `subject_type.id` and
+> friends *per organisation*, and those rows come into being when the bundle is imported into that
+> organisation. So provisioning is a prerequisite of generation, not a step beside it.
+>
+> **That collides with what case 5 measures.** Case 5 is separate infrastructure — "the customer's
+> own load with nobody else's data in the tables" — and on genuinely separate infrastructure the
+> other organisations do not exist at all, not even empty. Each carries roughly 510 config rows,
+> so 513 of them is about 262,000 rows before a single subject, plus their weight in planner
+> statistics and RLS, which this document already says matters for the 473 empty ones. Provisioned
+> early, cases 5 and 11 would run against them and the 5 -> 6 delta would isolate the co-tenants'
+> *data* rather than their presence.
+>
+> Snapshots could have held both states apart. The simpler answer was taken: **nothing touches the
+> database until Block A is done.**
+>
+> **And the recipe's organisation ids are placeholders, which is the pilot's bug waiting.**
+> `co-tenants-day-180.json` carries 1001 to 1513, from `co_tenants.plan(first_organisation_id=
+> 1000)`. The server assigns ids; it does not accept them. This instance currently holds 13
+> organisations — 1, 3, 9 and 10 to 19 — so the next one created is 20, and nothing in the range
+> the recipe names will exist. **Read the ids back from `GET /organisation` after provisioning and
+> record them**, exactly as the eight NGO tenants were, rather than inferring them from the
+> sequence. The pilot shipped with 1 to 10, which named four live organisations, and
+> `unassigned_organisations()` cannot catch this case because these ids look assigned.
+>
+> **The cost of that is a Day 16 nobody has timed.** Block B's day now contains 513 bundle imports
+> as well as its reset, load and two runs, and a single `provision-org.sh` against this bundle has
+> never been measured — 513 x 10 s is 85 minutes and 513 x 60 s is 8.5 hours, which are different
+> days. **Time one as the first act of Block B**, before committing the rest of the day to it.
+> Three bundles are involved, not one, so the large-pull-heavy import is the one to time.
+
 **Measured, and `truncate` wins by a factor of three.**
 
 | mechanism | clear | reload | total | |
@@ -678,7 +709,7 @@ part of this that is an assumption rather than arithmetic.**
 | **14** | A | **5** (ten tenants, 2 h) and **11** (clustered, 1 h) | Both are separate-hosting, so they run before the co-tenants exist. 11 is case 5's day compressed into an hour; the sync window is unconfirmed and these are the two ends of the bracket |
 | **14–15** | A | **10** (soak, 12 h, overnight) | Needs the instance to itself. Case 4's load sustained, so the block's residue is immaterial to it |
 | **15** | A | **9** (stress ramp, until it breaks) | Last in the block: the knee is only interpretable once the unstressed shape is known, and whatever it leaves behind is cleared by Block B's reset |
-| **16** | B | Reset, load the co-tenants, then **6** (2 h) and **7** (2 h). Analyse 5/6/7 together | 5 -> 6 is the cost of their presence, 6 -> 7 the cost of their activity. The reset is what makes 6 comparable with 5 |
+| **16** | B | **Provision 513 organisations** and import each one's archetype bundle, re-dump `refs.sql`, generate and load the co-tenant data, then **6** (2 h) and **7** (2 h). Analyse 5/6/7 together | 5 -> 6 is the cost of their presence, 6 -> 7 the cost of their activity. The reset is what makes 6 comparable with 5 |
 | **17** | B | **12** and **13** (clustered, 1 h each) | The same two tenancy shapes with the day compressed. No reset: 12 and 13 are read against 11 and against each other |
 | **18–19** | C | **8** (growth, 2 h x 3 — day 60, 120, 365) | Three dataset loads, one per point. Day 180 reuses case 4, so all four recipes are pinned at span 8.4 and the curve varies encounter volume alone |
 | **20** | A′ | Reload `pilot-day-180-span20`, split it with `--variant span20`, re-run **3**, **4**, **5** | The span sweep's other end. Last because it answers a sensitivity rather than a target, and because it is the day Block B's reset borrows if Day 9's projection was wrong — see below |
