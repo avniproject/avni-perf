@@ -292,15 +292,10 @@ for r in runs:
     # The cap cannot bind on a run-mean -- wall is at least the arrival window plus one sync, so
     # duration/wall is at most 1 -- and is kept as a guard against a malformed pair of inputs
     # rather than as a correction.
-    # **Where the run was driven from.** Constant across every run so far, which is the reason to
-    # show it rather than a reason not to: an injector that differs is not comparable with one
-    # that does not -- different CPU count, heap, and above all a different network position, and
-    # the harness pays its round trip 43 times a sync. Nothing in the table would have shown it.
-    #
-    # Abbreviated as the instance id's first seven hex digits, mirroring how a commit is shortened
-    # here. The full id, OS, Java, CPU count and heap are in the detail.
+    # Read for the cross-table check below, not for a column: the instance id, OS, Java, CPU count
+    # and heap are per-run facts and live in the detail. What the index adds is the comparison no
+    # single detail section can make -- whether these runs share an injector at all.
     injector_id = str(at(meta, 'settings.injector.label', '') or '')
-    injector = injector_id[2:9] if injector_id.startswith('i-') else (injector_id[:7] or '—')
 
     syncs = sync_durations(work / r / 'sync-durations.csv',
                            at(meta, 'settings.sync.syncMode'))
@@ -382,7 +377,7 @@ for r in runs:
 
     rows.append(dict(
         run=r, date=date, label=label, indevices=indevices, syncs=syncs, fullp95=fullp95,
-        injector=injector, injector_id=injector_id,
+        injector_id=injector_id,
         excluded=excluded,
         profile=at(meta,'settings.injection.profile','—'),
         users=at(meta,'settings.injection.userCount','—'),
@@ -445,7 +440,7 @@ for x in [y for y in rows if not y.get('excluded')]:
     L.append(f"| [`{x['run']}`]({DETAIL_NAME}#{anchor(x['run'])}) | {x['date']} | {x['label']} | "
              f"{x['profile']} | {x['users']} | {x['window']} | {x['inflight']} | "
              f"{x['indevices']} | {x['requests']} | {x['failed_pct']}% | {x['p95']} | "
-             f"{x['fullp95']} | {x['rps']} | `{x['injector']}` |")
+             f"{x['fullp95']} | {x['rps']} |")
 L.append("")
 # **The detail is a separate file, because the index has to stay readable.** One run contributes
 # a dozen rows of settings and environment, so at thirty runs this file would be four hundred
