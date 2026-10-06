@@ -284,6 +284,20 @@ since it was built and the pilots inherited the default. Set on every pilot reci
 > supervisors per state tenant against 8.4's 60 is a 5% difference and not worth a run, because the
 > measurement sits almost on the low end already. **Switching spans is a reload, not a flag**,
 > which is why both exist rather than one parameterised at run time; see Phase 4's ordering.
+>
+> **Both are in S3** — `s3://avni-loadtest-936573213727/datasets/`, as `pilot-day-180.tar.gz` and
+> `pilot-day-180-span20.tar.gz`, about 562 MB each from 2.88 GiB on disk, uploaded 6 Oct 2026.
+> `states-day-180` is there too, as one tarball per tenant, and for that one S3 is the only copy
+> left: the generator writes to `/tmp`, and `/tmp/states-day-180` had already been emptied by the
+> machine's cleaner by 6 Oct. **Generated datasets are not durable where they are written**, which
+> is the reason to upload one the day it is built rather than the day it is needed.
+>
+> **The one thing to check on the first extraction.** Each tenant's `load.sql` carries *absolute*
+> `\copy` paths — `/tmp/<set>/<tenant>/<table>.tsv` — so the archive has to land back at exactly
+> that path for any of it to resolve. 110 statements per set, all of them wrong together if the
+> root differs, and the failure happens at load time on the server with the transfer already paid
+> for. The sizes are a free check that both sets arrived whole: they differ by 10,240 bytes, one
+> tar block, which is the 516-row difference between the spans and nothing else.
 
 **The co-tenant datasets are the gap in that arithmetic.** Cases 6, 7, 12 and 13 need 513 further
 organisations present — the ones of Q12's 986 that hold data. The other 473 would be bare

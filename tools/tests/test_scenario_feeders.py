@@ -14,10 +14,43 @@ sf = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(sf)
 
 
+def _allowed_by_gitignore():
+    """**The .gitignore allow-list is the list these tests must cover.** `src/gatling/resources` is
+    default-deny precisely so that un-ignoring a feeder is a deliberate act; this reads the same
+    lines, so a file cannot become committable without also becoming checked."""
+    allowed = []
+    for line in (ROOT / ".gitignore").read_text().splitlines():
+        line = line.strip()
+        if line.startswith("!/src/gatling/resources/") and line.endswith(".csv"):
+            allowed.append(ROOT / line[2:])
+    return allowed
+
+
 def _tracked_feeders():
-    out = subprocess.run(["git", "-C", str(ROOT), "ls-files", "src/gatling/resources/*-users.csv"],
+    out = subprocess.run(["git", "-C", str(ROOT), "ls-files", "src/gatling/resources/*.csv"],
                          capture_output=True, text=True).stdout.split()
     return [ROOT / p for p in out]
+
+
+def test_every_feeder_git_will_accept_is_one_these_tests_check():
+    """**The glob is the whole guard, and a rename can walk out from under it.** These files were
+    `caseN-users.csv` and matched `*-users.csv`; naming them for their dataset made them
+    `caseN-users-pilot.csv`, which does not, and the sweep below silently went from five files to
+    two while still passing. Checking the allow-list against what is tracked is the version of
+    this that a rename cannot quietly shrink."""
+    tracked = {p.resolve() for p in _tracked_feeders()}
+    missing = [p.name for p in _allowed_by_gitignore() if p.resolve() not in tracked]
+    assert not missing, f"un-ignored but not tracked, so nothing checks them: {missing}"
+    # The `-example` files are templates rather than cohorts, and the deny pattern
+    # (`*-users.csv`) never covered them, so they are tracked without an allow-list line. They are
+    # still swept for credentials below -- an example carrying a real token would be worse, not
+    # better, for being an example.
+    allowed = {a.resolve() for a in _allowed_by_gitignore()}
+    unlisted = [p.name for p in tracked
+                if p.resolve() not in allowed and not p.name.endswith("-example.csv")]
+    assert not unlisted, (
+        f"tracked without an allow-list line: {unlisted}. Either un-ignore it deliberately, "
+        f"after looking at the password|token column, or it should not be committed")
 
 
 def test_no_committed_feeder_carries_a_credential():
@@ -27,7 +60,8 @@ def test_no_committed_feeder_carries_a_credential():
     default-deny so one cannot arrive here without someone un-ignoring it. This is the check that
     makes that deliberate rather than hopeful."""
     feeders = _tracked_feeders()
-    assert feeders, "no user files are tracked; this test is guarding nothing"
+    assert len(feeders) >= 12, (
+        f"only {len(feeders)} user files are swept; the glob has drifted off them again")
     for path in feeders:
         with path.open() as fh:
             for i, row in enumerate(csv.DictReader(fh), start=2):

@@ -35,9 +35,19 @@ build
 /src/gatling/resources/sync-users.*.csv
 !/src/gatling/resources/sync-users.csv
 !/src/gatling/resources/case1-users.csv
-!/src/gatling/resources/case2-users.csv
-!/src/gatling/resources/case3-users.csv
-!/src/gatling/resources/case4-users.csv
+# One name per dataset, because two datasets split to the same case numbers. -states is
+# states-day-180, -pilot is pilot-day-180 (span 8.4), -span20 is pilot-day-180-span20. Case 1 has
+# no dataset -- it is a bootstrap cohort in an organisation holding no field data.
+!/src/gatling/resources/case2-users-states.csv
+!/src/gatling/resources/case3-users-states.csv
+!/src/gatling/resources/case4-users-states.csv
+!/src/gatling/resources/case2-users-pilot.csv
+!/src/gatling/resources/case3-users-pilot.csv
+!/src/gatling/resources/case4-users-pilot.csv
+!/src/gatling/resources/case5-users-pilot.csv
+!/src/gatling/resources/case3-users-span20.csv
+!/src/gatling/resources/case4-users-span20.csv
+!/src/gatling/resources/case5-users-span20.csv
 !/gradle/wrapper/gradle-wrapper.jar
 tools/entity-metadata/node_modules
 tools/entity-metadata/package-lock.json

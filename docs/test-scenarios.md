@@ -53,14 +53,27 @@ That is what makes cases 11 to 13 a single property away from 5 to 7.
 `-DSYNC_USERS=`. They carry no password or token, so a result can be traced to the cohort it ran
 as rather than to whichever file happened to be in place.
 
+**Every name carries its dataset**, because two datasets split to the same case numbers and a bare
+`case3-users.csv` says nothing about which cohort it holds. `-states` is `states-day-180`, `-pilot`
+is `pilot-day-180` at span 8.4, `-span20` is `pilot-day-180-span20`.
+
 | case | feeder | users | who |
 |---|---|---|---|
-| 1 | `case1-users.csv` | 90 | a bootstrap cohort in an organisation holding no field data |
-| 2 | `case2-users.csv` | 501 | one state tenant, field workers |
-| 3 | `case3-users.csv` | 40 | one state tenant, supervisors alone |
-| 4, 8, 10 | `case4-users.csv` | 541 | one state tenant, both |
-| 5, 9, 11 | — | — | needs the ten-tenant deployment; `tools/scenario-feeders.py` writes it once the input has ten. Both pilot spans are ten-tenant — see below |
+| 1 | `case1-users.csv` | 100 | a bootstrap cohort in an organisation holding no field data — no dataset, so no suffix |
+| 2 | `case2-users-pilot.csv` | 501 | one state tenant, field workers |
+| 3 | `case3-users-pilot.csv` | 60 | one state tenant, supervisors alone |
+| 4, 8, 10 | `case4-users-pilot.csv` | 561 | one state tenant, both |
+| 5, 9, 11 | `case5-users-pilot.csv` | 1,682 | every tenant of the ten-tenant deployment |
+| 3, 4, 5 at span 20 | `caseN-users-span20.csv` | 25 / 526 / 1,580 | Block A′. No `case2-users-span20.csv`: case 2 is field workers, and the span does not move them — the slice is byte-identical to the pilot's |
+| 2, 3, 4 on `states-day-180` | `caseN-users-states.csv` | 501 / 40 / 541 | the two-tenant dataset Phase 3 measured against. Kept because runs were made with them; **not** what Block A runs |
 | 6, 7, 12, 13 | `co-tenant-users.csv` | — | pending the co-tenant build |
+
+> **The states feeders are not Block A's.** Block A loads one dataset and runs cases 1 to 5, 9, 10
+> and 11 against it, and since 5 and 11 need ten tenants that dataset is `pilot-day-180`. The two
+> cohorts share organisation ids 10 and 11 but **no usernames at all** — `state-1-u201000001@org10`
+> against `state-1-u100@org10` — so a Block A run pointed at a `-states` feeder authenticates as
+> users the pilot load does not contain. That is why they were renamed rather than left as the
+> names someone reaches for by habit.
 
 > **Why not one file for all of them.** `generate.py` writes every user of every tenant -- 1,082
 > across two organisations for `states-day-180`. Cases 2, 3 and 4 are each *one state tenant*, and
@@ -69,8 +82,8 @@ as rather than to whichever file happened to be in place.
 > `tools/scenario-feeders.py` cuts the slices, and it refuses to write `case5-users.csv` from a
 > two-tenant input rather than producing the same trap one layer down.
 
-> **The two spans collide in these names.** Block A′ re-runs cases 3, 4 and 5 on
-> `pilot-day-180-span20`, which is also a ten-tenant pilot, so splitting it writes
+> **Why the names carry a dataset at all.** Block A′ re-runs cases 3, 4 and 5 on
+> `pilot-day-180-span20`, which is also a ten-tenant pilot, so splitting it without a suffix writes
 > `case3-users.csv`, `case4-users.csv` and `case5-users.csv` straight over Block A's. The slices
 > differ — case 3 is 60 users at span 8.4 and 25 at span 20, case 4 is 561 against 526, case 5
 > 1,682 against 1,580 — but the names do not, so a run meant for the measured point picks up the
