@@ -25,7 +25,7 @@ server's 2 vCPU is what names it. Not the database, not the injector.
 | mean ms | 45 | 42 | 50 | 74 | 417 | 1,254 |
 | **requests in flight** | 0.2 | 1.0 | 1.7 | 3.2 | 21.9 | 71.0 |
 | devices in flight | ~1 † | 5.5 | 8.4 | 11.8 | **36.0** ‡ | **80.2** ‡ |
-| per-sync duration s | — | **10.5** | **10.8** | **11.8** | **31.0** ‡ | **60.9** ‡ |
+| per-sync mean s | — | **10.5** | **10.8** | **11.8** | **31.0** ‡ | **60.9** ‡ |
 | failures | 0 | 0 | 0 | 0 | 0 | 0 |
 
 † Derived, not measured. `sync-durations.csv` was only archived from the 90 s run onwards
@@ -44,6 +44,10 @@ minus the arrival window gave ~61 s at 15 s against a measured 60.9, and ~22 s a
 measured 31.0 — low by 41%. It fails where some devices finish before the last ones arrive, which
 is exactly the 60 s case. Treat a derived sync duration as an upper-bound-shaped guess, not a
 number; this is why the column is now populated from the file.
+
+**The per-sync row is a mean; `run-log.md` publishes a p95.** Same quantity, different statistic,
+and at 60 s they read 31.0 against 40.2 — so a reader moving between the two documents should check
+which column they are looking at before concluding one is wrong.
 
 **Percentiles are Gatling's OK column, matching `run-log.md`.** Worth stating because the console
 summary prints Total and OK side by side and they are not the same number: 2,223 against 2,242 at
@@ -86,11 +90,17 @@ sync rather than inferred from wall time:
 
 | window | mean | p50 | p95 | max |
 |---|---|---|---|---|
-| 180 s | 10,468 ms | 10,447 | 10,715 | 10,840 |
-| 120 s | 10,792 ms | 10,772 | 11,156 | 11,470 |
-| 90 s | 11,766 ms | 11,790 | 12,315 | 12,587 |
-| 60 s ‡ | 30,957 ms | 31,774 | 40,168 | 40,831 |
-| 15 s ‡ | 60,923 ms | 61,425 | 64,019 | 65,223 |
+| 180 s | 10,468 ms | 10,447 | 10,717 | 10,840 |
+| 120 s | 10,792 ms | 10,773 | 11,163 | 11,470 |
+| 90 s | 11,766 ms | 11,796 | 12,375 | 12,587 |
+| 60 s ‡ | 30,957 ms | 31,814 | 40,168 | 40,831 |
+| 15 s ‡ | 60,923 ms | 61,441 | 64,019 | 65,223 |
+
+Percentiles use `update-run-log.sh`'s rank — `sorted(xs)[int(n*q)]` — so these agree with the
+`full sync p95 s` column of [`run-log.md`](run-log.md) exactly. An earlier revision of this table
+used the adjacent rank, which published 12,315 ms at 90 s against the log's 12,375: two documents
+disagreeing by one position in a sorted list of a hundred, which is the kind of discrepancy that
+costs an afternoon to discover is not real.
 
 **A full case-1 sync costs about 10.5 seconds uncontended**, stretching 12% by 90 s. The profile
 banner's "~N in flight at a 6s reference-data sync" therefore understates device concurrency by
@@ -234,8 +244,9 @@ the things that stop being trivial, and this is the largest one in the trace by 
   is missing is contention for CPU, connections and IOPS, not a realistically sized table.
 * **Cache state was incidental**, not warm-from-reload: the environment had been restarted and
   then variously queried. Recorded as `warm-incidental-no-reset` on each run — accurately for the
-  six morning runs and the two warm re-runs, wrongly for the two cold ones, where the label is
-  just the unset default. The cold-start section is the measurement of how much this matters.
+  six morning runs and the two warm re-runs, wrongly for the two cold ones — where it was not a
+  default but an assertion, passed explicitly on a server three minutes old. The cold-start section
+  is the measurement of how much this matters.
 * **The first run is not a cohort measurement.** Its 15-minute window spread 100 arrivals one
   every nine seconds, and a sync takes ~10.5 s, so barely more than one device was ever in flight.
   Its comfortable 202 ms p95 is the per-sync cost and says nothing about a herd. The harness has
@@ -278,9 +289,12 @@ because it counts database-wide.
 * **`app_instance_class` moves the ceiling.** The database peaked at 36% CPU with every statement
   under 1.3 ms; the app server hit 99.25%. A run at the next size up would say whether throughput
   scales with vCPU or whether something else takes over.
-* **Put a warm-up run in the protocol.** One gentle window — the 15-minute profile pushes all
-  4,300 requests at 4.77 rps — before anything measured, and `CACHE_POLICY` set deliberately on
-  every run rather than left to its default.
+* **~~Put a warm-up run in the protocol~~ — done.** `prepare-run.sh` step 6 discards a gentle pass
+  before anything measured, and avni-infra's `env-warmup.sh` runs one on every `env-teardown.sh
+  start` and throws the result away. Producing the warmth is the fix rather than labelling it
+  honestly: the label was already being passed, and it was wrong. **How long warm lasts is still
+  unmeasured** — twenty minutes was warm, 2m49s was not, and nothing establishes where between
+  them it crosses, so a long gap before a measured run is a reason to warm again.
 * **Then add the co-tenants** (F5.4). Everything above is a quiet system; production is not. The
   knee will move left.
 
