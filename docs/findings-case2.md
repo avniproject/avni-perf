@@ -54,6 +54,11 @@ catching up on a long gap, not on a day.
 way: the gap between 60.8 s and 80.2 s is what being fully behind costs over being ordinarily
 behind, and it is small.
 
+Case 14 has since run — 63 full syncs at a mean of 80.1 s, against the 80.2 s these two samples
+gave, so the small-n figure held. See [`findings-case14.md`](findings-case14.md). It also shows
+where the extra 20 seconds goes: `serverMs` is 5.4 s of the 80, so being fully behind costs the
+*device* another twenty seconds of writing, and the server almost nothing.
+
 ## The device does the work, not the server
 
 Across all 167 syncs, **`serverMs` is 6% of `durationMs`** — 7% for the full syncs, 6% for the
