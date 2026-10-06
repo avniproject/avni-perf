@@ -293,12 +293,34 @@ since it was built and the pilots inherited the default. Set on every pilot reci
 > measurement sits almost on the low end already. **Switching spans is a reload, not a flag**,
 > which is why both exist rather than one parameterised at run time; see Phase 4's ordering.
 >
-> **Both are in S3** — `s3://avni-loadtest-936573213727/datasets/`, as `pilot-day-180.tar.gz` and
-> `pilot-day-180-span20.tar.gz`, about 562 MB each from 2.88 GiB on disk, uploaded 6 Oct 2026.
+> **Both spans are in S3** — `s3://avni-loadtest-936573213727/datasets/`, as
+> `pilot-day-180.tar.gz` and `pilot-day-180-span20.tar.gz`, about 562 MB each from 2.88 GiB on
+> disk, uploaded 6 Oct 2026. **Every generated dataset lives under that prefix**, including the
+> growth points below.
 > `states-day-180` is there too, as one tarball per tenant, and for that one S3 is the only copy
 > left: the generator writes to `/tmp`, and `/tmp/states-day-180` had already been emptied by the
 > machine's cleaner by 6 Oct. **Generated datasets are not durable where they are written**, which
 > is the reason to upload one the day it is built rather than the day it is needed.
+>
+> **Block C's growth points went up the same day**, generated 6 Oct 2026 against the same bundle
+> and the same organisation ids, all four pinned at span 8.4 so the curve varies encounter volume
+> alone:
+>
+> | dataset | rows | on disk |
+> |---|---|---|
+> | `pilot-day-60` | 3,306,220 | 1.22 GiB |
+> | `pilot-day-120` | 5,101,506 | 2.05 GiB |
+> | `pilot-day-180` | 6,896,792 | 2.88 GiB |
+> | `pilot-day-365` | 12,432,076 | 5.46 GiB |
+>
+> **The increments are the check that they form one series**: 1.795M rows per 60 days between 60,
+> 120 and 180, and day 365's 185 further days predict 12.43M, which is what it came out at.
+> Beneficiary population does not grow with the growth point, so everything above the first point
+> is encounters. Each set's byte counts match its manifest and all 110 `\copy` paths resolve.
+>
+> **Case 8 reuses `case4-users-pilot.csv` at every point**, which holds because `plan_ids` gives
+> the first tenant the same id base whatever `days` is. Only 561 of 1,682 usernames survive a
+> growth-point change and they are exactly that feeder; see the test in `test_recipe.py`.
 >
 > **The one thing to check on the first extraction.** Each tenant's `load.sql` carries *absolute*
 > `\copy` paths — `/tmp/<set>/<tenant>/<table>.tsv` — so the archive has to land back at exactly
