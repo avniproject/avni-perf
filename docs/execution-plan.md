@@ -267,10 +267,18 @@ since it was built and the pilots inherited the default. Set on all four.
 **The ten-tenant pilot now builds**: 1,626 users across organisations 10–19, and
 `scenario-feeders.py` writes `case5-users.csv` for the first time.
 
-> **Supervisors come out at 120 against the scenarios' 188.** The state tenants give 40 each, inside
-> the specified 25–63; the NGO tenants give 5 each against 8. The count follows from the
-> hierarchy's own ratios rather than from a parameter, and the two-span sweep would move it again,
-> so it is recorded rather than forced.
+> **The scenarios' 188 supervisors assumed the low end of the span, which is now established
+> rather than inferred.** `pilot-day-180` leaves `workers_per_supervisor` null and takes Q13's
+> measured establishment of 8.4, which lands at 12.5 workers per supervisor and gives 120. Fixing
+> the span at 8 gives **190** — 63 per state tenant and 8 per NGO, against the scenarios' 1,504
+> workers and 188 supervisors. That is the table's own arithmetic reproduced, so the figure was
+> never wrong; it was a different point on the range.
+>
+> All three are generated: `pilot-day-180-span8` (1,696 users, 190 supervisors),
+> `pilot-day-180` (1,626 / 120) and `pilot-day-180-span20` (1,580 / 74). Row counts differ by
+> 0.01% across them — 6,896,276 to 6,896,864 — because the span moves structure and not volume:
+> the same beneficiaries and encounters, differently supervised. **Switching spans is a reload,
+> not a flag**, which is why all three exist rather than one parameterised at run time.
 
 **The co-tenant datasets are the gap in that arithmetic.** Cases 6, 7, 12 and 13 need 513 further
 organisations present — the ones of Q12's 986 that hold data. The other 473 would be bare

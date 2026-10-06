@@ -1,0 +1,140 @@
+{
+ "name": "pilot-day-180-span8",
+ "days": 180,
+ "reference_date": "2026-09-18",
+ "seed": 42,
+ "profile": "production-2026-09",
+ "bundle_path": "<set to the implementation bundle for the run>",
+ "bundle_revision": null,
+ "bundle_fingerprint": {
+  "files": {},
+  "combined": null
+ },
+ "tenants": [
+  {
+   "name": "state-1",
+   "organisation_id": 10,
+   "field_workers": 500,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 20,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8,
+   "total_encounters": null
+  },
+  {
+   "name": "state-2",
+   "organisation_id": 11,
+   "field_workers": 500,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 20,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-1",
+   "organisation_id": 12,
+   "field_workers": 62,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 20,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-2",
+   "organisation_id": 13,
+   "field_workers": 62,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 20,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-3",
+   "organisation_id": 14,
+   "field_workers": 62,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 20,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-4",
+   "organisation_id": 15,
+   "field_workers": 62,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 20,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-5",
+   "organisation_id": 16,
+   "field_workers": 62,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 20,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-6",
+   "organisation_id": 17,
+   "field_workers": 62,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 20,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-7",
+   "organisation_id": 18,
+   "field_workers": 62,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 20,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-8",
+   "organisation_id": 19,
+   "field_workers": 62,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 20,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8,
+   "total_encounters": null
+  }
+ ],
+ "enrolment_rate": 0.22,
+ "program_encounter_share": 0.59,
+ "notes": "E6 test case dataset. Two state tenants of 500 field workers, eight NGO tenants sharing 500, at day 180. Only encounter volume differs between the three; beneficiary population does not grow with programme activity. bundle_path and bundle_revision must be filled in before generating. A tenant may also carry its own bundle_path, which is how H1's 'cover the range of organisation size' is done -- config size drives the syncDetails row count -- without them this recipe cannot be reproduced. Organisation ids recorded 6 Oct 2026, after provisioning: state-1 and state-2 already existed at 10 and 11, and ngo-1 to ngo-8 were created with the server assigning 12 to 19 -- read back from GET /organisation rather than inferred from the sequence. They held 1-10 before, which named four live organisations; see docs/execution-plan.md. supervisor_level is Taluka, not the TenantSpec default of Sub-Centre: the bundle's hierarchy has no Sub-Centre, and after `from_target_types` truncates at the deepest permitted registration type the chain is State > District > Taluka > Village. Taluka is the tier above a field worker's village, which is what the scenarios mean by supervision one tier up. states-day-180 has carried this since it was built; the pilots inherited the default and would have failed at `cat.plan`. **This variant fixes the supervisor span at 8 workers each** -- the low end of the 8-to-20 range the scenarios sweep, giving 63 state supervisors and 8 per NGO tenant, 1,696 users. The span is not a run property: it changes how many supervisors exist and how wide each catchment is, and both are structural rows, so switching spans is a reload rather than a flag. Span 8 reproduces the scenarios' own 1,504 workers and 188 supervisors, which is how we know that table assumed the low end; pilot-day-180 itself leaves workers_per_supervisor null and takes Q13's measured establishment of 8.4, which lands at 12.5 and is the middle.",
+ "schema_version": 1,
+ "tenant_bundle_fingerprints": {}
+}
