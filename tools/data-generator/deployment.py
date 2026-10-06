@@ -84,6 +84,15 @@ class TenantSpec:
     # filterChangedEntities runs (D1.1). A small config will not exercise that; a large one will.
     # None falls back to the deployment's bundle.
     bundle_path: str | None = None
+    # **A committed recipe cannot name a bundle, so it names an archetype.** The bundles are not
+    # in this repository -- they are production exports -- and their filenames are organisation
+    # names, which must not appear in a tracked file. A tenant therefore records which *kind* of
+    # configuration it is built from, and `--bundle-root` supplies the directory holding one
+    # extracted bundle per archetype. The mapping from archetype to organisation stays local.
+    #
+    # Resolution order is bundle_path, then archetype under the root, then the deployment's own
+    # bundle -- so an explicit path still wins and nothing that worked before changes.
+    bundle_archetype: str | None = None
     # Co-tenants are sized by the data they hold rather than by a daily encounter rate, because
     # their history is not being modelled -- only their weight in the tables. Set this and it
     # replaces the rate derivation entirely.

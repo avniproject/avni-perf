@@ -184,10 +184,44 @@ class Recipe:
                 f"An old recipe may not describe the same dataset it once did.")
         return cls(schema_version=version, **raw)
 
-    def bundle_paths(self) -> dict[int, str]:
-        """The bundle each tenant is built from, falling back to the deployment's."""
-        return {t["organisation_id"]: (t.get("bundle_path") or self.bundle_path)
-                for t in self.tenants}
+    def bundle_paths(self, bundle_root: str | Path | None = None) -> dict[int, str]:
+        """The bundle each tenant is built from, falling back to the deployment's.
+
+        A tenant may name a `bundle_archetype` instead of a path, which resolves to a directory
+        of that name under `bundle_root`. That is how a committed recipe records which kind of
+        configuration a tenant has without naming the organisation the bundle came from -- the
+        bundles are production exports and their names are organisation names.
+        """
+        out = {}
+        for t in self.tenants:
+            path = t.get("bundle_path")
+            if not path and t.get("bundle_archetype") and bundle_root is not None:
+                path = str(Path(bundle_root) / t["bundle_archetype"])
+            out[t["organisation_id"]] = path or self.bundle_path
+        return out
+
+    def archetypes(self) -> dict[str, int]:
+        """How many tenants each archetype covers, for reporting before a long generation."""
+        counts: dict[str, int] = {}
+        for t in self.tenants:
+            if t.get("bundle_archetype"):
+                counts[t["bundle_archetype"]] = counts.get(t["bundle_archetype"], 0) + 1
+        return counts
+
+    def unresolved_archetypes(self, bundle_root: str | Path | None) -> list[str]:
+        """Archetypes this recipe names that `bundle_root` does not supply.
+
+        **Without this the fallback is silent and wrong.** A tenant whose archetype cannot be
+        resolved drops through to the deployment-wide bundle, so the run generates -- at the wrong
+        configuration, for however many tenants, and nothing says so. That is the whole reason
+        config size is a variable here.
+        """
+        named = sorted(self.archetypes())
+        if not named:
+            return []
+        if bundle_root is None:
+            return named
+        return [a for a in named if not (Path(bundle_root) / a).is_dir()]
 
     def fingerprint_tenants(self) -> None:
         """Record a fingerprint for every distinct bundle this recipe references."""

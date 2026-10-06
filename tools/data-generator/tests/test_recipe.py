@@ -536,3 +536,57 @@ def test_every_committed_recipe_either_has_real_ids_or_none():
         ids = [t.get("organisation_id") for t in tenants]
         assert not ids or all(i is None for i in ids) or all(i for i in ids), \
             f"{f.name} has some tenants with organisation ids and some without: {ids[:12]}"
+
+
+# --- bundle archetypes ------------------------------------------------------
+
+def test_every_co_tenant_names_an_archetype():
+    """**Config size is a load variable, so it cannot be left to a default.** The number of
+    entities a config defines is the number of rows posted to syncDetails and therefore the
+    per-row queries filterChangedEntities runs. A tenant with no archetype falls back to the
+    deployment-wide bundle, which would build all 513 co-tenants from one config."""
+    r = recipe_mod.Recipe.load(DATASETS / "co-tenants-day-180.json")
+    missing = [t["name"] for t in r.tenants if not t.get("bundle_archetype")]
+    assert not missing, f"{len(missing)} co-tenants have no bundle_archetype: {missing[:5]}"
+    assert r.archetypes() == {"large-pull-heavy": 11, "media-heavy": 2, "push-dominated": 500}
+
+
+def test_the_three_measured_ranks_keep_their_own_bundle():
+    """Ranks 1, 3 and 17 are the organisations whose real bundles were obtained and whose media
+    rates MediaProfiles measures. Their archetype is observed, not inferred from a threshold."""
+    r = recipe_mod.Recipe.load(DATASETS / "co-tenants-day-180.json")
+    by_rank = {i + 1: t["bundle_archetype"] for i, t in enumerate(r.tenants)}
+    assert by_rank[1] == "large-pull-heavy"
+    assert by_rank[3] == "push-dominated"
+    assert by_rank[17] == "media-heavy"
+
+
+def test_an_archetype_that_does_not_resolve_is_named_rather_than_ignored(tmp_path):
+    """**The fallback is the dangerous path.** An unresolved archetype drops through to the
+    deployment's bundle, so generation succeeds at the wrong configuration for however many
+    tenants and nothing says so."""
+    r = recipe_mod.Recipe.load(DATASETS / "co-tenants-day-180.json")
+    assert r.unresolved_archetypes(None) == ["large-pull-heavy", "media-heavy", "push-dominated"]
+    (tmp_path / "push-dominated").mkdir()
+    assert r.unresolved_archetypes(tmp_path) == ["large-pull-heavy", "media-heavy"]
+    for a in ("large-pull-heavy", "media-heavy"):
+        (tmp_path / a).mkdir()
+    assert r.unresolved_archetypes(tmp_path) == []
+
+
+def test_an_archetype_resolves_under_the_root_and_an_explicit_path_still_wins(tmp_path):
+    r = recipe_mod.Recipe.load(DATASETS / "co-tenants-day-180.json")
+    paths = r.bundle_paths(tmp_path)
+    first = r.tenants[0]["organisation_id"]
+    assert paths[first] == str(tmp_path / "large-pull-heavy")
+
+    r.tenants[0] = dict(r.tenants[0], bundle_path="/somewhere/explicit")
+    assert r.bundle_paths(tmp_path)[first] == "/somewhere/explicit"
+
+
+def test_a_recipe_without_archetypes_is_unaffected():
+    """The pilots name no archetype, so bundle_root must change nothing for them."""
+    r = recipe_mod.Recipe.load(DATASETS / "pilot-day-180.json")
+    assert r.archetypes() == {}
+    assert r.unresolved_archetypes(None) == []
+    assert r.bundle_paths("/anywhere") == r.bundle_paths()

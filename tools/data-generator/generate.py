@@ -97,6 +97,9 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--out", required=True, help="directory to write the dataset into")
     ap.add_argument("--bundle", default=None,
                     help="implementation bundle; overrides the recipe's bundle_path")
+    ap.add_argument("--bundle-root", default=None,
+                    help="directory holding one extracted bundle per archetype, for a recipe "
+                         "whose tenants name a bundle_archetype")
     ap.add_argument("--profile", default=None, help="override the recipe's profile")
     ap.add_argument("--allow-bundle-mismatch", action="store_true",
                     help="generate even though the bundle is not the one the recipe names")
@@ -115,16 +118,42 @@ def main(argv: list[str]) -> int:
     # number of entities a config defines is the number of rows posted to syncDetails, and
     # therefore the per-row queries filterChangedEntities runs. --bundle overrides the
     # deployment-wide fallback, not a tenant's own choice.
-    paths = recipe.bundle_paths()
+    # **An archetype that does not resolve must stop the run, not fall back.** Unresolved, a
+    # tenant drops through to the deployment-wide bundle and generates at the wrong configuration
+    # -- which loads cleanly, and config size is precisely the variable these archetypes exist to
+    # vary. 513 co-tenants would be built from one config and nothing would say so.
+    unresolved = recipe.unresolved_archetypes(args.bundle_root)
+    if unresolved:
+        counts = recipe.archetypes()
+        print(f"error: this recipe assigns tenants to bundle archetypes and "
+              + ("--bundle-root was not given" if args.bundle_root is None
+                 else f"{args.bundle_root} has no directory for: {', '.join(unresolved)}"),
+              file=sys.stderr)
+        for a in sorted(counts):
+            print(f"       {a:<24} {counts[a]:>4} tenants", file=sys.stderr)
+        print(f"       Extract one bundle per archetype into a directory of that name and pass "
+              f"--bundle-root. Without it every tenant would be built from the same config.",
+              file=sys.stderr)
+        return 2
+
+    paths = recipe.bundle_paths(args.bundle_root)
     if args.bundle:
-        paths = {org: (recipe.tenants[i].get("bundle_path") or args.bundle)
+        # --bundle is the deployment-wide fallback, so a tenant's own choice outranks it --
+        # whether that choice is an explicit path or an archetype already resolved above.
+        # Overwriting a resolved archetype here would undo the refusal a few lines up.
+        paths = {org: (paths[org] if (recipe.tenants[i].get("bundle_path")
+                                      or recipe.tenants[i].get("bundle_archetype"))
+                       else args.bundle)
                  for i, org in enumerate(paths)}
     for org, path in sorted(paths.items()):
         if not path or not Path(path).is_dir():
             print(f"error: organisation {org} has no bundle directory: {path}\n"
                   f"       the committed recipes leave it unset on purpose -- pass --bundle, or "
-                  f"set bundle_path per tenant", file=sys.stderr)
+                  f"set bundle_path or bundle_archetype per tenant", file=sys.stderr)
             return 2
+    if recipe.archetypes():
+        for a, n in sorted(recipe.archetypes().items()):
+            print(f"  archetype {a:<24} {n:>4} tenants")
 
     problems = recipe.check_tenant_bundles()
     if len(set(paths.values())) == 1:

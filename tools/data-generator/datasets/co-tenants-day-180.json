@@ -22,7 +22,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 700917
+   "total_encounters": 700917,
+   "bundle_archetype": "large-pull-heavy"
   },
   {
    "name": "co-002",
@@ -34,7 +35,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 231259
+   "total_encounters": 231259,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-003",
@@ -46,7 +48,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 194454
+   "total_encounters": 194454,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-004",
@@ -58,7 +61,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 171949
+   "total_encounters": 171949,
+   "bundle_archetype": "large-pull-heavy"
   },
   {
    "name": "co-005",
@@ -70,7 +74,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 156304
+   "total_encounters": 156304,
+   "bundle_archetype": "large-pull-heavy"
   },
   {
    "name": "co-006",
@@ -82,7 +87,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 139158
+   "total_encounters": 139158,
+   "bundle_archetype": "large-pull-heavy"
   },
   {
    "name": "co-007",
@@ -94,7 +100,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 126138
+   "total_encounters": 126138,
+   "bundle_archetype": "large-pull-heavy"
   },
   {
    "name": "co-008",
@@ -106,7 +113,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 115848
+   "total_encounters": 115848,
+   "bundle_archetype": "large-pull-heavy"
   },
   {
    "name": "co-009",
@@ -118,7 +126,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 107471
+   "total_encounters": 107471,
+   "bundle_archetype": "large-pull-heavy"
   },
   {
    "name": "co-010",
@@ -130,7 +139,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 100491
+   "total_encounters": 100491,
+   "bundle_archetype": "media-heavy"
   },
   {
    "name": "co-011",
@@ -142,7 +152,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 84236
+   "total_encounters": 84236,
+   "bundle_archetype": "large-pull-heavy"
   },
   {
    "name": "co-012",
@@ -154,7 +165,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 71703
+   "total_encounters": 71703,
+   "bundle_archetype": "large-pull-heavy"
   },
   {
    "name": "co-013",
@@ -166,7 +178,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 61828
+   "total_encounters": 61828,
+   "bundle_archetype": "large-pull-heavy"
   },
   {
    "name": "co-014",
@@ -178,7 +191,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 53902
+   "total_encounters": 53902,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-015",
@@ -190,7 +204,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 47439
+   "total_encounters": 47439,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-016",
@@ -202,7 +217,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 42096
+   "total_encounters": 42096,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-017",
@@ -214,7 +230,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 37628
+   "total_encounters": 37628,
+   "bundle_archetype": "media-heavy"
   },
   {
    "name": "co-018",
@@ -226,7 +243,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 33850
+   "total_encounters": 33850,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-019",
@@ -238,7 +256,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 30625
+   "total_encounters": 30625,
+   "bundle_archetype": "large-pull-heavy"
   },
   {
    "name": "co-020",
@@ -250,7 +269,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 27851
+   "total_encounters": 27851,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-021",
@@ -262,7 +282,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 25820
+   "total_encounters": 25820,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-022",
@@ -274,7 +295,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 24021
+   "total_encounters": 24021,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-023",
@@ -286,7 +308,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 22420
+   "total_encounters": 22420,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-024",
@@ -298,7 +321,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 20987
+   "total_encounters": 20987,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-025",
@@ -310,7 +334,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 19699
+   "total_encounters": 19699,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-026",
@@ -322,7 +347,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 18536
+   "total_encounters": 18536,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-027",
@@ -334,7 +360,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 17481
+   "total_encounters": 17481,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-028",
@@ -346,7 +373,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 16522
+   "total_encounters": 16522,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-029",
@@ -358,7 +386,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 15646
+   "total_encounters": 15646,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-030",
@@ -370,7 +399,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 14843
+   "total_encounters": 14843,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-031",
@@ -382,7 +412,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 14108
+   "total_encounters": 14108,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-032",
@@ -394,7 +425,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 13429
+   "total_encounters": 13429,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-033",
@@ -406,7 +438,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 12803
+   "total_encounters": 12803,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-034",
@@ -418,7 +451,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 12223
+   "total_encounters": 12223,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-035",
@@ -430,7 +464,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 11685
+   "total_encounters": 11685,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-036",
@@ -442,7 +477,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 11185
+   "total_encounters": 11185,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-037",
@@ -454,7 +490,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 10720
+   "total_encounters": 10720,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-038",
@@ -466,7 +503,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 10285
+   "total_encounters": 10285,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-039",
@@ -478,7 +516,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9879
+   "total_encounters": 9879,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-040",
@@ -490,7 +529,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9498
+   "total_encounters": 9498,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-041",
@@ -502,7 +542,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9141
+   "total_encounters": 9141,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-042",
@@ -514,7 +555,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 8806
+   "total_encounters": 8806,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-043",
@@ -526,7 +568,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 8490
+   "total_encounters": 8490,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-044",
@@ -538,7 +581,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 8193
+   "total_encounters": 8193,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-045",
@@ -550,7 +594,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7912
+   "total_encounters": 7912,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-046",
@@ -562,7 +607,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7646
+   "total_encounters": 7646,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-047",
@@ -574,7 +620,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7395
+   "total_encounters": 7395,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-048",
@@ -586,7 +633,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7158
+   "total_encounters": 7158,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-049",
@@ -598,7 +646,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6932
+   "total_encounters": 6932,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-050",
@@ -610,7 +659,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6718
+   "total_encounters": 6718,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-051",
@@ -622,7 +672,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6434
+   "total_encounters": 6434,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-052",
@@ -634,7 +685,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6169
+   "total_encounters": 6169,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-053",
@@ -646,7 +698,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5919
+   "total_encounters": 5919,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-054",
@@ -658,7 +711,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5683
+   "total_encounters": 5683,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-055",
@@ -670,7 +724,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5461
+   "total_encounters": 5461,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-056",
@@ -682,7 +737,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5251
+   "total_encounters": 5251,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-057",
@@ -694,7 +750,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5053
+   "total_encounters": 5053,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-058",
@@ -706,7 +763,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4865
+   "total_encounters": 4865,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-059",
@@ -718,7 +776,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4687
+   "total_encounters": 4687,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-060",
@@ -730,7 +789,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4519
+   "total_encounters": 4519,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-061",
@@ -742,7 +802,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4359
+   "total_encounters": 4359,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-062",
@@ -754,7 +815,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4208
+   "total_encounters": 4208,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-063",
@@ -766,7 +828,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4064
+   "total_encounters": 4064,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-064",
@@ -778,7 +841,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 3928
+   "total_encounters": 3928,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-065",
@@ -790,7 +854,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 3797
+   "total_encounters": 3797,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-066",
@@ -802,7 +867,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 3673
+   "total_encounters": 3673,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-067",
@@ -814,7 +880,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 3555
+   "total_encounters": 3555,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-068",
@@ -826,7 +893,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 3442
+   "total_encounters": 3442,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-069",
@@ -838,7 +906,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 3335
+   "total_encounters": 3335,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-070",
@@ -850,7 +919,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 3232
+   "total_encounters": 3232,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-071",
@@ -862,7 +932,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 3134
+   "total_encounters": 3134,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-072",
@@ -874,7 +945,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 3040
+   "total_encounters": 3040,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-073",
@@ -886,7 +958,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2951
+   "total_encounters": 2951,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-074",
@@ -898,7 +971,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2865
+   "total_encounters": 2865,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-075",
@@ -910,7 +984,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2783
+   "total_encounters": 2783,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-076",
@@ -922,7 +997,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2703
+   "total_encounters": 2703,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-077",
@@ -934,7 +1010,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2628
+   "total_encounters": 2628,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-078",
@@ -946,7 +1023,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2554
+   "total_encounters": 2554,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-079",
@@ -958,7 +1036,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2485
+   "total_encounters": 2485,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-080",
@@ -970,7 +1049,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2418
+   "total_encounters": 2418,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-081",
@@ -982,7 +1062,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2353
+   "total_encounters": 2353,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-082",
@@ -994,7 +1075,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2291
+   "total_encounters": 2291,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-083",
@@ -1006,7 +1088,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2231
+   "total_encounters": 2231,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-084",
@@ -1018,7 +1101,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2175
+   "total_encounters": 2175,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-085",
@@ -1030,7 +1114,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2119
+   "total_encounters": 2119,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-086",
@@ -1042,7 +1127,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2065
+   "total_encounters": 2065,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-087",
@@ -1054,7 +1140,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2015
+   "total_encounters": 2015,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-088",
@@ -1066,7 +1153,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1965
+   "total_encounters": 1965,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-089",
@@ -1078,7 +1166,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1918
+   "total_encounters": 1918,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-090",
@@ -1090,7 +1179,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1871
+   "total_encounters": 1871,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-091",
@@ -1102,7 +1192,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1827
+   "total_encounters": 1827,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-092",
@@ -1114,7 +1205,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1784
+   "total_encounters": 1784,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-093",
@@ -1126,7 +1218,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1742
+   "total_encounters": 1742,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-094",
@@ -1138,7 +1231,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1703
+   "total_encounters": 1703,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-095",
@@ -1150,7 +1244,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1664
+   "total_encounters": 1664,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-096",
@@ -1162,7 +1257,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1627
+   "total_encounters": 1627,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-097",
@@ -1174,7 +1270,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1590
+   "total_encounters": 1590,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-098",
@@ -1186,7 +1283,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1555
+   "total_encounters": 1555,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-099",
@@ -1198,7 +1296,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1521
+   "total_encounters": 1521,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-100",
@@ -1210,7 +1309,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1488
+   "total_encounters": 1488,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-101",
@@ -1222,7 +1322,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1431
+   "total_encounters": 1431,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-102",
@@ -1234,7 +1335,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1375
+   "total_encounters": 1375,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-103",
@@ -1246,7 +1348,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1322
+   "total_encounters": 1322,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-104",
@@ -1258,7 +1361,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1272
+   "total_encounters": 1272,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-105",
@@ -1270,7 +1374,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1224
+   "total_encounters": 1224,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-106",
@@ -1282,7 +1387,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1179
+   "total_encounters": 1179,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-107",
@@ -1294,7 +1400,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1136
+   "total_encounters": 1136,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-108",
@@ -1306,7 +1413,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1094
+   "total_encounters": 1094,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-109",
@@ -1318,7 +1426,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1055
+   "total_encounters": 1055,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-110",
@@ -1330,7 +1439,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1017
+   "total_encounters": 1017,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-111",
@@ -1342,7 +1452,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 981
+   "total_encounters": 981,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-112",
@@ -1354,7 +1465,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 947
+   "total_encounters": 947,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-113",
@@ -1366,7 +1478,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 914
+   "total_encounters": 914,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-114",
@@ -1378,7 +1491,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 882
+   "total_encounters": 882,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-115",
@@ -1390,7 +1504,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 851
+   "total_encounters": 851,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-116",
@@ -1402,7 +1517,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 823
+   "total_encounters": 823,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-117",
@@ -1414,7 +1530,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 794
+   "total_encounters": 794,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-118",
@@ -1426,7 +1543,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 769
+   "total_encounters": 769,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-119",
@@ -1438,7 +1556,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 743
+   "total_encounters": 743,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-120",
@@ -1450,7 +1569,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 718
+   "total_encounters": 718,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-121",
@@ -1462,7 +1582,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 695
+   "total_encounters": 695,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-122",
@@ -1474,7 +1595,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 673
+   "total_encounters": 673,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-123",
@@ -1486,7 +1608,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 651
+   "total_encounters": 651,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-124",
@@ -1498,7 +1621,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 630
+   "total_encounters": 630,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-125",
@@ -1510,7 +1634,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 610
+   "total_encounters": 610,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-126",
@@ -1522,7 +1647,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 591
+   "total_encounters": 591,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-127",
@@ -1534,7 +1660,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 572
+   "total_encounters": 572,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-128",
@@ -1546,7 +1673,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 555
+   "total_encounters": 555,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-129",
@@ -1558,7 +1686,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 538
+   "total_encounters": 538,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-130",
@@ -1570,7 +1699,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 522
+   "total_encounters": 522,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-131",
@@ -1582,7 +1712,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 506
+   "total_encounters": 506,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-132",
@@ -1594,7 +1725,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 491
+   "total_encounters": 491,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-133",
@@ -1606,7 +1738,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 476
+   "total_encounters": 476,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-134",
@@ -1618,7 +1751,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 462
+   "total_encounters": 462,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-135",
@@ -1630,7 +1764,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 448
+   "total_encounters": 448,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-136",
@@ -1642,7 +1777,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 436
+   "total_encounters": 436,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-137",
@@ -1654,7 +1790,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 422
+   "total_encounters": 422,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-138",
@@ -1666,7 +1803,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 411
+   "total_encounters": 411,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-139",
@@ -1678,7 +1816,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 399
+   "total_encounters": 399,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-140",
@@ -1690,7 +1829,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 388
+   "total_encounters": 388,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-141",
@@ -1702,7 +1842,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 377
+   "total_encounters": 377,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-142",
@@ -1714,7 +1855,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 366
+   "total_encounters": 366,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-143",
@@ -1726,7 +1868,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 356
+   "total_encounters": 356,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-144",
@@ -1738,7 +1881,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 346
+   "total_encounters": 346,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-145",
@@ -1750,7 +1894,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 338
+   "total_encounters": 338,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-146",
@@ -1762,7 +1907,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 328
+   "total_encounters": 328,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-147",
@@ -1774,7 +1920,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 319
+   "total_encounters": 319,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-148",
@@ -1786,7 +1933,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 311
+   "total_encounters": 311,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-149",
@@ -1798,7 +1946,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 302
+   "total_encounters": 302,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-150",
@@ -1810,7 +1959,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 295
+   "total_encounters": 295,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-151",
@@ -1822,7 +1972,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 287
+   "total_encounters": 287,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-152",
@@ -1834,7 +1985,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 279
+   "total_encounters": 279,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-153",
@@ -1846,7 +1998,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 273
+   "total_encounters": 273,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-154",
@@ -1858,7 +2011,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 265
+   "total_encounters": 265,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-155",
@@ -1870,7 +2024,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 258
+   "total_encounters": 258,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-156",
@@ -1882,7 +2037,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 252
+   "total_encounters": 252,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-157",
@@ -1894,7 +2050,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 244
+   "total_encounters": 244,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-158",
@@ -1906,7 +2063,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 238
+   "total_encounters": 238,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-159",
@@ -1918,7 +2076,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 231
+   "total_encounters": 231,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-160",
@@ -1930,7 +2089,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 225
+   "total_encounters": 225,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-161",
@@ -1942,7 +2102,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 219
+   "total_encounters": 219,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-162",
@@ -1954,7 +2115,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 212
+   "total_encounters": 212,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-163",
@@ -1966,7 +2128,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 206
+   "total_encounters": 206,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-164",
@@ -1978,7 +2141,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 201
+   "total_encounters": 201,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-165",
@@ -1990,7 +2154,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 196
+   "total_encounters": 196,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-166",
@@ -2002,7 +2167,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 190
+   "total_encounters": 190,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-167",
@@ -2014,7 +2180,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 185
+   "total_encounters": 185,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-168",
@@ -2026,7 +2193,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 181
+   "total_encounters": 181,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-169",
@@ -2038,7 +2206,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 176
+   "total_encounters": 176,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-170",
@@ -2050,7 +2219,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 172
+   "total_encounters": 172,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-171",
@@ -2062,7 +2232,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 167
+   "total_encounters": 167,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-172",
@@ -2074,7 +2245,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 162
+   "total_encounters": 162,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-173",
@@ -2086,7 +2258,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 158
+   "total_encounters": 158,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-174",
@@ -2098,7 +2271,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 155
+   "total_encounters": 155,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-175",
@@ -2110,7 +2284,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 151
+   "total_encounters": 151,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-176",
@@ -2122,7 +2297,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 147
+   "total_encounters": 147,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-177",
@@ -2134,7 +2310,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 144
+   "total_encounters": 144,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-178",
@@ -2146,7 +2323,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 140
+   "total_encounters": 140,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-179",
@@ -2158,7 +2336,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 136
+   "total_encounters": 136,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-180",
@@ -2170,7 +2349,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 133
+   "total_encounters": 133,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-181",
@@ -2182,7 +2362,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 129
+   "total_encounters": 129,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-182",
@@ -2194,7 +2375,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 126
+   "total_encounters": 126,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-183",
@@ -2206,7 +2388,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 123
+   "total_encounters": 123,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-184",
@@ -2218,7 +2401,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 120
+   "total_encounters": 120,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-185",
@@ -2230,7 +2414,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 118
+   "total_encounters": 118,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-186",
@@ -2242,7 +2427,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 114
+   "total_encounters": 114,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-187",
@@ -2254,7 +2440,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 112
+   "total_encounters": 112,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-188",
@@ -2266,7 +2453,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 109
+   "total_encounters": 109,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-189",
@@ -2278,7 +2466,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 107
+   "total_encounters": 107,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-190",
@@ -2290,7 +2479,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 104
+   "total_encounters": 104,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-191",
@@ -2302,7 +2492,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 102
+   "total_encounters": 102,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-192",
@@ -2314,7 +2505,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 99
+   "total_encounters": 99,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-193",
@@ -2326,7 +2518,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 97
+   "total_encounters": 97,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-194",
@@ -2338,7 +2531,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 95
+   "total_encounters": 95,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-195",
@@ -2350,7 +2544,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 93
+   "total_encounters": 93,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-196",
@@ -2362,7 +2557,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 91
+   "total_encounters": 91,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-197",
@@ -2374,7 +2570,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 88
+   "total_encounters": 88,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-198",
@@ -2386,7 +2583,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 87
+   "total_encounters": 87,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-199",
@@ -2398,7 +2596,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 85
+   "total_encounters": 85,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-200",
@@ -2410,7 +2609,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 82
+   "total_encounters": 82,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-201",
@@ -2422,7 +2622,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 81
+   "total_encounters": 81,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-202",
@@ -2434,7 +2635,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 80
+   "total_encounters": 80,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-203",
@@ -2446,7 +2648,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 77
+   "total_encounters": 77,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-204",
@@ -2458,7 +2661,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 76
+   "total_encounters": 76,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-205",
@@ -2470,7 +2674,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 74
+   "total_encounters": 74,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-206",
@@ -2482,7 +2687,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 72
+   "total_encounters": 72,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-207",
@@ -2494,7 +2700,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 71
+   "total_encounters": 71,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-208",
@@ -2506,7 +2713,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 70
+   "total_encounters": 70,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-209",
@@ -2518,7 +2726,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 68
+   "total_encounters": 68,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-210",
@@ -2530,7 +2739,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 66
+   "total_encounters": 66,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-211",
@@ -2542,7 +2752,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 65
+   "total_encounters": 65,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-212",
@@ -2554,7 +2765,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 64
+   "total_encounters": 64,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-213",
@@ -2566,7 +2778,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 63
+   "total_encounters": 63,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-214",
@@ -2578,7 +2791,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 61
+   "total_encounters": 61,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-215",
@@ -2590,7 +2804,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 60
+   "total_encounters": 60,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-216",
@@ -2602,7 +2817,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 59
+   "total_encounters": 59,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-217",
@@ -2614,7 +2830,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 58
+   "total_encounters": 58,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-218",
@@ -2626,7 +2843,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 56
+   "total_encounters": 56,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-219",
@@ -2638,7 +2856,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 55
+   "total_encounters": 55,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-220",
@@ -2650,7 +2869,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 54
+   "total_encounters": 54,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-221",
@@ -2662,7 +2882,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 53
+   "total_encounters": 53,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-222",
@@ -2674,7 +2895,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 52
+   "total_encounters": 52,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-223",
@@ -2686,7 +2908,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 50
+   "total_encounters": 50,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-224",
@@ -2698,7 +2921,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 50
+   "total_encounters": 50,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-225",
@@ -2710,7 +2934,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 49
+   "total_encounters": 49,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-226",
@@ -2722,7 +2947,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 48
+   "total_encounters": 48,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-227",
@@ -2734,7 +2960,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 47
+   "total_encounters": 47,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-228",
@@ -2746,7 +2973,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 47
+   "total_encounters": 47,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-229",
@@ -2758,7 +2986,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 45
+   "total_encounters": 45,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-230",
@@ -2770,7 +2999,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 44
+   "total_encounters": 44,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-231",
@@ -2782,7 +3012,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 43
+   "total_encounters": 43,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-232",
@@ -2794,7 +3025,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 43
+   "total_encounters": 43,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-233",
@@ -2806,7 +3038,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 42
+   "total_encounters": 42,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-234",
@@ -2818,7 +3051,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 41
+   "total_encounters": 41,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-235",
@@ -2830,7 +3064,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 41
+   "total_encounters": 41,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-236",
@@ -2842,7 +3077,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 39
+   "total_encounters": 39,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-237",
@@ -2854,7 +3090,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 39
+   "total_encounters": 39,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-238",
@@ -2866,7 +3103,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 38
+   "total_encounters": 38,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-239",
@@ -2878,7 +3116,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 37
+   "total_encounters": 37,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-240",
@@ -2890,7 +3129,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 37
+   "total_encounters": 37,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-241",
@@ -2902,7 +3142,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 36
+   "total_encounters": 36,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-242",
@@ -2914,7 +3155,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 36
+   "total_encounters": 36,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-243",
@@ -2926,7 +3168,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 34
+   "total_encounters": 34,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-244",
@@ -2938,7 +3181,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 34
+   "total_encounters": 34,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-245",
@@ -2950,7 +3194,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 33
+   "total_encounters": 33,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-246",
@@ -2962,7 +3207,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 33
+   "total_encounters": 33,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-247",
@@ -2974,7 +3220,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 32
+   "total_encounters": 32,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-248",
@@ -2986,7 +3233,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 32
+   "total_encounters": 32,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-249",
@@ -2998,7 +3246,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 31
+   "total_encounters": 31,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-250",
@@ -3010,7 +3259,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 31
+   "total_encounters": 31,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-251",
@@ -3022,7 +3272,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 29
+   "total_encounters": 29,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-252",
@@ -3034,7 +3285,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 29
+   "total_encounters": 29,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-253",
@@ -3046,7 +3298,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 29
+   "total_encounters": 29,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-254",
@@ -3058,7 +3311,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 28
+   "total_encounters": 28,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-255",
@@ -3070,7 +3324,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 28
+   "total_encounters": 28,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-256",
@@ -3082,7 +3337,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 27
+   "total_encounters": 27,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-257",
@@ -3094,7 +3350,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 27
+   "total_encounters": 27,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-258",
@@ -3106,7 +3363,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 27
+   "total_encounters": 27,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-259",
@@ -3118,7 +3376,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 26
+   "total_encounters": 26,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-260",
@@ -3130,7 +3389,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 26
+   "total_encounters": 26,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-261",
@@ -3142,7 +3402,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 26
+   "total_encounters": 26,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-262",
@@ -3154,7 +3415,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 25
+   "total_encounters": 25,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-263",
@@ -3166,7 +3428,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 25
+   "total_encounters": 25,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-264",
@@ -3178,7 +3441,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 23
+   "total_encounters": 23,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-265",
@@ -3190,7 +3454,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 23
+   "total_encounters": 23,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-266",
@@ -3202,7 +3467,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 23
+   "total_encounters": 23,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-267",
@@ -3214,7 +3480,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 23
+   "total_encounters": 23,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-268",
@@ -3226,7 +3493,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 22
+   "total_encounters": 22,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-269",
@@ -3238,7 +3506,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 22
+   "total_encounters": 22,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-270",
@@ -3250,7 +3519,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 22
+   "total_encounters": 22,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-271",
@@ -3262,7 +3532,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 21
+   "total_encounters": 21,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-272",
@@ -3274,7 +3545,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 21
+   "total_encounters": 21,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-273",
@@ -3286,7 +3558,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 21
+   "total_encounters": 21,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-274",
@@ -3298,7 +3571,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 21
+   "total_encounters": 21,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-275",
@@ -3310,7 +3584,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 20
+   "total_encounters": 20,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-276",
@@ -3322,7 +3597,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 20
+   "total_encounters": 20,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-277",
@@ -3334,7 +3610,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 20
+   "total_encounters": 20,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-278",
@@ -3346,7 +3623,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 18
+   "total_encounters": 18,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-279",
@@ -3358,7 +3636,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 18
+   "total_encounters": 18,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-280",
@@ -3370,7 +3649,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 18
+   "total_encounters": 18,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-281",
@@ -3382,7 +3662,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 18
+   "total_encounters": 18,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-282",
@@ -3394,7 +3675,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 18
+   "total_encounters": 18,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-283",
@@ -3406,7 +3688,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 17
+   "total_encounters": 17,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-284",
@@ -3418,7 +3701,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 17
+   "total_encounters": 17,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-285",
@@ -3430,7 +3714,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 17
+   "total_encounters": 17,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-286",
@@ -3442,7 +3727,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 17
+   "total_encounters": 17,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-287",
@@ -3454,7 +3740,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 16
+   "total_encounters": 16,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-288",
@@ -3466,7 +3753,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 16
+   "total_encounters": 16,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-289",
@@ -3478,7 +3766,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 16
+   "total_encounters": 16,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-290",
@@ -3490,7 +3779,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 16
+   "total_encounters": 16,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-291",
@@ -3502,7 +3792,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 16
+   "total_encounters": 16,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-292",
@@ -3514,7 +3805,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 15
+   "total_encounters": 15,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-293",
@@ -3526,7 +3818,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 15
+   "total_encounters": 15,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-294",
@@ -3538,7 +3831,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 15
+   "total_encounters": 15,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-295",
@@ -3550,7 +3844,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 15
+   "total_encounters": 15,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-296",
@@ -3562,7 +3857,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 15
+   "total_encounters": 15,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-297",
@@ -3574,7 +3870,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 15
+   "total_encounters": 15,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-298",
@@ -3586,7 +3883,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 14
+   "total_encounters": 14,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-299",
@@ -3598,7 +3896,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 14
+   "total_encounters": 14,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-300",
@@ -3610,7 +3909,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 14
+   "total_encounters": 14,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-301",
@@ -3622,7 +3922,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 14
+   "total_encounters": 14,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-302",
@@ -3634,7 +3935,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 14
+   "total_encounters": 14,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-303",
@@ -3646,7 +3948,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 14
+   "total_encounters": 14,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-304",
@@ -3658,7 +3961,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 12
+   "total_encounters": 12,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-305",
@@ -3670,7 +3974,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 12
+   "total_encounters": 12,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-306",
@@ -3682,7 +3987,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 12
+   "total_encounters": 12,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-307",
@@ -3694,7 +4000,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 12
+   "total_encounters": 12,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-308",
@@ -3706,7 +4013,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 12
+   "total_encounters": 12,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-309",
@@ -3718,7 +4026,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 12
+   "total_encounters": 12,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-310",
@@ -3730,7 +4039,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 12
+   "total_encounters": 12,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-311",
@@ -3742,7 +4052,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 11
+   "total_encounters": 11,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-312",
@@ -3754,7 +4065,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 11
+   "total_encounters": 11,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-313",
@@ -3766,7 +4078,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 11
+   "total_encounters": 11,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-314",
@@ -3778,7 +4091,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 11
+   "total_encounters": 11,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-315",
@@ -3790,7 +4104,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 11
+   "total_encounters": 11,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-316",
@@ -3802,7 +4117,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 11
+   "total_encounters": 11,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-317",
@@ -3814,7 +4130,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 11
+   "total_encounters": 11,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-318",
@@ -3826,7 +4143,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 10
+   "total_encounters": 10,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-319",
@@ -3838,7 +4156,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 10
+   "total_encounters": 10,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-320",
@@ -3850,7 +4169,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 10
+   "total_encounters": 10,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-321",
@@ -3862,7 +4182,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 10
+   "total_encounters": 10,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-322",
@@ -3874,7 +4195,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 10
+   "total_encounters": 10,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-323",
@@ -3886,7 +4208,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 10
+   "total_encounters": 10,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-324",
@@ -3898,7 +4221,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 10
+   "total_encounters": 10,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-325",
@@ -3910,7 +4234,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 10
+   "total_encounters": 10,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-326",
@@ -3922,7 +4247,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 10
+   "total_encounters": 10,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-327",
@@ -3934,7 +4260,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9
+   "total_encounters": 9,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-328",
@@ -3946,7 +4273,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9
+   "total_encounters": 9,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-329",
@@ -3958,7 +4286,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9
+   "total_encounters": 9,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-330",
@@ -3970,7 +4299,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9
+   "total_encounters": 9,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-331",
@@ -3982,7 +4312,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9
+   "total_encounters": 9,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-332",
@@ -3994,7 +4325,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9
+   "total_encounters": 9,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-333",
@@ -4006,7 +4338,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9
+   "total_encounters": 9,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-334",
@@ -4018,7 +4351,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9
+   "total_encounters": 9,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-335",
@@ -4030,7 +4364,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9
+   "total_encounters": 9,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-336",
@@ -4042,7 +4377,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9
+   "total_encounters": 9,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-337",
@@ -4054,7 +4390,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 9
+   "total_encounters": 9,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-338",
@@ -4066,7 +4403,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-339",
@@ -4078,7 +4416,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-340",
@@ -4090,7 +4429,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-341",
@@ -4102,7 +4442,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-342",
@@ -4114,7 +4455,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-343",
@@ -4126,7 +4468,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-344",
@@ -4138,7 +4481,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-345",
@@ -4150,7 +4494,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-346",
@@ -4162,7 +4507,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-347",
@@ -4174,7 +4520,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-348",
@@ -4186,7 +4533,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-349",
@@ -4198,7 +4546,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-350",
@@ -4210,7 +4559,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 7
+   "total_encounters": 7,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-351",
@@ -4222,7 +4572,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-352",
@@ -4234,7 +4585,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-353",
@@ -4246,7 +4598,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-354",
@@ -4258,7 +4611,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-355",
@@ -4270,7 +4624,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-356",
@@ -4282,7 +4637,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-357",
@@ -4294,7 +4650,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-358",
@@ -4306,7 +4663,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-359",
@@ -4318,7 +4676,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-360",
@@ -4330,7 +4689,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-361",
@@ -4342,7 +4702,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-362",
@@ -4354,7 +4715,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-363",
@@ -4366,7 +4728,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-364",
@@ -4378,7 +4741,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-365",
@@ -4390,7 +4754,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-366",
@@ -4402,7 +4767,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 6
+   "total_encounters": 6,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-367",
@@ -4414,7 +4780,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-368",
@@ -4426,7 +4793,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-369",
@@ -4438,7 +4806,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-370",
@@ -4450,7 +4819,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-371",
@@ -4462,7 +4832,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-372",
@@ -4474,7 +4845,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-373",
@@ -4486,7 +4858,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-374",
@@ -4498,7 +4871,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-375",
@@ -4510,7 +4884,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-376",
@@ -4522,7 +4897,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-377",
@@ -4534,7 +4910,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-378",
@@ -4546,7 +4923,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-379",
@@ -4558,7 +4936,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-380",
@@ -4570,7 +4949,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-381",
@@ -4582,7 +4962,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-382",
@@ -4594,7 +4975,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-383",
@@ -4606,7 +4988,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-384",
@@ -4618,7 +5001,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-385",
@@ -4630,7 +5014,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-386",
@@ -4642,7 +5027,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-387",
@@ -4654,7 +5040,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 5
+   "total_encounters": 5,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-388",
@@ -4666,7 +5053,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-389",
@@ -4678,7 +5066,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-390",
@@ -4690,7 +5079,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-391",
@@ -4702,7 +5092,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-392",
@@ -4714,7 +5105,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-393",
@@ -4726,7 +5118,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-394",
@@ -4738,7 +5131,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-395",
@@ -4750,7 +5144,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-396",
@@ -4762,7 +5157,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-397",
@@ -4774,7 +5170,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-398",
@@ -4786,7 +5183,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-399",
@@ -4798,7 +5196,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-400",
@@ -4810,7 +5209,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-401",
@@ -4822,7 +5222,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-402",
@@ -4834,7 +5235,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-403",
@@ -4846,7 +5248,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-404",
@@ -4858,7 +5261,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-405",
@@ -4870,7 +5274,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-406",
@@ -4882,7 +5287,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-407",
@@ -4894,7 +5300,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-408",
@@ -4906,7 +5313,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-409",
@@ -4918,7 +5326,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-410",
@@ -4930,7 +5339,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-411",
@@ -4942,7 +5352,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-412",
@@ -4954,7 +5365,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-413",
@@ -4966,7 +5378,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-414",
@@ -4978,7 +5391,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-415",
@@ -4990,7 +5404,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-416",
@@ -5002,7 +5417,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-417",
@@ -5014,7 +5430,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 4
+   "total_encounters": 4,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-418",
@@ -5026,7 +5443,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-419",
@@ -5038,7 +5456,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-420",
@@ -5050,7 +5469,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-421",
@@ -5062,7 +5482,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-422",
@@ -5074,7 +5495,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-423",
@@ -5086,7 +5508,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-424",
@@ -5098,7 +5521,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-425",
@@ -5110,7 +5534,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-426",
@@ -5122,7 +5547,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-427",
@@ -5134,7 +5560,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-428",
@@ -5146,7 +5573,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-429",
@@ -5158,7 +5586,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-430",
@@ -5170,7 +5599,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-431",
@@ -5182,7 +5612,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-432",
@@ -5194,7 +5625,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-433",
@@ -5206,7 +5638,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-434",
@@ -5218,7 +5651,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-435",
@@ -5230,7 +5664,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-436",
@@ -5242,7 +5677,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-437",
@@ -5254,7 +5690,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-438",
@@ -5266,7 +5703,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-439",
@@ -5278,7 +5716,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-440",
@@ -5290,7 +5729,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-441",
@@ -5302,7 +5742,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-442",
@@ -5314,7 +5755,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-443",
@@ -5326,7 +5768,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-444",
@@ -5338,7 +5781,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-445",
@@ -5350,7 +5794,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-446",
@@ -5362,7 +5807,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-447",
@@ -5374,7 +5820,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-448",
@@ -5386,7 +5833,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-449",
@@ -5398,7 +5846,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-450",
@@ -5410,7 +5859,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-451",
@@ -5422,7 +5872,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-452",
@@ -5434,7 +5885,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-453",
@@ -5446,7 +5898,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-454",
@@ -5458,7 +5911,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-455",
@@ -5470,7 +5924,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-456",
@@ -5482,7 +5937,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-457",
@@ -5494,7 +5950,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-458",
@@ -5506,7 +5963,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-459",
@@ -5518,7 +5976,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-460",
@@ -5530,7 +5989,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-461",
@@ -5542,7 +6002,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-462",
@@ -5554,7 +6015,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-463",
@@ -5566,7 +6028,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-464",
@@ -5578,7 +6041,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-465",
@@ -5590,7 +6054,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-466",
@@ -5602,7 +6067,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-467",
@@ -5614,7 +6080,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-468",
@@ -5626,7 +6093,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 2
+   "total_encounters": 2,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-469",
@@ -5638,7 +6106,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-470",
@@ -5650,7 +6119,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-471",
@@ -5662,7 +6132,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-472",
@@ -5674,7 +6145,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-473",
@@ -5686,7 +6158,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-474",
@@ -5698,7 +6171,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-475",
@@ -5710,7 +6184,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-476",
@@ -5722,7 +6197,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-477",
@@ -5734,7 +6210,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-478",
@@ -5746,7 +6223,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-479",
@@ -5758,7 +6236,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-480",
@@ -5770,7 +6249,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-481",
@@ -5782,7 +6262,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-482",
@@ -5794,7 +6275,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-483",
@@ -5806,7 +6288,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-484",
@@ -5818,7 +6301,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-485",
@@ -5830,7 +6314,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-486",
@@ -5842,7 +6327,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-487",
@@ -5854,7 +6340,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-488",
@@ -5866,7 +6353,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-489",
@@ -5878,7 +6366,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-490",
@@ -5890,7 +6379,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-491",
@@ -5902,7 +6392,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-492",
@@ -5914,7 +6405,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-493",
@@ -5926,7 +6418,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-494",
@@ -5938,7 +6431,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-495",
@@ -5950,7 +6444,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-496",
@@ -5962,7 +6457,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-497",
@@ -5974,7 +6470,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-498",
@@ -5986,7 +6483,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-499",
@@ -5998,7 +6496,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-500",
@@ -6010,7 +6509,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-501",
@@ -6022,7 +6522,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-502",
@@ -6034,7 +6535,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-503",
@@ -6046,7 +6548,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-504",
@@ -6058,7 +6561,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-505",
@@ -6070,7 +6574,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-506",
@@ -6082,7 +6587,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-507",
@@ -6094,7 +6600,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-508",
@@ -6106,7 +6613,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-509",
@@ -6118,7 +6626,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-510",
@@ -6130,7 +6639,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-511",
@@ -6142,7 +6652,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-512",
@@ -6154,7 +6665,8 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   },
   {
    "name": "co-513",
@@ -6166,11 +6678,12 @@
    "supervisor_level": "Taluka",
    "bundle_path": null,
    "workers_per_supervisor": null,
-   "total_encounters": 1
+   "total_encounters": 1,
+   "bundle_archetype": "push-dominated"
   }
  ],
  "enrolment_rate": 0.22,
  "program_encounter_share": 0.59,
- "notes": "Production's own organisation skew, as co-tenants for test cases 6 and 7. Shape from Q12: 986 organisations with 473 holding nothing, the largest holding 21% of all subjects. Sizes interpolated through the measured ranks rather than fitted, because no single power law holds across the range. The 473 empty organisations are not in this recipe -- they are rows rather than generated tenants, emitted by co_tenants.empty_rows(). bundle_path must be filled in before generating. supervisor_level is Taluka, as on every other committed recipe: it was the TenantSpec default of Sub-Centre until 6 Oct 2026, a tier this bundle's hierarchy does not have, so `catchments.plan` would have raised on co-001 before a single row was written. The co-tenants are generated against the same bundle as the customer's own tenants, so they inherit the same chain -- State > District > Taluka > Village.",
+ "notes": "Production's own organisation skew, as co-tenants for test cases 6 and 7. Shape from Q12: 986 organisations with 473 holding nothing, the largest holding 21% of all subjects. Sizes interpolated through the measured ranks rather than fitted, because no single power law holds across the range. The 473 empty organisations are not in this recipe -- they are rows rather than generated tenants, emitted by co_tenants.empty_rows(). bundle_path must be filled in before generating. supervisor_level is Taluka, as on every other committed recipe: it was the TenantSpec default of Sub-Centre until 6 Oct 2026, a tier this bundle's hierarchy does not have, so `catchments.plan` would have raised on co-001 before a single row was written. The co-tenants are generated against the same bundle as the customer's own tenants, so they inherit the same chain -- State > District > Taluka > Village. **Each tenant names a bundle_archetype rather than a bundle**, set 6 Oct 2026. The bundles are production exports whose filenames are organisation names, so a tracked recipe cannot name one; --bundle-root supplies a directory holding one extracted bundle per archetype and the mapping to organisations stays local. Assignment: the three ranks whose real bundles were obtained keep their own (1 large-pull-heavy, 3 push-dominated, 17 media-heavy) rather than being inferred. Ranks 2 and 4-20 go by measurement -- push share at or above 45% is push-dominated, otherwise files per pushed encounter above the platform's 0.2306 (MediaProfiles.MEASURED_BY_RANK) is media-heavy, otherwise large-pull-heavy. Ranks 21-513 are push-dominated: the model already treats everything past rank 20 as homogeneous (MediaProfiles.TAIL_RATE), and of the three it is the mid-sized config with a usable enrolment form -- the media-heavy bundle's only ProgramEnrolment mapping is voided, so tenants given it generate no enrolments and no programme encounters, which is right for two organisations and wrong for 490. That lands at 11 large-pull-heavy, 2 media-heavy, 500 push-dominated.",
  "schema_version": 1
 }
