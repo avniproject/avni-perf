@@ -1749,10 +1749,10 @@ public class AvniSyncSimulation extends Simulation {
         }
         long elapsed = System.currentTimeMillis() - started;
         long paused = session.getLong("pausedMs");
-        String line = String.format("%s,%d,%d,%d,%d,%s%n",
+        String line = String.format("%s,%d,%d,%d,%d,%s,%s%n",
             session.getString("userName"), session.getInt("recordsPulled"),
             elapsed, paused, elapsed - paused,
-            System.getProperty("PROFILE", "ramp"));
+            System.getProperty("PROFILE", "ramp"), isFullSync(session));
         synchronized (SYNC_RESULTS_LOCK) {
             try {
                 java.nio.file.Path parent = SYNC_RESULTS.toAbsolutePath().getParent();
@@ -1761,7 +1761,7 @@ public class AvniSyncSimulation extends Simulation {
                 }
                 if (!java.nio.file.Files.exists(SYNC_RESULTS)) {
                     java.nio.file.Files.write(SYNC_RESULTS,
-                        "userName,records,durationMs,pausedMs,serverMs,profile\n".getBytes(
+                        "userName,records,durationMs,pausedMs,serverMs,profile,fullSync\n".getBytes(
                             java.nio.charset.StandardCharsets.UTF_8));
                 }
                 java.nio.file.Files.write(SYNC_RESULTS,
@@ -2041,6 +2041,37 @@ public class AvniSyncSimulation extends Simulation {
      */
     private static final java.util.Map<String, Double> storageProfile =
         StorageProfiles.byName(System.getProperty("STORAGE_PROFILE", "customer"));
+
+    /**
+     * Whether this sync pulled from the beginning of time, which is what makes two durations
+     * comparable or not.
+     *
+     * **A full sync and an incremental one are different measurements wearing the same name.** The
+     * cases specify a mix -- 2 to 7 are "incremental, 1% full" -- so a run's mean duration can
+     * blend a 6-second catch-up with a two-minute first pull and describe neither. Recording the
+     * distinction per sync is what lets the run log quote a p95 over full syncs alone.
+     *
+     * **Derived from the configured window rather than observed per request**, because
+     * `loadedSinceFor` is called once per entity inside the chain and a Gatling session is
+     * immutable -- flagging it there would mean threading state through every pull. The window is
+     * decided by `SYNC_MODE` before the sync starts, so the answer is already known:
+     *
+     *   full         every entity pulls from 1900
+     *   csv          the feeder's own `lastModifiedDateTime`, per user, which is the mixed case
+     *   incremental  a fixed recent window, never full
+     *   realistic    Q2's measured gaps, never full -- note this does **not** implement the 1%
+     *                full share the scenarios describe, so a `realistic` run has none at all
+     */
+    private static boolean isFullSync(Session session) {
+        switch (syncMode) {
+            case "full":
+                return true;
+            case "csv":
+                return FULL_SYNC_SINCE.equals(session.getString("lastModifiedDateTime"));
+            default:
+                return false;
+        }
+    }
 
     private static java.time.Duration storagePause(AvniEntity entity, Session session) {
         if (!"weighted".equals(storageModel)) {

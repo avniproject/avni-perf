@@ -96,21 +96,29 @@ def sync_durations(path):
         lines = path.read_text().splitlines()
     except OSError:
         return None
-    ms = []
+    ms, full = [], []
     for line in lines[1:]:
         c = line.split(',')
         if len(c) < 6:
             continue
         try:
-            ms.append(int(c[2]))
+            v = int(c[2])
         except ValueError:
             continue
+        ms.append(v)
+        # Column 7 from 6 Oct 2026. Absent on earlier runs, which is not the same as false:
+        # those runs have no full/incremental split recorded, so `full` stays empty and the
+        # column reads as absent rather than as "no full syncs".
+        if len(c) >= 7 and c[6].strip().lower() == 'true':
+            full.append(v)
     if not ms:
         return None
-    ms.sort()
-    return dict(n=len(ms), mean=sum(ms) / len(ms) / 1000.0,
-                p50=ms[len(ms) // 2] / 1000.0,
-                p95=ms[min(int(len(ms) * 0.95), len(ms) - 1)] / 1000.0)
+    pct = lambda xs, q: sorted(xs)[min(int(len(xs) * q), len(xs) - 1)] / 1000.0
+    out = dict(n=len(ms), mean=sum(ms) / len(ms) / 1000.0,
+               p50=pct(ms, 0.50), p95=pct(ms, 0.95))
+    if full:
+        out.update(full_n=len(full), full_p50=pct(full, 0.50), full_p95=pct(full, 0.95))
+    return out
 
 
 def at(d, path, default=None):
@@ -288,8 +296,18 @@ for r in runs:
         problems.append((r, "recorded no " + ", ".join(f"`{k}`" for k in absent)
                             + " — so it cannot be compared with a run that differs in it"))
 
+    # **The whole-sync figure, over full syncs only.**
+    #
+    # Every other latency column here is per request, and a device's wait is the sum of forty-odd
+    # of them plus its storage pauses -- a p95 of 202 ms sat inside a sync that took ten seconds.
+    # Restricted to full syncs because the cases mix the two (2 to 7 are "incremental, 1% full"),
+    # and a mean across both describes neither: a catch-up and a first pull differ by more than an
+    # order of magnitude. Blank where the run recorded no full syncs, and blank for runs before
+    # 6 Oct 2026, which recorded no split at all.
+    fullp95 = f"{syncs['full_p95']:.1f}" if syncs and 'full_p95' in syncs else '—'
+
     rows.append(dict(
-        run=r, date=date, label=label, indevices=indevices, syncs=syncs,
+        run=r, date=date, label=label, indevices=indevices, syncs=syncs, fullp95=fullp95,
         profile=at(meta,'settings.injection.profile','—'),
         users=at(meta,'settings.injection.userCount','—'),
         mode=at(meta,'settings.sync.syncMode','—'),
@@ -335,8 +353,8 @@ L.append("Findings drawn from these runs are written up separately, by hand, in 
 # is the scenario's narrative -- how much of the cohort is mid-sync -- and needs the archived
 # per-sync durations, so it is blank for runs before 5 Oct 2026 rather than guessed at.
 L.append("| run | date | scenario | profile | users | arrival window | ~requests in flight "
-         "| ~devices in flight | requests | failed | p95 ms | rps |")
-L.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
+         "| ~devices in flight | requests | failed | p95 ms | full sync p95 s | rps |")
+L.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
 for x in rows:
     # The run id links to its detail section rather than to S3: the bucket is where the
     # artefacts are, and the detail file is where a reader can actually look something up.
@@ -344,7 +362,7 @@ for x in rows:
     L.append(f"| [`{x['run']}`]({DETAIL_NAME}#{anchor(x['run'])}) | {x['date']} | {x['label']} | "
              f"{x['profile']} | {x['users']} | {x['window']} | {x['inflight']} | "
              f"{x['indevices']} | {x['requests']} | {x['failed_pct']}% | {x['p95']} | "
-             f"{x['rps']} |")
+             f"{x['fullp95']} | {x['rps']} |")
 L.append("")
 # **The detail is a separate file, because the index has to stay readable.** One run contributes
 # a dozen rows of settings and environment, so at thirty runs this file would be four hundred
@@ -427,6 +445,12 @@ for r, link, meta, stats, sha7, corr in details:
             # question is what a device experienced, and the two diverge once requests queue.
             D.append(f"| sync duration p50 / mean / p95 s | {syncs['p50']:.1f} / "
                      f"{syncs['mean']:.1f} / {syncs['p95']:.1f} ({syncs['n']} syncs) |")
+            if 'full_p95' in syncs:
+                D.append(f"| full syncs p50 / p95 s | {syncs['full_p50']:.1f} / "
+                         f"{syncs['full_p95']:.1f} ({syncs['full_n']} of {syncs['n']}) |")
+            else:
+                D.append("| full syncs | none recorded — a run before 6 Oct 2026 carries no "
+                         "full/incremental split |")
         else:
             D.append("| sync duration | not archived — predates sync-durations.csv (5 Oct 2026) |")
         D.append(f"| cache policy | {at(meta,'environment.cachePolicy','—')} |")
