@@ -1,4 +1,4 @@
-import json, sys, tempfile
+import csv, json, sys, tempfile
 from datetime import date
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -14,6 +14,7 @@ import validate
 
 REFERENCE = date(2026, 9, 18)
 DATASETS = Path(__file__).resolve().parents[1] / "datasets"
+ROOT_RESOURCES = Path(__file__).resolve().parents[3] / "src/gatling/resources"
 
 
 def filled(name):
@@ -590,3 +591,36 @@ def test_a_recipe_without_archetypes_is_unaffected():
     assert r.archetypes() == {}
     assert r.unresolved_archetypes(None) == []
     assert r.bundle_paths("/anywhere") == r.bundle_paths()
+
+
+def test_case_8_can_reuse_case_4s_feeder_across_growth_points():
+    """**Case 8 runs case 4's users against day 60, 120 and 365, and that works only by virtue of
+    tenant order.** `plan_ids` walks the tenants in order, advancing a cursor by
+    `band_width(tenant, days)` -- which scales with `days`. So every tenant after the first gets a
+    different base at every growth point, and usernames follow the base: an NGO tenant's first
+    user is `u2400001` at day 60 and `u7200001` at day 180. Only the first tenant's base is
+    `id_base` regardless of days, and case 4's cohort is exactly that tenant.
+
+    Reorder the tenants in these recipes and case 8's feeder silently names users that do not
+    exist at the other growth points. Nothing else states this, so it is stated here.
+    """
+    bases = {}
+    for days in (60, 120, 180, 365):
+        d = filled(f"pilot-day-{days}.json").to_deployment()
+        bases[days] = dep.plan_ids(d)
+
+    first = filled("pilot-day-180.json").to_deployment().tenants[0]
+    assert first.name == "state-1", (
+        "case 4 and case 8 are the first tenant; if that is no longer state-1 the feeders are "
+        "naming a different cohort")
+    assert len({b[first.organisation_id] for b in bases.values()}) == 1, (
+        "the first tenant's id base moved between growth points, so case 8 cannot reuse case 4's "
+        "feeder")
+
+    # And every other tenant does move, which is why only case 4's cohort is reusable.
+    others = [t.organisation_id for t in
+              filled("pilot-day-180.json").to_deployment().tenants[1:]]
+    moved = [o for o in others if len({b[o] for b in bases.values()}) > 1]
+    assert moved == others, (
+        "some later tenant's base is stable across growth points; the reasoning above, and "
+        "case 5's exclusion from case 8, assume none of them are")
