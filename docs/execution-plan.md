@@ -219,6 +219,28 @@ reset saves better than three hours of the exercise, which is what Day 9 is actu
 > reset is worth less when there are half as many resets. `truncate` still wins: at 388 s measured
 > against the teardown's 1,013 s, five resets is 32 min against 84.
 
+### Before the ten-tenant cases can be generated
+
+**The pilot recipes named live organisations, and that is fixed but not finished.**
+`pilot-day-60/120/180/365` carried `organisation_id` 1 to 10, which are not free on the load
+environment: 1 is the platform organisation, 3 is the customer's, 9 is a fixture and 10 is the
+first state tenant. Generating against them would have written a pilot dataset into four live
+organisations.
+
+The existing guard is weaker than it looks: `_refs` refuses an organisation with no entry in
+`refs.json`, which is what stopped this so far — but only while *some* of the ten are missing.
+Provision the other six and generation proceeds into OpenCHS.
+
+Organisation ids are `SERIAL`, assigned when a tenant is provisioned, so a committed recipe cannot
+hold real ones. All four now carry `organisation_id: null` and `Recipe.to_deployment` refuses
+them rather than defaulting — a default here is a guess at which organisation to overwrite. A
+half-filled recipe is refused too, since it would generate for the tenants that have ids and skip
+the question for the rest.
+
+**What remains** is the part a commit cannot do: provision the ten tenants, install the bundle in
+each, re-dump `refs.json`, and record the ids the server assigned. `states-day-180` is the shape
+to follow — it was re-targeted to the real 10 and 11 once those existed.
+
 **The co-tenant datasets are the gap in that arithmetic.** Cases 6, 7, 12 and 13 need 513 further
 organisations present — the ones of Q12's 986 that hold data. The other 473 would be bare
 `organisation` rows; `co_tenants.empty_rows()` builds them, nothing calls it, and 1 Oct 2026
