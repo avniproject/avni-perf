@@ -84,6 +84,28 @@ def jload(p):
     try: return json.loads(p.read_text())
     except Exception: return None
 
+def devices_in_flight(syncs, wall, users_n):
+    """Mean number of devices mid-sync over the run: arrival rate x service time.
+
+    **The arrivals are the syncs that happened, not the cohort that was configured.** The rate is
+    `syncs['n'] / wall`. Using `users_n` asserts that every configured user synced during the run,
+    which is true of `burst` -- the whole cohort arrives inside the window -- and false of
+    `steady`, where the rate is users / SYNC_WINDOW_HOURS and a run shorter than the window
+    reaches only a fraction of them. Case 2 configures 500 users and performs 167 syncs in four
+    hours of a twelve-hour window; case 14, 501 and 63.
+
+    So this read 2.1 devices for case 2 where 0.7 were mid-sync, and 7.5 for case 14 where 0.9
+    were -- overstated by exactly users_n / n, 3x and 8x. It was introduced against case 1, which
+    is `burst`, where the two are the same number and nothing showed. findings-case2.md caught the
+    inconsistency without naming it: it rescales the banner's 0.16 from a 14.1 s median to the
+    measured 61 s, which gives 0.71, and then quotes 2.1 from this column as the measured figure.
+    Two routes to one quantity, 3x apart.
+
+    Capped at the cohort, because more devices cannot be mid-sync than exist.
+    """
+    return min(syncs['n'] * syncs['mean'] / wall, users_n)
+
+
 def sync_durations(path, sync_mode=None):
     """Mean and p95 of a run's per-sync durations, in seconds, from sync-durations.csv.
 
@@ -309,7 +331,7 @@ for r in runs:
     syncs = sync_durations(work / r / 'sync-durations.csv',
                            at(meta, 'settings.sync.syncMode'))
     if syncs and wall and users_n:
-        indevices = fmt(min(users_n * syncs['mean'] / wall, users_n))
+        indevices = fmt(devices_in_flight(syncs, wall, users_n))
     else:
         indevices = '—'
 

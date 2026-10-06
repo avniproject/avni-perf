@@ -69,10 +69,20 @@ That reframes a sync's cost. A 61-second sync is not 61 seconds of server; it is
 of server and about 57 seconds of the device writing to local storage. Halving server time would
 move a sync from 61 s to 59 s.
 
-It also explains a figure the harness prints and should not be quoted here. The banner says
-"~0.16 in flight at production's 14.1s median"; the run-log reports **~2.1 devices in flight**,
-measured. The banner is not wrong about the arrival rate — it is using a 14.1 s median against
-syncs that actually took 61 s. The measured figure is the one in the table.
+It also corrects a figure the harness prints. The banner says "~0.16 in flight at production's
+14.1s median". The banner is not wrong about the arrival rate — it is using a 14.1 s median
+against syncs that actually took 61 s, and rescaling it by 61/14.1 gives **0.71 devices in
+flight**, which is what the run-log reports from the measured durations.
+
+> **That agreement is new, and the disagreement is what found a bug (6 Oct 2026).** This paragraph
+> first read "the run-log reports ~2.1 devices in flight, measured", and treated the gap as the
+> banner's fault alone. It was not: `devices in flight` multiplied the *configured cohort* by the
+> mean sync duration, where Little's law wants the arrival rate — the syncs that actually
+> happened. This run configures 500 users and performs 167, so the column overstated by 500/167,
+> exactly 3x. Case 14 was 8x. The column was introduced against case 1, which is `burst`: the
+> whole cohort arrives inside the window, the two expressions agree, and nothing showed until the
+> first `steady` run. Two independent routes to one quantity landing 3x apart was the signal, and
+> it is now a test — `tools/tests/test_run_log.py`.
 
 ## What this does not measure
 
