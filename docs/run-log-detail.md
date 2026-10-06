@@ -1,6 +1,6 @@
 # Run log — detail
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-06 09:50 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-06 10:49 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script, as [`run-log.md`](run-log.md) is. That file is the index and carries the results table and any caveats; this one records what each run was configured with and what environment it met, which is what makes a number interpretable once the environment is gone.
 
@@ -20,10 +20,10 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T08-38-47Z-case1
 | target | https://loadtest.avniproject.org |
 | server build | 17.3.0-SNAPSHOT |
 | dataset | tanuh-small-v2 |
-| injector | i-041afc7c6e0761195 (Linux aarch64, 4 cpu, heap 1024 MB) |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.69 / 1.12 |
 | est. sync overhead s | 0.12 |
-| injection | profile burst, 100 users arriving over 15s, ~71 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -47,10 +47,10 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-43-14Z-case1
 | target | https://loadtest.avniproject.org |
 | server build | 17.3.0-SNAPSHOT |
 | dataset | tanuh-small-v2 |
-| injector | i-041afc7c6e0761195 (Linux aarch64, 4 cpu, heap 1024 MB) |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.26 / 0.51 |
 | est. sync overhead s | 0.06 |
-| injection | profile burst, 100 users arriving over 15s, ~71 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -74,10 +74,10 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-53-13Z-case1
 | target | https://loadtest.avniproject.org |
 | server build | 17.3.0-SNAPSHOT |
 | dataset | tanuh-small-v2 |
-| injector | i-041afc7c6e0761195 (Linux aarch64, 4 cpu, heap 1024 MB) |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.23 / 0.27 |
 | est. sync overhead s | 0.03 |
-| injection | profile burst, 100 users arriving over 15s, ~71 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -101,10 +101,10 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-28-06Z-case1
 | target | https://loadtest.avniproject.org |
 | server build | 17.3.0-SNAPSHOT |
 | dataset | tanuh-small-v2 |
-| injector | i-041afc7c6e0761195 (Linux aarch64, 4 cpu, heap 1024 MB) |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.23 / 0.34 |
 | est. sync overhead s | 0.04 |
-| injection | profile burst, 100 users arriving over 15s, ~71 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -129,10 +129,10 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-30-01Z-case1
 | target | https://loadtest.avniproject.org |
 | server build | 17.3.0-SNAPSHOT |
 | dataset | tanuh-small-v2 |
-| injector | i-041afc7c6e0761195 (Linux aarch64, 4 cpu, heap 1024 MB) |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.26 / 0.28 |
 | est. sync overhead s | 0.03 |
-| injection | profile burst, 100 users arriving over 15s, ~71 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -157,10 +157,10 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-32-25Z-case1
 | target | https://loadtest.avniproject.org |
 | server build | 17.3.0-SNAPSHOT |
 | dataset | tanuh-small-v2 |
-| injector | i-041afc7c6e0761195 (Linux aarch64, 4 cpu, heap 1024 MB) |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.58 / 0.66 |
 | est. sync overhead s | 0.07 |
-| injection | profile burst, 100 users arriving over 15s, ~71 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -185,10 +185,10 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-37-03Z-case1
 | target | https://loadtest.avniproject.org |
 | server build | 17.3.0-SNAPSHOT |
 | dataset | tanuh-small-v2 |
-| injector | i-041afc7c6e0761195 (Linux aarch64, 4 cpu, heap 1024 MB) |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.24 / 0.3 |
 | est. sync overhead s | 0.03 |
-| injection | profile burst, 100 users arriving over 15s, ~71 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -213,10 +213,10 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-41-10Z-case1
 | target | https://loadtest.avniproject.org |
 | server build | 17.3.0-SNAPSHOT |
 | dataset | tanuh-small-v2 |
-| injector | i-041afc7c6e0761195 (Linux aarch64, 4 cpu, heap 1024 MB) |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.58 / 0.62 |
 | est. sync overhead s | 0.07 |
-| injection | profile burst, 100 users arriving over 15s, ~71 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -241,10 +241,10 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-01-03Z-case1
 | target | https://loadtest.avniproject.org |
 | server build | 17.3.0-SNAPSHOT |
 | dataset | tanuh-small-v2 |
-| injector | i-041afc7c6e0761195 (Linux aarch64, 4 cpu, heap 1024 MB) |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.27 / 0.29 |
 | est. sync overhead s | 0.03 |
-| injection | profile burst, 100 users arriving over 15s, ~71 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -269,10 +269,10 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-02-47Z-case1
 | target | https://loadtest.avniproject.org |
 | server build | 17.3.0-SNAPSHOT |
 | dataset | tanuh-small-v2 |
-| injector | i-041afc7c6e0761195 (Linux aarch64, 4 cpu, heap 1024 MB) |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.59 / 0.66 |
 | est. sync overhead s | 0.07 |
-| injection | profile burst, 100 users arriving over 15s, ~71 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -280,3 +280,87 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-02-47Z-case1
 | full syncs p50 / p95 s | 61.4 / 64.0 (100 of 100, back-calculated from SYNC_MODE=full) |
 | cache policy | warm-jvm-30min-after-two-saturating-runs |
 | autovacuum | unrecorded |
+
+## `2026-10-06T04-40-26Z-case1-burst900-e7a130d`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-40-26Z-case1-burst900-e7a130d/`
+
+| | |
+|---|---|
+| requests (ok) | 4300 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 24 / 200 / 363 / 705 |
+| mean ms | 48 |
+| mean throughput rps | 4.77 |
+| harness commit | e7a130d9d13507142b1d9ec1a8c34e894c79dc72 (run id says `e7a130d`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 17.3.0-SNAPSHOT |
+| dataset | tanuh-small-v2 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.38 / 0.4 |
+| est. sync overhead s | 0.04 |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
+| sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 10.6 / 10.7 / 10.8 (100 syncs) |
+| full syncs p50 / p95 s | 10.6 / 10.8 (100 of 100, recorded) |
+| cache policy | warm-idle-25min-since-discarded-warmup |
+| autovacuum | on |
+
+## `2026-10-06T04-55-47Z-case1-burst75-e7a130d`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-55-47Z-case1-burst75-e7a130d/`
+
+| | |
+|---|---|
+| requests (ok) | 3356 |
+| failed | 40 (1.18%) |
+| response time p50 / p95 / p99 / max ms | 34 / 402 / 750 / 1118 |
+| mean ms | 83 |
+| mean throughput rps | 39.48 |
+| harness commit | e7a130d9d13507142b1d9ec1a8c34e894c79dc72 (run id says `e7a130d`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 17.3.0-SNAPSHOT |
+| dataset | tanuh-small-v2 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.71 / 4.08 |
+| est. sync overhead s | 0.45 |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
+| sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 12.2 / 11.9 / 12.9 (62 syncs) |
+| full syncs p50 / p95 s | 12.2 / 12.9 (62 of 62, recorded) |
+| cache policy | warm-after-900s-run |
+| autovacuum | on |
+
+## `2026-10-06T05-16-44Z-case1-burst75-e7a130d`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-16-44Z-case1-burst75-e7a130d/`
+
+| | |
+|---|---|
+| requests (ok) | 4300 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 74 / 918 / 1426 / 1919 |
+| mean ms | 178 |
+| mean throughput rps | 49.43 |
+| harness commit | e7a130d9d13507142b1d9ec1a8c34e894c79dc72 (run id says `e7a130d`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 17.3.0-SNAPSHOT |
+| dataset | tanuh-small-v2 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.7 / 0.76 |
+| est. sync overhead s | 0.08 |
+| injection | profile burst, 100 users arriving over 75s, ~8.8 requests in flight (rps x mean), ramp 2000 s |
+| sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 16.4 / 16.0 / 18.4 (100 syncs) |
+| full syncs p50 / p95 s | 16.4 / 18.4 (100 of 100, recorded) |
+| cache policy | warm-after-discarded-warmup |
+| autovacuum | on |

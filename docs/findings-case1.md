@@ -12,32 +12,33 @@ settings and environment in [`run-log-detail.md`](run-log-detail.md).
 
 ## The answer
 
-**100 devices arriving over 90 seconds or more is comfortable. 60 seconds is not.** The knee sits
-between those two windows — between roughly 48 and 72 requests per second of demand — and the app
+**100 devices arriving over 75 seconds or more is workable. 60 seconds is not.** The knee sits
+between those two windows — between roughly 57 and 72 requests per second of demand — and the app
 server's 2 vCPU is what names it. Not the database, not the injector.
 
-| arrival window | 15 min | 180 s | 120 s | 90 s | 60 s | 15 s |
-|---|---|---|---|---|---|---|
-| devices arriving per second | 0.11 | 0.56 | 0.83 | 1.11 | 1.67 | 6.67 |
-| demand rps | 4.8 | 23.9 | 35.8 | 47.8 | 71.7 | 286.7 |
-| achieved rps | 4.77 | 22.75 | 33.33 | 43.00 | 52.44 | 56.58 |
-| **keeping up with demand** | **100%** | **95%** | **93%** | **90%** | **73%** | **20%** |
-| p95 ms | 202 | 196 | 222 | 376 | 2,242 | 6,768 |
-| p99 ms | 297 | 330 | 437 | 868 | 4,014 | 9,013 |
-| mean ms | 45 | 42 | 50 | 74 | 417 | 1,254 |
-| **requests in flight** | 0.2 | 1.0 | 1.7 | 3.2 | 21.9 | 71.0 |
-| devices in flight | ~1 † | 5.5 | 8.4 | 11.8 | **36.0** ‡ | **80.2** ‡ |
-| per-sync mean s | — | **10.5** | **10.8** | **11.8** | **31.0** ‡ | **60.9** ‡ |
-| failures | 0 | 0 | 0 | 0 | 0 | 0 |
+The 75 s run on 6 Oct halved the interval an earlier revision left open. It keeps up with 86% of
+demand at a p95 of 918 ms and no failures: slower than 90 s, but nothing breaks and no device waits
+a second. One step further down, to 60 s, p95 is 2,242 ms.
 
-† Derived, not measured. `sync-durations.csv` was only archived from the 90 s run onwards
-(9bfb8dc), so for the 15 min run the sync duration comes from wall time minus the arrival window.
-`run-log.md` leaves that cell empty rather than deriving it; the derivation is kept here because
-this is where it can be shown. The three measured runs agree with it exactly — 5.5, 8.4, 11.8 in
-both documents.
+| arrival window | 15 min | 180 s | 120 s | 90 s | 75 s | 60 s | 15 s |
+|---|---|---|---|---|---|---|---|
+| devices arriving per second | 0.11 | 0.56 | 0.83 | 1.11 | 1.33 | 1.67 | 6.67 |
+| demand rps | 4.8 | 23.9 | 35.8 | 47.8 | 57.3 | 71.7 | 286.7 |
+| achieved rps | 4.77 | 22.75 | 33.33 | 43.00 | **49.43** | 52.44 | 56.58 |
+| **keeping up with demand** | **100%** | **95%** | **93%** | **90%** | **86%** | **73%** | **20%** |
+| p95 ms | 202 | 196 | 222 | 376 | **918** | 2,242 | 6,768 |
+| p99 ms | 297 | 330 | 437 | 868 | **1,426** | 4,014 | 9,013 |
+| mean ms | 45 | 42 | 50 | 74 | **178** | 417 | 1,254 |
+| **requests in flight** | 0.2 | 1.0 | 1.7 | 3.2 | **8.8** | 21.9 | 71.0 |
+| devices in flight | **1.2** ‡ | 5.5 | 8.4 | 11.8 | **18.4** | **36.0** ‡ | **80.2** ‡ |
+| per-sync mean s | **10.7** ‡ | **10.5** | **10.8** | **11.8** | **16.0** | **31.0** ‡ | **60.9** ‡ |
+| failures | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-‡ Measured, but from the **re-run** of that window at 17:31 and 17:32, not from the 15:13 and 15:23
-runs the rest of the column describes. Those two predate `sync-durations.csv`. The substitution is
+‡ Measured, but from a **re-run** of that window rather than from the run the rest of the column
+describes: 17:31 and 17:32 on 5 Oct for the 60 s and 15 s columns, and 10:10 on 6 Oct for the 15
+min one. Those originals predate `sync-durations.csv` (9bfb8dc) or, in the 15 min case, predate it
+entirely — the earlier revision of this table derived `~1` for it from wall time minus the arrival
+window, against a measured 1.2. Those two predate `sync-durations.csv`. The substitution is
 honest for the 15 s window, which the re-run reproduced to within 0.4% on every other figure, and
 is the best available for 60 s, which came back 4.7% slower — see the reproduction note below.
 
@@ -95,6 +96,8 @@ sync rather than inferred from wall time:
 | 180 s | 10,468 ms | 10,447 | 10,717 | 10,840 |
 | 120 s | 10,792 ms | 10,773 | 11,163 | 11,470 |
 | 90 s | 11,766 ms | 11,796 | 12,375 | 12,587 |
+| 75 s | 16,005 ms | 16,376 | 18,446 | 18,787 |
+| 15 min ‡ | 10,673 ms | 10,648 | 10,836 | 11,214 |
 | 60 s ‡ | 30,957 ms | 31,814 | 40,168 | 40,831 |
 | 15 s ‡ | 60,923 ms | 61,441 | 64,019 | 65,223 |
 
@@ -185,6 +188,48 @@ syncing in the first minutes after one meets the cold curve rather than the warm
 devices over a minute, a 26-second p95 and the first timeouts. That is not a test artefact, it is
 a property of the thing being deployed — and it argues for draining or warming a new instance
 before it takes sync traffic.
+
+## A rotated database credential fails only under load
+
+The first attempt at the 75 s window, at 10:25 on 6 Oct, is in `run-log.md` under "Runs that are
+not measurements". It returned 39.95 rps — **below the 90 s run's 43.00**, which is impossible for
+a shorter window and is what showed it was broken rather than interesting. 40 of 3,396 requests
+failed: 38 HTTP 500, one 401, one premature close.
+
+The app server log names it:
+
+```
+FATAL: password authentication failed for user "openchs"
+Unable to acquire JDBC Connection
+```
+
+The loadtest RDS instance uses an AWS-managed master secret with `RotationEnabled` on a 7-day
+schedule. It rotated at 09:54 IST. `avni_server_db_password` is read from Secrets Manager by the
+Makefile **at playbook time** and written into `/etc/avni_server_appserver.conf`, so what the
+server holds is a point-in-time copy that a rotation silently invalidates.
+
+**The failure is load-dependent, which is what makes it dangerous.** Connections already in the
+pool keep working indefinitely; only a *new* one fails. So:
+
+| | devices in flight | new connections needed | result |
+|---|---|---|---|
+| `/ping`, `/idp-details` | ~0 | no | 200 OK |
+| the 900 s run, 16 minutes after rotation | 1.2 | no | 4,300 requests, 0 failures |
+| the 75 s run, 32 minutes after rotation | ~18 | yes, the pool grows | 38 × HTTP 500 |
+
+A health check cannot see this. Both endpoints returned 200 immediately after the rotation and that
+was taken as reassurance; it was worth nothing. An environment in this state looks healthy, serves
+light traffic correctly, and fails the moment a cohort arrives.
+
+`make loadtest-configure-server` re-reads the secret, rewrites the config and restarts the service,
+which fixed it — and the restart then required a discarded warm-up before the window could be
+measured, since a cold JVM would have replaced one invalid run with another.
+
+**Two things follow for production.** If prod uses the same managed-secret pattern with a
+config-file copy, it has the same silent, load-dependent failure on the same weekly schedule. And
+the window is wider than it looks: the credential is wrong from the moment of rotation, but nothing
+reports it until load happens to force pool growth, which may be hours later and will look like an
+application fault rather than a credential one.
 
 ## Why the app server, and not the other two
 
@@ -284,10 +329,10 @@ because it counts database-wide.
 
 ## What to do next
 
-* **Narrow the knee to 60-90 s** if a sharper number is wanted. 75 s gives 57.3 rps of demand,
-  between the 90 s run that keeps up and the 60 s one that does not; one run halves the remaining
-  interval. Worth it only if the question is "what is the smallest window that works" rather than
-  "does a minute work" — it does not.
+* **~~Narrow the knee to 60-90 s~~ — done.** The 75 s run keeps up with 86% of demand at a p95 of
+  918 ms and no failures. The remaining interval is 60-75 s, which is 57.3 to 71.7 rps of demand;
+  narrowing it further is unlikely to change any decision, since 75 s already works and 60 s
+  already does not.
 * **`app_instance_class` moves the ceiling.** The database peaked at 36% CPU with every statement
   under 1.3 ms; the app server hit 99.25%. A run at the next size up would say whether throughput
   scales with vCPU or whether something else takes over.
@@ -297,6 +342,10 @@ because it counts database-wide.
   honestly: the label was already being passed, and it was wrong. **How long warm lasts is still
   unmeasured** — twenty minutes was warm, 2m49s was not, and nothing establishes where between
   them it crosses, so a long gap before a measured run is a reason to warm again.
+* **Pin or watch the database credential.** The managed secret rotates every 7 days and the server
+  holds a copy, so this recurs weekly and will eventually land mid-campaign. Either disable
+  rotation on this instance, or have the server read the secret when it connects. Until then, treat
+  an unexplained 500 under load as a credential question first.
 * **Then add the co-tenants** (F5.4). Everything above is a quiet system; production is not. The
   knee will move left.
 

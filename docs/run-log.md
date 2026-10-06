@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-06 09:50 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-06 10:49 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -12,14 +12,16 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 
 | run | date (IST) | scenario | profile | users | arrival window | ~requests in flight | ~devices in flight | requests | failed | p95 ms | full sync p95 s | rps |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| [`2026-10-05T08-38-47Z-case1-f76d110`](run-log-detail.md#2026-10-05t08-38-47z-case1-f76d110) | 2026-10-05 14:08 | case1 | burst | 100 | 15min | ~0.2 | — | 4300 | 0.0% | 202 | — | 4.77 |
-| [`2026-10-05T09-43-14Z-case1-e47afd5`](run-log-detail.md#2026-10-05t09-43-14z-case1-e47afd5) | 2026-10-05 15:13 | case1 | burst | 100 | 60s | ~22 | — | 4300 | 0.0% | 2242 | — | 52.44 |
-| [`2026-10-05T09-53-13Z-case1-burst15-e47afd5`](run-log-detail.md#2026-10-05t09-53-13z-case1-burst15-e47afd5) | 2026-10-05 15:23 | case1 | burst | 100 | 15s | ~71 | — | 4300 | 0.0% | 6768 | — | 56.58 |
-| [`2026-10-05T10-28-06Z-case1-burst90-d9eac3e`](run-log-detail.md#2026-10-05t10-28-06z-case1-burst90-d9eac3e) | 2026-10-05 15:58 | case1 | burst | 100 | 90s | ~3.2 | ~11.8 | 4300 | 0.0% | 376 | 12.4 | 43 |
-| [`2026-10-05T10-30-01Z-case1-burst120-d9eac3e`](run-log-detail.md#2026-10-05t10-30-01z-case1-burst120-d9eac3e) | 2026-10-05 16:00 | case1 | burst | 100 | 120s | ~1.7 | ~8.4 | 4300 | 0.0% | 222 | 11.2 | 33.33 |
-| [`2026-10-05T10-32-25Z-case1-burst180-d9eac3e`](run-log-detail.md#2026-10-05t10-32-25z-case1-burst180-d9eac3e) | 2026-10-05 16:02 | case1 | burst | 100 | 180s | ~1.0 | ~5.5 | 4300 | 0.0% | 196 | 10.7 | 22.75 |
-| [`2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e`](run-log-detail.md#2026-10-05t12-01-03z-case1-burst60-warm-d9eac3e) | 2026-10-05 17:31 | case1 | burst | 100 | 60s | ~27 | ~36 | 4300 | 0.0% | 2767 | 40.2 | 50 |
-| [`2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e`](run-log-detail.md#2026-10-05t12-02-47z-case1-burst15-warm-d9eac3e) | 2026-10-05 17:32 | case1 | burst | 100 | 15s | ~71 | ~80 | 4300 | 0.0% | 6741 | 64.0 | 56.58 |
+| [`2026-10-05T08-38-47Z-case1-f76d110`](run-log-detail.md#2026-10-05t08-38-47z-case1-f76d110) | 2026-10-05 14:08 | case1 | burst | 100 | 15min | ~0.2 | — | 4300 | 0.0% | 202 | — | 4.77 | `041afc7` |
+| [`2026-10-05T09-43-14Z-case1-e47afd5`](run-log-detail.md#2026-10-05t09-43-14z-case1-e47afd5) | 2026-10-05 15:13 | case1 | burst | 100 | 60s | ~22 | — | 4300 | 0.0% | 2242 | — | 52.44 | `041afc7` |
+| [`2026-10-05T09-53-13Z-case1-burst15-e47afd5`](run-log-detail.md#2026-10-05t09-53-13z-case1-burst15-e47afd5) | 2026-10-05 15:23 | case1 | burst | 100 | 15s | ~71 | — | 4300 | 0.0% | 6768 | — | 56.58 | `041afc7` |
+| [`2026-10-05T10-28-06Z-case1-burst90-d9eac3e`](run-log-detail.md#2026-10-05t10-28-06z-case1-burst90-d9eac3e) | 2026-10-05 15:58 | case1 | burst | 100 | 90s | ~3.2 | ~11.8 | 4300 | 0.0% | 376 | 12.4 | 43 | `041afc7` |
+| [`2026-10-05T10-30-01Z-case1-burst120-d9eac3e`](run-log-detail.md#2026-10-05t10-30-01z-case1-burst120-d9eac3e) | 2026-10-05 16:00 | case1 | burst | 100 | 120s | ~1.7 | ~8.4 | 4300 | 0.0% | 222 | 11.2 | 33.33 | `041afc7` |
+| [`2026-10-05T10-32-25Z-case1-burst180-d9eac3e`](run-log-detail.md#2026-10-05t10-32-25z-case1-burst180-d9eac3e) | 2026-10-05 16:02 | case1 | burst | 100 | 180s | ~1.0 | ~5.5 | 4300 | 0.0% | 196 | 10.7 | 22.75 | `041afc7` |
+| [`2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e`](run-log-detail.md#2026-10-05t12-01-03z-case1-burst60-warm-d9eac3e) | 2026-10-05 17:31 | case1 | burst | 100 | 60s | ~27 | ~36 | 4300 | 0.0% | 2767 | 40.2 | 50 | `041afc7` |
+| [`2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e`](run-log-detail.md#2026-10-05t12-02-47z-case1-burst15-warm-d9eac3e) | 2026-10-05 17:32 | case1 | burst | 100 | 15s | ~71 | ~80 | 4300 | 0.0% | 6741 | 64.0 | 56.58 | `041afc7` |
+| [`2026-10-06T04-40-26Z-case1-burst900-e7a130d`](run-log-detail.md#2026-10-06t04-40-26z-case1-burst900-e7a130d) | 2026-10-06 10:10 | case1 | burst | 100 | 900s | ~0.2 | ~1.2 | 4300 | 0.0% | 200 | 10.8 | 4.77 | `041afc7` |
+| [`2026-10-06T05-16-44Z-case1-burst75-e7a130d`](run-log-detail.md#2026-10-06t05-16-44z-case1-burst75-e7a130d) | 2026-10-06 10:46 | case1 | burst | 100 | 75s | ~8.8 | ~18.4 | 4300 | 0.0% | 918 | 18.4 | 49.43 | `041afc7` |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 
@@ -31,6 +33,7 @@ Kept rather than deleted — these are the evidence for a finding of their own �
 |---|---|---|---|---|---|
 | [`2026-10-05T11-37-03Z-case1-burst60-d9eac3e`](run-log-detail.md#2026-10-05t11-37-03z-case1-burst60-d9eac3e) | 2026-10-05 17:07 | 60s | 18.43 | 25635 | started 2 minutes 49 seconds after the app server's JVM, which costs roughly two thirds of throughput |
 | [`2026-10-05T11-41-10Z-case1-burst15-d9eac3e`](run-log-detail.md#2026-10-05t11-41-10z-case1-burst15-d9eac3e) | 2026-10-05 17:11 | 15s | 30.94 | 14214 | started 6 minutes 56 seconds after the app server's JVM, which costs roughly two thirds of throughput |
+| [`2026-10-06T04-55-47Z-case1-burst75-e7a130d`](run-log-detail.md#2026-10-06t04-55-47z-case1-burst75-e7a130d) | 2026-10-06 10:25 | 75s | 39.48 | 402 | the database credential had rotated and the app server held the old one, so every new pooled connection failed with HTTP 500 |
 
 Each carries a `provenance-correction.json` in its own prefix with the evidence, the cause and what it was recorded as. The runs' own `run-metadata.json` is left exactly as written.
 
@@ -41,3 +44,5 @@ Listed rather than left blank, because a blank column reads as a measurement and
 - `2026-10-05T08-38-47Z-case1-f76d110` — harness commit was recorded as `unknown`; **corrected to `f76d110`** by `provenance-correction.json` in the same prefix. The run's own metadata is left as written — see that file for the basis and the cause
 - `2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e` — recorded no `AUTOVACUUM` — so it cannot be compared with a run that differs in it
 - `2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e` — recorded no `AUTOVACUUM` — so it cannot be compared with a run that differs in it
+- `2026-10-06T04-40-26Z-case1-burst900-e7a130d` — is a **warm-up**, not a measurement — a deliberately gentle pass run to take the cold-JVM penalty off the first real run. It belongs to no curve, and is normally discarded rather than published
+- `2026-10-06T05-16-44Z-case1-burst75-e7a130d` — is a **warm-up**, not a measurement — a deliberately gentle pass run to take the cold-JVM penalty off the first real run. It belongs to no curve, and is normally discarded rather than published
