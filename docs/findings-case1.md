@@ -351,3 +351,8 @@ because it counts database-wide.
 
 The 300 s window an earlier revision suggested is not worth running: 180 s already keeps up with
 95% of demand at idle-baseline latency, so 300 s would only confirm that less load is easier.
+
+**Case 2 puts this in proportion.** The same `m6g.large` serving 500 field workers on their own
+rhythm for four hours sits at ~2.1% CPU with ten database connections and a p95 of 288 ms — see
+[`findings-case2.md`](findings-case2.md). Everything in this document is about a herd arriving at
+once. The steady state is not the problem.

@@ -234,10 +234,19 @@ for r in runs:
     bs = at(meta, 'settings.injection.burstSeconds') if meta else None
     bm = at(meta, 'settings.injection.burstMinutes') if meta else None
     users_n = at(meta, 'settings.injection.userCount') if meta else None
-    if bs is not None:
+    # **Only under PROFILE=burst, though.** burstSeconds is recorded whatever the
+    # profile, so case 2 -- steady, 240 minutes, no herd at all -- reported a 60s
+    # arrival window, which is the property's default and describes nothing that
+    # happened. A steady run's shape is its duration and its rate, so say that.
+    prof = at(meta, 'settings.injection.profile') if meta else None
+    if prof == 'burst' and bs is not None:
         window = f"{bs}s"
-    elif bm is not None:
+    elif prof == 'burst' and bm is not None:
         window = f"{bm}min"
+    elif prof in ('steady', 'stress'):
+        dm = at(meta, 'settings.injection.durationMinutes')
+        sph = at(meta, 'settings.injection.syncsPerHour')
+        window = f"{dm}min @ {float(sph):.0f}/h" if dm and sph else (f"{dm}min" if dm else '—')
     else:
         window = '—'
     # **Concurrency measured from the run, not estimated from a constant.**
@@ -311,7 +320,13 @@ for r in runs:
     # where somebody warms through run-scenario.sh instead, which publishes. Worth catching rather
     # than assuming: a warm-up is deliberately gentle, so its numbers look *good*, and a row that
     # is not broken in any visible way is the kind most likely to be read as a point on a curve.
-    if 'warmup' in run_label.lower() or 'warmup' in str(at(meta, 'environment.cachePolicy', '')).lower():
+    # Matched on the LABEL, and on a cache policy of exactly `discarded-warmup`. An earlier
+    # revision tested `'warmup' in cachePolicy`, which is true of every honest description of a
+    # warmed server -- `warm-after-discarded-warmup`, `warm-idle-25min-since-discarded-warmup` --
+    # so it labelled two measured case 1 runs as warm-ups on the strength of them saying what had
+    # been done to the server beforehand.
+    if 'warmup' in run_label.lower() \
+            or str(at(meta, 'environment.cachePolicy', '')).strip().lower() == 'discarded-warmup':
         problems.append((r, "is a **warm-up**, not a measurement — a deliberately gentle pass run "
                             "to take the cold-JVM penalty off the first real run. It belongs to no "
                             "curve, and is normally discarded rather than published"))
@@ -335,7 +350,11 @@ for r in runs:
 
     # Fewer completed syncs than users is the same thing from the device's side: the requests that
     # happened are real, but the run did not do what its row says it did.
-    if syncs and users_n and syncs['n'] < users_n:
+    # Burst only: there every user syncs once, so a shortfall means the run did not finish what it
+    # started. Under steady the sync count is rate x duration and is unrelated to the cohort size --
+    # case 2 collected its designed 167 syncs from a 500-user feeder and was reported as "only 167
+    # of 500 devices completed a sync", which was not true of anything.
+    if prof == 'burst' and syncs and users_n and syncs['n'] < users_n:
         problems.append((r, f"only **{syncs['n']} of {users_n} devices completed a sync** — the "
                             f"per-sync figures describe the ones that finished, and the request "
                             f"count is short of a full cohort by the rest"))
