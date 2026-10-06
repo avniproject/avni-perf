@@ -292,6 +292,16 @@ for r in runs:
     # The cap cannot bind on a run-mean -- wall is at least the arrival window plus one sync, so
     # duration/wall is at most 1 -- and is kept as a guard against a malformed pair of inputs
     # rather than as a correction.
+    # **Where the run was driven from.** Constant across every run so far, which is the reason to
+    # show it rather than a reason not to: an injector that differs is not comparable with one
+    # that does not -- different CPU count, heap, and above all a different network position, and
+    # the harness pays its round trip 43 times a sync. Nothing in the table would have shown it.
+    #
+    # Abbreviated as the instance id's first seven hex digits, mirroring how a commit is shortened
+    # here. The full id, OS, Java, CPU count and heap are in the detail.
+    injector_id = str(at(meta, 'settings.injector.label', '') or '')
+    injector = injector_id[2:9] if injector_id.startswith('i-') else (injector_id[:7] or '—')
+
     syncs = sync_durations(work / r / 'sync-durations.csv',
                            at(meta, 'settings.sync.syncMode'))
     if syncs and wall and users_n:
@@ -372,6 +382,7 @@ for r in runs:
 
     rows.append(dict(
         run=r, date=date, label=label, indevices=indevices, syncs=syncs, fullp95=fullp95,
+        injector=injector, injector_id=injector_id,
         excluded=excluded,
         profile=at(meta,'settings.injection.profile','—'),
         users=at(meta,'settings.injection.userCount','—'),
@@ -434,7 +445,7 @@ for x in [y for y in rows if not y.get('excluded')]:
     L.append(f"| [`{x['run']}`]({DETAIL_NAME}#{anchor(x['run'])}) | {x['date']} | {x['label']} | "
              f"{x['profile']} | {x['users']} | {x['window']} | {x['inflight']} | "
              f"{x['indevices']} | {x['requests']} | {x['failed_pct']}% | {x['p95']} | "
-             f"{x['fullp95']} | {x['rps']} |")
+             f"{x['fullp95']} | {x['rps']} | `{x['injector']}` |")
 L.append("")
 # **The detail is a separate file, because the index has to stay readable.** One run contributes
 # a dozen rows of settings and environment, so at thirty runs this file would be four hundred
@@ -464,6 +475,17 @@ if _ex:
     L.append("Each carries a `provenance-correction.json` in its own prefix with the evidence, the "
              "cause and what it was recorded as. The runs' own `run-metadata.json` is left exactly "
              "as written.\n")
+
+# **Two injectors in one table is a comparability problem, not a detail.** Throughput is bounded
+# by whichever end saturates first, so a run driven from a different host -- more CPU, a different
+# network position -- can differ for a reason that has nothing to do with the server. Raised over
+# the whole table rather than per run, because no single row is at fault.
+_injectors = {x['injector_id'] for x in rows if x['injector_id']}
+if len(_injectors) > 1:
+    problems.append(("all runs", "these runs were driven from **more than one injector** — "
+                     + ", ".join(f"`{i}`" for i in sorted(_injectors))
+                     + ". Throughput is bounded by whichever end saturates first, so compare rows "
+                       "sharing an injector before comparing across them"))
 
 if problems:
     L.append("## Caveats on the runs above\n")
@@ -513,7 +535,9 @@ for r, link, meta, stats, sha7, corr in details:
         D.append(f"| server build | {at(meta,'target.serverBuild','—')} |")
         D.append(f"| dataset | {at(meta,'dataset','—')} |")
         D.append(f"| injector | {at(meta,'settings.injector.label','—')} "
-                 f"({at(meta,'settings.injector.os','—')}, {at(meta,'settings.injector.cpus','—')} cpu, "
+                 f"({at(meta,'settings.injector.os','—')}, java "
+                 f"{at(meta,'settings.injector.java','—')}, "
+                 f"{at(meta,'settings.injector.cpus','—')} cpu, "
                  f"heap {at(meta,'settings.injector.maxHeapMb','—')} MB) |")
         D.append(f"| injector RTT min / median ms | {at(meta,'settings.injector.rtt.minMillis','—')} / "
                  f"{at(meta,'settings.injector.rtt.medianMillis','—')} |")
