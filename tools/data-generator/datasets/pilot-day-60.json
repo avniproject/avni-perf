@@ -13,7 +13,7 @@
  "tenants": [
   {
    "name": "state-1",
-   "organisation_id": null,
+   "organisation_id": 10,
    "field_workers": 500,
    "field_workers_per_village": 3,
    "beneficiaries_per_village": 3000,
@@ -25,7 +25,7 @@
   },
   {
    "name": "state-2",
-   "organisation_id": null,
+   "organisation_id": 11,
    "field_workers": 500,
    "field_workers_per_village": 3,
    "beneficiaries_per_village": 3000,
@@ -37,7 +37,7 @@
   },
   {
    "name": "ngo-1",
-   "organisation_id": null,
+   "organisation_id": 12,
    "field_workers": 62,
    "field_workers_per_village": 3,
    "beneficiaries_per_village": 3000,
@@ -49,7 +49,7 @@
   },
   {
    "name": "ngo-2",
-   "organisation_id": null,
+   "organisation_id": 13,
    "field_workers": 62,
    "field_workers_per_village": 3,
    "beneficiaries_per_village": 3000,
@@ -61,7 +61,7 @@
   },
   {
    "name": "ngo-3",
-   "organisation_id": null,
+   "organisation_id": 14,
    "field_workers": 62,
    "field_workers_per_village": 3,
    "beneficiaries_per_village": 3000,
@@ -73,7 +73,7 @@
   },
   {
    "name": "ngo-4",
-   "organisation_id": null,
+   "organisation_id": 15,
    "field_workers": 62,
    "field_workers_per_village": 3,
    "beneficiaries_per_village": 3000,
@@ -85,7 +85,7 @@
   },
   {
    "name": "ngo-5",
-   "organisation_id": null,
+   "organisation_id": 16,
    "field_workers": 62,
    "field_workers_per_village": 3,
    "beneficiaries_per_village": 3000,
@@ -97,7 +97,7 @@
   },
   {
    "name": "ngo-6",
-   "organisation_id": null,
+   "organisation_id": 17,
    "field_workers": 62,
    "field_workers_per_village": 3,
    "beneficiaries_per_village": 3000,
@@ -109,7 +109,7 @@
   },
   {
    "name": "ngo-7",
-   "organisation_id": null,
+   "organisation_id": 18,
    "field_workers": 62,
    "field_workers_per_village": 3,
    "beneficiaries_per_village": 3000,
@@ -121,7 +121,7 @@
   },
   {
    "name": "ngo-8",
-   "organisation_id": null,
+   "organisation_id": 19,
    "field_workers": 62,
    "field_workers_per_village": 3,
    "beneficiaries_per_village": 3000,
@@ -134,7 +134,7 @@
  ],
  "enrolment_rate": 0.22,
  "program_encounter_share": 0.59,
- "notes": "E6 test case dataset. Two state tenants of 500 field workers, eight NGO tenants sharing 500, at day 60. Only encounter volume differs between the three; beneficiary population does not grow with programme activity. bundle_path and bundle_revision must be filled in before generating. A tenant may also carry its own bundle_path, which is how H1's 'cover the range of organisation size' is done -- config size drives the syncDetails row count -- without them this recipe cannot be reproduced. organisation_id is null on every tenant and must be filled in before generating. It held 1-10, which are not free: on the load environment 1 is the platform organisation, 3 the customer's, 9 a fixture and 10 the first state tenant. Those ids were placeholders from before any tenant was provisioned, and generating against them would have written a pilot dataset into four live organisations. Provision the ten tenants, dump refs.json, and record the ids the server assigned.",
+ "notes": "E6 test case dataset. Two state tenants of 500 field workers, eight NGO tenants sharing 500, at day 60. Only encounter volume differs between the three; beneficiary population does not grow with programme activity. bundle_path and bundle_revision must be filled in before generating. A tenant may also carry its own bundle_path, which is how H1's 'cover the range of organisation size' is done -- config size drives the syncDetails row count -- without them this recipe cannot be reproduced. Organisation ids recorded 6 Oct 2026, after provisioning: state-1 and state-2 already existed at 10 and 11, and ngo-1 to ngo-8 were created with the server assigning 12 to 19 -- read back from GET /organisation rather than inferred from the sequence. They held 1-10 before, which named four live organisations; see docs/execution-plan.md.",
  "schema_version": 1,
  "tenant_bundle_fingerprints": {}
 }

@@ -495,23 +495,33 @@ def test_a_recipe_without_organisation_ids_refuses_to_build():
 
     src = json.loads((P(__file__).resolve().parents[1]
                       / "datasets" / "pilot-day-180.json").read_text())
-    assert all(t["organisation_id"] is None for t in src["tenants"]), \
-        "the committed pilot recipe must not carry organisation ids"
 
-    r = recipe_mod.Recipe.load(P(__file__).resolve().parents[1]
-                               / "datasets" / "pilot-day-180.json")
+    # Emptied here rather than asserted on the committed file: those ids are filled in now that
+    # the ten tenants exist (6 Oct 2026), which is the state this refusal was built to reach. The
+    # mechanism is what needs a test, and it has to keep working for the next recipe written
+    # before its organisations are provisioned.
+    blank = dict(src, tenants=[dict(t, organisation_id=None) for t in src["tenants"]])
+    bf = P(tempfile.mkdtemp()) / "blank.json"
+    bf.write_text(json.dumps(blank))
+    r = recipe_mod.Recipe.load(bf)
     assert len(r.unassigned_organisations()) == 10
     with pytest.raises(ValueError, match="no organisation_id"):
         r.to_deployment()
 
-    # Filled in, it builds.
-    for i, t in enumerate(src["tenants"]):
-        t["organisation_id"] = 2100 + i
+    # Filled in, it builds -- and the committed one is, so it builds as it stands.
     f = P(tempfile.mkdtemp()) / "filled.json"
     f.write_text(json.dumps(src))
     filled = recipe_mod.Recipe.load(f)
     assert filled.unassigned_organisations() == []
     assert len(filled.to_deployment().tenants) == 10
+
+    # Half-filled is the dangerous middle, and is refused too.
+    half = dict(src, tenants=[dict(t, organisation_id=None if i < 5 else t["organisation_id"])
+                              for i, t in enumerate(src["tenants"])])
+    hf = P(tempfile.mkdtemp()) / "half.json"
+    hf.write_text(json.dumps(half))
+    with pytest.raises(ValueError, match="no organisation_id"):
+        recipe_mod.Recipe.load(hf).to_deployment()
 
 
 def test_every_committed_recipe_either_has_real_ids_or_none():

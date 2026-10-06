@@ -237,9 +237,16 @@ them rather than defaulting — a default here is a guess at which organisation 
 half-filled recipe is refused too, since it would generate for the tenants that have ids and skip
 the question for the rest.
 
-**What remains** is the part a commit cannot do: provision the ten tenants, install the bundle in
-each, re-dump `refs.json`, and record the ids the server assigned. `states-day-180` is the shape
-to follow — it was re-targeted to the real 10 and 11 once those existed.
+**Provisioned 6 Oct 2026.** `state-1` and `state-2` already existed at 10 and 11; `ngo-1` to
+`ngo-8` were created and the server assigned **12 to 19**, read back from `GET /organisation`
+rather than inferred from the sequence. Each carries the full bundle, verified against the
+bundle's own JSON by `provision-org.sh` step 5: 39 form mappings, 2 subject types, 16 encounter
+types, 406 concepts, in all eight. The four pilot recipes now hold those ids and build.
+
+**Still outstanding before the ten-tenant cases can run:** `refs.json` has to be re-dumped, since
+it carries only organisations 1, 3, 9, 10 and 11 and the generator refuses a tenant missing from
+it. `provision-org.sh` prints a grant for each new `db_user` which may be needed if reads fail
+with `permission denied for table users`.
 
 **The co-tenant datasets are the gap in that arithmetic.** Cases 6, 7, 12 and 13 need 513 further
 organisations present — the ones of Q12's 986 that hold data. The other 473 would be bare
