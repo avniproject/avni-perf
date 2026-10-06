@@ -183,7 +183,18 @@ for r in runs:
     # The run id is this repo's own construction: <utc>-<label>-<sha7>. It is
     # reliable even when a run died before the harness wrote metadata.
     m = re.match(r'(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-\d{2}Z-(.+)-([0-9a-f]{7})$', r)
-    date  = f"{m.group(1)} {m.group(2)}:{m.group(3)}" if m else ''
+    # **Shown in IST, because that is when the people who ran it were in the room.** The run id
+    # stays UTC and is the identifier; this column is for reading, and a reader reconciling a row
+    # against a Slack message or a CloudWatch graph they opened at the time is doing arithmetic in
+    # their head otherwise. +5:30 crosses a date boundary for anything before 18:30 UTC, so the
+    # date is converted with the time rather than carried over from the id.
+    if m:
+        _utc = datetime.datetime.strptime(f"{m.group(1)}T{m.group(2)}:{m.group(3)}",
+                                          "%Y-%m-%dT%H:%M").replace(tzinfo=datetime.timezone.utc)
+        date = _utc.astimezone(datetime.timezone(datetime.timedelta(hours=5, minutes=30))) \
+                   .strftime('%Y-%m-%d %H:%M')
+    else:
+        date = ''
     run_label = m.group(4) if m else r
     sha7  = m.group(5) if m else '?'
 
@@ -345,8 +356,23 @@ for r in runs:
     # 6 Oct 2026, which recorded no split at all.
     fullp95 = f"{syncs['full_p95']:.1f}" if syncs and 'full_p95' in syncs else '—'
 
+    # **A run the record says is not a measurement comes out of the table.**
+    #
+    # Two runs of 5 Oct were started against a JVM under three minutes old and lost roughly two
+    # thirds of throughput to it. Caveats alone were not enough: they still occupied rows between
+    # runs of the same case and window, so the table read as though a 60 s window had produced
+    # both 18.43 and 52.44 rps, and the reader had to reach the footnotes to learn it had not.
+    # They are listed below the table instead, with what is wrong with them, because they are the
+    # evidence for the cold-start finding and deleting them would cost that.
+    #
+    # Driven by a `notMeasurement` key in the prefix's own provenance-correction.json rather than
+    # by anything this script knows, so marking a run is an additive edit to the append-only
+    # record and not a change here.
+    excluded = (corr or {}).get('notMeasurement')
+
     rows.append(dict(
         run=r, date=date, label=label, indevices=indevices, syncs=syncs, fullp95=fullp95,
+        excluded=excluded,
         profile=at(meta,'settings.injection.profile','—'),
         users=at(meta,'settings.injection.userCount','—'),
         mode=at(meta,'settings.sync.syncMode','—'),
@@ -359,7 +385,8 @@ for r in runs:
     ))
     details.append((r, link, meta, stats, sha7, corr))
 
-now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+now = datetime.datetime.now(
+    datetime.timezone(datetime.timedelta(hours=5, minutes=30))).strftime('%Y-%m-%d %H:%M IST')
 INDEX_NAME = pathlib.Path(out).name
 DETAIL_NAME = pathlib.Path(out).stem + "-detail" + pathlib.Path(out).suffix
 
@@ -379,6 +406,12 @@ L.append("**Do not edit by hand.** Rewritten wholesale on every run of that scri
          "artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a "
          "view of it. An edit here is lost on the next refresh; a run missing from this table "
          "means its upload did not happen, not that the log is stale.\n")
+# Said once, here, rather than left to the reader to notice: the two are 5h30m apart and both
+# appear in every row, so a row looks internally inconsistent until you know which is which.
+L.append("**Times are IST; run ids are UTC.** The id is the identifier and keeps the `Z` it was "
+         "minted with — `...T11-37-03Z...` is the 17:07 row. Dates are converted with the time, "
+         "so anything before 18:30 UTC lands on the same IST day but a late-evening run will "
+         "not.\n")
 L.append("Artefacts are **not** copied into the repo. Each run directory holds Gatling's "
          "`simulation.log`, the HTML report and `run-metadata.json`, plus the environment "
          "context captured at run time — `parity-report.md`, `pg_settings.csv`, `stats.json` — "
@@ -391,10 +424,10 @@ L.append("Findings drawn from these runs are written up separately, by hand, in 
 # server's queue depth, exact from `rps x mean`, and it is what p95 responds to. Devices in flight
 # is the scenario's narrative -- how much of the cohort is mid-sync -- and needs the archived
 # per-sync durations, so it is blank for runs before 5 Oct 2026 rather than guessed at.
-L.append("| run | date | scenario | profile | users | arrival window | ~requests in flight "
+L.append("| run | date (IST) | scenario | profile | users | arrival window | ~requests in flight "
          "| ~devices in flight | requests | failed | p95 ms | full sync p95 s | rps |")
 L.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
-for x in rows:
+for x in [y for y in rows if not y.get('excluded')]:
     # The run id links to its detail section rather than to S3: the bucket is where the
     # artefacts are, and the detail file is where a reader can actually look something up.
     # The S3 prefix is one line down in that section.
@@ -411,6 +444,26 @@ L.append("")
 # it tells the reader where to go next, and the caveats below are about the table above it.
 L.append(f"Per-run settings and environment are in [`{DETAIL_NAME}`]({DETAIL_NAME}), linked "
          "from each run id in the table.\n")
+
+# Excluded runs carry their own section with the full reason, so repeating their caveats under a
+# heading that says "the runs above" would point at rows that are no longer there.
+_excluded_ids = {y['run'] for y in rows if y.get('excluded')}
+problems = [(r, why) for r, why in problems if r not in _excluded_ids]
+
+_ex = [y for y in rows if y.get('excluded')]
+if _ex:
+    L.append("## Runs that are not measurements\n")
+    L.append("Kept rather than deleted — these are the evidence for a finding of their own — but "
+             "out of the table above, because a row beside comparable runs reads as comparable:\n")
+    L.append("| run | date (IST) | arrival window | rps | p95 ms | why it is not a measurement |")
+    L.append("|---|---|---|---|---|---|")
+    for x in _ex:
+        L.append(f"| [`{x['run']}`]({DETAIL_NAME}#{anchor(x['run'])}) | {x['date']} | "
+                 f"{x['window']} | {x['rps']} | {x['p95']} | {x['excluded'].get('reason','—')} |")
+    L.append("")
+    L.append("Each carries a `provenance-correction.json` in its own prefix with the evidence, the "
+             "cause and what it was recorded as. The runs' own `run-metadata.json` is left exactly "
+             "as written.\n")
 
 if problems:
     L.append("## Caveats on the runs above\n")

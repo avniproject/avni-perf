@@ -118,7 +118,10 @@ three points is the reason to trust either.
 ## A restarted server delivers a third of its warm throughput
 
 The runs at 11:37 and 11:41 were started seven minutes after the environment came back from a
-stop/start. They are in `run-log.md`, and they are not comparable to anything above:
+stop/start. They are listed under "Runs that are not measurements" in `run-log.md` — out of the
+table, because a row beside comparable runs reads as comparable — and each carries a
+`provenance-correction.json` in its own prefix recording what it asserted and what was true. They
+are not comparable to anything above:
 
 | 60 s window | cold | warm, 20 min later | this morning |
 |---|---|---|---|
