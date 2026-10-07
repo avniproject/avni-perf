@@ -3,6 +3,7 @@
  "days": 365,
  "reference_date": "2026-09-18",
  "seed": 42,
+ "id_base": 201000000,
  "profile": "production-2026-09",
  "bundle_path": "<set to the implementation bundle for the run>",
  "bundle_revision": null,
