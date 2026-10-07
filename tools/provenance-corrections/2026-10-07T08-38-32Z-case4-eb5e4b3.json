@@ -1,0 +1,22 @@
+{
+  "notMeasurement": {
+    "reason": "the feeder listed all 501 field workers before the first supervisor at row 502, and `circular()` reached only 187 rows in four hours, so this sampled one role and re-measured case 2 rather than case 4's mix — 60.8 s mean and 10,838 records against case 2's 60.8 s and 10,831, serverMs 6% in both. Case 4 needs re-running against the proportionally ordered feeder",
+    "evidence": {
+      "syncsPerformed": 187,
+      "feederRows": 561,
+      "firstSupervisorAtRow": 502,
+      "rolesReached": ["field_worker"],
+      "case2Comparison": {
+        "durationMeanSeconds": {"case4": 60.8, "case2": 60.8},
+        "recordsPulled": {"case4": 10838, "case2": 10831},
+        "serverMsShare": {"case4": "6%", "case2": "6%"}
+      }
+    },
+    "cause": "generate.py emits tenant by tenant and role by role, and circular() walks the file in order. When a case performs fewer syncs than the feeder has rows, role and tenant composition becomes a function of file order. Nothing in the result shows it.",
+    "recordedAs": "case 4 — one state tenant, field workers and supervisors",
+    "actuallyMeasured": "one state tenant, field workers only",
+    "fixedIn": "72640c5 — each row placed at (k + 0.5) / n within its own (tenant, role) stratum, so any prefix carries each stratum in proportion",
+    "alsoAffected": "case 5 (281 syncs would have reached 1 of 10 tenants and no supervisors) and case 8 (reuses case 4's feeder). Neither had run.",
+    "correctedOn": "2026-10-07"
+  }
+}
