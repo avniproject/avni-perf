@@ -1,29 +1,54 @@
 # Provenance corrections
 
-One file per corrected run, named for its run id. Each is a copy of the
-`provenance-correction.json` that sits in that run's own artefacts prefix.
+**S3 is the source of truth; these are what gets uploaded.** `update-run-log.sh` reads a
+`provenance-correction.json` from each run's own prefix in the artefacts bucket, so a correction is
+an additive edit to an append-only record rather than a change to the script or to the run's
+`run-metadata.json`, which is left exactly as written.
 
-**S3 is authoritative, this directory is the record.** The prefix is append-only
-by IAM and a run's `run-metadata.json` is never rewritten — editing a completed
-run's own record to say something it did not say would falsify it — so a field
-found to be wrong afterwards is corrected alongside it. `update-run-log.sh`
-reads the S3 copy, not this one.
+One file per run, named for the run id:
 
-What this directory adds is that a correction becomes reviewable. Written only
-to S3, the file explains itself to anyone who goes looking, but nothing in the
-repo says a correction was ever made, and the reasoning never passes through
-review.
+    aws s3 cp tools/provenance-corrections/<run-id>.json \
+      s3://avni-loadtest-936573213727/artefacts/<run-id>/provenance-correction.json
+    make run_log
 
-Every file here was verified byte-identical to its S3 object when committed.
+## Two kinds of claim, and they are not interchangeable
 
-| run | what was corrected |
-|---|---|
-| `2026-10-05T08-38-47Z-case1-f76d110` | harness commit recorded as `unknown` and the tree as dirty. The tarball delivery strips `.git`, so `git rev-parse` found nothing and the dirty check read its own "unknown" as uncommitted changes. Provenance only — the run is sound and stays in the table. |
-| `2026-10-05T11-37-03Z-case1-burst60-d9eac3e` | **not a measurement.** Started 2m49s after the app server's JVM; 18.43 rps against 50.00 warm, nine timeouts. |
-| `2026-10-05T11-41-10Z-case1-burst15-d9eac3e` | **not a measurement.** Same cold JVM, 6m56s old; 30.94 rps against 56.58. |
-| `2026-10-06T04-55-47Z-case1-burst75-e7a130d` | **not a measurement.** The RDS-managed secret had rotated 32 minutes earlier and the server held the old password, so new pooled connections failed with HTTP 500. |
-| `2026-10-07T08-38-32Z-case4-eb5e4b3` | **not a measurement.** The feeder lists 501 field workers before the first supervisor at row 502 and `circular()` reached 187 rows, so it re-measured case 2 rather than case 4's mix. |
+**`notMeasurement` — the run is not what it claims to be.** The row leaves the main table and
+appears under *Runs that are not measurements* with its reason, because a row standing beside
+comparable runs reads as comparable. Kept rather than deleted: two of these are the evidence for
+the cold-start finding, and case 4's is the evidence that a role-ordered feeder re-measured case 2.
 
-A `notMeasurement` key moves the run out of the main table in `run-log.md` and
-into "Runs that are not measurements", with its reason in the row. Without that
-key the correction is provenance only and the run stays where it is.
+```json
+{"notMeasurement": {"reason": "one sentence, lower case, no full stop — it lands in a table cell"}}
+```
+
+**`actual` — the run is sound and its record is wrong.** The row stays in the main table; the
+corrected value is shown in `run-log-detail.md` as **corrected**, beside what the run recorded, and
+a caveat on `run-log.md` points at this file. The first case 1 run is the example: the injector
+receives the harness as a `git archive` tarball with no `.git`, so `git rev-parse` failed and
+`archiveRun` wrote `gitSha=unknown` with `gitDirty=true` — a missing value and a false positive on
+a run that was in fact clean at `f76d110`.
+
+```json
+{"actual": {"simulation.gitSha": "<full sha>", "simulation.gitDirty": false}}
+```
+
+**A run can need both**, and nothing stops one file carrying both keys. Reach for `notMeasurement`
+only when the numbers do not describe what the case says they describe — a wrong sha is not that.
+
+## What the script reads, and what the rest is for
+
+Only `notMeasurement.reason`, `actual.simulation.gitSha` and `actual.simulation.gitDirty` reach the
+run log. Every other key in these files — the evidence, the cause, what the run actually measured,
+the commit that fixed it — is read by people rather than by the script, and that is the point: the
+reason text surfaces as one table cell, and without the rest a reader finding this run in six
+months has the verdict and none of the working.
+
+## Why a copy lives here
+
+A correction asserts that a run is not what it claims to be, which is worth reviewing in a diff
+rather than taking on trust from a bucket.
+
+**The risk is drift, and it runs one way:** a file edited here and not re-uploaded changes nothing,
+while S3 keeps the old text and the run log keeps rendering it. Upload on the same change that
+edits one.
