@@ -67,6 +67,11 @@ catchment of this size; the implied consistency is an artefact. A dataset with v
 would answer "what does the worst catchment cost", which is the question an operations team
 actually asks, and nothing here answers it.
 
+Case 3 since has that spread, for a different reason: supervisors cover Talukas, which hold
+different numbers of villages, so its 60 syncs range from 21,556 to 43,288 records and 121 s to
+223 s. See [`findings-case3.md`](findings-case3.md). The uniformity is a property of the village
+layer, not of the generator everywhere.
+
 ## What this does not measure
 
 * **No push.** A re-enrolled device has nothing local to push, so this is correct for the case —
