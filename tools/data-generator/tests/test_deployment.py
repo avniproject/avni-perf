@@ -98,13 +98,23 @@ def test_a_tenant_with_almost_nothing_still_gets_room():
 
 def test_the_whole_co_tenant_set_fits_where_one_tenant_used_to():
     """The point of sizing per tenant. 513 organisations at a flat 100,000,000 reached 51.3
-    billion; sized to their rows they need less id space than the old stride gave one of them."""
+    billion; sized to their rows they need less id space than the old stride gave one of them.
+
+    **The quantity is the span, not the top.** This compared `max(plan_ids)` against ID_STRIDE
+    directly, which was the same number only while the recipe had no `id_base`. e936944 gave it
+    301,000,000 -- to keep it clear of the pilots, which share the database with it in Block B --
+    and the test began reporting a 311 million "reach" that is 301 million of base and 10 million
+    of actual claim.
+    """
     import recipe as recipe_mod
     from pathlib import Path as P
-    d = recipe_mod.Recipe.load(
-        P(__file__).resolve().parents[1] / "datasets" / "co-tenants-day-180.json").to_deployment()
-    top = max(dep.plan_ids(d).values())
-    assert top < dep.ID_STRIDE, f"513 co-tenants reach {top:,}"
+    r = recipe_mod.Recipe.load(
+        P(__file__).resolve().parents[1] / "datasets" / "co-tenants-day-180.json")
+    d = r.to_deployment()
+    span = max(dep.plan_ids(d).values()) - r.id_base
+    assert span < dep.ID_STRIDE, (
+        f"513 co-tenants span {span:,} from a base of {r.id_base:,}, which is more id space than "
+        f"the old flat stride gave a single tenant")
 
 
 def written_cols(out, table):

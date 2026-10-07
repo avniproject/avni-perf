@@ -444,7 +444,23 @@ def test_a_location_type_uuid_absent_from_the_organisation_is_reported():
     assert any("alt-nowhere" in str(m[0]) for m in missing)
 
 
-def test_committed_recipes_claim_disjoint_id_bands():
+# Datasets that are alternatives for the same slot, never in the database together: the growth
+# points swap in and out of Block C, span 20 reloads over span 8.4 in Block A', and
+# states-day-180 was what the pilot replaced. They may share an id_base, and sharing one is worth
+# more than separating them -- loading day 60 over an uncleared day 180 then dies on a primary key
+# within seconds, where disjoint bands would let the two merge silently into one database holding
+# a growth point that was never generated.
+MUTUALLY_EXCLUSIVE = {
+    frozenset({"states-day-180.json", "pilot-day-60.json", "pilot-day-120.json",
+               "pilot-day-180.json", "pilot-day-365.json", "pilot-day-180-span20.json"}),
+}
+
+
+def _may_share_a_band(a: str, b: str) -> bool:
+    return any({a, b} <= group for group in MUTUALLY_EXCLUSIVE)
+
+
+def test_recipes_that_share_a_database_claim_disjoint_id_bands():
     """Two recipes loaded into one database must not allocate the same primary keys.
 
     **`plan_ids` guarantees disjointness within a deployment and says nothing across
@@ -452,6 +468,14 @@ def test_committed_recipes_claim_disjoint_id_bands():
     their first tenants wanted the same ids in the same database. The load fails fast --
     address_level is the first non-empty table, so it dies within seconds inside its transaction
     rather than hours in -- but the collision is only visible once someone tries.
+
+    **Only pairs that can be co-resident are checked (revised 7 Oct 2026).** This asserted
+    disjointness across every committed recipe, which was true while the pilots had no id_base and
+    were skipped. e936944 gave all six the same one, and the test failed on pairs that are
+    alternatives rather than neighbours -- `pilot-day-60` against `states-day-180` is not a
+    database, it is two ways of filling the same organisations. The pair that *is* co-resident is
+    co-tenants against the customer's own tenants, in Block B, and that is the one this protects:
+    301,000,000 against the pilots' 201,000,000 to 222,841,600.
 
     Recipes that leave id_base unset are skipped: they have not claimed a band, and the run that
     uses one has to choose.
@@ -467,14 +491,34 @@ def test_committed_recipes_claim_disjoint_id_bands():
         if not r.id_base:
             continue
         d = r.to_deployment()
-        top = max(dep.plan_ids(d).values()) + dep.ID_STRIDE
+        # **The real top, not a padded one.** This added a whole ID_STRIDE to the last tenant's
+        # *base* as a stand-in for its band. That is a 100,000,000 over-estimate of something
+        # worth about 7,000,000, and once every recipe carried an id_base the padding alone made
+        # co-tenants at 301,000,000 appear to collide with a pilot topping out at 204,590,400.
+        # plan_ids gives each tenant its base; band_width gives what it consumes from there.
+        bases = dep.plan_ids(d)
+        top = max(bases[t.organisation_id] + dep.band_width(t, d.days) for t in d.tenants)
         claimed.append((r.id_base, top, path.name))
 
     claimed.sort()
-    for (lo, hi, name), (next_lo, _, next_name) in zip(claimed, claimed[1:]):
-        assert hi <= next_lo, (
-            f"{name} claims {lo:,}..{hi:,} and {next_name} starts at {next_lo:,}; "
-            f"loading both into one database collides on the primary key")
+    for lo, hi, name in claimed:
+        for next_lo, next_hi, next_name in claimed:
+            if name >= next_name or _may_share_a_band(name, next_name):
+                continue
+            if lo < next_hi and next_lo < hi:
+                raise AssertionError(
+                    f"{name} claims {lo:,}..{hi:,} and {next_name} claims "
+                    f"{next_lo:,}..{next_hi:,}; they overlap, and nothing says they cannot be "
+                    f"loaded into one database")
+
+
+def test_the_exclusivity_list_names_recipes_that_exist():
+    """**An exclusivity entry is a licence to collide, so a stale one is a hole.** Rename a recipe
+    and its name stops matching; the pair silently stops being checked rather than failing."""
+    names = {p.name for p in (Path(__file__).resolve().parents[1] / "datasets").glob("*.json")}
+    for group in MUTUALLY_EXCLUSIVE:
+        missing = sorted(n for n in group if n not in names)
+        assert not missing, f"exclusivity group names recipes that no longer exist: {missing}"
 
 
 def test_a_recipe_without_organisation_ids_refuses_to_build():

@@ -702,17 +702,112 @@ part of this that is an assumption rather than arithmetic.**
 > inside int4 — but it also needs rows emitted in day order so the smaller sets are genuine
 > prefixes. That is a generator change with real risk to save roughly an hour.
 
+> **Revised 7 Oct 2026, after cases 1, 2, 3, 14 and 4.** Five runs in, two things are settled that
+> this schedule was written without.
+>
+> **Only case 1 has ever loaded the server, and it did it by concentration alone.** Same 100 users
+> and same 4,300 requests every time; only the arrival window moved:
+>
+> | window | rps | req in flight | p95 |
+> |---|---|---|---|
+> | 900 s | 4.8 | 0.2 | 200 ms |
+> | 180 s | 22.8 | 1.0 | 196 ms |
+> | 90 s | 43 | 3.2 | 376 ms |
+> | 60 s | 52 | 22 | 2,242 ms |
+> | 15 s | 57 | 71 | 6,768 ms |
+>
+> Throughput flattens near **50 rps** while p95 rises 34x. Every steady case sits two orders of
+> magnitude below that — case 2 at 0.2 rps, case 3 at 0.32, case 14 at 0.54, all under 340 ms p95
+> with the app server at ~2.1% CPU. **And the unrun cases do not get close**: at measured
+> requests-per-sync, case 5 projects to ~0.7 rps, case 11 to ~8.9, and case 13 — the heaviest in
+> the plan — to ~13, about a quarter of a ceiling that 100 users crossed in a 60-second burst.
+>
+> **Four changes follow.**
+>
+> **1. Case 9 moves up, and the ceiling it looks for is not the one case 1 found.** Case 1 pulls
+> config only; the *data-path* ceiling is unmeasured, and case 9 is the only case that can find it.
+> It was scheduled last so the unstressed shape would be known first — cases 2, 3, 4 and 14 have
+> now established it, so that condition is met and the reason to keep it last is gone.
+>
+> **2. A cluster tighter than an hour.** Cases 11–13 compress a day into an hour and still only
+> reach 9–13 rps. The real analogue of case 1's burst — a shift ending, signal returning, a
+> training cohort — concentrates the cohort into minutes. **Case 11 at a 15-minute window** lands
+> near 35 rps, which is where the interesting behaviour starts, and costs 15 minutes.
+>
+> **3. Case 5 need not run four hours to say nothing.** Two hours is already more than enough to
+> establish a rate that three runs have independently put at idle. Case 10 keeps its twelve hours:
+> its subject is bloat and autovacuum drift over time, not load.
+>
+> **4. Stop quoting total sync duration as a server result until D7 lands.** 93–94% of every
+> headline figure — case 14's 80 s, case 3's 223 s — is `pausedMs`, modelled from records pulled
+> and never measured on a device. Report `serverMs` and record counts as findings and label the
+> totals as modelled. **The run that fixes this is first thing tomorrow; see below.**
+
 | Day | Block | Cases | Why here |
 |---|---|---|---|
 | **12** | A | **1** (training cohort, 30 min), **14** (full sync, 90 min), then **2** (field workers, 4 h) | Case 1 is config-only and the cheapest real load. 14 next because it pulls only — neither it nor case 1 mutates anything, so both are free before the first pushing run. Case 2 is the common case and the baseline everything else is read against |
 | **13** | A | **3** (supervisors, 2 h driven) and **4** (combined, 4 h) | Case 4 is *the* realistic case. Case 3 first so its per-device cost is known before the mix |
-| **14** | A | **5** (ten tenants, 2 h) and **11** (clustered, 1 h) | Both are separate-hosting, so they run before the co-tenants exist. 11 is case 5's day compressed into an hour; the sync window is unconfirmed and these are the two ends of the bracket |
+| **14 · first** | — | **D7 — the client storage measurement**, on a device or emulator, Realm and SQLite | Before any measured run, while the box is otherwise idle: it drives one device, so it neither needs nor disturbs a quiet server. First because every finding after it is qualified until it lands |
+| **14** | A | **5** (ten tenants, **2 h**) and **11** (clustered, 1 h), then **11 again back to back, no reset** | Both are separate-hosting, so they run before the co-tenants exist. 11 is case 5's day compressed into an hour. The repeat is the block-strategy validation this document already calls its one assumption — two hours to de-risk three blocks |
 | **14–15** | A | **10** (soak, 12 h, overnight) | Needs the instance to itself. Case 4's load sustained, so the block's residue is immaterial to it |
-| **15** | A | **9** (stress ramp, until it breaks) | Last in the block: the knee is only interpretable once the unstressed shape is known, and whatever it leaves behind is cleared by Block B's reset |
+| **15** | A | **11 at a 15-minute window** (15 min), then **9** (stress ramp, until it breaks) | The 15-minute cluster projects to ~35 rps, nearer case 1's knee than anything else in the plan. 9 follows because it is the only case that finds the *data-path* ceiling, and whatever it leaves behind is cleared by Block B's reset |
 | **16** | B | **Provision 513 organisations** and import each one's archetype bundle, re-dump `refs.sql`, generate and load the co-tenant data, then **6** (2 h) and **7** (2 h). Analyse 5/6/7 together | 5 -> 6 is the cost of their presence, 6 -> 7 the cost of their activity. The reset is what makes 6 comparable with 5 |
 | **17** | B | **12** and **13** (clustered, 1 h each) | The same two tenancy shapes with the day compressed. No reset: 12 and 13 are read against 11 and against each other |
 | **18–19** | C | **8** (growth, 2 h x 3 — day 60, 120, 365) | Three dataset loads, one per point. Day 180 reuses case 4, so all four recipes are pinned at span 8.4 and the curve varies encounter volume alone |
 | **20** | A′ | Reload `pilot-day-180-span20`, split it with `--variant span20`, re-run **3**, **4**, **5** | The span sweep's other end. Last because it answers a sensitivity rather than a target, and because it is the day Block B's reset borrows if Day 9's projection was wrong — see below |
+
+### D7 — the client storage measurement, first thing on Day 14
+
+**93–94% of every sync figure this exercise reports is a model.** `pausedMs` is computed from
+records pulled; `baseMsPerRecord` is 0.61 and the simulation says plainly what it is — *"derived
+from the ceiling rather than measured … a deliberate upper bound"*, chosen to put the heaviest
+possible page just under `MAX_STORAGE_PAUSE_MS`. Case 14's 80 s and case 3's 223 s rest on it.
+
+**The real client already measures the right quantity, and the loadtest environment can be its
+target.** `sync-simulation-plan.md` has D7 *"waiting on fleet rollout and data accumulation"*; it
+need not be. One device against this environment answers it in an afternoon, because avni-client
+18.0 records per entity, per page:
+
+| field | source | what it is |
+|---|---|---|
+| `networkMs` | `requests.js` | fetch through response text — network and server |
+| `parseMs` | `requests.js` | `JSON.parse` alone, deliberately: *"text() then JSON.parse rather than json(), so parseMs is the parse and nothing else"* |
+| `persistMs` | `SyncService.persistAll` | transform and write, *"taken after the batch path's await, so persistMs covers the write on either backend"* |
+| `numberOfPulledEntities` | same dispatch | records in that page |
+
+So the comparison is **`(parseMs + persistMs) / numberOfPulledEntities`** against `StorageProfiles`
+for the five observation-bearing entities and 0.61 for the rest — per entity, where the model has
+one aggregate. `networkMs` is excluded deliberately: the simulation pays network and server for
+real, and folding them into a pause is the double-count the `baseMsPerRecord` comment attributes to
+Q1. These accumulate into `SyncTelemetry`, which syncs to the server, so the readout is a query
+against `sync_telemetry` rather than anything pulled off the device.
+
+**Why 18.0 and not 17.3.** 17.3 is Realm-only; 18.0 opens both engines and chooses per user —
+`computeDesiredBackend()` returns SQLite only for members of the `SQLite Migration` group. One
+build and two users therefore measure both engines against the same server, the same dataset and
+the same client code, where two branches would confound the storage engine with every other
+difference between releases. 18.0 is also one models patch from 17.3 (1.33.84 against 1.33.83), and
+**`EntityMetaData.js` is byte-identical across 1.33.81 to 1.33.86** — so the entity set matches the
+harness's own table of 79 entities with 75 pulled, and per-record figures compare directly to cases
+2, 3 and 14.
+
+**Three things must be in place before the environment comes up, or this slips a day:**
+
+1. **The operator's address in the security group.** The application port is allowlisted to the
+   injector alone, and deliberately — under `AVNI_IDP_TYPE=none` anyone who can reach it is
+   authenticated as whatever username they send. Add the one address, not an open rule.
+2. **A `SQLite Migration` group containing the second test user**, which is what flips the backend.
+3. **Two users chosen from the pilot** — a field worker and a supervisor, roughly 10,800 and 30,000
+   records, the two the model currently claims 80 s and 223 s for.
+
+No client code changes are needed: `AuthService` returns `stubbedAuthService` under
+`IDP_PROVIDERS.NONE`, which accepts any password and sends the username as `USER-NAME`, and the
+server URL is a settings field.
+
+**What it decides.** If the measured per-record cost is near the model, four findings documents
+stand as written. If it is not, their headline durations are wrong by whatever the gap is, and the
+server-side numbers — `serverMs`, records, p95 — are the only part that survives. Either way it is
+one morning, and every case after it is read differently.
 
 > **The supervisor span is the outermost loop, and it is settled at two points.** Blocks A, B and
 > C above all run on `pilot-day-180` — span **8.4**, Q13's measured establishment. Block A′ repeats

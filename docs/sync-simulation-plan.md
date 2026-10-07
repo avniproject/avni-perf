@@ -1068,9 +1068,17 @@ sync at `PARALLEL_DOWNLOAD_COUNT = 1`) are signed or direct.
 **D6 — Interim weighted storage pause.** Replace the uniform constant with a per-entity weight table
 scaled by page record count. Concrete task, detailed below.
 
-**D7 — Measured storage cost model.** *Shipped upstream, deferred here.* Replace the weight table's
+**D7 — Measured storage cost model.** *Scheduled: Day 14, first thing.* Replace the weight table's
 estimates with measured coefficients. Detailed below — **the telemetry it needs is in avni-client
-17.3**, so this is now waiting on fleet rollout and data accumulation rather than on anyone's work.
+17.3**.
+
+> **It is not waiting on fleet rollout (revised 7 Oct 2026).** This read "waiting on fleet rollout
+> and data accumulation rather than on anyone's work", which assumed the measurement could only
+> come from production. It can come from one device or emulator pointed at the loadtest
+> environment, which authenticates on a `USER-NAME` header and holds a known dataset — so the
+> record counts are chosen rather than waited for. Build 18.0 rather than 17.3, because it carries
+> both storage engines and selects between them per user, and the entity set is identical.
+> `docs/execution-plan.md` has the method, the readout and the three prerequisites.
 
 **D8 — Page size is wrong by 10×.** The client ships `pageSize: 1000`
 (`packages/openchs-android/config/initialSettings.json`); the simulation defaults `PAGE_SIZE` to 100.
