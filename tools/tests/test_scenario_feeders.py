@@ -188,3 +188,101 @@ def test_a_variant_that_is_not_a_file_name_fragment_is_refused(tmp_path):
             code = exit.code
         assert code == 2, bad
     assert not list(tmp_path.glob("case*"))
+
+
+# --- a run consumes a prefix, not the file ----------------------------------
+
+def _mixed(tenants=10, workers=50, supervisors=6):
+    """Blocked the way generate.py emits: tenant by tenant, role by role."""
+    rows = []
+    for t in range(10, 10 + tenants):
+        rows += [{"organisationUUID": f"org-{t}", "role": "field_worker"} for _ in range(workers)]
+        rows += [{"organisationUUID": f"org-{t}", "role": "supervisor"} for _ in range(supervisors)]
+    return rows
+
+
+def test_any_prefix_carries_every_tenant_and_role_in_proportion():
+    """**This is the whole point of the ordering.** `circular()` walks the file in order, so a run
+    performing fewer syncs than the feeder has rows reaches only a prefix of it.
+
+    **The guarantee is asymptotic, and it has to be.** Each row sits at (k + 0.5) / n within its
+    own stratum, so a stratum of 6 members in a 560-row file appears about every 93 rows. A
+    20-row prefix cannot hold 2.1 of them whatever the ordering does -- the smallest prefix that
+    can represent a stratum is the spacing between its members. The cases draw 94 syncs and up,
+    which is comfortably past that, so the test asserts over the range that is real rather than a
+    bound no ordering could meet.
+    """
+    out = sf.interleave(_mixed())
+    total_sup = sum(1 for r in out if r["role"] == "supervisor")
+    # One stratum contributes at most one row of rounding error, and the supervisors here are ten
+    # strata -- one per tenant. That is the bound; in practice it comes in far under, which the
+    # committed-feeder test below pins at the prefixes the cases actually draw.
+    strata = len({r["organisationUUID"] for r in out})
+    for n in (94, 187, 281, 400):
+        head = out[:n]
+        sup = sum(1 for r in head if r["role"] == "supervisor")
+        expected = n * total_sup / len(out)
+        assert abs(sup - expected) <= strata, (
+            f"prefix {n}: {sup} supervisors, expected ~{expected:.1f}")
+        assert len({r["organisationUUID"] for r in head}) == 10, (
+            f"prefix {n} does not reach all ten tenants")
+
+
+def test_the_case_4_and_case_5_regressions_specifically():
+    """**Case 4 measured case 2 and nobody could see it from the result.** 187 syncs against 501
+    field workers followed by 60 supervisors never reached row 502, so "one state tenant, both"
+    returned 60.8 s and 10,838 records against case 2's 60.8 s and 10,831. Case 5 would have been
+    worse: 281 syncs against a file opening with 561 rows of one tenant, for the ten-tenant
+    separate-hosting baseline that cases 6 and 7 are read against."""
+    rows = _mixed()
+    sliced = sf.slices(rows)
+
+    case4 = sliced["case4-users.csv"][:187]
+    assert any(r["role"] == "supervisor" for r in case4), (
+        "case 4's first 187 syncs are still field workers only")
+
+    case5 = sliced["case5-users.csv"][:281]
+    assert len({r["organisationUUID"] for r in case5}) == 10, (
+        "case 5's first 281 syncs do not span all ten tenants")
+    assert any(r["role"] == "supervisor" for r in case5)
+
+
+def test_a_single_stratum_slice_is_left_alone():
+    """Cases 2, 3 and 14 draw one role from one tenant. There is nothing to interleave, and the
+    order must not be churned for the sake of it -- these files are committed and diffed."""
+    one = [{"organisationUUID": "org-10", "role": "field_worker", "userName": f"u{i}"}
+           for i in range(50)]
+    assert sf.interleave(one) == one
+
+
+def test_the_order_is_deterministic():
+    """Shuffling would also give a representative prefix, in expectation, and was rejected for
+    exactly this: cases 5, 6 and 7 are read as deltas, so the same cohort has to sync in each."""
+    rows = _mixed()
+    assert sf.interleave(rows) == sf.interleave(rows)
+    assert [r["userName"] for r in sf.interleave(_write_named(rows))] == \
+           [r["userName"] for r in sf.interleave(_write_named(rows))]
+
+
+def _write_named(rows):
+    return [dict(r, userName=f"u{i}") for i, r in enumerate(rows)]
+
+
+def test_the_committed_feeders_are_interleaved():
+    """The property has to hold in the files that actually run, not only in the function."""
+    for name, n in (("case4-users-pilot.csv", 187), ("case5-users-pilot.csv", 281),
+                    ("case4-users-span20.csv", 175)):
+        path = ROOT / "src/gatling/resources" / name
+        with path.open() as fh:
+            rows = list(csv.DictReader(fh))
+        head = rows[:n]
+        assert any(r["role"] == "supervisor" for r in head), f"{name} has no supervisor in {n}"
+        if len({r["organisationUUID"] for r in rows}) > 1:
+            assert len({r["organisationUUID"] for r in head}) == \
+                   len({r["organisationUUID"] for r in rows}), f"{name} misses tenants in {n}"
+        # Tight here, where the prefix is the one the case really draws: 20 of 20 for case 4,
+        # 28 against 29 for case 5.
+        sup = sum(1 for r in head if r["role"] == "supervisor")
+        expected = n * sum(1 for r in rows if r["role"] == "supervisor") / len(rows)
+        assert abs(sup - expected) <= 2, (
+            f"{name} prefix {n}: {sup} supervisors, expected ~{expected:.1f}")

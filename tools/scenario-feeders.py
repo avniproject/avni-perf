@@ -47,6 +47,44 @@ LINE_TERMINATOR = "\r\n"
 VARIANT = re.compile(r"[a-z0-9][a-z0-9-]*\Z")
 
 
+def interleave(rows: list[dict]) -> list[dict]:
+    """Order rows so that *any prefix* holds each tenant and role in its full proportion.
+
+    **A run consumes a prefix, not the file.** `circular()` walks in order so no user is skipped
+    and none runs twice before the others -- but `generate.py` emits tenant by tenant and role by
+    role, so the file arrives in blocks. When a case performs fewer syncs than the feeder has
+    rows, the roles and tenants it reaches become a function of file order.
+
+    That is not hypothetical. Case 4 ran 187 syncs against 501 field workers followed by 60
+    supervisors and never reached row 502, so "one state tenant, both" measured field workers and
+    returned case 2's numbers to three significant figures -- 60.8 s, 10,838 records against
+    10,831, serverMs 6% in both. Case 5 is worse: 281 syncs against a file that opens with 561
+    rows of one tenant would have reached one of ten tenants and no supervisors at all, and case 5
+    is the separate-hosting baseline cases 6 and 7 are read against.
+
+    **Each row is placed at its fractional position within its own stratum** -- the k-th of n
+    becomes (k + 0.5) / n -- and the file is sorted on that. A stratum holding 10% of the
+    population then appears at roughly every tenth row, so a prefix of any length carries it at
+    10%. Ties resolve on the stratum key, so the order is deterministic: the same subset syncs on
+    every run, which is what makes the 5 -> 6 -> 7 deltas comparisons of co-tenant presence rather
+    than of who happened to be sampled.
+
+    Shuffling would also give a representative prefix, in expectation, and was rejected for that
+    reason: it is representative on average across runs, where a delta needs the same cohort in
+    both halves of the comparison.
+    """
+    strata: "OrderedDict[tuple, list[dict]]" = OrderedDict()
+    for r in rows:
+        strata.setdefault((r["organisationUUID"], r["role"]), []).append(r)
+    placed = []
+    for key, members in strata.items():
+        n = len(members)
+        for k, row in enumerate(members):
+            placed.append(((k + 0.5) / n, key, row))
+    placed.sort(key=lambda t: (t[0], t[1]))
+    return [row for _, _, row in placed]
+
+
 def slices(rows: list[dict], variant: str | None = None) -> "OrderedDict[str, list[dict]]":
     suffix = f"-{variant}" if variant else ""
     orgs = list(OrderedDict.fromkeys(r["organisationUUID"] for r in rows))
@@ -58,7 +96,7 @@ def slices(rows: list[dict], variant: str | None = None) -> "OrderedDict[str, li
     out[f"case4-users{suffix}.csv"] = one_tenant
     if len(orgs) >= 10:
         out[f"case5-users{suffix}.csv"] = rows
-    return out
+    return OrderedDict((name, interleave(subset)) for name, subset in out.items())
 
 
 def render(fields: list[str], subset: list[dict]) -> str:
