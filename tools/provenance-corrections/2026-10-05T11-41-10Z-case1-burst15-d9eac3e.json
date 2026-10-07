@@ -1,0 +1,28 @@
+{
+  "correctedAt": "2026-10-06T04:30:00Z",
+  "why": "This run is not a measurement and should not be read as a point on any curve. It was started against an app server whose JVM was 6 minutes 56 seconds old, and its own metadata asserts a cache policy that was false. The record is corrected additively; run-metadata.json is left exactly as the run wrote it, because editing a completed run's own record to say something it did not say would falsify it.",
+  "recorded": {
+    "environment.cachePolicy": "warm-incidental-no-reset"
+  },
+  "actual": {
+    "environment.cachePolicy": "cold-jvm-6m56s"
+  },
+  "notMeasurement": {
+    "reason": "started 6 minutes 56 seconds after the app server's JVM, which costs roughly two thirds of throughput",
+    "jvmStarted": "2026-10-05T11:34:14Z",
+    "runStarted": "2026-10-05T11:41:10Z"
+  },
+  "basis": [
+    "the app server's JVM (pid 1167) started 2026-10-05T11:34:14Z, read from `ps -eo lstart` on the host; the instance itself booted at 11:30:56Z",
+    "app server CPU held 99.19-99.22% across both runs at 1-minute resolution, the same ceiling the warm runs reach -- so the server was not doing less work, it was getting less done per CPU-second",
+    "RDS CPU 14-33%, ReadIOPS 0.0 and ReadLatency 0.0 throughout: the database buffer cache had already refilled, so what was cold was not the database",
+    "the injector idled at 3-22% CPU across 4 vCPU, load average 0.00",
+    "the same two windows re-run at 12:01 and 12:02, on the same JVM twenty minutes older and after two saturating passes, returned 50.00 and 56.58 rps against 18.43 and 30.94"
+  ],
+  "cause": "The environment had been stopped and started, and the runs were issued once /ping answered 200 rather than once the server had had traffic through it. CACHE_POLICY was passed explicitly as `warm-incidental-no-reset` -- build.gradle defaults the field to `unrecorded`, so this was an assertion rather than a default, and nothing in the run could contradict it.",
+  "fixedBy": [
+    "avni-perf prepare-run.sh step 6 -- every measured run is a warm run, and the warm-up pass is discarded",
+    "avni-infra provision/scripts/env-warmup.sh -- env-teardown.sh start warms the server automatically and throws the result away"
+  ],
+  "keptBecause": "These two runs are the evidence for the cold-start finding in docs/findings-case1.md, which matters in production because every avni-server deploy restarts the JVM. They are excluded from the curve, not discarded."
+}

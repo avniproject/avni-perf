@@ -1,0 +1,26 @@
+{
+  "correctedAt": "2026-10-06T05:10:00Z",
+  "why": "This run is not a measurement. It measured an app server that could not open new database connections, because the RDS-managed master secret had rotated 32 minutes earlier and the server's appserver.conf still held the previous password. The record is corrected additively; run-metadata.json is left exactly as the run wrote it.",
+  "recorded": {
+    "environment.cachePolicy": "warm-after-900s-run"
+  },
+  "actual": {
+    "environment.cachePolicy": "warm-after-900s-run, but against a server with a stale database credential"
+  },
+  "notMeasurement": {
+    "reason": "the database credential had rotated and the app server held the old one, so every new pooled connection failed with HTTP 500",
+    "secretRotatedAt": "2026-10-06T04:24:02Z",
+    "runStarted": "2026-10-06T04:55:47Z"
+  },
+  "basis": [
+    "40 of 3,396 requests failed (1.18%) against a recorded MAX_FAILED_PERCENT gate of 0.05%: 38 were HTTP 500, one 401, one premature close",
+    "the app server log carries `FATAL: password authentication failed for user \"openchs\"` and `Unable to acquire JDBC Connection` at 04:57:12Z, inside the run window",
+    "achieved 39.95 rps, BELOW the 90 s run's 43.00 -- a 75 s window cannot be slower than a 90 s one, which is what first showed the run was wrong rather than interesting",
+    "only 3,396 of 4,300 requests were issued, because a failed request ends that user's chain",
+    "the 900 s run immediately before it, on the same server after the same rotation, had zero failures: at ~1 device in flight it needed no new connection, so the fault is invisible at low concurrency",
+    "p95 was 403 ms and max 1,118 ms, so the server was not saturated -- these are errors, not queueing"
+  ],
+  "cause": "The loadtest RDS instance uses an AWS-managed master secret with RotationEnabled and a 7-day schedule. avni_server_db_password is read from Secrets Manager by the Makefile at playbook time and written into appserver.conf, so it is a point-in-time copy that a rotation silently invalidates. Connections already in the Hikari pool keep working, so /ping and /idp-details both returned 200 and the fault only appears when load forces the pool to grow.",
+  "fixedBy": [],
+  "keptBecause": "The 75 s window still has not been measured; this run is kept as the record of why, and as evidence for a failure mode that applies to any environment using an AWS-managed RDS secret with a config-file copy of the password."
+}

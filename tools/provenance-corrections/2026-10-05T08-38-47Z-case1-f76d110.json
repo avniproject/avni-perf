@@ -1,0 +1,23 @@
+{
+  "correctedAt": "2026-10-05T09:05:00Z",
+  "why": "run-metadata.json for this run records simulation.gitSha as \"unknown\" and simulation.gitDirty as true. Both are wrong. This file corrects the record additively; run-metadata.json is left exactly as the run wrote it, because editing a completed run's own record to say something it did not say would falsify it.",
+  "recorded": {
+    "simulation.gitSha": "unknown",
+    "simulation.gitDirty": true
+  },
+  "actual": {
+    "simulation.gitSha": "f76d1103e56c8da0078b4d3aa2097a00acaf8c14",
+    "simulation.gitDirty": false
+  },
+  "basis": [
+    "the run id embeds the short sha f76d110",
+    "the injector's /opt/avni-perf/.harness-sha held the full sha, written when the tarball was unpacked",
+    "the tarball was produced by `git archive` from a tree verified clean with `git status --porcelain` immediately before publishing"
+  ],
+  "cause": "avni-infra's roles/avni_injector delivers the harness as a `git archive` tarball, deliberately, so that a disposable host never holds a deploy key for a private repo. `git archive` strips .git, so archiveRun's `git rev-parse HEAD` failed and its gitOutput helper returned the string \"unknown\". The dirty check is `!gitOutput('git','status','--porcelain').isEmpty()`, which read that non-empty \"unknown\" as uncommitted changes -- a false positive on top of a missing value.",
+  "fixedBy": [
+    "avni-perf fb6c06b -- archiveRun honours -DSIMULATION_SHA, and only consults git for dirtiness when git is present",
+    "avni-infra 53b1070 -- run-scenario.sh passes -DSIMULATION_SHA from .harness-sha"
+  ],
+  "appliesFrom": "runs after 2026-10-05T09:00Z record this correctly without a correction file"
+}
