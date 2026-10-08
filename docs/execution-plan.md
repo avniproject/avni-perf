@@ -695,6 +695,48 @@ duration agree within noise, the block strategy holds for every adjacency in it,
 heaviest pusher of the set at ~46,200 rows. **Two hours to de-risk the three, and it is the only
 part of this that is an assumption rather than arithmetic.**
 
+> **Thresholds pinned 8 Oct 2026, before the runs, so the bar is not drawn to fit the result.**
+> Run 1 of the pair saturated and is not run A — 12.6 syncs/min against 28 demanded, p95 42 s,
+> timeouts at the 60 s client ceiling — but it did measure the residue this test turns on.
+>
+> **Noise floor, 0.065%, measured.** The void case 4 run and case 2 covered the same effective
+> workload on separate reloads, days apart: **10,838 vs 10,831 records per sync**, mean duration
+> 60.8 s against 60.8 s. It is the only true replication pair in the run log.
+>
+> **Effect ceiling, 0.238%, arithmetic.** Case 11 pushes **25.72 rows per sync** — 43,257 rows over
+> 1,682 syncs, measured 8 Oct against the 1,506,900 / 5,396,156 baseline, two ways that agreed to
+> the row. Had the estimate of ~46,200 above been wrong this test would have been mis-sized; it was
+> within 6.4%. If run B re-pulled *every* row run A wrote, that is +25.72 on a ~10,831 baseline.
+>
+> **So the effect is only ~3.7x the noise, and the threshold has to sit between them.** A round
+> +-1% band would pass even with the full effect present, and would "validate" the block strategy
+> by being too blunt to detect its failure.
+>
+> **Records per sync decides it.** One-sided — residue can only add.
+>
+> | (B-A)/A | verdict |
+> |---|---|
+> | <= +0.10% | **pass** — drift under half the ceiling, the block strategy holds |
+> | +0.10% to +0.30% | ambiguous — consistent with residue being pulled |
+> | > +0.30% | **fail** — above the arithmetic ceiling, so the cause is not residue |
+>
+> **p50 duration cannot settle this.** At n~600 with case 5's spread — p50 60.6 s, mean 72.9,
+> p95 182.2 — the median carries a standard error near 5%, so the difference carries ~7% and a
+> 2-SE band is **+-15%**, wider than any residue effect could be. It is a gross-regression check,
+> not evidence. A p50 that looks close must not stand in for the record-count test.
+>
+> **Protocol.** Reload `pilot-day-180` before run A — `SYNC_MODE=realistic` reads by
+> `lastSyncTime`, and 8 Oct's residue sits compressed into a 1h45 window, a shape the modelled
+> distribution does not contain. **No reset between A and B**; that is the experiment. Warm up
+> first, or run A is cold and run B warm and the cache artifact swamps the signal. Rate ~500-600
+> syncs/hour, not 1,682. `CACHE_POLICY` then records `warm-from-reload` for A and
+> `warm-from-previous-run` for B, which is the distinction drawn above.
+>
+> **Compare on the common prefix.** If the runs complete different sync counts, truncate both to
+> `min(nA, nB)` from `sync-durations.csv` first. The feeder is well interleaved — the first 600 of
+> `case5-users-pilot.csv`'s 1,682 rows are 89.7% field worker against 89.5% overall, org-10 33.3%
+> against 33.4% — so a prefix is representative and case 4's trap does not apply here.
+
 > **Considered and rejected: making case 8's growth datasets nest**, so day 60 could be appended to
 > rather than reloaded. It does not work as the generator stands. `band_width(tenant, days)` scales
 > with `days`, so day 60 and day 120 allocate different id bands and neither is a prefix of the
