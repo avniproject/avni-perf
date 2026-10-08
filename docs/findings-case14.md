@@ -40,9 +40,12 @@ Two consequences:
   p95 272 ms — the server was never stretched. What makes a full sync slow is its size, not
   contention.
 
-The caveat is that `pausedMs` is *modelled*, not measured on a device: the harness computes it from
-records pulled using a storage profile. It is a stated assumption, and 93% of this result rests on
-it. A real device measurement would be the way to confirm it.
+The caveat was that `pausedMs` is *modelled*, not measured on a device — a stated assumption that
+93% of this result rested on. **D7 has since measured it** ([`findings-d7.md`](findings-d7.md)), and
+the answer depends on the storage engine: the same full sync took 67.6 s on SQLite, close to the
+80.1 s modelled here, and **192.1 s on Realm**. `baseMsPerRecord` turns out to be SQLite's number,
+3.7× optimistic for Realm. So this figure stands for a SQLite device and understates a Realm one by
+about 2.4×.
 
 ## Case 2's two-sample estimate held
 

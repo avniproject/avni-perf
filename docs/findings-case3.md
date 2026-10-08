@@ -50,6 +50,11 @@ That consistency is itself the finding: **what a user waits for is their own dev
 pulled**, and that holds across roles and across sync modes. A supervisor waiting 170 seconds is
 waiting 160 of them on local storage. Server-side work is not what makes any of these slow.
 
+**D7 has since measured that local storage** ([`findings-d7.md`](findings-d7.md)) and the modelled
+pause is engine-dependent. The largest supervisor's sync, modelled here at 223 s, took 159.5 s on
+SQLite and **537.1 s on Realm** — nine minutes. The conclusion above holds in both cases and gets
+stronger on Realm, where 490 of those 537 seconds are the device writing.
+
 ## What this does not measure
 
 * **Push, and the push numbers would be wrong if it did.** The simulation scales a user's write
