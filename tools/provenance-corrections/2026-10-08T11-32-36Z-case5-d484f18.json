@@ -1,0 +1,16 @@
+{
+  "correctedAt": "2026-10-08T14:20:00Z",
+  "why": "This run was killed about 40 seconds after it started and never reached archiveRun, so it has no run-metadata.json and its gradle.log has no Global Information block. It is a launch that was stopped, not a measurement. The case 5 that counts is 2026-10-08T12-04-15Z-case5-d484f18, started half an hour later.",
+  "notMeasurement": {
+    "reason": "killed ~40s after launch and never reached archiveRun, so it has no metadata and no summary; superseded by the 17:34 run",
+    "supersededBy": "2026-10-08T12-04-15Z-case5-d484f18"
+  },
+  "basis": [
+    "the prefix holds gradle.log and simulation.log but no run-metadata.json, no HTML report and no sync-durations.csv",
+    "the staged dataset-provenance.md in it is the 7 Oct version, which still described the org 10 / orgs 11-19 provenance split that the 8 Oct reload removed",
+    "the superseding run published 85 files against this one's 6"
+  ],
+  "cause": "A chain was assembled to run reload -> vacuum -> warm -> case 5 unattended. It was stopped so that a structural check could be inserted before the measured run, which is the correct order. Stopping the local task did not prevent the chain reaching its launch step: the same lesson as the teardown earlier that day, where killing the local ssh client left psql running on the host for another thirteen minutes. run-scenario.sh then published the partial result by design, because discarding a failed run's artefacts loses the evidence of why it failed.",
+  "fixedBy": [],
+  "keptBecause": "The artefacts prefix is append-only and a published run is a fact about what happened, even when what happened was an operator stopping it. Deleting it would leave the run log silently missing a prefix that exists in S3."
+}
