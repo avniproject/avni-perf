@@ -102,3 +102,63 @@ were the newest in the database by ten months, so they fell inside the window
 every `SYNC_MODE=realistic` sync targets by `lastSyncTime`, compressed into
 1h45 — a shape the modelled distribution does not contain. Hence the reload
 below rather than running the case 11 pair on top of them.
+
+---
+
+# `co-tenants-day-180` — never generated
+
+**Recorded because an absence is a provenance fact.** Every other recipe has been
+built and archived; this one has not, and listing the built ones alone leaves that
+reading as an oversight rather than a statement.
+
+513 organisations, ~3.13M encounters, intended as the other half of the hosting
+comparison — cases 6, 7, 12 and 13. It is the only outstanding generation.
+
+**It cannot be generated offline, and that is the whole of why it is pending.**
+`refs.sql` reads `subject_type.id`, `encounter_type.id` and `address_level_type.id`
+*per organisation*, and the generator writes those as foreign keys into every TSV.
+Those rows come into being when a bundle is imported into that organisation, so
+the organisations must exist and be configured **before** their data can be
+generated. The attempt on 6 Oct refused with 513 × `no subject type for
+organisation N` and wrote nothing — which is the generator working as intended: a
+fallback would have produced subjects of another tenant's type, which loads
+cleanly and is wrong in a way no statistic catches.
+
+So, in order:
+
+1. **Provision 513 organisations**, importing each one's archetype bundle — 11
+   `large-pull-heavy`, 2 `media-heavy`, 500 `push-dominated`, assigned by rank in
+   the recipe.
+2. **Re-dump `refs.sql`** against the target, so the per-organisation ids exist.
+3. **Generate** with `--bundle-root ~/avni-perf-bundles`, which resolves each
+   tenant's `bundle_archetype` to a directory of that name.
+
+## What is already in place
+
+* The three archetype bundles, extracted one per directory under
+  `~/avni-perf-bundles` — the names are archetypes rather than organisations
+  deliberately, so a tracked recipe never carries a production organisation's name.
+* `bundle_archetype` set on all 513 tenants, by measured push share and media rate.
+* `supervisor_level` corrected to `Taluka`. It was the `TenantSpec` default of
+  `Sub-Centre`, which this bundle's hierarchy does not contain, so
+  `catchments.plan` would have raised on `co-001` before a row was written.
+* The generator refuses when an archetype does not resolve, rather than falling
+  back to the deployment-wide bundle and building 513 tenants from one config.
+
+## Two things unsettled, and both bite at provisioning time
+
+**The organisation ids in the recipe are placeholders.** `co-tenants-day-180.json`
+carries 1001–1513, from `co_tenants.plan(first_organisation_id=1000)`. The server
+assigns ids; it does not accept them. Read them back from `GET /organisation` after
+provisioning and record them, as the eight NGO tenants were.
+`unassigned_organisations()` cannot catch this one — these ids look assigned, which
+is exactly how the pilot came to name four live organisations.
+
+**Nobody has timed a single `provision-org.sh` against these bundles.** 513 × 10 s
+is 85 minutes; 513 × 60 s is 8.5 hours. Those are different days. Time one first,
+and time the `large-pull-heavy` import, since it is the biggest of the three at
+1,523 concepts.
+
+**Id space is already clear**: the co-tenants claim 301,000,000–311,490,596 against
+the pilots' 201,000,000–222,841,600, 78,158,400 apart. They are the one pair that
+shares a database, in Block B, and that separation is what makes it safe.
