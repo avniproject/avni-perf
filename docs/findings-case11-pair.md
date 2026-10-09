@@ -92,23 +92,30 @@ not change that … expect the count to vary run to run."* A drawn full sync set
 
 **This explains 5 of the 52 D/E steppers. It is real but it is not the main cause.**
 
-**2. The bootstrap fallback — the leading candidate for the other 47, and unproven.**
-`syncStatusBody` has this path:
+**2. The other 47 are unexplained. Two candidates have been tested and both are dead.**
 
-```java
-if (tracked == null || tracked.isEmpty()) {
-    // "the server matches on name AND type uuid, so every typed entity will
-    //  fall through to its 1900 default and full-sync whatever SYNC_MODE says"
-    statuses.add(statusRow(entity.entityName, "", loadedSinceFor(session, entity.entityName)));
-}
-```
+*The bootstrap fallback — refuted.* `syncStatusBody` falls back to an empty `entityTypeUuid` when
+`userSyncStatuses` has no entry, which makes the server full-sync type-sliced entities, and that
+matched the signature. It never happened: the one-shot warning *"no bootstrapped status list for
+this user"* appears **zero times in all five run logs**, and every run shows
+`Bootstrap sync statuses = 550 = Getting SyncDetails`. Every user bootstrapped.
 
-`userSyncStatuses` is populated only when the bootstrap response parses non-empty
-(`putIfAbsent` guarded by `!tracked.isEmpty()`). A user who misses it sends an **empty
-entityTypeUuid**, and the server falls back to 1900 for exactly the type-sliced entities.
-`Individual` is sliced by `subjectTypeUuid`. That matches the signature precisely — one entity,
-all-or-nothing, ~3,000 records, varying with timing and load. **It has not been proven and should
-be, before any further paired run.**
+*A drawn full sync — refuted for these users.* The user traced in detail is `fullSync=false` in all
+five runs and still swings 10,962 to 14,186. Across the 52 D/E steppers, **47 have their high run
+unflagged**.
+
+So the mechanism for the bulk of the effect is **not known**. What is known about it:
+
+* one entity, `Individual`, moving all-or-nothing by roughly one user's complete catchment
+* a different ~10% of field workers each run, 1.8% of supervisors
+* present with nothing written, and absent from every sequential and concurrent replay
+* for the traced user the low values are runs C and D, which synced at or before the pinned window
+  end, and the high values are A, B and E, which synced well after it — a pattern worth testing
+  before anything else
+
+**The next test should capture per-entity record counts per user**, which `sync-durations.csv` does
+not carry — it has only a per-sync total. Without that, every further analysis is inference from
+request counts.
 
 ## What this costs, and what to do
 

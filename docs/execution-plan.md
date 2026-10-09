@@ -789,11 +789,10 @@ part of this that is an assumption rather than arithmetic.**
 >
 > **The harness is not reproducible, by design.** `drawFullSync` uses `ThreadLocalRandom` and says
 > so: *"a run is not bit-reproducible … expect the count to vary run to run."* Recorded full syncs
-> were 7, 4, 8, 2 and 3 across the five runs. That accounts for 5 of 52 steppers; the leading
-> candidate for the rest is the `syncStatusBody` fallback that sends an empty `entityTypeUuid` when
-> a user's bootstrap did not populate `userSyncStatuses`, which makes the server full-sync the
-> type-sliced entities — matching the observed signature of `Individual` arriving whole or not at
-> all. **Unproven.**
+> were 7, 4, 8, 2 and 3 across the five runs. That accounts for 5 of 52 steppers. **The other 47
+> are unexplained**: the `syncStatusBody` empty-`entityTypeUuid` fallback was refuted (its warning
+> appears zero times and bootstrap calls equal sync counts in every run), and the traced user is
+> `fullSync=false` in all five runs while swinging 10,962 to 14,186.
 >
 > **A paired comparison assumes a reproducibility this harness does not offer.** The artifact is
 > ~284 records/sync against a residue signal of ~85. Before attempting this again: set
