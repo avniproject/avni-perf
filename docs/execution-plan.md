@@ -737,6 +737,32 @@ part of this that is an assumption rather than arithmetic.**
 > `case5-users-pilot.csv`'s 1,682 rows are 89.7% field worker against 89.5% overall, org-10 33.3%
 > against 33.4% — so a prefix is representative and case 4's trap does not apply here.
 
+> **Corrected 9 Oct 2026, before the runs, on two things found while setting them up.**
+>
+> **The gap is deterministic, so the comparison should be paired.** `realisticLoadedSince` derives
+> the window from `(userName + "|" + entityName).hashCode()` — `AvniSyncSimulation.java:1665`,
+> "derived from the user and entity name rather than drawn at random, so a run reproduces". Run A
+> and run B therefore hand the *same* user the *same* window. `sync-durations.csv` is
+> `userName,records,durationMs,pausedMs,serverMs,profile`, so the two runs join on `userName` and
+> **under the null each user's record count is identical, not merely close**. Any non-zero paired
+> difference is signal. That is a far sharper instrument than comparing means, and the mean bands
+> below are the fallback for users that do not pair.
+>
+> One residual: `loadedSince` is *now minus* the hashed gap, so run B's window slides forward by
+> the hour between the runs. Irrelevant for gaps of days or months, material for the few drawn in
+> hours — those users lose an hour at the old end and gain the hour that contains run A's pushes.
+>
+> **The 0.238% ceiling was too low, because it assumed each pushed row is pulled once.** It is not:
+> `pilot-day-180` puts **3 field workers per village** and **8.4 workers per supervisor**, so a row
+> pushed into a village is re-pulled by that village's other field workers and by the supervisor
+> above it. At 550 of 1,682 feeder rows — ~492 field workers and ~58 supervisors — the average
+> re-pull multiplier is about **1.35**, giving 25.72 x 1.35 = ~34.7 records on a ~10,831 baseline,
+> an effect ceiling of **~0.32%**.
+>
+> **Revised bands: pass at <= +0.10%, ambiguous +0.10% to +0.40%, investigate above +0.40%.** The
+> old "fail above +0.30%" would have put a genuine full-residue result at 0.32% on the wrong side
+> of the line and called the cause something other than residue.
+
 > **Considered and rejected: making case 8's growth datasets nest**, so day 60 could be appended to
 > rather than reloaded. It does not work as the generator stands. `band_width(tenant, days)` scales
 > with `days`, so day 60 and day 120 allocate different id bands and neither is a prefix of the
