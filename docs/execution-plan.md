@@ -668,7 +668,9 @@ nothing.
 | **B — co-tenants** | one, plus the co-tenant load | **6, 7, 12, 13** | The reset before 6 restores the customer's tenants to exactly case 5's starting state, which is what makes the 5 -> 6 delta mean anything. 6 -> 7 then carries ~7,700 rows of drift, 0.11% |
 | **C — growth** | three dataset swaps | **8** at day 60, 120, 365 | Day 180 reuses case 4's result. These are different datasets, so the loads are not avoidable |
 
-**Five resets for sixteen runs, against sixteen.** With Phase 5's four to six re-measurements, which
+**Five resets for sixteen runs, against sixteen.** *(Resolved 9 Oct 2026 — this stands, with three
+exceptions; see [Resolved 9 Oct 2026](#resolved-9-oct-2026-keep-the-blocks-with-three-exceptions)
+below. A reset was measured at 1h40, and drift at ~0.5% per run.)* With Phase 5's four to six re-measurements, which
 stay one-per-run because re-measuring after a fix is the whole point, that is about **ten against
 nineteen — roughly 3.2 hours** — plus the co-tenant unload and reload that no longer happens.
 
@@ -687,6 +689,45 @@ and treat a block boundary as the only place a clean comparison is guaranteed.
 **Record each run's actual starting row counts.** With a reset before every run they were knowable
 from the dataset; in a block they are not. Measuring the drift is the honest way to run this —
 inferring it from the table above is not.
+
+### Resolved 9 Oct 2026: keep the blocks, with three exceptions
+
+**The validating measurement failed, and the strategy stands anyway.** Five runs could not resolve
+drift — see [`findings-case11-pair.md`](findings-case11-pair.md) — but they failed because the
+instrument cannot see a 0.5% signal against a 3.3x larger artifact, **not because drift turned out
+to be large.** Those warrant different responses, and only the second would justify abandoning this.
+
+**The residue volume is known exactly, even though the pair failed.** Two independent measurements
+a day apart: **25.72 rows/sync** (8 Oct, 1,682 syncs) and **25.48** (9 Oct, 550 syncs).
+
+**The effect is bounded at about 0.5% per run.** Taken from the all-positive subsets of the paired
+data — the only part that behaves as residue must, since residue cannot subtract: **+0.51%** (A/B)
+and **+0.29%** (C/D). The arithmetic agrees: 25.5 rows/sync against ~15,000 records/sync, amplified
+by catchment sharing, lands in the same place.
+
+**0.5% is an order of magnitude below what these cases exist to detect** — the differences that
+matter are 2x to 10x, and 224x between a saturated and an unsaturated run. It changes no conclusion
+any case reaches.
+
+**And a reset costs 1h40, now measured rather than estimated**: teardown 53 min, load 45 min, on
+9 Oct. Eleven extra resets is about **18 hours**, two and a half working days, to protect against
+something smaller than the noise in most of the figures above.
+
+**The exceptions, where 0.5% per run stops being negligible:**
+
+1. **Where a small delta is the measurement.** Block B's reset before case 6 already exists for
+   this reason. The rule: **any finding that turns on a difference under ~5% gets its own reset.**
+2. **Before and after case 9.** It breaks things by design, and must not precede case 10.
+   Block B's reset already cleans up after it.
+3. **When cumulative drift passes ~2%** — four runs. Block A's remaining exposure is small (case 10
+   is ~564 syncs, then 9), and Block C reloads anyway, but a long future block should reset at its
+   midpoint rather than ride nine runs of accumulation.
+
+**What replaces the validating run:** measure residue after every pushing run. It is one query and
+a minute, two runs already agree to 1%, and it turns "we assume drift is small" into a recorded
+figure. **Do not retry the paired validation until `sync-durations.csv` carries per-entity record
+counts per user** — without that, a third attempt uses the same instrument and produces the same
+unreadable result.
 
 ### The one measurement that would validate it
 
