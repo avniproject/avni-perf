@@ -154,10 +154,45 @@ provisioning and record them, as the eight NGO tenants were.
 `unassigned_organisations()` cannot catch this one — these ids look assigned, which
 is exactly how the pilot came to name four live organisations.
 
-**Nobody has timed a single `provision-org.sh` against these bundles.** 513 × 10 s
-is 85 minutes; 513 × 60 s is 8.5 hours. Those are different days. Time one first,
-and time the `large-pull-heavy` import, since it is the biggest of the three at
-1,523 concepts.
+**Measured 9 Oct 2026: one `large-pull-heavy` organisation takes 232 seconds**, and
+that reframes the step. This previously read "nobody has timed a single
+`provision-org.sh`", bracketing it at 85 minutes to 8.5 hours. It is neither.
+
+`cotenant-timing-probe`, organisation id **20**, provisioned against
+`loadtest.avniproject.org`: create, user and group, bundle upload, then 44 polls
+at 5 s before the batch job reported COMPLETED. So ~220 s of the 232 is the
+server's import, not observation. Step 5 verified it landed — 1,523 concepts, 118
+form mappings, 36 encounter types, 12 subject types, 6 of 6 organisationConfig
+settings, each matching the bundle.
+
+**The server assigned id 20**, which is the placeholder warning above confirmed
+rather than predicted: nothing in the recipe's 1001–1513 range exists or will.
+
+**Imports do not run concurrently**, so this is serial and 513 of them is **26 to
+33 hours** — longer than the block it opens. The spread is because `push-dominated`
+carries 500 of the 513 and has not been timed; 26.5 h assumes it runs at 0.8× the
+large bundle, inferred from 1,172 concepts against 1,523. **That one measurement
+decides the shape of Block B** and is the first thing to take when the environment
+returns, with `media-heavy` (341 concepts) beside it, since the tail would move to
+that bundle under one of the options below.
+
+| route | cost | what it trades |
+|---|---|---|
+| all 513 through the API | 26–33 h | nothing, but it is a day and a half of the environment |
+| the 110 that sync through the API, clone config for the other 403 | ~7 h + new code | cloning risk, confined to organisations nothing ever reads |
+| the 403 on the smallest bundle | ~17 h | a tail with thinner metadata than production's |
+| fewer co-tenants | less | how much of Q12's skew case 6 still represents |
+
+The second is the one worth considering, and not only for the time: the 403 never
+sync, so their config exists solely to satisfy foreign keys on generated rows.
+A cloning defect there is invisible *because* nothing exercises it — which is
+normally this project's worst failure mode and is here the thing that bounds the
+risk. `provision-org.sh` step 5 already checks a cloned organisation as well as it
+checks a provisioned one.
+
+**`cotenant-timing-probe` is still on the server**, holding a full bundle's config.
+It is not a co-tenant and not in any recipe; it will appear in organisation counts
+and in `refs.json` on the next dump. Delete it or keep it deliberately.
 
 **Id space is already clear**: the co-tenants claim 301,000,000–311,490,596 against
 the pilots' 201,000,000–222,841,600, 78,158,400 apart. They are the one pair that

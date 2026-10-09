@@ -370,11 +370,20 @@ is loaded once and never unloaded.
 > sequence. The pilot shipped with 1 to 10, which named four live organisations, and
 > `unassigned_organisations()` cannot catch this case because these ids look assigned.
 >
-> **The cost of that is a step nobody has timed.** Block B now opens with 513 bundle imports
-> as well as its reset, load and two runs, and a single `provision-org.sh` against this bundle has
-> never been measured — 513 x 10 s is 85 minutes and 513 x 60 s is 8.5 hours, which are different
-> days. **Time one as the first act of Block B**, before committing the rest of the day to it.
-> Three bundles are involved, not one, so the large-pull-heavy import is the one to time.
+> **Measured 9 Oct 2026, and it does not fit in Block B.** One `large-pull-heavy` organisation
+> takes **232 seconds** — `cotenant-timing-probe`, id 20, of which ~220 s is the server's batch
+> import. **Imports do not run concurrently**, so 513 of them is **26 to 33 hours serial**, against
+> a block that also has to hold a reset, a load and two runs.
+>
+> This previously bracketed the step at 85 minutes to 8.5 hours and said to time one first. Timing
+> one is what found this: the step is an order of magnitude past the top of that bracket, and
+> Block B cannot open with it as specified.
+>
+> **`push-dominated` is the measurement still missing**, and it is the one that decides: it carries
+> 500 of the 513, and the 26.5 h end of the range assumes it runs at 0.8x the large bundle from
+> concept counts alone. Take it and `media-heavy` when the environment returns — eight minutes of
+> work that chooses between a seven-hour step and a thirty-three-hour one. The routes out, and what
+> each trades, are in `docs/dataset-provenance.md`.
 
 **Measured, and `truncate` wins by a factor of three.**
 
