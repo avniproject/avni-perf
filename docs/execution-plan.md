@@ -22,10 +22,10 @@ so treat the shape as firm and the dates as provisional.
 | **1 · Prove the groundwork, small** | **4–6** | Generate, load, provision and smoke on a deliberately tiny tenant. First contact with a real server. |
 | **2 · Real dataset and reset** | **7–10** | The day-180 dataset loaded and gated, the restore mechanism built and **timed**. |
 | **3 · Calibration** | **11** | **F7, the gate.** Nothing before it is evidence; nothing after it is trustworthy until it passes. |
-| **4 · Execution** | **12–20** | Cases 1 to 13, ordered so each is interpretable when it runs. |
-| **5 · Findings** | **21+** | Saturate, name the resource, fix, re-run. Four to six iterations, not one pass. |
+| **4 · Execution** | *ordered, not dated* | Cases 1 to 14, in a sequence where each is interpretable when it runs — see **The sequence**. |
+| **5 · Findings** | *after* | Saturate, name the resource, fix, re-run. Four to six iterations, not one pass. |
 
-**Roughly four weeks to first findings**, of which Days 1 to 3 are not in this team's hands.
+**Roughly four weeks to first findings**, of which Days 1 to 3 are not in this team's hands. **Phases 4 and 5 carry no dates on purpose**: runs slip, one gets re-run, another overtakes two others, and a calendar that has to be re-read as "whenever this actually goes" is worse than no calendar. What binds them is order, not dates.
 
 **Three of those rows carry most of the risk.** Day 9 produces the restore time, and a run is
 *restore + run + collect*, so that number sets Phase 4's cadence rather than being a detail of it.
@@ -362,7 +362,7 @@ is loaded once and never unloaded.
 > sequence. The pilot shipped with 1 to 10, which named four live organisations, and
 > `unassigned_organisations()` cannot catch this case because these ids look assigned.
 >
-> **The cost of that is a Day 16 nobody has timed.** Block B's day now contains 513 bundle imports
+> **The cost of that is a step nobody has timed.** Block B now opens with 513 bundle imports
 > as well as its reset, load and two runs, and a single `provision-org.sh` against this bundle has
 > never been measured — 513 x 10 s is 85 minutes and 513 x 60 s is 8.5 hours, which are different
 > days. **Time one as the first act of Block B**, before committing the rest of the day to it.
@@ -613,7 +613,7 @@ Client cost varies by **organisation**, not day, which is why there are two stor
 
 ---
 
-## Phase 4 — Execution (Days 12–20)
+## Phase 4 — Execution
 
 Order is chosen so each case is interpretable when it runs, not so the calendar looks full. **Record
 every run's metadata; two runs that differ in more than one property answer nothing.**
@@ -651,7 +651,7 @@ Everything else can be blocked.
 
 ### The ordering this replaces forced a co-tenant unload
 
-The first calendar ran case 7 on Day 15 and then **11, 12, 13** on Day 16. Case 11 is in the
+The first ordering ran case 7 and then **11, 12, 13** after it. Case 11 is in the
 *separate* hosting group, so it needs the co-tenants **gone**, and 12 and 13 need them back. That is
 an unload of 513 organisations — a `DELETE` teardown of a dataset holding 3.13M encounters — and a
 reload, hidden inside one day of the calendar, to serve a single one-hour run.
@@ -694,6 +694,23 @@ Run **case 11 twice, back to back, with no reset**. One hour each. If per-sync r
 duration agree within noise, the block strategy holds for every adjacency in it, because 11 is the
 heaviest pusher of the set at ~46,200 rows. **Two hours to de-risk the three, and it is the only
 part of this that is an assumption rather than arithmetic.**
+
+> **Run at reduced load, and that bounds what it licenses (8 Oct 2026).** Case 11 at the full 1,682
+> saturated the server, which is not a baseline anything can be read against — a second run agreeing
+> with a saturated first would say more about the ceiling than about the residue. So the pair runs
+> at reduced load from a dataset reloaded to its pre-run-1 state, which is the right call: both
+> halves start from the same place, which is the whole point.
+>
+> **What it then answers is the adjacency at that load.** If the residue acts through planner
+> statistics or table bloat, its effect scales with how much the first run wrote — so a reduced-load
+> pair agreeing does not license the adjacency between two *saturated* runs, which is the case the
+> block ordering actually exposes the suite to. State the load with the result; do not let
+> "the block strategy holds" be read without it.
+>
+> **The comparison is per user, not per run.** `compare-pair.py` joins the two runs on `userName`,
+> which the proportionally ordered feeder makes possible: both runs draw the same prefix, so the
+> same cohort syncs in each. Run-level means would average away a shift that moved some users and
+> not others, which is the shape a residue effect would take.
 
 > **Thresholds pinned 8 Oct 2026, before the runs, so the bar is not drawn to fit the result.**
 > Run 1 of the pair saturated and is not run A — 12.6 syncs/min against 28 demanded, p95 42 s,
@@ -809,22 +826,60 @@ part of this that is an assumption rather than arithmetic.**
 > **4. Stop quoting total sync duration as a server result until D7 lands.** 93–94% of every
 > headline figure — case 14's 80 s, case 3's 223 s — is `pausedMs`, modelled from records pulled
 > and never measured on a device. Report `serverMs` and record counts as findings and label the
-> totals as modelled. **The run that fixes this is first thing tomorrow; see below.**
+> totals as modelled. **The run that fixes this is D7, step 6 below.**
 
-| Day | Block | Cases | Why here |
+### The sequence
+
+**Ordered, not dated.** This was a day-by-day schedule and it had stopped describing what happens:
+runs slipped, case 4 was re-run, case 11 overtook cases 9 and 10, and every date in it had to be
+re-read as "whenever this actually goes". What matters is what must precede what. The order below
+is binding; the calendar is not.
+
+| # | Block | Run | State |
 |---|---|---|---|
-| **12** | A | **1** (training cohort, 30 min), **14** (full sync, 90 min), then **2** (field workers, 4 h) | Case 1 is config-only and the cheapest real load. 14 next because it pulls only — neither it nor case 1 mutates anything, so both are free before the first pushing run. Case 2 is the common case and the baseline everything else is read against |
-| **13** | A | **3** (supervisors, 2 h driven) and **4** (combined, 4 h) | Case 4 is *the* realistic case. Case 3 first so its per-device cost is known before the mix |
-| **14 · first** | — | **D7 — the client storage measurement**, on a device or emulator, Realm and SQLite | Before any measured run, while the box is otherwise idle: it drives one device, so it neither needs nor disturbs a quiet server. First because every finding after it is qualified until it lands |
-| **14** | A | **5** (ten tenants, **2 h**) and **11** (clustered, 1 h), then **11 again back to back, no reset** | Both are separate-hosting, so they run before the co-tenants exist. 11 is case 5's day compressed into an hour. The repeat is the block-strategy validation this document already calls its one assumption — two hours to de-risk three blocks |
-| **14–15** | A | **10** (soak, 12 h, overnight) | Needs the instance to itself. Case 4's load sustained, so the block's residue is immaterial to it |
-| **15** | A | **11 at a 15-minute window** (15 min), then **9** (stress ramp, until it breaks) | The 15-minute cluster projects to ~35 rps, nearer case 1's knee than anything else in the plan. 9 follows because it is the only case that finds the *data-path* ceiling, and whatever it leaves behind is cleared by Block B's reset |
-| **16** | B | **Provision 513 organisations** and import each one's archetype bundle, re-dump `refs.sql`, generate and load the co-tenant data, then **6** (2 h) and **7** (2 h). Analyse 5/6/7 together | 5 -> 6 is the cost of their presence, 6 -> 7 the cost of their activity. The reset is what makes 6 comparable with 5 |
-| **17** | B | **12** and **13** (clustered, 1 h each) | The same two tenancy shapes with the day compressed. No reset: 12 and 13 are read against 11 and against each other |
-| **18–19** | C | **8** (growth, 2 h x 3 — day 60, 120, 365) | Three dataset loads, one per point. Day 180 reuses case 4, so all four recipes are pinned at span 8.4 and the curve varies encounter volume alone |
-| **20** | A′ | Reload `pilot-day-180-span20`, split it with `--variant span20`, re-run **3**, **4**, **5** | The span sweep's other end. Last because it answers a sensitivity rather than a target, and because it is the day Block B's reset borrows if Day 9's projection was wrong — see below |
+| 1 | A | **1** — training cohort, 30 min, swept across arrival windows 900 s to 15 s | done, 10 runs |
+| 2 | A | **14** — full sync, 90 min | done |
+| 3 | A | **2** — field workers, 4 h | done |
+| 4 | A | **3** — supervisors, 2 h driven | done |
+| 5 | A | **4** — combined, 4 h | done; first attempt sampled one role and is not a measurement |
+| 6 | — | **D7** — client storage, device, Realm and SQLite | done |
+| 7 | A | **5** — ten tenants, 2 h | done |
+| 8 | A | **11** — clustered, 1 h | done at the full 1,682; saturated |
+| 9 | A | **11 twice, back to back, no reset** — the block-strategy validation | running, reduced load |
+| 10 | A | **10** — soak, 12 h, overnight | |
+| 11 | A | **11 at a 15-minute window**, 15 min | |
+| 12 | A | **9** — stress ramp, until it breaks | |
+| 13 | B | **Provision 513 organisations**, import each one's archetype bundle, re-dump `refs.sql`, generate and load the co-tenant data | |
+| 14 | B | **6** — co-tenants present, 2 h | |
+| 15 | B | **7** — co-tenants syncing, 2 h | |
+| 16 | B | **12** and **13** — clustered, 1 h each | |
+| 17 | C | **8** — growth, 2 h each at day 60, 120 and 365 | |
+| 18 | A′ | Reload `pilot-day-180-span20`, split with `--variant span20`, re-run **3**, **4**, **5** | |
 
-### D7 — the client storage measurement, first thing on Day 14
+**What the order is actually constrained by**, since the rest is preference:
+
+* **1 and 14 push nothing**, so they are free at either end of a block and cost no reset.
+* **D7 before anything is quoted.** 93–94% of every duration is modelled; until it was measured,
+  every published figure was provisional. It needs one device, not a quiet server, so it costs
+  nothing to place early.
+* **3 before 4**, so per-device cost is known before the mix.
+* **5 and 11 before the co-tenants exist.** Case 5 is separate hosting — "nobody else's data in
+  the tables" — and 11 is its day compressed. Provisioning 513 organisations before them would put
+  ~262,000 config rows in the database and make 5 → 6 a comparison of their *data* rather than of
+  their presence.
+* **The validation pair before anything leans on the block ordering**, because every later
+  adjacency assumes it.
+* **9 last in A.** The knee is only interpretable once the unstressed shape is known, and whatever
+  it leaves behind is cleared by B's reset.
+* **12 and 13 after 6 and 7**, read against 11 and each other, with no reset between.
+* **8 is three dataset loads**, one per growth point, so it cannot share a block. Day 180 reuses
+  case 4.
+* **A′ last.** It answers a sensitivity rather than a target, and it is the work that gets dropped
+  first if B's reset projection turns out wrong — a wrong reset makes every Block B number
+  incomparable, while a missing span-20 point leaves the span an interpolation between a measured
+  8.4 and a specified 20, which is what it was before.
+
+### D7 — the client storage measurement
 
 **93–94% of every sync figure this exercise reports is a model.** `pausedMs` is computed from
 records pulled; `baseMsPerRecord` is 0.61 and the simulation says plainly what it is — *"derived
@@ -893,9 +948,9 @@ one morning, and every case after it is read differently.
 > question nobody asked. If one span-20 result shows the span matters more than this expects, that
 > is the finding that justifies widening it, in Phase 5.
 >
-> **It costs a day, and the plan has exactly one.** Block A′ is Day 20's slack. That is a real
-> trade: if Day 9's reset projection is wrong at ten tenants, the absorption and the span sweep
-> want the same day. **Drop the span sweep, not the reset** — a wrong reset makes every Block B
+> **It costs a day, and the schedule has exactly one spare.** Block A′ is what that spare buys.
+> That is a real trade: if the reset projection is wrong at ten tenants, absorbing that and the
+> span sweep want the same day. **Drop the span sweep, not the reset** — a wrong reset makes every Block B
 > number incomparable, while a missing span-20 point leaves the span an interpolation between a
 > measured 8.4 and a specified 20, which is what it was before.
 
