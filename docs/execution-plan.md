@@ -780,6 +780,30 @@ part of this that is an assumption rather than arithmetic.**
 > old "fail above +0.30%" would have put a genuine full-residue result at 0.32% on the wrong side
 > of the line and called the cause something other than residue.
 
+> **Outcome, 9 Oct 2026: five runs, no answer, and the bands above are moot.** Written up in
+> [`findings-case11-pair.md`](findings-case11-pair.md). The pairs returned +2.69%, +8.65% and
+> +1.63% — all far above any ceiling — but none of it is drift. Residue can only add, and 57 users
+> pulled *fewer* records; the effect is flat across organisations that pushed eight times different
+> volumes; and it appears in a `PUSH=off` control that wrote nothing but `sync_telemetry`, where 38
+> of 416 users reading byte-identical frozen data still differed by >1,000 records.
+>
+> **The harness is not reproducible, by design.** `drawFullSync` uses `ThreadLocalRandom` and says
+> so: *"a run is not bit-reproducible … expect the count to vary run to run."* Recorded full syncs
+> were 7, 4, 8, 2 and 3 across the five runs. That accounts for 5 of 52 steppers; the leading
+> candidate for the rest is the `syncStatusBody` fallback that sends an empty `entityTypeUuid` when
+> a user's bootstrap did not populate `userSyncStatuses`, which makes the server full-sync the
+> type-sliced entities — matching the observed signature of `Individual` arriving whole or not at
+> all. **Unproven.**
+>
+> **A paired comparison assumes a reproducibility this harness does not offer.** The artifact is
+> ~284 records/sync against a residue signal of ~85. Before attempting this again: set
+> `-DFULL_SYNC_PERCENT=0`, and prove or kill the bootstrap fallback. Re-running the pair at another
+> rate will not help.
+>
+> **The server was cleared.** Sequential and concurrent replays of both the paged pull and
+> `syncDetails` returned identical answers every time, including 40 users across two concurrent
+> passes with zero disagreements.
+
 > **Considered and rejected: making case 8's growth datasets nest**, so day 60 could be appended to
 > rather than reloaded. It does not work as the generator stands. `band_width(tenant, days)` scales
 > with `days`, so day 60 and day 120 allocate different id bands and neither is a prefix of the

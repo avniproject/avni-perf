@@ -1,6 +1,6 @@
 # Run log — detail
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-09 12:17 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-09 14:40 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script, as [`run-log.md`](run-log.md) is. That file is the index and carries the results table and any caveats; this one records what each run was configured with and what environment it met, which is what makes a number interpretable once the environment is gone.
 
@@ -23,7 +23,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T08-38-47Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.69 / 1.12 |
 | est. sync overhead s | 0.12 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -50,7 +50,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-43-14Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.26 / 0.51 |
 | est. sync overhead s | 0.06 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -77,7 +77,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-53-13Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.23 / 0.27 |
 | est. sync overhead s | 0.03 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -104,7 +104,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-28-06Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.23 / 0.34 |
 | est. sync overhead s | 0.04 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -132,7 +132,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-30-01Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.26 / 0.28 |
 | est. sync overhead s | 0.03 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -160,7 +160,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-32-25Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.58 / 0.66 |
 | est. sync overhead s | 0.07 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -188,7 +188,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-37-03Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.24 / 0.3 |
 | est. sync overhead s | 0.03 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -216,7 +216,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-41-10Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.58 / 0.62 |
 | est. sync overhead s | 0.07 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -244,7 +244,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-01-03Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.27 / 0.29 |
 | est. sync overhead s | 0.03 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -272,7 +272,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-02-47Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.59 / 0.66 |
 | est. sync overhead s | 0.07 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -300,7 +300,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-40-26Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.38 / 0.4 |
 | est. sync overhead s | 0.04 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -328,7 +328,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-55-47Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.71 / 4.08 |
 | est. sync overhead s | 0.45 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -356,7 +356,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-16-44Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.7 / 0.76 |
 | est. sync overhead s | 0.08 |
-| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 2000 s |
+| injection | profile burst, 100 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 2000 s |
 | sync | mode full, feeder case1-users.csv (100 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -384,7 +384,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-38-32Z-case2
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.72 / 0.74 |
 | est. sync overhead s | 0.08 |
-| injection | profile steady, 500 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 10020 s |
+| injection | profile steady, 500 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 10020 s |
 | sync | mode realistic, feeder case2-users.csv (501 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -412,7 +412,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T09-50-36Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.71 / 0.76 |
 | est. sync overhead s | 0.08 |
-| injection | profile steady, 501 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 10020 s |
+| injection | profile steady, 501 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 10020 s |
 | sync | mode full, feeder case2-users-states.csv (501 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -440,7 +440,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-07T06-15-54Z-case3
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.38 / 0.4 |
 | est. sync overhead s | 0.04 |
-| injection | profile steady, 60 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 1200 s |
+| injection | profile steady, 60 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 1200 s |
 | sync | mode realistic, feeder case3-users-pilot.csv (60 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -468,7 +468,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-07T08-38-32Z-case4
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.7 / 0.75 |
 | est. sync overhead s | 0.08 |
-| injection | profile steady, 561 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 11220 s |
+| injection | profile steady, 561 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 11220 s |
 | sync | mode realistic, feeder case4-users-pilot.csv (561 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -496,7 +496,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T06-17-46Z-case4
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.6 / 0.68 |
 | est. sync overhead s | 0.07 |
-| injection | profile steady, 561 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 11220 s |
+| injection | profile steady, 561 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 11220 s |
 | sync | mode realistic, feeder case4-users-pilot.csv (561 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -531,7 +531,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T12-04-15Z-case5
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.61 / 0.66 |
 | est. sync overhead s | 0.07 |
-| injection | profile steady, 1682 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 33640 s |
+| injection | profile steady, 1682 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 33640 s |
 | sync | mode realistic, feeder case5-users-pilot.csv (1682 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | False / False |
@@ -559,7 +559,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T14-05-56Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.6 / 0.64 |
 | est. sync overhead s | 0.07 |
-| injection | profile steady, 1682 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 33640 s |
+| injection | profile steady, 1682 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 33640 s |
 | sync | mode realistic, feeder case5-users-pilot.csv (1682 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | True / False |
@@ -587,7 +587,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T04-28-45Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.25 / 0.3 |
 | est. sync overhead s | 0.03 |
-| injection | profile steady, 550 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 33640 s |
+| injection | profile steady, 550 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 33640 s |
 | sync | mode realistic, feeder case5-users-pilot.csv (1682 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | True / False |
@@ -615,11 +615,67 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T05-37-25Z-case1
 | injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
 | injector RTT min / median ms | 0.65 / 0.74 |
 | est. sync overhead s | 0.08 |
-| injection | profile steady, 550 users arriving over 60min @ 550/h, ~1.0 requests in flight (rps x mean), ramp 33640 s |
+| injection | profile steady, 550 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 33640 s |
 | sync | mode realistic, feeder case5-users-pilot.csv (1682 rows), auth none, page 1000 |
 | entities | 75 pulled of 79 (openchs-models@1.33.81) |
 | push / co-tenants | True / False |
 | sync duration p50 / mean / p95 s | 198.1 / 220.8 / 395.6 (550 syncs) |
 | full syncs p50 / p95 s | 255.7 / 316.2 (4 of 550, recorded) |
+| cache policy | warm-from-previous-run |
+| autovacuum | on |
+
+## `2026-10-09T06-55-55Z-case11-pairC-cf77819`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T06-55-55Z-case11-pairC-cf77819/`
+
+| | |
+|---|---|
+| requests (ok) | 46489 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 28 / 327 / 527 / 1137 |
+| mean ms | 81 |
+| mean throughput rps | 12.13 |
+| harness commit | cf778198f71abde6af399aa036c9cf7d2797da02 (run id says `cf77819`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 17.3.0-SNAPSHOT |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.59 / 0.68 |
+| est. sync overhead s | 0.07 |
+| injection | profile steady, 550 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 33640 s |
+| sync | mode realistic, feeder case5-users-pilot.csv (1682 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | True / False |
+| sync duration p50 / mean / p95 s | 195.1 / 215.6 / 367.7 (550 syncs) |
+| full syncs p50 / p95 s | 243.0 / 389.8 (8 of 550, recorded) |
+| cache policy | warm-from-previous-run |
+| autovacuum | on |
+
+## `2026-10-09T08-00-22Z-case11-pairD-cf77819`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T08-00-22Z-case11-pairD-cf77819/`
+
+| | |
+|---|---|
+| requests (ok) | 47544 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 28 / 364 / 685 / 2144 |
+| mean ms | 90 |
+| mean throughput rps | 11.88 |
+| harness commit | cf778198f71abde6af399aa036c9cf7d2797da02 (run id says `cf77819`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 17.3.0-SNAPSHOT |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.24 / 0.25 |
+| est. sync overhead s | 0.03 |
+| injection | profile steady, 550 users arriving over 60min @ 550/h, ~1.1 requests in flight (rps x mean), ramp 33640 s |
+| sync | mode realistic, feeder case5-users-pilot.csv (1682 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | True / False |
+| sync duration p50 / mean / p95 s | 199.3 / 222.9 / 397.2 (550 syncs) |
+| full syncs p50 / p95 s | 300.7 / 300.7 (2 of 550, recorded) |
 | cache policy | warm-from-previous-run |
 | autovacuum | on |
