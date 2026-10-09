@@ -1689,8 +1689,34 @@ public class AvniSyncSimulation extends Simulation {
                 }
             }
         }
-        return java.time.Instant.now()
+        return nowInstant()
             .minus(java.time.Duration.ofSeconds((long) (hours * 3600))).toString();
+    }
+
+    /**
+     * The instant gaps are measured back from: the NOW override when set, otherwise the clock.
+     *
+     * Honouring the override here is what makes it do what it says. NOW pins the window END
+     * (windowEndFor); until 9 Oct 2026 the START was always Instant.now(), so setting NOW pinned
+     * one end and left the other floating, and the window NARROWED by however long had passed
+     * between two runs. The case 11 pair of 9 Oct was run without it and the opposite problem
+     * showed: both ends moved together, sliding every user's window forward by the 69 minutes
+     * between the runs. That moved 166 of 550 users across a catchment-sized boundary -- swings of
+     * +-9,000 records against a residue signal of +85 -- and buried the measurement it was meant
+     * to make.
+     *
+     * Lenient parsing: the override is also sent verbatim to the server as the window end, so it
+     * carries whatever format that expects, which is not always a bare Instant.
+     */
+    private static java.time.Instant nowInstant() {
+        if (nowOverride == null) {
+            return java.time.Instant.now();
+        }
+        try {
+            return java.time.Instant.parse(nowOverride);
+        } catch (java.time.format.DateTimeParseException e) {
+            return java.time.OffsetDateTime.parse(nowOverride).toInstant();
+        }
     }
 
     private static final String RESET_SYNC = "ResetSync";
