@@ -25,6 +25,14 @@ so treat the shape as firm and the dates as provisional.
 | **4 · Execution** | *ordered, not dated* | Cases 1 to 14, in a sequence where each is interpretable when it runs — see **The sequence**. |
 | **5 · Findings** | *after* | Saturate, name the resource, fix, re-run. Four to six iterations, not one pass. |
 
+**Status as of 9 Oct 2026.** Phases 0–3 complete. In Phase 4, Block A is done except the soak
+(**10**) and the stress ramp (**9**); case 11 has run at 1,682/h, at 550/h four times, and at a
+15-minute window. Block B is **blocked** — the co-tenant dataset has never been generated. Block C
+is ready whenever: the day 60/120/365 archives are in S3. Run-by-run state is in
+**[The sequence](#the-sequence)**; results are in [`run-log.md`](run-log.md) and the
+`findings-*.md` files. The dataset currently carries push residue from 9 Oct's six pushing runs
+and should be reloaded before anything that turns on a small delta.
+
 **Roughly four weeks to first findings**, of which Days 1 to 3 are not in this team's hands. **Phases 4 and 5 carry no dates on purpose**: runs slip, one gets re-run, another overtakes two others, and a calendar that has to be re-read as "whenever this actually goes" is worse than no calendar. What binds them is order, not dates.
 
 **Three of those rows carry most of the risk.** Day 9 produces the restore time, and a run is
@@ -914,11 +922,11 @@ is binding; the calendar is not.
 | 6 | — | **D7** — client storage, device, Realm and SQLite | done |
 | 7 | A | **5** — ten tenants, 2 h | done |
 | 8 | A | **11** — clustered, 1 h | done at the full 1,682; saturated |
-| 9 | A | **11 twice, back to back, no reset** — the block-strategy validation | running, reduced load |
-| 10 | A | **10** — soak, 12 h, overnight | |
-| 11 | A | **11 at a 15-minute window**, 15 min | |
+| 9 | A | **11 twice, back to back, no reset** — the block-strategy validation | **done 9 Oct — inconclusive.** Five runs (A/B, C/D, plus a `PUSH=off` control E) at 550/h. The harness is not reproducible, so a pair cannot resolve drift — [`findings-case11-pair.md`](findings-case11-pair.md). Resolved without it: see *Resolved 9 Oct 2026* |
+| 10 | A | **10** — soak, 12 h, overnight | **next.** Needs `env-teardown.sh hold` so `stop-idle` does not kill it mid-run |
+| 11 | A | **11 at a 15-minute window**, 15 min | **done 9 Oct, ahead of 10.** Scaled to 400 users (1,600/h) rather than the full 1,682, so the backlog is 400 syncs not 1,682. Reaches 18.5 rps, not the ~35 predicted — saturates on app CPU — [`findings-case11-burst.md`](findings-case11-burst.md) |
 | 12 | A | **9** — stress ramp, until it breaks | |
-| 13 | B | **Provision 513 organisations**, import each one's archetype bundle, re-dump `refs.sql`, generate and load the co-tenant data | |
+| 13 | B | **Provision 513 organisations**, import each one's archetype bundle, re-dump `refs.sql`, generate and load the co-tenant data | **blocked.** `co-tenants-day-180.json` has never been generated: `bundle_path` is still the placeholder and `--bundle-root` needs one extracted bundle per archetype (none present locally). This gates all of Block B |
 | 14 | B | **6** — co-tenants present, 2 h | |
 | 15 | B | **7** — co-tenants syncing, 2 h | |
 | 16 | B | **12** and **13** — clustered, 1 h each | |
