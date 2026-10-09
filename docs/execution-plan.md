@@ -837,7 +837,12 @@ part of this that is an assumption rather than arithmetic.**
 > It was scheduled last so the unstressed shape would be known first — cases 2, 3, 4 and 14 have
 > now established it, so that condition is met and the reason to keep it last is gone.
 >
-> **2. A cluster tighter than an hour.** Cases 11–13 compress a day into an hour and still only
+> **2. A cluster tighter than an hour.** *(Run 9 Oct 2026 — see
+> [`findings-case11-burst.md`](findings-case11-burst.md). It does not reach 35 rps: the data path
+> saturates on app-server CPU at 18.5 rps, with the app at 99.1% and RDS at 24–32%. Saturated
+> throughput is **~775 syncs/hour**, reproducible across injection shapes — 13.3 syncs/min at
+> 1,600/h over 15 min against 12.6 at 1,682/h over 60 min. The projection below assumed the
+> demanded arrival rate is achieved; above 775/hour it is not.)* Cases 11–13 compress a day into an hour and still only
 > reach 9–13 rps. The real analogue of case 1's burst — a shift ending, signal returning, a
 > training cohort — concentrates the cohort into minutes. **Case 11 at a 15-minute window** lands
 > near 35 rps, which is where the interesting behaviour starts, and costs 15 minutes.
