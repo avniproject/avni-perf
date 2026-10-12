@@ -19,6 +19,22 @@
 # re-reads GET /organisation and skips any name already present. That survives
 # the log being lost, the script being edited, and two operators running it.
 #
+# PRESENT IS NOT THE SAME AS COMPLETE, and that difference is a silent hazard.
+# provision-org.sh creates the organisation and *then* imports into it, so a
+# tenant interrupted mid-import is present by name and short on content -- and a
+# name-only guard would skip it for good, baking a hole into the dataset that
+# nothing downstream would notice. So a skip is taken only when the
+# organisation's concept count matches the bundle's. Measured against three
+# known-good organisations: co-001 1523/1523, co-002 1172/1172, co-144 1172/1172.
+#
+# AND IT CAN BE STOPPED WITHOUT CREATING ONE. SIGTERM and SIGINT set a flag read
+# between tenants, so a planned stop finishes the tenant in hand first:
+#     kill -TERM $(cat <log>.pid)
+# Send it to that pid and not with `pkill -f`, which also matches the forked
+# subshell running the current import and would kill the import itself.
+# An unplanned interruption still leaves <log>.inflight behind, and the next run
+# refuses to start until that one organisation has been dealt with.
+#
 # WHAT IT LOGS, both free and both answering questions otherwise left to guess:
 #   elapsed seconds per import -- turns "is provisioning superlinear in the
 #     number of organisations?" into an observation rather than a hope
@@ -47,16 +63,52 @@ done
 
 # Every archetype must resolve BEFORE the first import. A missing bundle found
 # at tenant 400 wastes eight hours; found now it costs nothing.
-missing=""
+# The concept count per archetype is collected in the same pass, because the
+# completeness check below needs it for every tenant and there are three
+# archetypes against 513 tenants.
+missing=""; BUNDLE_CONCEPTS=""
 for a in $(python3 -c "
 import json,sys
 d=json.load(open('$RECIPE'))
 print('\n'.join(sorted({t.get('bundle_archetype','') for t in d['tenants']})))"); do
-  [ -d "$BUNDLE_ROOT/$a" ] || missing="$missing $a"
+  if [ -d "$BUNDLE_ROOT/$a" ]; then
+    BUNDLE_CONCEPTS="$BUNDLE_CONCEPTS$a	$(python3 -c "
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+    print(len(d if isinstance(d,list) else list(d.values())[0]))
+except Exception: print(0)" "$BUNDLE_ROOT/$a/concepts.json")
+"
+  else
+    missing="$missing $a"
+  fi
 done
 [ -z "$missing" ] || { echo "bundle-root has no directory for:$missing" >&2; exit 2; }
 
 [ -f "$LOG" ] || printf 'name\tarchetype\torg_id\telapsed_s\tstatus\tat\n' > "$LOG"
+
+INFLIGHT="$LOG.inflight"
+PIDFILE="$LOG.pid"
+
+# An interrupted pass leaves this behind. Its organisation was created and may
+# never have finished importing. Refuse to start rather than walk past it: the
+# remedy is a judgement call about one named organisation, and that belongs to
+# whoever is running this, not to a guess made at 2 a.m. by a loop.
+if [ -f "$INFLIGHT" ]; then
+  IFS=$'\t' read -r IN_NAME IN_ARCH IN_AT < "$INFLIGHT" || true
+  {
+    echo "ABORT: the previous pass was interrupted while provisioning ${IN_NAME:-?} (${IN_ARCH:-?}),"
+    echo "       started ${IN_AT:-?}. That organisation exists by name and may be incomplete."
+    echo "       Check it, remove it if it is short, then delete $INFLIGHT and re-run."
+  } >&2
+  exit 4
+fi
+
+printf '%s\n' "$$" > "$PIDFILE"
+trap 'rm -f "$PIDFILE"' EXIT
+STOP=0
+on_stop() { STOP=1; printf '\n   stop requested -- finishing the tenant in hand, then exiting.\n'; }
+trap on_stop TERM INT
 
 echo "recipe:      $RECIPE"
 echo "bundle root: $BUNDLE_ROOT"
@@ -82,6 +134,31 @@ existing() { curl -s --max-time 60 "$URL/organisation?size=5000" \
 BASELINE=0
 guard_count() { printf '%s' "$1" | grep -o '"id"[[:space:]]*:' | wc -l | tr -d ' '; }
 
+bundle_concepts() { printf '%b' "$BUNDLE_CONCEPTS" | awk -F'\t' -v a="$1" '$1==a{print $2; exit}'; }
+
+org_uuid() {  # $1 the organisation list, $2 the name
+  printf '%s' "$1" | python3 -c "
+import json,sys
+try: d=json.load(sys.stdin)
+except Exception: sys.exit(0)
+d = d if isinstance(d, list) else d.get('content', [])
+print(next((o.get('uuid','') for o in d if o.get('name')==sys.argv[1]), ''))" "$2" 2>/dev/null
+}
+
+# Counted the way provision-org.sh's own step 5 counts, so a pass here means the
+# same thing a fresh import's check means. -1 is "the probe failed", which is not
+# evidence about the organisation and must not be read as one.
+org_concepts() {  # $1 uuid
+  [ -n "$1" ] || { printf '%s' -1; return; }
+  curl -s --max-time 60 \
+    "$URL/concept/search/lastModified?lastModifiedDateTime=1900-01-01T00:00:00.000Z&now=2099-01-01T00:00:00.000Z&size=1&page=0" \
+    -H "USER-NAME: ${AVNI_ADMIN:-admin}" -H "ORGANISATION-UUID: $1" 2>/dev/null \
+  | python3 -c "
+import json,sys
+try: print(json.load(sys.stdin).get('page',{}).get('totalElements',-1))
+except Exception: print(-1)" 2>/dev/null
+}
+
 done_n=0; skipped=0; failed=0; started=$(date +%s)
 while IFS=$'\t' read -r NAME ARCH; do
   [ -n "$NAME" ] || continue
@@ -104,11 +181,26 @@ while IFS=$'\t' read -r NAME ARCH; do
     exit 3
   fi
   if printf '%s' "$LIST" | grep -q "\"name\"[[:space:]]*:[[:space:]]*\"$NAME\""; then
+    want=$(bundle_concepts "$ARCH")
+    got=$(org_concepts "$(org_uuid "$LIST" "$NAME")")
+    if [ "${got:--1}" -ge 0 ] && [ "${want:-0}" -gt 0 ] && [ "$got" -lt "$want" ]; then
+      {
+        echo "ABORT: $NAME is on the server carrying $got of the bundle's $want concepts."
+        echo "       It was created and never finished importing. Skipping it would leave a"
+        echo "       hole nothing downstream checks for, so this stops instead. Remove $NAME,"
+        echo "       then re-run."
+      } >&2
+      exit 5
+    fi
     skipped=$((skipped+1))
-    [ $((skipped % 25)) -eq 1 ] && echo "   [$(date +%H:%M:%S)] skipping $NAME (already on the server)"
+    [ $((skipped % 25)) -eq 1 ] && echo "   [$(date +%H:%M:%S)] skipping $NAME (already on the server, $got concepts)"
     continue
   fi
 
+  # Written BEFORE the organisation can exist, so an interruption anywhere in the
+  # import leaves a trace. The window this does not cover is between this line
+  # and the POST, where nothing has been created and nothing is wrong.
+  printf '%s\t%s\t%s\n' "$NAME" "$ARCH" "$(date -u +%FT%TZ)" > "$INFLIGHT"
   t0=$(date +%s)
   out=$(./tools/provision-org.sh --url "$URL" --bundle "$BUNDLE_ROOT/$ARCH" --name "$NAME" 2>&1)
   rc=$?
@@ -126,6 +218,16 @@ while IFS=$'\t' read -r NAME ARCH; do
     printf '%s\n' "$out" | tail -12 >&2
     # Keep going: one bad bundle should not end a ten-hour run. The log says
     # which failed, and re-running the script retries exactly those.
+  fi
+
+  # Cleared only after the durable row is written. A crash in that gap leaves a
+  # false positive, costing one check; the reverse order would lose the only
+  # trace that this tenant was ever in flight.
+  rm -f "$INFLIGHT"
+
+  if [ "$STOP" -eq 1 ]; then
+    echo "   stopped after $NAME, between tenants. Nothing was left half-imported."
+    break
   fi
 done < <(python3 -c "
 import json
