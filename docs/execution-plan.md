@@ -439,6 +439,30 @@ gets worse the more the table has been cycled — which is precisely what an ite
 it. Across ~19 resets that spread alone is an hour nobody can plan around, on top of the teardown
 being three times slower at its best.
 
+> **Measured again 12 Oct 2026 on the full pilot dataset, and the slow path was taken.** A reload
+> of all ten tenants ran **teardown 54 min + load 45 min = about 1h40** — `make teardown_org`
+> emitting per-organisation `DELETE`, then `db-load-remote.sh` once per tenant.
+>
+> **That was the wrong tool for the job.** Per-organisation `DELETE` is right when *one*
+> organisation needs emptying; this was all ten, which is the case `TRUNCATE` exists for. The
+> figures above put truncate at 6m28s against the teardown's 16m53s on 2.3M rows, and the gap is
+> almost entirely the clear — one second against 611.
+>
+> **The fast path is available and was not used.** `tools/reset-transactional.sql` is the
+> truncate-based reset, and every tenant directory already carries a `reload.sql` (6 `\copy`
+> statements, transactional rows only) beside the `load.sql` that was used (13, config included).
+> Scaled from the 2.3M-row measurements it should put a full pilot reload near **20 minutes**
+> rather than 100 — but that is an extrapolation and the pilot dataset has never been reset this
+> way, so it wants measuring the next time a reload is needed rather than being quoted.
+>
+> **One difference that is not just speed.** `reset-transactional.sql` is **global**: it empties
+> every transactional table, which includes organisation 3 `tanuh-load` and its 900 individuals.
+> The per-organisation teardown does not. Where that data matters, the slow path is the correct
+> one and the hour is the price of keeping it.
+>
+> For Block B this is the difference between a 20-minute reset and a 100-minute one, which across
+> the resets that block needs is hours.
+
 So `truncate` wins on more than wall clock: **its clear is one second whatever the layout**, which
 is what makes a cadence predictable rather than merely short.
 
