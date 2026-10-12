@@ -28,7 +28,7 @@ are parameters with a documented range, defaulted to their conservative end.
 | **3** | Supervisor steady state | 1 state | 25–60 | Day 180 | Incremental, 1% full | **2 h, driven** | Whether 3× the volume per device changes anything |
 | **4** | **Combined** | 1 state | 501 + 25–60 | Day 180 | Incremental, 1% full | **4 h** | **The realistic case.** Wide and frequent syncs competing for one pool |
 | **5** | **Separate infrastructure** | **10** | 1,506 + 74–176 | Day 180 | Incremental, 1% full | **2 h** | The customer's own load with nobody else's data in the tables. **The baseline the next two are measured against** |
-| **6** | **Shared — co-tenant data** | **10 + 513** | 1,504 + 188 | Day 180 **plus production's organisations**, which sync nothing | Incremental, 1% full | **2 h** | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
+| **6** | **Shared — co-tenant data** | **10 + 513** | 1,506 + 74–176 | Day 180 **plus production's organisations**, which sync nothing | Incremental, 1% full | **2 h** | What the *presence* of other tenants costs: RLS selectivity, planner statistics, table and index size |
 | **7** | **Shared — co-tenant load** | **10 + 513** | Case 6, plus `CO_TENANTS=on` at 792 syncs/hour | Same as case 6 | Incremental, 1% full | **2 h** | What their *activity* costs on top: connection pool, CPU, IO. **Cases 5, 6 and 7 together are the hosting decision** |
 | **8** | Growth comparison | 1 state | Case 4 | Day 60, 120, 180, **365** | Incremental, 1% full | **2 h × 4** | The shape of the curve. A knee between two points is the finding, and this is the only evidence the exercise gives about scale beyond the pilot |
 | **9** | Stress ramp | **10** | Ramp past case 5 until failure | Day 180 | Incremental | **until it breaks** | Where the knee is, and which resource names it |
@@ -37,6 +37,15 @@ are parameters with a documented range, defaulted to their conservative end.
 | **12** | **Clustered — co-tenant data** | **10 + 513** | Case 6 | Same as case 6 | Incremental, 1% full | **1 h** | Case 6 compressed: **6.6 syncs in flight against 0.55** |
 | **13** | **Clustered — co-tenant load** | **10 + 513** | Case 7 | Same as case 6 | Incremental, 1% full | **1 h** | Case 7 compressed: **9.7 in flight**, three times production's peak and the heaviest sustained load in the suite |
 | **14** | **Re-enrolled device** | 1 state | Case 2's 501 | Day 180 | **Full** | **90 min** | What a full sync costs when the catchment actually holds data — the expensive path the 1% stands for |
+
+**What the columns refer to.** "10" is the customer's own deployment — two state tenants and eight
+NGO ones, organisations 10 to 19; "+ 513" adds production's co-tenants beside them. The datasets
+are the generated ones, named by growth point.
+
+* **Tenants** — who the ten are, their sizes and where the user counts come from: [The tenants](#the-tenants), under [The deployment being modelled](#the-deployment-being-modelled)
+* **Datasets** — what each growth point holds and how big it is: [Dataset size at each growth point](#dataset-size-at-each-growth-point)
+* **Per device** — what one sync actually pulls: [What each device holds](#what-each-device-holds)
+* **Hosting** — why the co-tenants exist and what the 5 → 6 → 7 deltas answer: [Hosting is one of the cases, not a given](#hosting-is-one-of-the-cases-not-a-given)
 
 **Cases 6 and 7 are the same run with one property changed**, which is what makes their difference
 readable: `CO_TENANTS=on` adds production's organisations as a second syncing population at Q4's
@@ -244,7 +253,7 @@ Media is the larger effect by an order of magnitude, and it lands on elapsed tim
 server load — see [below](#media-dominates-sync-time-and-it-is-not-close).
 
 **Tenant counts trace to the table under [the deployment](#the-deployment-being-modelled)**: a state
-tenant is 500 field workers and 25 to 63 supervisors depending on the span, and the ten together are 1,504 and 75 to 188.
+tenant is 501 field workers and 25 to 60 supervisors depending on the span, and the ten together are 1,506 and 74 to 176.
 
 > **The co-tenant count is 513, not Q12's 986, and both numbers are right.** Q12 measured 986
 > organisations in production and **473 of them hold nothing** — no subjects, no encounters, no
@@ -502,23 +511,34 @@ distinction stops mattering and the cases can all run on the shared platform.
 
 ### The tenants
 
-**Ten tenants.** Every user count in the cases above comes from this table — the single-tenant cases
-use one state tenant's row, and cases 5, 6 and 7 use the platform total.
+**Two state tenants and eight NGO tenants.** Every user count in the cases above comes from this
+table — the single-tenant cases use one state tenant's row, and cases 5, 6 and 7 use the platform
+total. They are organisations 10 and 11 (`state-1`, `state-2`) and 12 to 19 (`ngo-1`…`ngo-8`).
+
+**Where a supervisor count is a range it is the span**, 8.4 workers per supervisor against 20 — the
+two points built, measured and high end. The field worker counts do not move with it.
 
 | | Tenants | ASHAs each | ANMs each | Villages each | Beneficiaries each | Encounters/day |
 |---|---|---|---|---|---|---|
-| State tenant (pilot) | 2 | 500 | 25–63 | 167 | 501,000 | 10,000 |
-| NGO tenant | 8 | 63 | 8 | 21 | 63,000 | 1,260 |
-| **Platform total** | **10** | **1,504** | **188** | **502** | **1,506,000** | **30,080** |
+| State tenant (pilot) | 2 | 500 | 25–60 | 167 | 501,000 | 10,000 |
+| NGO tenant | 8 | 63 | 3–7 | 21 | 63,000 | 1,260 |
+| **Platform total** | **10** | **1,504** | **74–176** | **502** | **1,506,000** | **30,080** |
 
-Derived at 3 ASHAs per village, 3,000 beneficiaries per village, 8 ASHAs per sub-centre and 20
-encounters per ASHA per day — see **Where the numbers come from** below.
+Derived at 3 ASHAs per village, 3,000 beneficiaries per village, **8.4 ASHAs per supervisor** —
+Q13's measured establishment, which is 2.8 villages to a sub-centre — and 20 encounters per ASHA
+per day — see **Where the numbers come from** below.
 
 > **The generator lands a few users either side of these.** It builds the hierarchy upward from the
-> village count, so a tenant's villages round to whole numbers and its user counts follow: 1,506
-> field workers and 184 supervisors across the ten, against the 1,504 and 188 the arithmetic above
-> gives. The difference is under a quarter of a percent and it is the generator's figures that a run
-> will actually have. Worth knowing before someone treats a 2-user gap as a defect.
+> village count, so a tenant's villages round to whole numbers and its user counts follow: **1,506
+> field workers and 176 supervisors** at span 8.4, against the 1,504 the arithmetic above gives for
+> workers. The difference is under a quarter of a percent and it is the generator's figures a run
+> will actually have — `case5-users-pilot.csv` holds 1,682 rows, which is 1,506 + 176 exactly.
+> Worth knowing before someone treats a 2-user gap as a defect.
+>
+> **This said 184 supervisors until 12 Oct 2026**, which matched no span: 1,506 + 184 is 1,690
+> against a cohort of 1,682. The table's `25–63` and `188` were span-8 figures and predate the
+> decision to build 8.4 and 20. Span 8 was generated and dropped — 63 supervisors per state tenant
+> against 8.4's 60 is 5%, and the measured establishment sits almost on the low end already.
 
 **Confirmed with the customer: "500 workers" means 500 field
 workers, with supervisors added on top rather than counted within it.**
