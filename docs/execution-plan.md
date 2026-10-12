@@ -379,11 +379,27 @@ is loaded once and never unloaded.
 > one is what found this: the step is an order of magnitude past the top of that bracket, and
 > Block B cannot open with it as specified.
 >
-> **`push-dominated` is the measurement still missing**, and it is the one that decides: it carries
-> 500 of the 513, and the 26.5 h end of the range assumes it runs at 0.8x the large bundle from
-> concept counts alone. Take it and `media-heavy` when the environment returns — eight minutes of
-> work that chooses between a seven-hour step and a thirty-three-hour one. The routes out, and what
-> each trades, are in `docs/dataset-provenance.md`.
+> **All three archetypes measured 12 Oct 2026, back to back on a warm idle server**, which is what
+> the paragraph above asked for. Every import verified complete — concepts, form mappings, subject
+> types and config all matching the bundle, so none of these is the timing of a failed import.
+>
+> | archetype | time | concepts | form mappings | probe org |
+> |---|---|---|---|---|
+> | `large-pull-heavy` | **183 s** | 1,523 | 118 | `cotenant-probe-large` |
+> | `push-dominated` | **72 s** | 1,172 | 67 | `cotenant-probe-push` |
+> | `media-heavy` | **110 s** | 341 | 19 | `cotenant-probe-media` |
+>
+> **The hybrid set of 11 + 97 + 2 is 9,217 s — about 2 hours 35 minutes.** It fits inside a working
+> day, and the step that could not open Block B as specified now can.
+>
+> **Two cautions for anyone reusing these numbers.** The same `large-pull-heavy` bundle measured
+> **232 s on 9 Oct and 183 s on 12 Oct** — a 21% spread between days, so treat any single figure as
+> ±20%. And **the timings do not scale with bundle size**: `media-heavy` has a third the concepts of
+> `push-dominated` and takes 53% longer, at rates of 3.1, 8.3 and 16.3 concepts/second. The poll
+> counts explain why — `provision-org.sh` prints one `STARTED` per poll and logged 13, 35 and 21 of
+> them, which at ~5.2 s each reproduces 72, 183 and 110 almost exactly. **These measurements are
+> quantised to the poller, not the importer**, so the per-archetype ratios are soft even though the
+> total is sound. The routes out, and what each trades, are in `docs/dataset-provenance.md`.
 
 **Measured, and `truncate` wins by a factor of three.**
 
