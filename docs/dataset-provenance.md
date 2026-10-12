@@ -179,16 +179,44 @@ that bundle under one of the options below.
 | route | cost | what it trades |
 |---|---|---|
 | all 513 through the API | 26–33 h | nothing, but it is a day and a half of the environment |
-| the 110 that sync through the API, clone config for the other 403 | ~7 h + new code | cloning risk, confined to organisations nothing ever reads |
+| **the hybrid — chosen 12 Oct 2026** | **~7 h + new code** | cloning risk, confined to organisations nothing ever reads |
 | the 403 on the smallest bundle | ~17 h | a tail with thinner metadata than production's |
 | fewer co-tenants | less | how much of Q12's skew case 6 still represents |
 
-The second is the one worth considering, and not only for the time: the 403 never
-sync, so their config exists solely to satisfy foreign keys on generated rows.
-A cloning defect there is invisible *because* nothing exercises it — which is
-normally this project's worst failure mode and is here the thing that bounds the
-risk. `provision-org.sh` step 5 already checks a cloned organisation as well as it
-checks a provisioned one.
+## The hybrid, as decided
+
+**Every one of the 513 is created through the API; only 110 have a bundle
+imported.** The split follows from what actually costs: `POST /organisation` is
+step 1 and returns immediately — it is the asynchronous bundle import in step 3
+that takes the 232 s, 44 polls of it. Steps 1 to 3 together took about 12 seconds.
+
+1. **`POST /organisation` for all 513.** The server creates the `organisation`
+   row, **the `db_user` and the implementation schema**, and assigns the id. Fast,
+   and nothing about it is hand-built — which is why the cloned organisations get
+   their db_users this way rather than from SQL.
+2. **Bundle import for `co-001` to `co-110` only**, each with its archetype's
+   bundle: 11 `large-pull-heavy`, 2 `media-heavy`, 97 `push-dominated`. This is the
+   ~7 hours, and `push-dominated`'s unmeasured import time now sizes 97 rather than
+   500.
+3. **Clone the config rows** — concepts, forms, form mappings, subject types,
+   encounter types, programs, organisation config — into `co-111` to `co-513` from
+   an imported organisation of the same archetype.
+
+**Why 110, and why that boundary is the right one.** `CoTenantLoad.ranks()` ranks
+organisations by how many users each holds, which follows subject count, so sync
+rank equals subject rank by construction and ranks past `ACTIVE_ORGANISATIONS`
+carry zero share. `co-111` onward therefore never make a request in any case. The
+cloned config is never read by the sync path — it exists only so the generated
+rows' `subject_type_id` and `encounter_type_id` resolve. A defect in it is
+invisible *because* nothing exercises it, which is normally this project's worst
+failure mode and is here the thing that bounds the blast radius.
+
+**What the clone still has to get right**, now that db_users and schemas come from
+the API: every config table the generated rows reference by foreign key, with new
+ids and new uuids, scoped to the right organisation. `provision-org.sh` step 5 is
+the check — it compares formMapping, subjectType, encounterType, concept and
+organisationConfig counts against the bundle, and it reads a cloned organisation
+exactly as well as a provisioned one.
 
 **`cotenant-timing-probe` is still on the server**, holding a full bundle's config.
 It is not a co-tenant and not in any recipe; it will appear in organisation counts
