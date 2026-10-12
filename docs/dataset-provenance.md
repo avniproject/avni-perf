@@ -179,44 +179,43 @@ that bundle under one of the options below.
 | route | cost | what it trades |
 |---|---|---|
 | all 513 through the API | 26–33 h | nothing, but it is a day and a half of the environment |
-| **the hybrid — chosen 12 Oct 2026** | **~7 h + new code** | cloning risk, confined to organisations nothing ever reads |
-| the 403 on the smallest bundle | ~17 h | a tail with thinner metadata than production's |
-| fewer co-tenants | less | how much of Q12's skew case 6 still represents |
+| the hybrid — considered, **dropped** 12 Oct 2026 | ~2.6 h + new code | cloning risk, on organisations nothing ever reads |
+| **all 513 through the API — chosen** | **10.6–26 h, unattended** | a long run, and nothing else |
 
-## The hybrid, as decided
+## Decided: provision all 513 through the API, and do not clone
 
-**Every one of the 513 is created through the API; only 110 have a bundle
-imported.** The split follows from what actually costs: `POST /organisation` is
-step 1 and returns immediately — it is the asynchronous bundle import in step 3
-that takes the 232 s, 44 polls of it. Steps 1 to 3 together took about 12 seconds.
+**The hybrid was chosen against a projection that was wrong.** 26–33 hours came from
+extrapolating one `large-pull-heavy` import across all 513. With all three
+archetypes measured in a single session the same arithmetic gives:
 
-1. **`POST /organisation` for all 513.** The server creates the `organisation`
-   row, **the `db_user` and the implementation schema**, and assigns the id. Fast,
-   and nothing about it is hand-built — which is why the cloned organisations get
-   their db_users this way rather than from SQL.
-2. **Bundle import for `co-001` to `co-110` only**, each with its archetype's
-   bundle: 11 `large-pull-heavy`, 2 `media-heavy`, 97 `push-dominated`. This is the
-   ~7 hours, and `push-dominated`'s unmeasured import time now sizes 97 rather than
-   500.
-3. **Clone the config rows** — concepts, forms, form mappings, subject types,
-   encounter types, programs, organisation config — into `co-111` to `co-513` from
-   an imported organisation of the same archetype.
+| reading | all 513 |
+|---|---|
+| at the measured mix — 11×183 + 500×72 + 2×110 | **10.6 h** |
+| at the mean of the three, 122 s | 17.4 h |
+| at the slowest of the three, 183 s | 26.1 h |
 
-**Why 110, and why that boundary is the right one.** `CoTenantLoad.ranks()` ranks
-organisations by how many users each holds, which follows subject count, so sync
-rank equals subject rank by construction and ranks past `ACTIVE_ORGANISATIONS`
-carry zero share. `co-111` onward therefore never make a request in any case. The
-cloned config is never read by the sync path — it exists only so the generated
-rows' `subject_type_id` and `encounter_type_id` resolve. A defect in it is
-invisible *because* nothing exercises it, which is normally this project's worst
-failure mode and is here the thing that bounds the blast radius.
+**And the spread between archetypes is not safely attributable to the archetypes.**
+Nothing in the bundles orders those timings: `push-dominated` has the most form
+elements of the three, 1,394 against 798 and 214, and is the *fastest*;
+`media-heavy` is the smallest bundle on every count — files, forms, elements,
+concepts, mappings — and lands in the middle. Each archetype was measured once,
+at a different moment. "One import takes 70 to 185 seconds" fits the evidence as
+well as any per-archetype constant, and more simply.
 
-**What the clone still has to get right**, now that db_users and schemas come from
-the API: every config table the generated rows reference by foreign key, with new
-ids and new uuids, scoped to the right organisation. `provision-org.sh` step 5 is
-the check — it compares formMapping, subjectType, encounterType, concept and
-organisationConfig counts against the bundle, and it reads a cloned organisation
-exactly as well as a provisioned one.
+So the clone would have been built to save a number nobody can pin down, against
+a route whose cost is one unattended overnight. **It saves machine time and
+spends review time**, and the thing it spends it on is 403 organisations whose
+config nothing ever reads — where a defect produces no symptom at all. That
+trade made sense against a day and a half. It does not against an overnight.
+
+What is kept from that analysis: **every organisation is created through the API,
+so the `organisation` row, the `db_user` and the implementation schema are the
+server's work rather than SQL's.** That was the better half of the hybrid, and
+dropping the clone keeps it by default.
+
+`tools/co-tenant-config-discovery.sql` stays. It established that a bundle import
+writes 32 tables, which is the fact that made a hand-written clone list
+untenable, and it is the right starting point if this is ever revisited.
 
 **`cotenant-timing-probe` is still on the server**, holding a full bundle's config.
 It is not a co-tenant and not in any recipe; it will appear in organisation counts
