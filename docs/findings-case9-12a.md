@@ -59,9 +59,17 @@ CloudWatch to a tenth of a percent, which is a useful independent check on the f
 Eden more than halved.** On its own that looks like a collector in trouble — G1 shrinking the young
 generation to keep pace while promoting heavily is what pressure looks like.
 
-**It was not. Measured GC time during the slow-response period was 1 to 1.4 seconds per minute,
-most of it Old Gen** — about 2% of wall clock, and under 2.5% of a 2 vCPU budget. A JVM saturating
-on collection would show tens of seconds per minute.
+**It was not.** New Relic's *Garbage collection CPU time* chart for the run window (its x-axis is
+UTC; 12a ran 02:07–03:04, CPU pinned 02:32–03:02) shows GC flat at **0.02–0.05 through the entire
+early ramp**, erupting at **02:35** and stopping at **03:05** — the saturated window to the minute.
+Peaks reach **1.2–1.4**, overwhelmingly **G1 Old Generation**, with Young Generation and Concurrent
+GC as thin caps. They are tall narrow bursts returning toward zero between, not a plateau.
+
+**Even read pessimistically that is about 2% of wall clock** and ~1.2% of a 2 vCPU budget, with the
+time-average lower again. A JVM saturating on collection would show tens of seconds per minute.
+
+**GC did rise roughly thirtyfold — 0.04 to 1.4 — and still accounts for a couple of percent.** That
+is the useful shape: the collector noticed the load and absorbed it cheaply.
 
 **So the 99% is request work.** The heap behaviour is G1 coping with a large live set rather than
 failing: at ~113 devices in flight, each holding a 1,000-record page mid-serialisation, gigabytes
