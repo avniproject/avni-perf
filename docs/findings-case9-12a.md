@@ -37,6 +37,45 @@ The reads happened and cost nothing. Storage is not the constraint; neither is d
 present as the cause, as it did in case 1's cold run. The evidence that it is downstream: if the
 pool were binding, the database behind it would be busy. It sat at a fifth of its capacity.
 
+## It is request work, not garbage collection
+
+**The obvious alternative explanation had to be excluded, because a JVM thrashing GC also reads
+99% CPU** — and the two imply opposite remedies. More vCPU is the wrong relief if the real
+constraint is allocation against a fixed heap.
+
+New Relic has been attached as a javaagent on every run (`roles/newrelic`, `-Xms2560m -Xmx5120m`,
+heap matched to production deliberately so GC behaviour transfers). Its CPU series agrees with
+CloudWatch to a tenth of a percent, which is a useful independent check on the figure above.
+
+| IST | heap avg MB | heap peak MB | of 5,120 | G1 Old Gen | Eden | app CPU |
+|---|---|---|---|---|---|---|
+| 07:35–08:00 | ~930 | ~1,680 | 33% | ~2,082 | ~780 | 8.6 → 93.4 |
+| 08:05 | 2,570 | 4,914 | 96% | 3,385 | 432 | 99.3 |
+| 08:15 | 2,912 | 4,858 | 95% | 3,741 | 326 | 99.2 |
+| 08:25 | 3,108 | 5,023 | **98%** | **3,814** | 354 | 99.4 |
+| 08:35 | 1,086 | 1,794 | 35% | 2,113 | 806 | 0.1 |
+
+**Heap peak went from 33% to 98% of max at exactly the moment CPU pinned, Old Gen grew 83% and
+Eden more than halved.** On its own that looks like a collector in trouble — G1 shrinking the young
+generation to keep pace while promoting heavily is what pressure looks like.
+
+**It was not. Measured GC time during the slow-response period was 1 to 1.4 seconds per minute,
+most of it Old Gen** — about 2% of wall clock, and under 2.5% of a 2 vCPU budget. A JVM saturating
+on collection would show tens of seconds per minute.
+
+**So the 99% is request work.** The heap behaviour is G1 coping with a large live set rather than
+failing: at ~113 devices in flight, each holding a 1,000-record page mid-serialisation, gigabytes
+of short-lived data is the expected shape. It collected it for 2% of the CPU.
+
+**Worth carrying forward as headroom rather than a finding**: Old Gen reached 3,814 MB of a
+5,120 MB ceiling, 75%, while GC stayed cheap. That is comfortable now and is the number to watch if
+concurrency rises or `PAGE_SIZE` grows, because the margin is finite and the collector's cost is
+not linear in it.
+
+**The GC figure is not in NRQL.** The agent publishes `apm.service.java.memory.pool` and the heap
+gauges but no GC *time* — 45 metric names, none GC-related — so it was read from New Relic's JVM
+page rather than queried. Anyone reproducing this should expect to do the same.
+
 ## What broke, and how
 
 | | |
