@@ -118,7 +118,13 @@ Against the other measured ceilings:
 | **12a** | realistic mix, **push off** | **~1,160–1,290** | **6.2** | 99.0–99.3% |
 
 **Every one of these saturates the same 2 vCPU at a wildly different request rate**, which is the
-useful generalisation: *requests per second is not a capacity number for this server.* Case 1's
+useful generalisation: *requests per second is not a capacity number for this server.*
+
+> **Superseded 12 Oct, same day.** The sentence below concludes "syncs per hour is the unit that
+> compares". It is not. Across five saturating runs syncs/hour ranges 424 to 1,161 while
+> **records per hour holds at ~12.8M without push and ~11.0M with it** — see
+> [`findings-case9-12b.md`](findings-case9-12b.md). Records is the capacity number; syncs/hour
+> merely happens to be steadier than rps. Case 1's
 config requests are cheap and it managed 50 rps; 12a's paged data requests are expensive and it
 managed 6.2. Push requests are cheap too — `Media uploadUrl` alone was 39% of every request in a
 pushing run — which is why case 11's burst shows a *higher* rps than 12a while retiring *fewer*
