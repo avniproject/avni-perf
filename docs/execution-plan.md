@@ -934,13 +934,53 @@ is binding; the calendar is not.
 | 9 | A | **11 twice, back to back, no reset** — the block-strategy validation | **done 9 Oct — inconclusive.** Five runs (A/B, C/D, plus a `PUSH=off` control E) at 550/h. The harness is not reproducible, so a pair cannot resolve drift — [`findings-case11-pair.md`](findings-case11-pair.md). Resolved without it: see *Resolved 9 Oct 2026* |
 | 10 | A | **10** — soak, 12 h, overnight | **done 2026-10-10** — `2026-10-09T14-21-29Z-case10-soak-cf77819`. 561 syncs, 50,098 requests, **0 failed**, p95 290 ms. **No measurable degradation**: normalised per record (records/sync fell 12% across the run, so raw duration understates cost), the trend over twelve hourly buckets is r=+0.23 and smaller than the hour-to-hour spread — noise, not drift. Pushed 15,296 rows (27.3/sync). No reload: the finding is hour 1 against hour 12 of the same run, so standing residue is a constant offset |
 | 11 | A | **11 at a 15-minute window**, 15 min | **done 9 Oct, ahead of 10.** Scaled to 400 users (1,600/h) rather than the full 1,682, so the backlog is 400 syncs not 1,682. Reaches 18.5 rps, not the ~35 predicted — saturates on app CPU — [`findings-case11-burst.md`](findings-case11-burst.md) |
-| 12 | A | **9** — stress ramp, until it breaks | |
+| 12a | A | **9** — stress ramp on the data path, ten tenants, realistic mix | |
+| 12b | A | **9 with `SYNC_MODE=full`** — same ramp, every sync a full pull | |
+| 12c | A | **9 with push on** — same ramp, write path included | |
 | 13 | B | **Provision 513 organisations**, import each one's archetype bundle, re-dump `refs.sql`, generate and load the co-tenant data | **blocked.** `co-tenants-day-180.json` has never been generated: `bundle_path` is still the placeholder and `--bundle-root` needs one extracted bundle per archetype (none present locally). This gates all of Block B |
 | 14 | B | **6** — co-tenants present, 2 h | |
 | 15 | B | **7** — co-tenants syncing, 2 h | |
 | 16 | B | **12** and **13** — clustered, 1 h each | |
 | 17 | C | **8** — growth, 2 h each at day 60, 120 and 365 | |
 | 18 | A′ | Reload `pilot-day-180-span20`, split with `--variant span20`, re-run **3**, **4**, **5** | |
+
+#### Case 9 is three ramps, because one knee has already been found and it is not this one
+
+**Case 1 located a knee and named its resource: the app server's 2 vCPU.** 45–50 rps usable,
+99.19–99.22% CPU cold and 83% warm, with everything else ruled out at one-minute resolution — RDS
+at 14–33%, the injector at 3–22% of four cores, load average 0.00.
+
+**But `ReadIOPS` was 0.0 and `ReadLatency` 0.0 throughout.** Case 1's organisation holds no field
+data, so that ramp saturated on JSON serialisation of config and `syncDetails` with nothing read
+from disk at all. Every other case pulls 10,800 to 43,300 records out of 6.9M rows. There is no
+reason to expect the same resource to bind, and a single data-path ramp confirming "it is CPU
+again" would be a finding, not a foregone conclusion.
+
+So the iterations vary one dimension each, chosen so that a different answer implicates a
+different resource:
+
+| | ramp | what a lower knee here would implicate |
+|---|---|---|
+| **12a** | ten tenants, realistic mix | the baseline. Is the data path CPU-bound like case 1, or does it bind earlier? |
+| **12b** | the same, `SYNC_MODE=full` | bytes per request, not requests. Moves the pressure to RDS, the buffer cache and `ReadIOPS` — the three case 1 could not exercise |
+| **12c** | the same, push on | the write path: WAL, lock contention, autovacuum. Still entirely unmeasured |
+
+**Two things to control for, both from case 1's own findings.** **Warm the server first** — cold
+gave a third of the throughput and the only failures this environment has produced, so a cold ramp
+finds a knee that is not real. And **expect the connection pool to look like the cause when it is
+the symptom**: connections pegged at exactly 100 in the cold run, which follows from slow requests
+rather than producing them.
+
+**Read these as Phase 5's loop starting early, not as three runs.** The method there is saturate,
+name the resource, relieve it, re-run — and with a 2 vCPU app tier already saturating on the
+cheapest request the suite can make, "raise the app tier" is a plausible first relief, after which
+the interesting knees are whatever sits behind it. Running 12a–c before any relief is what makes
+the first "name the resource" step cost three ramps rather than a redesign.
+
+**A fourth would isolate F2.1**, which is still a code-read hypothesis with no measurement against
+it: the same ramp single-tenant against ten-tenant at matched rps, to price the organisation
+interceptor's three round trips per connection borrow. Worth it only if 12a–c leave multi-tenancy
+as the live suspect.
 
 **What the order is actually constrained by**, since the rest is preference:
 
@@ -955,8 +995,11 @@ is binding; the calendar is not.
   their presence.
 * **The validation pair before anything leans on the block ordering**, because every later
   adjacency assumes it.
-* **9 last in A.** The knee is only interpretable once the unstressed shape is known, and whatever
-  it leaves behind is cleared by B's reset.
+* **9 last in A, and its three ramps in the order given.** The knee is only interpretable once the
+  unstressed shape is known, and whatever the ramps leave behind is cleared by B's reset — which
+  is also why 12c can turn push on without costing a reset of its own. 12a before 12b and 12c
+  because it is the one with a comparator: every other case ran the realistic mix, so a knee there
+  can be read against them.
 * **12 and 13 after 6 and 7**, read against 11 and each other, with no reset between.
 * **8 is three dataset loads**, one per growth point, so it cannot share a block. Day 180 reuses
   case 4.
