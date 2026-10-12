@@ -78,6 +78,10 @@ validate_dataset: ## Run the H5 statistical gate. STATS=stats.json from validate
 	@cd tools/data-generator && python3 validate.py "$(abspath $(STATS))"
 
 
+co_tenant_feeder: ## Install a generated co-tenant dataset's users as the feeder. DATASET=/path/to/co-tenants-day-180
+	@test -n "$(DATASET)" || (echo "usage: make co_tenant_feeder DATASET=/path/to/co-tenants-day-180" && exit 1)
+	@python3 tools/co-tenant-feeder.py "$(DATASET)"
+
 structural_check: ## H5 steps 1-2: can the client read this dataset? USERS=path [URL=...]
 	@test -n "$(USERS)" || (echo "usage: make structural_check USERS=path/to/sync-users.csv [URL=http://host:port]" && exit 1)
 	@./tools/data-generator/structural_check.sh --users "$(USERS)" $(if $(URL),--url "$(URL)",) $(if $(OUT),--out "$(OUT)",)

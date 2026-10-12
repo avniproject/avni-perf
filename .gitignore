@@ -48,6 +48,10 @@ build
 !/src/gatling/resources/case3-users-span20.csv
 !/src/gatling/resources/case4-users-span20.csv
 !/src/gatling/resources/case5-users-span20.csv
+# The co-tenant cohort, committed on the same argument as the case feeders: a result has to be
+# traceable to the cohort it ran as. 3,777 generated org-NNNN identifiers, no names and no tokens.
+# Written by `make co_tenant_feeder`, which refuses a file that would make the draw uniform.
+!/src/gatling/resources/co-tenant-users.csv
 !/gradle/wrapper/gradle-wrapper.jar
 tools/entity-metadata/node_modules
 tools/entity-metadata/package-lock.json

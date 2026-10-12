@@ -39,8 +39,16 @@ def test_every_feeder_git_will_accept_is_one_these_tests_check():
     two while still passing. Checking the allow-list against what is tracked is the version of
     this that a rename cannot quietly shrink."""
     tracked = {p.resolve() for p in _tracked_feeders()}
-    missing = [p.name for p in _allowed_by_gitignore() if p.resolve() not in tracked]
-    assert not missing, f"un-ignored but not tracked, so nothing checks them: {missing}"
+    # **An allow-list line is a permission, not a promise that the file exists.** This asserted
+    # allowed-implies-tracked, which was right while every allowed name was a committed cohort.
+    # co-tenant-users.csv is un-ignored ahead of the co-tenant dataset being generated, so the
+    # name is reserved and the file is not there yet. The direction that protects anything is the
+    # other one, below: a tracked feeder with no allow-list line is one that arrived without
+    # anyone looking at its credential column.
+    reserved = [p.name for p in _allowed_by_gitignore() if p.resolve() not in tracked]
+    assert reserved == [] or reserved == ["co-tenant-users.csv"], (
+        f"un-ignored names with no file behind them: {reserved}. One reservation is deliberate; "
+        f"more than that means the allow-list has drifted from what exists")
     # The `-example` files are templates rather than cohorts, and the deny pattern
     # (`*-users.csv`) never covered them, so they are tracked without an allow-list line. They are
     # still swept for credentials below -- an example carrying a real token would be worse, not
@@ -286,3 +294,27 @@ def test_the_committed_feeders_are_interleaved():
         expected = n * sum(1 for r in rows if r["role"] == "supervisor") / len(rows)
         assert abs(sup - expected) <= 2, (
             f"{name} prefix {n}: {sup} supervisors, expected ~{expected:.1f}")
+
+
+def test_if_the_co_tenant_feeder_is_committed_it_is_a_cohort_and_not_the_stub():
+    """**Un-ignoring the name created a way to commit the wrong file.** A 3-row stub sits at that
+    path on a developer machine; `git add -A` would commit it, and it would read as the cohort.
+    The simulation refuses it at run time, but only once an environment is held and a dataset is
+    loaded. This refuses it at review time.
+
+    Skipped while the name is still only reserved -- the co-tenant dataset does not exist until
+    513 organisations are provisioned.
+    """
+    path = ROOT / "src/gatling/resources/co-tenant-users.csv"
+    tracked = {p.resolve() for p in _tracked_feeders()}
+    if path.resolve() not in tracked:
+        return
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("cof", ROOT / "tools/co-tenant-feeder.py")
+    cof = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cof)
+    problems, rows, orgs = cof.check(path)
+    assert not problems, f"the committed co-tenant feeder is not usable: {problems}"
+    assert len(orgs) > 100, (
+        f"the committed co-tenant feeder spans {len(orgs)} organisations; the co-tenant set is "
+        f"513 and the concentration is measured across 110 of them")

@@ -1113,12 +1113,26 @@ public class AvniSyncSimulation extends Simulation {
             // draw is uniform again -- silently the behaviour this replaces.
             boolean hasColumn = !rows.isEmpty() && rows.get(0).containsKey("organisationUUID");
             if (!hasColumn || (cover[1] == 1 && rows.size() > 1)) {
-                out.println(
-                    "  WARNING: this feeder carries no usable organisationUUID, so every row fell "
-                    + "into one organisation and the draw is uniform - the behaviour the "
-                    + "concentration replaces. deployment.feeder_csv writes the column; the "
-                    + "committed co-tenant-users.csv is a stub for CI. Cases 7 and 13 need a "
-                    + "generated feeder.");
+                // **A warning here was not enough, because the run it spoils still completes.**
+                // Every row collapses into one organisation, every draw takes rank 1, and the
+                // concentration this models is replaced by the uniform draw it exists to correct
+                // -- at the right request rate, with a plausible report, and a line of warning
+                // text a long way above the result. This block only runs under CO_TENANTS=on,
+                // which is cases 7 and 13 and nothing else, so there is no case where an
+                // unusable feeder here is acceptable.
+                throw new IllegalArgumentException(String.format(
+                    "CO_TENANTS=on but %s carries no usable organisationUUID: %d row(s) fell into "
+                    + "%d organisation(s). The draw would be uniform across one tenant, which is "
+                    + "the behaviour the measured concentration replaces, and the run would "
+                    + "complete looking ordinary.%n"
+                    + "  The real feeder is the co-tenant dataset's own sync-users.csv, which "
+                    + "deployment.feeder_csv writes with the column -- 3,777 rows across 513 "
+                    + "organisations. Generate the dataset, then `make co_tenant_feeder "
+                    + "DATASET=/path/to/co-tenants-day-180`.%n"
+                    + "  The co-tenant-users.csv in resources is a local stub and is gitignored; "
+                    + "the committed file is co-tenant-users-example.csv, which is an example and "
+                    + "not a cohort.",
+                    coTenantFeeder, rows.size(), cover[1]));
             }
             // Media is per tenant now, so the aggregate alone no longer describes the run.
             double heaviest = MediaProfiles.rateAtRank(1);
