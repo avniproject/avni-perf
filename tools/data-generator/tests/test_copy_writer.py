@@ -162,7 +162,12 @@ def test_the_load_is_one_transaction():
 
 def test_statistics_are_refreshed_after_the_load():
     script = cw.load_script({"individual": ["id"]}, verify_schema=False)
-    assert script.index("COMMIT;") < script.index("ANALYZE;")
+    assert script.index("COMMIT;") < script.index("ANALYZE ")
+    # Named tables, not a bare ANALYZE: a bare one analyses every table in the database, which on
+    # a multi-tenant target is every other tenant's metadata too. 64% of a 513-tenant load.
+    assert "\nANALYZE;" not in script
+    analyze = [l for l in script.splitlines() if l.startswith("ANALYZE ")][0]
+    assert analyze.endswith(";") and "individual" in analyze
 
 
 def test_the_script_uses_client_side_copy():

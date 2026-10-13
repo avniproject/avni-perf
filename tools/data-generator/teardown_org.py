@@ -140,6 +140,13 @@ METADATA = (
     "individual_relation_gender_mapping", "individual_relationship_type", "rule", "rule_dependency",
     "menu_item", "message_rule", "message_request_queue", "message_receiver", "task", "task_type",
     "task_status", "documentation", "documentation_item", "extension", "custom_query", "gender",
+    # Both arrive with the bundle, never from the generator, on two readings each: no tenant
+    # directory contains a group_role.tsv or an attendance_type.tsv, and both files are in
+    # BundleZipFileImporter's fileSequence -- the large-pull-heavy bundle carries 5 group roles
+    # and 1 attendance type, push-dominated carries 2 group roles. They surfaced only when the
+    # first large-pull-heavy organisation was torn down, because the preflight classifies a table
+    # when it holds rows and the earlier datasets' bundles carried none.
+    "group_role", "attendance_type",
     # Location metadata, not dataset rows, on three independent readings: the generator never
     # writes it; the application maintains it when locations are created through
     # LocationMappingController, and the generator `\copy`s address_level straight past the app so

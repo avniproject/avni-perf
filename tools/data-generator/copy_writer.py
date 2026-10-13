@@ -251,9 +251,20 @@ def load_script(tables: Mapping[str, Sequence[str]], *, directory: str = ".",
         "",
     ]
     if build_indexes_after:
-        out += ["-- Build indexes and refresh statistics after the load, not before (H4).",
-                "-- The index definitions are production's own and belong with the schema.",
-                "ANALYZE;", ""]
+        # **Named tables, not a bare ANALYZE.** A bare `ANALYZE` analyses every table in the
+        # database, which for a multi-tenant target means every other tenant's metadata as well
+        # -- hundreds of thousands of concept and form_element rows this load did not touch.
+        #
+        # Measured on the 513-tenant co-tenant load, 13 Oct 2026: 84 bare ANALYZEs cost 3,893 s
+        # of the run's 6,126 s, 64% of the whole load, against ~2,200 s for every COPY in it.
+        #
+        # This narrows each one to what the load actually wrote. It does NOT fix the multi-tenant
+        # case on its own: 513 tenants still analyse the same shared tables 513 times, and the
+        # fix for that is the caller running ONE analyse after the last tenant rather than this
+        # script running one per tenant. See docs/runbook-provisioning-stop-resume.md.
+        out += ["-- Refresh statistics after the load, not before (H4). Named tables, because a",
+                "-- bare ANALYZE covers every table in the database -- see copy_writer.load_script.",
+                f"ANALYZE {', '.join(ordered)};", ""]
     return "\n".join(out)
 
 

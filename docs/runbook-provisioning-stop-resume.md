@@ -110,6 +110,67 @@ Push-dominated imports rose from ~72 s to ~80 s over ~380 imports and ~12 h of u
 restart put them back to ~69 s with more organisations present than before — so it tracks
 uptime, not tenant count, and is not worth planning around. Mechanism unestablished.
 
+## Loading a multi-tenant dataset
+
+Measured loading the 513-tenant co-tenant dataset on 13 Oct 2026, 6.25 M transactional rows.
+
+**Run ONE `ANALYZE` after the last tenant, not one per tenant.** Each `load.sql` ends with an
+analyse of the tables it wrote. Across 513 tenants those repeat over the same shared tables, and
+in the first attempt 84 of them cost **3,893 s of 6,126 s — 64% of the load**, against ~2,200 s
+for every `COPY` in it. Stripping them and appending a single `ANALYZE` to the driver took the
+remaining 428 tenants from a projected ~6 h to **199 seconds**.
+
+    sed -i 's/^ANALYZE .*;$/-- analyse once at the end instead/' /tmp/<set>/co-*/load.sql
+    # then append one `ANALYZE;` to the driver after the last \i
+
+`copy_writer.load_script` now names the tables rather than emitting a bare `ANALYZE;`, which
+stops it analysing every other tenant's metadata, but it cannot suppress itself — it is called
+once per tenant and each call sees a single-tenant deployment. The suppression is the caller's.
+
+**Build the driver as one psql session**, not `db-load-remote.sh` per tenant: that script tars,
+uploads, presigns and downloads each time, and 513 round trips dwarf the load. Each tenant's
+`load.sql` is its own `BEGIN..COMMIT`, so `ON_ERROR_STOP=1` stops at the failing tenant with
+every earlier one committed, and a resume starts from there.
+
+## Tearing down an organisation that has users
+
+**`encounter.filled_by_id` and `program_encounter.filled_by_id` are foreign keys to `users` with
+no index on them** — 3,305 MB and 1,083 MB respectively on the load-test target. Deleting one
+user makes Postgres scan both tables to prove nothing references it, so an organisation with
+~200 users costs ~880 GB of scanning. The first teardown attempt spent **35 minutes on a single
+organisation** and was heading for 4+ hours across 11, CPU-bound at one saturated core with
+ReadIOPS near zero and no wait event -- the signature of cached sequential scanning, not lock
+contention.
+
+Two temporary indexes took the whole teardown to **8 minutes**:
+
+    CREATE INDEX tmp_teardown_encounter_filled_by ON encounter (filled_by_id);
+    CREATE INDEX tmp_teardown_prog_enc_filled_by  ON program_encounter (filled_by_id);
+    -- teardown here
+    DROP INDEX tmp_teardown_encounter_filled_by, tmp_teardown_prog_enc_filled_by;
+
+**Drop them afterwards.** They are scaffolding, not a schema change: production does not have
+them, and this environment exists to measure production. Leaving them would make load-test sync
+faster than the real thing and quietly invalidate every number taken afterwards. Drop them
+*before* the reload too, which the run on 13 Oct did not -- the reload then paid index
+maintenance on every `encounter` and `program_encounter` insert for no benefit.
+
+That the index is missing at all is a property of Avni's schema rather than of this harness, and
+is worth raising upstream on its own account.
+
+## Two scripts must not share state files
+
+A teardown-then-reload script polling `/tmp/<set>.teardown.rc` was still running when a second
+script was started that wrote `rc=0` to the same path. The first read it as its own teardown
+succeeding and launched a second reload of the same data; the two blocked on each other and the
+loser died on a duplicate key nine minutes later. The first had also `rm`'d the shared log, so
+the survivor wrote to an unlinked inode and its progress became invisible.
+
+Nothing was corrupted -- each tenant is one transaction and the loser rolled back -- but the only
+reason that was knowable was per-organisation row counts checked against the manifests. Give
+every invocation its own rc, log and pid paths, and stop the previous watcher before starting a
+new one.
+
 ## Tests
 
 `tools/tests/test-provision-co-tenants.sh` — 29 cases in about 10 s against a stub server
