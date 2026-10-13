@@ -104,29 +104,11 @@ empties every org-scoped table including metadata, yet does not drop the `organi
 or its `db_user`, and the guard keys on the name, so an emptied-but-present organisation is
 still skipped. The removal SQL is worth settling before it is needed rather than at 2 a.m.
 
-## Import time grows with the number of tenants
+## Import time drifts up with server uptime
 
-Measured mid-run on 12 Oct 2026 at 192 completed push-dominated imports — one archetype, one
-bundle, so archetype mix is controlled for. Regressing elapsed seconds on the organisation id
-assigned (which increments in provisioning order, so it stands for "how many organisations
-already existed"):
-
-    slope  +0.0322 s per existing organisation   (se 0.0025, t = 13.0)
-    R^2    0.469      residual sd 1.90 s
-    fitted org 24 -> 71.8 s    org 228 -> 78.3 s    org 536 -> 88.3 s
-
-This was twice read as noise and dismissed before the sample was large enough: at n=71 the
-fourth quarter fell back to the first's value and looked like it had resolved. It had not.
-What makes it real rather than an artefact of `provision-org.sh`'s ~5.2 s status-poll quantum
-is the residual spread, 1.90 s — well inside one quantum, so quantisation is not generating
-the trend, and t = 13 is not a sampling accident.
-
-Consequence for planning: the last tenants of a 513-organisation run cost about 88 s against
-the first ones' 72 s, so a full run is ~7.1 h rather than the ~6.6 h a flat rate predicts.
-Budget from the slope, not from the running mean.
-
-Worth noting this is a property of metadata import against a growing `organisation` table,
-and nothing here establishes which part of the server is responsible.
+Push-dominated imports rose from ~72 s to ~80 s over ~380 imports and ~12 h of uptime, and a
+restart put them back to ~69 s with more organisations present than before — so it tracks
+uptime, not tenant count, and is not worth planning around. Mechanism unestablished.
 
 ## Tests
 
