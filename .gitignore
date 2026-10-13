@@ -63,3 +63,7 @@ tools/data-generator/**/__pycache__
 # Local-only: maps the code names and ranks used in this repository to the real production
 # organisations they came from. The measurements are publishable; the attribution is not.
 *.local.md
+
+# macOS writes these into any directory opened in Finder. Nothing here needs them, and a repo
+# shared with people on other platforms should not carry them.
+.DS_Store

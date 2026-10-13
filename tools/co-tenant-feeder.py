@@ -72,7 +72,9 @@ def main(argv: list[str]) -> int:
     # Stated because the rank that matters is assigned from this file, not from the recipe:
     # CoTenantLoad.ranks() orders organisations by how many users each holds.
     print(f"  rank 1 will be {top[0][0]}, which takes 16.0% of the co-tenant draw")
-    print(f"\n  The destination is gitignored. Cases 7 and 13 read it as CO_TENANT_USERS.")
+    print(f"\n  Cases 7 and 13 read it as CO_TENANT_USERS. Commit it with the recipe's "
+          f"organisation ids: the ranks above are assigned from this file, so a feeder "
+          f"whose organisations do not match the recipe is worse than none.")
     return 0
 
 
