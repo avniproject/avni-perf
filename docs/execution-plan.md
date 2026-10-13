@@ -341,9 +341,14 @@ since it was built and the pilots inherited the default. Set on every pilot reci
 organisations present — the ones of Q12's 986 that hold data. The other 473 would be bare
 `organisation` rows; `co_tenants.empty_rows()` builds them, nothing calls it, and 1 Oct 2026
 decided to leave it that way. `co-tenants-day-180` is 513 tenants and 3.13M
-encounters, so it is comparable in size to the pilot dataset itself, and nobody has measured what
-loading it costs. **Size it before Day 10 commits to the shape.** The ordering below is built so it
-is loaded once and never unloaded.
+encounters, so it is comparable in size to the pilot dataset itself.
+
+**Provisioned and generated 13 Oct 2026.** The 513 exist at organisation ids 24–566 with their
+archetype bundles imported, and the dataset is built: 6,253,693 rows, 3.12 GiB — within 10% of the
+whole pilot. **Loading it is still unmeasured**, which was the open question here and remains the
+open question: the reset budget rests on a ~21-minute projection extrapolated from two tenants, and
+this is the load that tests it. The ordering below is built so it is loaded once and never
+unloaded.
 
 > **The co-tenants are provisioned after Block A, not before it (decided 6 Oct 2026).** Generating
 > their data needs their organisations to exist first: `refs.sql` reads `subject_type.id` and
@@ -977,12 +982,45 @@ is binding; the calendar is not.
 | 12a | A | **9** — stress ramp on the data path, ten tenants, realistic mix | **done 2026-10-12** — `2026-10-12T02-07-36Z-case9-12a-cf77819`. 200→3,000/h over 45 min, `PUSH=off`. **App CPU again, and now it is evidence**: pinned 99.0–99.3% for thirty minutes while RDS sat at 16–25% and `ReadLatency` never left 0.5–0.8 ms — yet `ReadIOPS` reached 312 against case 1's 0.0, so the disk path case 1 could not exercise was exercised and cost nothing. Knee ~1,160–1,290 syncs/hour. **Not GC**: heap peaked at 96–98% of max with Old Gen up 83%, but measured GC time was 1–1.4 s/min — ~2% of wall clock — so the CPU is request work. Broke at 0.54% failures, 115 of 116 being the client's own 60 s timeout. [`findings-case9-12a.md`](findings-case9-12a.md) |
 | 12b | A | **9 with `SYNC_MODE=full`** — same ramp, every sync a full pull | **done 2026-10-12, twice.** First ramp (50→800/h) topped out at 55% CPU — sized from 12a's saturated full syncs, which measured queueing; full actually costs 1.44x, all of it extra records. Rerun (200→2,400/h) saturated. **The database cannot be made to bind**: every sync pulling everything still reads ~1 MB/s at sub-ms latency, RDS 23–31%. **The ceiling is records per hour** — ~12.8M without push, ~11.0M with — holding across 2 sync modes and 18–435 devices in flight. [`findings-case9-12b.md`](findings-case9-12b.md) |
 | 12c | A | **9 with push on** — same ramp, write path included | **done 2026-10-12** — `2026-10-12T06-01-23Z-case9-12c-cf77819`. 12a's ramp exactly, push on. **The write path does not bind either**: WriteIOPS 45–64, write latency 0.8–2.6 ms, RDS 23–33% while the app pinned at 99.1% for 55 minutes. **Failed less than 12a** — 9 errors in 102,900 requests and zero timeouts, against 12a's 115 timeouts, because push cuts the same work into smaller requests. Ceiling confirmed at a sixth run: **12.85 Mrec/h without push, 11.32 with, ~12% penalty**. [`findings-case9-12c.md`](findings-case9-12c.md) |
-| 13 | B | **Provision 513 organisations**, import each one's archetype bundle, re-dump `refs.sql`, generate and load the co-tenant data | **blocked.** `co-tenants-day-180.json` has never been generated: `bundle_path` is still the placeholder and `--bundle-root` needs one extracted bundle per archetype (none present locally). This gates all of Block B |
+| 13 | B | **Provision 513 organisations**, import each one's archetype bundle, re-dump `refs.sql`, generate and load the co-tenant data | **provisioned and generated 13 Oct 2026; the load remains.** 513 organisations at ids 24–566, ids read back by name; `refs.sql` re-dumped; 6,253,693 rows generated into 513 tenant directories, 3.12 GiB, verified against their manifests. `make co_tenant_feeder` has installed the 4,488-user feeder. **What is left is the load, and timing it** — see below |
 | 14 | B | **6** — co-tenants present, 2 h | |
 | 15 | B | **7** — co-tenants syncing, 2 h | |
 | 16 | B | **12** and **13** — clustered, 1 h each | |
 | 17 | C | **8** — growth, 2 h each at day 60, 120 and 365 | |
 | 18 | A′ | Reload `pilot-day-180-span20`, split with `--variant span20`, re-run **3**, **4**, **5** | |
+
+#### The co-tenant set, as provisioned
+
+**All 513 through the API, and no config cloning.** The hybrid was chosen against a projection of
+26–33 hours that came from extrapolating one `large-pull-heavy` import across every tenant. With
+all three archetypes timed in one session — 183 s, 72 s and 110 s — the same arithmetic gave 10.6
+hours, and a clone saving eight hours of unattended machine time was no longer worth new code
+running on 403 organisations whose config nothing ever reads.
+
+**Three things the provisioning run settled that the plan had assumed:**
+
+* **The ids are not contiguous and must be read back by name.** The server assigned 24–566 with
+  406–435 missing — an id-allocation block the overnight restart discarded. A positional mapping
+  from the recipe's 1001–1513 placeholders would have been correct for the first 382 tenants and
+  wrong for the remaining 131, starting at `co-383`. That is data loading cleanly into the wrong
+  tenant. Matched from `docs/co-tenant-provisioning.tsv`; all 513 resolve, all distinct.
+* **Supervision is per archetype, not per deployment.** `supervisor_level` was `Taluka` on all 513,
+  which is the *customer's* hierarchy; the co-tenants are built from three production bundles and
+  only one has a Taluka. `large-pull-heavy` supervises at AWC Village/Town, `push-dominated` at
+  Subcentre, `media-heavy` at Block — and `media-heavy` truncates to three levels, so its leaf is
+  Ward rather than Village. Generation raised on `co-001` before writing a row.
+* **Observation width varies by bundle, and two archetypes are thin.** `push-dominated` — 500 of
+  the 513 — reproduces the profile: 7/25 individuals against a 7/29 target. `large-pull-heavy`
+  fills its widest registration form at five keys, which is the form's ceiling rather than a
+  choice. `media-heavy` produces no registration, enrolment or programme-encounter observations at
+  all: those forms carry zero elements and its enrolment mapping is voided. **`co-001` is
+  `large-pull-heavy` and is rank 1 at 16% of the co-tenant draw**, so the heaviest co-tenant has
+  the lighter payload. Read case 7 with that in mind: the production aggregate is carried by the
+  500, not by the largest.
+
+**The load is unmeasured and is the next thing to time.** 3.12 GiB and 6.25M rows, comparable to
+the pilot dataset itself, against a reset budget that still rests on a ~21-minute projection
+extrapolated from two tenants.
 
 #### Case 9 is three ramps, because one knee has already been found and it is not this one
 
