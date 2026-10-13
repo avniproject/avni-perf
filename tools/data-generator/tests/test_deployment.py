@@ -473,3 +473,41 @@ def test_a_deployment_that_cannot_fit_in_int4_is_refused():
                              state_workers=500_000)
     with pytest.raises(ValueError, match="int4"):
         dep.plan_ids(d)
+
+
+def test_the_widest_registration_form_is_chosen_not_the_first():
+    """**A tenant registers its whole population under one subject type**, so which one is picked
+    decides how wide every `individual.observations` is. It was `subject_types[0]`, and refs.sql
+    orders by id -- whichever the importer inserted first. In one co-tenant bundle that selected a
+    form with a single element out of six mappings ranging 0 to 5, and every individual came out
+    with exactly one key: p50 1 and p95 1, a distribution collapsed to a constant, which is the
+    index shape observations.py exists to avoid.
+    """
+    class _Mapping:
+        def __init__(self, uuid, n):
+            self.subject_type_uuid, self._n = uuid, n
+
+    class _Bundle:
+        def __init__(self, sizes):
+            self._sizes = sizes
+        def elements_for(self, m):
+            return [object()] * self._sizes[m.subject_type_uuid]
+
+    class _ST:
+        def __init__(self, uuid): self.uuid = uuid
+
+    class _Ctx:
+        def __init__(self, sizes):
+            self.subject_types = [_ST(u) for u in sizes]
+            self.bundle = _Bundle(sizes)
+            self._sizes = sizes
+        def mapping(self, form_type, *, subject_type_uuid=None, **kw):
+            return _Mapping(subject_type_uuid, self._sizes[subject_type_uuid])
+
+    # the shape that caused it: the narrow form sorts first
+    ctx = _Ctx({"a": 1, "b": 5, "c": 3})
+    assert dep._widest_subject_type(ctx).uuid == "b"
+
+    # one subject type, or none with a form, behaves exactly as before
+    assert dep._widest_subject_type(_Ctx({"only": 0})).uuid == "only"
+    assert dep._widest_subject_type(_Ctx({"a": 0, "b": 0})).uuid == "a"

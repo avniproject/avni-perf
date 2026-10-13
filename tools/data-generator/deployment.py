@@ -178,6 +178,23 @@ class TenantBuild:
         return self.hierarchy.leaves
 
 
+def _widest_subject_type(ctx):
+    """The subject type whose registration form carries the most elements.
+
+    Ties and the no-mapping case fall back to the first, so a bundle offering one subject type,
+    or none with a form, behaves exactly as before. Reported by element count rather than by
+    name: which subject type a deployment "really" uses is a question the bundle cannot answer,
+    and the widest form is the one that exercises the observation path rather than bypassing it.
+    """
+    best, best_n = ctx.subject_types[0], -1
+    for st in ctx.subject_types:
+        m = ctx.mapping("IndividualProfile", subject_type_uuid=st.uuid)
+        n = len(ctx.bundle.elements_for(m)) if m else 0
+        if n > best_n:
+            best, best_n = st, n
+    return best
+
+
 def build_tenant(spec: TenantSpec, id_base: int, address_level_types=None,
                  registration_type_ids=None) -> TenantBuild:
     """`address_level_types` comes from refs.json and is what makes the generated locations
@@ -237,7 +254,17 @@ def transactional_rows(build: TenantBuild, deployment: DeploymentSpec, ctx: row_
         enrolment_id = id_base
         encounter_id = id_base
         prog_encounter_id = id_base
-        subject_type = ctx.subject_types[0]
+        # **Not subject_types[0], which is an ordering accident.** refs.sql returns subject
+        # types by id, so the first is whichever the bundle importer inserted first -- and a
+        # tenant registers its entire population under this one type, so that accident decides
+        # how wide every `individual.observations` is. In the large-pull-heavy co-tenant bundle
+        # it selected a registration form carrying one element out of six mappings ranging 0 to
+        # 5, and every individual came out with exactly one key: p50 1 and p95 1, a distribution
+        # collapsed to a constant, which is the GIN index shape observations.py exists to avoid.
+        #
+        # Encounter types and programmes are drawn per row, so their mix across rich and empty
+        # forms is already faithful. This is the only choice made once per tenant.
+        subject_type = _widest_subject_type(ctx)
 
         for village in build.villages:
             scope = row_gen.AddressScope(address_ids=(village.id,))
