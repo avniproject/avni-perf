@@ -37,7 +37,6 @@ are parameters with a documented range, defaulted to their conservative end.
 | **12** | **Clustered — co-tenant data** | **10 + 513** | Case 6 | Same as case 6 | Incremental, 1% full | **1 h** | Case 6 compressed: **6.6 syncs in flight against 0.55** |
 | **13** | **Clustered — co-tenant load** | **10 + 513** | Case 7 | Same as case 6 | Incremental, 1% full | **1 h** | Case 7 compressed: **9.7 in flight**, three times production's peak and the heaviest sustained load in the suite |
 | **14** | **Re-enrolled device** | 1 state | Case 2's 501 | Day 180 | **Full** | **90 min** | What a full sync costs when the catchment actually holds data — the expensive path the 1% stands for |
-| **15** | **Shift change — the whole cohort at once** | **10 + 513** | Case 5's 1,682 | Same as case 6 | Incremental, 1% full | **10 min** | What happens when the demand is 14× what the server can retire: how the backlog forms, what it does to the devices in it, and whether it recovers |
 
 **What the columns refer to.** "10" is the customer's own deployment — two state tenants and eight
 NGO ones, organisations 10 to 19; "+ 513" adds production's co-tenants beside them. The datasets
@@ -106,40 +105,37 @@ is `pilot-day-180` at span 8.4, `-span20` is `pilot-day-180-span20`.
 > the clash. `--force` is there for when replacing is meant, and re-splitting the same dataset is
 > unchanged output, so it stays a no-op rather than a nuisance.
 
-### Case 15 is a backlog test, not a throughput test
+### Considered and dropped: compressing the 1,682 into a ten-minute window
 
-**It will not retire 1,682 syncs in ten minutes, and that is the point.** Case 11's burst findings
-established the retirement ceiling three ways — 13.3 syncs/minute at 1,600/h over fifteen minutes,
-12.6 at 1,682/h over an hour, and met comfortably at 550/h. Call it **13 a minute**. Case 15
-demands:
+**Proposed to raise rps, which it cannot do.** The idea was that case 9's ramps showed low
+throughput for 1,682 users over 45 minutes, so a tighter window would drive more. The run log says
+those runs were not short of demand — they were already saturated:
 
-| | syncs/min | |
-|---|---|---|
-| the cohort, 1,682 in 10 minutes | 168.2 | 10,092/h |
-| co-tenants at the default rate | 13.2 | 792/h |
-| **total demanded** | **181.4** | |
-| **measured ceiling** | **13.0** | |
+| run | demand | rps | p95 | requests in flight |
+|---|---|---|---|---|
+| 12b | 50/h | 5.82 | **489 ms** | ~1.0 |
+| 12b-rerun | 200/h | 11.4 | **48,514 ms** | ~169 |
+| 12c | 200/h | 20.46 | **33,454 ms** | ~235 |
 
-**Fourteen times the ceiling.** About 130 syncs retire inside the window and roughly 1,550 queue.
-Case 13, the heaviest case previously planned, is 3.2× by the same arithmetic.
+The data-path knee sits between 50/h and 200/h. At 200/h the server already holds 100–270 requests
+in flight above 30 s p95, and two of those runs breached `MAX_FAILED_PERCENT`. A ten-minute window
+demands 10,092/h — **about 50x past a knee already crossed** — so it raises queue depth and not
+throughput.
 
-So the questions it answers are not "how long does the cohort take" — that is arithmetic once the
-ceiling is known. They are:
+**And the resource is named.** Case 9/12a found the app server pinned at 99.0–99.3% for thirty
+minutes with RDS at 24.8%, reads served at no cost, and the pool not binding. It also excluded the
+alternative that matters, because a JVM thrashing GC reads 99% too and implies the opposite remedy:
+GC CPU ran flat at 0.02–0.05, erupted only across the saturated window, peaked at 1.2–1.4 in narrow
+bursts, and accounts for about 2% of wall clock. It is request work. **rps on the data path is
+bounded by 2 vCPU, and that bound is reached at 200 syncs/hour.**
 
-* **What does a device in the backlog experience?** Case 11's run 1 saw a p50 sync duration of
-  1,639 s against 195 s at a met demand. At 14× that figure is the result, not a detail.
-* **Does the queue drain or collapse?** A backlog of 1,550 at 13 a minute is two hours of drain
-  after a ten-minute event. Whether the server retires at the ceiling throughout, degrades, or
-  sheds, is the thing no run has shown.
-* **Does the co-tenant population suffer with the customer's?** Both draw on one pool and one
-  interceptor. Case 7 asks that at a met demand; this asks it under overload, and the request
-  prefixes keep the two populations separable.
+**What does move rps**, visible in the same table: requests per sync. 12c reached 20.46 against
+12b-rerun's 11.4 at identical demand, purely because push adds requests. Cheaper requests or more
+vCPU are the other two levers. Window compression is not one.
 
-**Why ten minutes rather than a gentler compression.** The suite has measured met demand (cases 2
-to 7), mild overload (case 11 at 2.2×) and a controlled ramp to the knee (case 9). What it has not
-measured is the shape the deployment actually risks: a shift ending, signal returning, a training
-cohort released — a whole fleet arriving inside minutes. The honest expectation is that it breaks;
-the finding is *how*.
+**What the idea was reaching for is still unmeasured**: what a device in a deep backlog
+experiences, and whether the queue drains or collapses. That is a backlog question rather than a
+throughput one, and if it is wanted it should be scoped as one rather than as a way to raise rps.
 
 ### Case 14 exists because nothing else measures a full sync that pulls anything
 
@@ -200,7 +196,6 @@ usernames at all**, so the wrong one returns 401 for every user.
 | **9** | `PROFILE=stress -DUSER_COUNT=1682 -DSTRESS_TO_SYNCS_PER_HOUR=…` | 140 → up | — |
 | **10** | case 4 at `-DDURATION_MINUTES=720` | 47 | 561 |
 | **11–13** | cases 5–7 plus `-DSYNC_WINDOW_HOURS=1 -DDURATION_MINUTES=60` | **1,682** | 1,682 |
-| **15** | `PROFILE=steady -DUSER_COUNT=1682 -DSYNC_WINDOW_HOURS=0.1667 -DDURATION_MINUTES=10 -DCO_TENANTS=on`, feeder `case5-users-pilot.csv` | **10,092 + 792** | ~130 retire, ~1,550 queue |
 | **14** | `PROFILE=steady -DSYNC_MODE=full -DUSER_COUNT=501 -DDURATION_MINUTES=90`, feeder `case2-users-pilot.csv` in Block A or `case2-users-states.csv` against `states-day-180` | 42 | ~63, every one of them full |
 
 **Where a cell carries two figures they are `pilot-day-180` (span 8.4) and `pilot-day-180-span20`, in that order** — the span changes the cohort, so it changes the arrival rate with it. **Only cases 3, 4 and 5 repeat at both spans**: the rest vary tenancy, growth or clustering, and sweeping two factors at once makes a difference unattributable to either. Every other figure here is span 8.4. Cases 1 and 2 run on `states-day-180` and have no span at all.
