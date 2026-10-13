@@ -1036,6 +1036,7 @@ is binding; the calendar is not.
 | 14 | B | **6** — co-tenants present, 2 h | |
 | 15 | B | **7** — co-tenants syncing, 2 h | |
 | 16 | B | **12** and **13** — clustered, 1 h each | |
+| 16a | B | **15** — the whole cohort plus co-tenants in a 10-minute window | Last in B, because it is the only run expected to leave a backlog rather than a measurement, and whatever it leaves is cleared by C's dataset swap. 14x the measured retirement ceiling — about 130 of 1,682 retire in the window. It answers what a queued device experiences and whether the queue drains, which nothing else asks |
 | 17 | C | **8** — growth, 2 h each at day 60, 120 and 365 | |
 | 18 | A′ | Reload `pilot-day-180-span20`, split with `--variant span20`, re-run **3**, **4**, **5** | |
 
@@ -1129,6 +1130,7 @@ as the live suspect.
   because it is the one with a comparator: every other case ran the realistic mix, so a knee there
   can be read against them.
 * **12 and 13 after 6 and 7**, read against 11 and each other, with no reset between.
+* **15 after 13**, because it needs 13's result to be interpretable: 13 is 3.2x the ceiling and 15 is 14x, so 13 establishes that the queue forms before 15 asks what it does. Running them the other way round would leave a backlog no one could attribute.
 * **8 is three dataset loads**, one per growth point, so it cannot share a block. Day 180 reuses
   case 4.
 * **A′ last.** It answers a sensitivity rather than a target, and it is the work that gets dropped
