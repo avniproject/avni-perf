@@ -25,13 +25,17 @@ so treat the shape as firm and the dates as provisional.
 | **4 · Execution** | *ordered, not dated* | Cases 1 to 14, in a sequence where each is interpretable when it runs — see **The sequence**. |
 | **5 · Findings** | *after* | Saturate, name the resource, fix, re-run. Four to six iterations, not one pass. |
 
-**Status as of 9 Oct 2026.** Phases 0–3 complete. In Phase 4, Block A is done except the soak
-(**10**) and the stress ramp (**9**); case 11 has run at 1,682/h, at 550/h four times, and at a
-15-minute window. Block B is **blocked** — the co-tenant dataset has never been generated. Block C
-is ready whenever: the day 60/120/365 archives are in S3. Run-by-run state is in
-**[The sequence](#the-sequence)**; results are in [`run-log.md`](run-log.md) and the
-`findings-*.md` files. The dataset currently carries push residue from 9 Oct's six pushing runs
-and should be reloaded before anything that turns on a small delta.
+**Status as of 13 Oct 2026.** Phases 0–3 complete. **Block A is done** — the soak (**10**) on
+10 Oct, and the stress ramp (**9**) on 12 Oct as 12a/12b/12c, which settled the ceiling at
+12.85 Mrec/h without push and 11.32 with; case 11 has run at 1,682/h, at 550/h four times, and
+at a 15-minute window. **Block B's dataset is provisioned, loaded and verified** — 513 co-tenant
+organisations, 6.25 M transactional rows, every organisation matching its manifest, with the
+timings under [the archetype measurements](#before-the-ten-tenant-cases-can-be-generated). No
+Block B case has been run yet. Block C is ready whenever: the day 60/120/365 archives are in S3.
+Run-by-run state is in **[The sequence](#the-sequence)**; results are in
+[`run-log.md`](run-log.md) and the `findings-*.md` files. `pilot-day-180` carries push residue
+from 9 and 12 October's pushing runs and should be reloaded before anything that turns on a
+small delta.
 
 **Roughly four weeks to first findings**, of which Days 1 to 3 are not in this team's hands. **Phases 4 and 5 carry no dates on purpose**: runs slip, one gets re-run, another overtakes two others, and a calendar that has to be re-read as "whenever this actually goes" is worse than no calendar. What binds them is order, not dates.
 
@@ -405,6 +409,52 @@ unloaded.
 > them, which at ~5.2 s each reproduces 72, 183 and 110 almost exactly. **These measurements are
 > quantised to the poller, not the importer**, so the per-archetype ratios are soft even though the
 > total is sound. The routes out, and what each trades, are in `docs/dataset-provenance.md`.
+
+> ### Block B as executed, 12–13 Oct 2026
+>
+> **Provisioning, 513 organisations.** Run from the app host against `localhost:8021` — the app
+> host cannot reach its own ALB, whose security group admits only the injector CIDR — detached
+> under `setsid nohup`, with the environment stopped overnight between the two days.
+>
+> | | tenants | wall | per tenant |
+> |---|---|---|---|
+> | 12 Oct, from co-003 | 380 | ~8.5 h | 72 → 80 s, rising |
+> | 13 Oct, after restart | 131 | **155 min** | 69 → 73 s, flat |
+> | | **513** | **~11 h** | 0 failed |
+>
+> The rise and its reset are the uptime drift recorded in
+> [`runbook-provisioning-stop-resume.md`](runbook-provisioning-stop-resume.md): ~13% over ~380
+> imports and ~12 h, fully recovered by a restart, and **not** a function of how many
+> organisations already exist. Budget 11 h, not the 2 h 35 m the hybrid set above projected —
+> that figure was for 110 tenants, not 513.
+>
+> **The data load, 6.25 M transactional rows, 2.9 GB of TSV.**
+>
+> | step | | |
+> |---|---|---|
+> | upload | 2.8 GB → **512 MB** gzipped, streamed to S3 | **46 s** |
+> | host fetch + extract | via the VPC gateway endpoint, not the EICE tunnel | ~1 min |
+> | load, 85 tenants | first attempt, **with** the per-tenant `ANALYZE` | **102 min** |
+> | load, 428 tenants | `ANALYZE` stripped, one at the end | **199 s** |
+> | teardown, 11 orgs | 3,526,311 rows, **with** the FK scaffolding indexes | **8 min** |
+> | reload, 11 orgs | 3,520,627 rows | **21 min** |
+>
+> **A clean run is about 40 minutes.** The 102 minutes above was 64% `ANALYZE`; stripping it
+> leaves ~2,730 rows/s, and 6.25 M rows at that rate is ~38 min. Everything beyond that was
+> rework — a stale generation for the 11 `large-pull-heavy` tenants, and a teardown that scanned
+> 4.4 GB per user until two foreign keys were indexed. Both are written up in the runbook.
+>
+> **Three numbers to carry into any reset estimate for this dataset**, none of which the Block A
+> figures predict:
+>
+> - **`ANALYZE` must run once, not per tenant.** A bare `ANALYZE` covers every table in the
+>   database; 513 of them cost more than every `COPY` combined.
+> - **Load cost is superlinear in what is already there.** `individual` copied at 6,024 rows/s
+>   into a near-empty table and ~130 rows/s once it held 2.5 M, a 45x spread. A full reload does
+>   not scale from this one by row count alone.
+> - **Tearing down an organisation that has users needs an index that production lacks.**
+>   `encounter.filled_by_id` and `program_encounter.filled_by_id` are unindexed FKs to `users`;
+>   without them one organisation took 35 minutes, with them all eleven took 8.
 
 **Measured, and `truncate` wins by a factor of three.**
 
