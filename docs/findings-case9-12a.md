@@ -43,7 +43,7 @@ pool were binding, the database behind it would be busy. It sat at a fifth of it
 99% CPU** — and the two imply opposite remedies. More vCPU is the wrong relief if the real
 constraint is allocation against a fixed heap.
 
-New Relic has been attached as a javaagent on every run (`roles/newrelic`, `-Xms2560m -Xmx5120m`,
+New Relic has been attached as a javaagent on every run from 6 Oct 10:33 UTC — **not on case 1 or case 2, which predate the first transaction in the account; see [`findings-case3.md`](findings-case3.md)** (`roles/newrelic`, `-Xms2560m -Xmx5120m`,
 heap matched to production deliberately so GC behaviour transfers). Its CPU series agrees with
 CloudWatch to a tenth of a percent, which is a useful independent check on the figure above.
 

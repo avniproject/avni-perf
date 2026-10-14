@@ -55,6 +55,63 @@ pause is engine-dependent. The largest supervisor's sync, modelled here at 223 s
 SQLite and **537.1 s on Realm** — nine minutes. The conclusion above holds in both cases and gets
 stronger on Realm, where 490 of those 537 seconds are the device writing.
 
+## A supervisor costs more requests, not costlier requests — added 14 Oct 2026
+
+*From New Relic, needing no environment.* The 2.8× record count could be 2.8× the queries or 2.8×
+the bytes per query, and those imply different remedies. It is neither exactly: it is **2.3× the
+requests, each costing the same**.
+
+| | requests/sync | records/sync | per-request cost |
+|---|---|---|---|
+| case 2, field worker | 17.0 | 10,831 | *no New Relic data — see below* |
+| **case 3, supervisor** | **38.6** | **30,246** | 278.8 ms, 28.3 db calls |
+| case 5 / 6, mixed cohort | — | — | 276.4 / 276.5 ms, 28.6 calls |
+
+**Per-request cost does not depend on who is syncing.** 278.8 ms for the supervisor run against
+276.4 ms for the field-worker-dominated one, at the same ~28 database calls. Records scale 2.79×
+and requests 2.26×; the shortfall between those two is the fixed per-sync traffic — `syncDetails`,
+`resetSyncs`, telemetry — which does not grow with records.
+
+### Which is an argument about `PAGE_SIZE`
+
+**The per-request overhead is paid per page.** `AuthenticationFilter`'s own code is 5.62% of a
+request and `DummyInterceptor.postHandle` another 5.57% — about 31 ms of the 278.8 — and a
+supervisor pays it **38.6 times per sync**. Roughly **1.2 seconds per sync of pure per-request
+cost**, before a single record is read.
+
+That is the strongest argument yet for the page size mattering, and it cuts the opposite way from
+the usual concern. D8 notes the client ships `pageSize: 1000` while the simulation once defaulted
+to 100; the runs here used 1000, matching the client. Going *larger* would amortise the fixed cost
+across more records. Going smaller multiplies it.
+
+It also means the two interceptor costs found in case 9/12a are not a flat 11% tax on a sync —
+they are 11% of each of 38.6 requests, and a supervisor pays nearly four times what the arithmetic
+on one request suggests.
+
+## A bound on what New Relic can answer — added 14 Oct 2026
+
+**Case 2 has no New Relic data**, which is why the table above compares the supervisor against
+case 5/6 rather than against case 2 directly.
+
+The earliest transaction in the account is **6 October 10:33:28 UTC**. Case 1 ran on 5 October;
+case 2 ran 05:38–09:38 on 6 October. Both predate it. So
+[`findings-case9-12a.md`](findings-case9-12a.md)'s statement that *"New Relic has been attached as
+a javaagent on every run"* is not correct, and **no retrospective New Relic analysis of cases 1 or
+2 is possible**.
+
+**The configuration was not at fault.** `avni-infra` set `newrelic_agent_enabled: "true"` for
+loadtest in `e991b4b` on 15 September and wired the license key from SSM in `fa8a52b` on 29
+September, and nothing has touched either since. Two operational explanations fit and the
+repository cannot distinguish them: a license key absent or placeholder in SSM, which makes the
+agent start, fail to authenticate and report nothing; or a connection that only succeeded later,
+since the agent retries.
+
+**The second is more likely.** First data at 10:33:28 falls *inside* case 14's window of
+09:50–11:20, and case 14 recorded zero failures. An app restart mid-run would almost certainly
+have produced some; an agent connecting mid-run would produce none. `/opt/newrelic/logs/newrelic_agent.log`
+on the host would settle it — though `log_file_count` is 1, so there is no history if the app has
+restarted since.
+
 ## What this does not measure
 
 * **Push, and the push numbers would be wrong if it did.** The simulation scales a user's write
