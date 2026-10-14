@@ -99,18 +99,30 @@ case 2 ran 05:38–09:38 on 6 October. Both predate it. So
 a javaagent on every run"* is not correct, and **no retrospective New Relic analysis of cases 1 or
 2 is possible**.
 
-**The configuration was not at fault.** `avni-infra` set `newrelic_agent_enabled: "true"` for
-loadtest in `e991b4b` on 15 September and wired the license key from SSM in `fa8a52b` on 29
-September, and nothing has touched either since. Two operational explanations fit and the
-repository cannot distinguish them: a license key absent or placeholder in SSM, which makes the
-agent start, fail to authenticate and report nothing; or a connection that only succeeded later,
-since the agent retries.
+**The agent was attached throughout. It could not report.** The distinction matters, and the
+cause is a 41-minute window on 29 September:
 
-**The second is more likely.** First data at 10:33:28 falls *inside* case 14's window of
-09:50–11:20, and case 14 recorded zero failures. An app restart mid-run would almost certainly
-have produced some; an agent connecting mid-run would produce none. `/opt/newrelic/logs/newrelic_agent.log`
-on the host would settle it — though `log_file_count` is 1, so there is no history if the app has
-restarted since.
+```
+/avni/loadtest/newrelic-license-key
+  v1   29 Sep 10:50:48 IST
+  v2   29 Sep 11:31:28 IST   <- the correct key
+```
+
+`avni-infra` had enabled the agent for loadtest in `e991b4b` on 15 September and wired the key from
+SSM in `fa8a52b` on 29 September, and nothing has touched either since. But **`newrelic.yml` is a
+rendered template, and the agent reads it at JVM start.** A render during that 41-minute window
+baked v1's key onto the host. Correcting the SSM parameter at 11:31 changed nothing by itself: a
+plain application restart re-reads the same rendered file, so every start from 29 September to 6
+October presented the wrong key and failed to authenticate. Reporting began the moment Ansible next
+re-rendered the template with v2 — 6 October 10:33 UTC.
+
+**Which is consistent with case 14 recording zero failures.** First data at 10:33:28 falls inside
+its window of 09:50–11:20, and an agent connecting mid-run produces no failures where a restart
+mid-run almost certainly would.
+
+**The lesson is about the shape of the fix, not the key.** A secret corrected in SSM is not
+corrected on the host until the role that renders it runs again. Anything else templated from SSM
+has the same property, and a restart is not sufficient to pick it up.
 
 ## What this does not measure
 
