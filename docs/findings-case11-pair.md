@@ -132,6 +132,58 @@ Before attempting this again:
    full-syncs a typed entity is not comparable with one where none did.
 3. Only then re-run the pair. Reload first — see *What was established* for why that still matters.
 
+## The server-side half can be answered, and it says no drift — added 14 Oct 2026
+
+The comparison above fails because the harness draws a different number of records per run, so
+sync durations and record counts are not comparable between A and B. **Database time per call is
+not subject to that.** It is a per-query measure: how long the same queries take, independent of
+how many of them a given sync happened to need.
+
+`encounter (GET)`, across all five runs:
+
+| run | requests | avg | db | calls | **db/call** | app |
+|---|---|---|---|---|---|---|
+| A | 6,902 | 306.1 ms | 49.34 ms | 31.3 | **1.577 ms** | 256.8 ms |
+| B | 7,071 | 295.6 | 47.79 | 31.2 | **1.532** | 247.8 |
+| C | 7,381 | 294.1 | 48.52 | 31.2 | **1.556** | 245.6 |
+| D | 7,485 | 322.2 | 49.39 | 31.4 | **1.575** | 272.8 |
+| E | 7,028 | 318.7 | 47.14 | 31.8 | **1.483** | 271.5 |
+
+**No trend.** `db/call` spans 1.483 to 1.577, 6.3%, and the order is A high, B low, C middle, D
+high, E lowest — scatter, not drift. Call count holds at 31.2 to 31.8 throughout. Push residue
+accumulated across all five runs, and case 11 run 1 alone had added 43,257 rows beforehand, yet
+the database shows nothing.
+
+### Why that is believable rather than just quiet
+
+The same measure has now been taken three times under different conditions, and it discriminates:
+
+| | db per call, at constant call count |
+|---|---|
+| case 6, 513 co-tenants present | **+25.5%** |
+| case 10, nine hours of sustained load | flat, 34.67 → 34.34 ms |
+| **this pair, five runs of accumulating push residue** | **no trend, 6.3% scatter** |
+
+A measure that moved for co-tenant presence and did not move for the soak is not one that simply
+fails to move. So the residue not reaching the database is a result, not an absence of
+instrumentation.
+
+### Application time does step, and it fits the explanation above
+
+245.6 → 272.8 ms between C and D, holding into E. **Not a harness change** — C, D and E share
+`cf77819`. The most likely cause is the one this document already identifies as fatal to the
+paired comparison: `realistic` draws per-(user, entity) gaps from a measured distribution, so each
+run pulls a different number of records, and more records is more application time. That is
+consistent with the conclusion above rather than a competing explanation for it.
+
+### What it changes
+
+The verdict stands: **the sync-level comparison cannot answer the drift question**, for the reasons
+set out above. But the question the block strategy actually rests on — does a run sitting on the
+previous run's residue pay for it — now has a partial answer. **On the database side, no.** The
+application side remains confounded by the record-count variation, and would need a feeder pinned
+to fixed record counts to separate.
+
 ## What was established
 
 **The residue figures are sound even though the drift question is not answered.** They were
