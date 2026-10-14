@@ -455,6 +455,51 @@ unloaded.
 > - **Tearing down an organisation that has users needs an index that production lacks.**
 >   `encounter.filled_by_id` and `program_encounter.filled_by_id` are unindexed FKs to `users`;
 >   without them one organisation took 35 minutes, with them all eleven took 8.
+>
+> ### The pilot reset with the co-tenants in place, measured 14 Oct 2026
+>
+> The plan above said a truncate reload of the pilot "should land near 20 minutes rather than 100,
+> but that is an extrapolation ... so it wants measuring the next time a reload is needed." This is
+> that measurement, and **the truncate path was not available**: `reset-transactional.sql` is
+> global, so it would have emptied the 513 co-tenant organisations along with the pilot. A
+> per-organisation teardown of 10–19 is the only cut that leaves Block B's dataset standing.
+>
+> | phase | | |
+> |---|---|---|
+> | fetch `pilot-day-180.tar.gz` from S3 to the host | | 41 s |
+> | create the two FK scaffolding indexes | | 35 s |
+> | **teardown**, organisations 10–19 | 7,017,721 rows | **601 s** (10m) |
+> | drop the scaffolding indexes, before the load | | 4 s |
+> | **load**, ten tenants, one `ANALYZE` at the end | 6,896,792 rows | **3,272 s** (55m) |
+> | `VACUUM` | | 989 s (16m) |
+> | `REINDEX` of the ten tables this cycle rewrote | | 427 s (7m) |
+> | **total** | | **5,377 s — 1 h 30** |
+>
+> Against the 1 h 40 the old per-tenant `db-load-remote.sh` path cost on 12 Oct, and against a
+> 20-minute truncate that cannot be used here at all.
+>
+> **Teardown is the number that moved.** 7 M rows in ten minutes, where one co-tenant organisation
+> took 35 minutes the day before. That is the FK index, and it is the whole reason this reset fits
+> in a morning.
+>
+> **The superlinearity caution above needs qualifying.** It predicted a slower load because
+> `individual` already held the co-tenants' 2.5 M rows. Per-tenant times say otherwise — eight
+> identical 286,415-row tenants ran 338, 187, 121, 114, 75, 72, 111 and 109 seconds, *improving*
+> 4.7x before settling near 2,600 rows/s. RDS had restarted that morning, so the first tenant was
+> paying to fault index pages into a cold `shared_buffers`, and cache state dominated table size
+> over this range. **The first tenant after an RDS restart is not a usable sample**, and an
+> estimate anchored on it was out by a factor of three.
+>
+> **What the reset actually removed.** Teardown took 7,017,721 rows and the load returned
+> 6,896,792 — a difference of **120,929**, which is the push residue from case 11 run 1, pairs A–E
+> and 12c, plus 273 `sync_telemetry` rows. That gap is the point: case 6's 5 → 6 delta now reads as
+> co-tenant presence rather than co-tenant presence plus five runs of accumulated writes.
+>
+> **Verified afterwards**, the way 8 October's reload was: 1,506,900 individuals and 5,396,156
+> encounters across the pilot and organisation 3, `n_dead_tup` at zero on all four transactional
+> tables, the co-tenants untouched at 2,548,061 individuals and 1,282,772 encounters, and no rows
+> anywhere outside pilot, organisation 3 and the co-tenants. The `REINDEX` was included because
+> this was the second delete-and-reinsert cycle and the first left B-trees ~5% larger.
 
 **Measured, and `truncate` wins by a factor of three.**
 
