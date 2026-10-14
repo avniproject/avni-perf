@@ -25,17 +25,20 @@ so treat the shape as firm and the dates as provisional.
 | **4 · Execution** | *ordered, not dated* | Cases 1 to 14, in a sequence where each is interpretable when it runs — see **The sequence**. |
 | **5 · Findings** | *after* | Saturate, name the resource, fix, re-run. Four to six iterations, not one pass. |
 
-**Status as of 13 Oct 2026.** Phases 0–3 complete. **Block A is done** — the soak (**10**) on
+**Status as of 14 Oct 2026.** Phases 0–3 complete. **Block A is done** — the soak (**10**) on
 10 Oct, and the stress ramp (**9**) on 12 Oct as 12a/12b/12c, which settled the ceiling at
 12.85 Mrec/h without push and 11.32 with; case 11 has run at 1,682/h, at 550/h four times, and
 at a 15-minute window. **Block B's dataset is provisioned, loaded and verified** — 513 co-tenant
 organisations, 6.25 M transactional rows, every organisation matching its manifest, with the
-timings under [the archetype measurements](#before-the-ten-tenant-cases-can-be-generated). No
-Block B case has been run yet. Block C is ready whenever: the day 60/120/365 archives are in S3.
+timings under [the archetype measurements](#before-the-ten-tenant-cases-can-be-generated).
+**Case 6 is done (14 Oct): co-tenant presence costs 0.3% per record**, after a pilot reset that
+removed 120,929 rows of push residue. Cases 7, 12 and 13 remain. Block C is ready whenever: the
+day 60/120/365 archives are in S3.
 Run-by-run state is in **[The sequence](#the-sequence)**; results are in
-[`run-log.md`](run-log.md) and the `findings-*.md` files. `pilot-day-180` carries push residue
-from 9 and 12 October's pushing runs and should be reloaded before anything that turns on a
-small delta.
+[`run-log.md`](run-log.md) and the `findings-*.md` files. `pilot-day-180` was **reloaded on
+14 Oct** — organisations 10–19 torn down and restored with the co-tenants left in place, removing
+120,929 rows of residue — and case 6 pushed nothing, so it is clean. Case 7 pushes nothing either;
+reload again before anything that turns on a small delta after a pushing run.
 
 **Roughly four weeks to first findings**, of which Days 1 to 3 are not in this team's hands. **Phases 4 and 5 carry no dates on purpose**: runs slip, one gets re-run, another overtakes two others, and a calendar that has to be re-read as "whenever this actually goes" is worse than no calendar. What binds them is order, not dates.
 
@@ -1078,7 +1081,7 @@ is binding; the calendar is not.
 | 12b | A | **9 with `SYNC_MODE=full`** — same ramp, every sync a full pull | **done 2026-10-12, twice.** First ramp (50→800/h) topped out at 55% CPU — sized from 12a's saturated full syncs, which measured queueing; full actually costs 1.44x, all of it extra records. Rerun (200→2,400/h) saturated. **The database cannot be made to bind**: every sync pulling everything still reads ~1 MB/s at sub-ms latency, RDS 23–31%. **The ceiling is records per hour** — ~12.8M without push, ~11.0M with — holding across 2 sync modes and 18–435 devices in flight. [`findings-case9-12b.md`](findings-case9-12b.md) |
 | 12c | A | **9 with push on** — same ramp, write path included | **done 2026-10-12** — `2026-10-12T06-01-23Z-case9-12c-cf77819`. 12a's ramp exactly, push on. **The write path does not bind either**: WriteIOPS 45–64, write latency 0.8–2.6 ms, RDS 23–33% while the app pinned at 99.1% for 55 minutes. **Failed less than 12a** — 9 errors in 102,900 requests and zero timeouts, against 12a's 115 timeouts, because push cuts the same work into smaller requests. Ceiling confirmed at a sixth run: **12.85 Mrec/h without push, 11.32 with, ~12% penalty**. [`findings-case9-12c.md`](findings-case9-12c.md) |
 | 13 | B | **Provision 513 organisations**, import each one's archetype bundle, re-dump `refs.sql`, generate and load the co-tenant data | **done 2026-10-13.** 513 organisations at ids 24–566, ids read back by name — the ids are not contiguous, 406–435 went to an allocation block lost in a restart, so the `co-NNN` → id map must be read from [`co-tenant-provisioning.tsv`](co-tenant-provisioning.tsv) and never derived from the recipe's 1001–1513 placeholders. `refs.sql` re-dumped at 530 organisations; **6,253,693 rows loaded and verified**, every one of the 11 regenerated tenants matching its manifest across 44 (organisation, table) pairs. `make co_tenant_feeder` installed the 4,488-user feeder. **Provisioning ~11 h** over two days, 0 failed; **the load is ~40 min done cleanly** — the day cost more and all of the excess was rework: a per-tenant `ANALYZE` that was 64% of the first attempt, a stale generation of the 11 `large-pull-heavy` tenants that had to be torn down and reloaded, and a teardown that scanned 4.4 GB per user until two foreign keys to `users` were indexed. Timings under **Block B as executed**, in [the archetype measurements](#before-the-ten-tenant-cases-can-be-generated) |
-| 14 | B | **6** — co-tenants present, 2 h | |
+| 14 | B | **6** — co-tenants present, 2 h | **done 2026-10-14** — `2026-10-14T04-26-19Z-case6-cf77819`. Case 5's run unchanged, with 513 co-tenants present and syncing nothing. 280 syncs, 5,237 requests, **0 failed**. **Presence costs 0.3% per record** — 0.336 → 0.337 server ms/record against case 5, with sync duration p50 unchanged to 0.0% and p95 to 0.1%, on identical draws of 2 full syncs in 280. Gatling's p99 (367 → 525 ms) and max (523 → 3,730 ms) invite a worse reading, but that is **14 requests of 5,237 above 800 ms** against sync-level work identical to within half a percent — a tail to remember, not a mechanism. Readable only because the morning's reset removed 120,929 rows of residue. [`findings-case6.md`](findings-case6.md) |
 | 15 | B | **7** — co-tenants syncing, 2 h | |
 | 16 | B | **12** and **13** — clustered, 1 h each | |
 | 17 | C | **8** — growth, 2 h each at day 60, 120 and 365 | |
