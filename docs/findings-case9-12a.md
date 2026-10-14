@@ -224,6 +224,79 @@ returns. Worth chasing: it is 11% of the request and it is the shape of an N+1.
 
 ---
 
+## The open thread, and what to pick it up with
+
+A chain that would explain the nine lazy `individual` selects, the size of the controller's
+application time, and why `DummyInterceptor` exists at all. **It is a hypothesis.** Each link is
+read from the code; none of it is measured.
+
+### The chain
+
+1. **`AbstractUserType.deepCopy` round-trips every `jsonb` value through Java serialisation** —
+   `ObjectOutputStream` to a byte array and `ObjectInputStream` back, with the comment *"use
+   serialization to create a deep copy"*. `isMutable()` returns `true`, so Hibernate calls it to
+   build the dirty-checking snapshot for **every entity it loads**. A 1,000-record page therefore
+   serialises and deserialises a thousand observation maps before anything reaches the response,
+   with no database involved — which is the shape the trace shows.
+2. **`equals` compares the live map against that reconstructed copy**, delegating to
+   `HashMap.equals`. Any value that does not round-trip to an `equals`-equal instance makes the
+   entity look dirty.
+3. **`DummyInterceptor.postHandle` forces a flush after every web request** —
+   `genderRepository.findAll()` inside `@Transactional`, by its own comment a hack *"to ensure all
+   dirty objects are flushed out"*.
+4. **A dirty `Encounter` at flush fires `@PreUpdate beforeUpdate()`**, which calls
+   `getIndividual()` — a lazy load, one per dirty row.
+
+### Why `readOnly = true` may not have closed it
+
+`9e1b91a0a` — *"Make GET endpoints readonly"* — put `@Transactional(readOnly = true)` on the sync
+controllers, which sets Hibernate's flush mode to MANUAL and stops **that** transaction flushing.
+
+**`DummyInterceptor.postHandle` is plain `@Transactional`, not readOnly**, and it runs after the
+controller returns, in the same request. `spring.jpa.open-in-view` is set nowhere in avni-server, so
+it is Spring Boot's default of `true`: one Hibernate Session spans the whole request, and the
+entities the controller loaded are still managed in it when the interceptor opens its own
+read-write transaction and commits.
+
+So the fix closed the controller's flush and left a second, writable one immediately behind it.
+That is consistent with the interceptor existing at all — it was written to flush.
+
+### Tools to pick this up with
+
+* **`tools/read-only-sync-writes-check.sql`** — `n_tup_upd` and `pg_current_wal_lsn()` on
+  `encounter`, `individual`, `program_encounter` and `program_enrolment`. Run it, make one
+  `GET /encounter` as a sync user, run it again. WAL position is the second witness, because
+  `n_tup_upd` comes from the stats collector and can lag; the LSN cannot be explained away. Needs a
+  quiet server: anything else touching those tables lands in the same counters.
+* **A sync that exercises the path**, org 10, 100 records:
+
+  ```
+  curl -H "USER-NAME: state-1-u201000001@org10" \
+    "$URL/encounter?lastModifiedDateTime=1900-01-01T00:00:00.000Z&now=<now>\
+&encounterTypeUuid=eb9133de-578a-44ae-a525-c1b481cf3216&page=0&size=100"
+  ```
+
+* **`org.hibernate.SQL` at DEBUG** for one short run, as the direct version: `update encounter`
+  statements during a pull settle it without inference.
+* **Distributed tracing**, if the segment split is wanted — `newrelic_distributed_tracing_enabled`
+  is `"false"` in `avni-infra`'s `configure/group_vars/loadtest_vars.yml`, as in every environment.
+  Turning it on costs an app restart and a re-warm, and makes loadtest differ from production by
+  one more setting, so flip it back afterwards.
+
+### What each outcome would mean
+
+| | |
+|---|---|
+| `n_tup_upd` moves with row count | the fix is incomplete. One-line version: `readOnly = true` on `DummyInterceptor.postHandle`, or skip it when the handler's own transaction was read-only |
+| updates flat, nine selects still there | entities are not dirty, `@PreUpdate` is not firing, and the lazy loads come from somewhere not yet found |
+| neither | reads are reads, and what remains is `deepCopy` serialising every `jsonb` column on every loaded row to build a snapshot that `readOnly = true` then never compares — wasted CPU, not wasted I/O |
+
+**The third is still worth something.** On a read-only endpoint that snapshot work is pure
+overhead whatever the flush does, and it sits on the one endpoint that is 86% of the saturated
+window.
+
+---
+
 ## What this does not say
 
 **One app server, 2 vCPU.** The ceiling is a property of this instance and configuration. Whether
