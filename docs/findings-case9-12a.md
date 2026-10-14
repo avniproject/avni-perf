@@ -102,6 +102,39 @@ The run failed its own `MAX_FAILED_PERCENT` gate of 0.05% and `update-run-log.sh
 without being asked — **read its throughput and latency as a run that broke**, not as a measurement
 of capacity.
 
+### What the server saw, and the gap between the two — added 14 Oct 2026
+
+New Relic confirms the reading above and adds the part the injector cannot see.
+
+| | 12a | 12b-rerun |
+|---|---|---|
+| transactions recorded | 21,968 | 27,557 |
+| **non-200 responses** | **0** | **0** |
+| server-side max duration | **45.25 s** | **38.91 s** |
+| server-side p99 / p99.9 | 37.0 / 41.0 s | 31.5 / 35.0 s |
+
+**Not one non-200, in either run.** Every request the application started, it finished, correctly.
+The single 502 in the table above came from the ALB rather than from the app — consistent with
+New Relic having no error to show for it.
+
+**And the server's own maximum is 45.25 s against a client that gave up at 60.** New Relic's clock
+starts when Tomcat hands a request to the application, so time spent queued in the connector ahead
+of that is invisible to it and fully visible to Gatling. With 107 to 274 requests in flight against
+a bounded thread pool, that queue is where the missing fifteen-plus seconds went.
+
+Two consequences:
+
+* **Server-side latency understates what a device experiences, and the gap grows with saturation.**
+  A p99 of 37 s here is a p99 of *application time*, not of what the client waited. Any use of
+  these numbers as "what the user saw" needs that said.
+* **The server did work nobody received.** 21,968 transactions recorded against 21,607 requests the
+  injector counted — a timed-out request still runs to completion server-side. On a box pinned at
+  99% CPU, that is capacity spent producing responses that were already abandoned.
+
+**"Broke" means too slow to be waited for, not beginning to fail.** Worth keeping the distinction:
+nothing refused a connection, nothing errored, and the database never complained. It is the same
+conclusion as above, now with the server's side of it.
+
 ## The knee
 
 **Roughly 1,160 to 1,290 syncs/hour.** 1,200 syncs were retired between 07:37:33 and ~08:33, which
