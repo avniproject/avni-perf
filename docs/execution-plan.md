@@ -1087,6 +1087,33 @@ is binding; the calendar is not.
 | 17 | C | **8** — growth, 2 h each at day 60, 120 and 365 | |
 | 18 | A′ | Reload `pilot-day-180-span20`, split with `--variant span20`, re-run **3**, **4**, **5** | |
 
+#### Standing task: back up New Relic weekly
+
+**`Transaction` events are retained for 8 days and the boundary slides by the minute.** Everything
+read per request — `databaseDuration`, `databaseCallCount`, `name`, `duration` — lives only there.
+When an hour falls off nothing brings it back: the environment that produced it is destroyed
+between campaigns, so the run cannot be repeated. `Metric` timeslices last far longer and are the
+only reason cases 1 and 2 remain readable at all, but they carry no per-request detail.
+
+**Run it at least once a week, and after every run if the run mattered.** This is not housekeeping;
+it is the difference between a finding that can be re-examined and one that can only be quoted.
+
+    export NEW_RELIC_API_KEY=NRAK-...          # a USER key
+    python3 tools/newrelic-export.py --account 8563864 --out nr-backup --s3
+
+It is incremental and resumable — an hour already in the manifest is skipped — so a weekly run
+writes only the new hours, and it is safe to run while a scenario is in flight because it queries
+New Relic rather than the environment.
+
+**The key is the part that catches people out.** NerdGraph takes a user key (`NRAK-`) and returns
+401 for anything else. The `NRIQ-` query key used for ad-hoc NRQL will not work, and neither will
+`/avni/loadtest/newrelic-license-key` in SSM — that is the *ingest* key the agent uses to send
+data, which is a different credential in the opposite direction.
+
+Output lands in `s3://avni-loadtest-<account>/newrelic/`, one gzipped JSONL file per event type
+per UTC hour, sliceable by run because every event carries `timestamp` and the run windows are in
+[`run-log.md`](run-log.md). `tools/newrelic-query.py` reads the backup offline.
+
 #### The co-tenant set, as provisioned
 
 **All 513 through the API, and no config cloning.** The hybrid was chosen against a projection of
