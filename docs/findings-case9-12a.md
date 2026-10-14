@@ -43,9 +43,13 @@ pool were binding, the database behind it would be busy. It sat at a fifth of it
 99% CPU** — and the two imply opposite remedies. More vCPU is the wrong relief if the real
 constraint is allocation against a fixed heap.
 
-New Relic has been attached as a javaagent on every run — but **reporting only from 6 Oct 10:33 UTC, so cases 1 and 2 have no data**: a license key rendered from SSM during the 41 minutes before it was corrected, and a rendered file a restart does not refresh. See [`findings-case3.md`](findings-case3.md) (`roles/newrelic`, `-Xms2560m -Xmx5120m`,
+New Relic has been attached as a javaagent on every run (`roles/newrelic`, `-Xms2560m -Xmx5120m`,
 heap matched to production deliberately so GC behaviour transfers). Its CPU series agrees with
 CloudWatch to a tenth of a percent, which is a useful independent check on the figure above.
+
+**`Transaction` events are retained for 8 days, `Metric` for far longer**, so the request-level
+breakdowns below were taken inside that window and cannot be re-derived later. See
+[`findings-case3.md`](findings-case3.md).
 
 | IST | heap avg MB | heap peak MB | of 5,120 | G1 Old Gen | Eden | app CPU |
 |---|---|---|---|---|---|---|

@@ -55,22 +55,34 @@ pause is engine-dependent. The largest supervisor's sync, modelled here at 223 s
 SQLite and **537.1 s on Realm** — nine minutes. The conclusion above holds in both cases and gets
 stronger on Realm, where 490 of those 537 seconds are the device writing.
 
-## A supervisor costs more requests, not costlier requests — added 14 Oct 2026
+## A supervisor costs more requests, at the same cost each — added 14 Oct 2026
 
 *From New Relic, needing no environment.* The 2.8× record count could be 2.8× the queries or 2.8×
-the bytes per query, and those imply different remedies. It is neither exactly: it is **2.3× the
-requests, each costing the same**.
+the bytes per query. It is **2.3× the requests, each costing the same**.
 
-| | requests/sync | records/sync | per-request cost |
+| | requests/sync | records/sync | `encounter (GET)` per request |
 |---|---|---|---|
-| case 2, field worker | 17.0 | 10,831 | *no New Relic data — see below* |
-| **case 3, supervisor** | **38.6** | **30,246** | 278.8 ms, 28.3 db calls |
-| case 5 / 6, mixed cohort | — | — | 276.4 / 276.5 ms, 28.6 calls |
+| **case 3, supervisors**, `pilot-day-180` | **38.6** | **30,246** | **278.8 ms** |
+| case 5, mixed cohort, `pilot-day-180` | — | — | 274.5 ms |
+| case 6, mixed cohort, `pilot-day-180` + co-tenants | — | — | 276.5 ms |
 
-**Per-request cost does not depend on who is syncing.** 278.8 ms for the supervisor run against
-276.4 ms for the field-worker-dominated one, at the same ~28 database calls. Records scale 2.79×
-and requests 2.26×; the shortfall between those two is the fixed per-sync traffic — `syncDetails`,
+**Per-request cost does not depend on who is syncing.** A supervisor cohort and a
+field-worker-dominated one cost the same per request on the same dataset. Records scale 2.79× and
+requests 2.26×; the shortfall between those is the fixed per-sync traffic — `syncDetails`,
 `resetSyncs`, telemetry — which does not grow with records.
+
+> **Case 2 is not the comparison, though it looks like it should be.** It reads 184.2 ms per
+> request against case 3's 278.8 — but case 2 ran on `states-day-180`, two tenants, before the
+> pilot was loaded. Cohort and dataset move together there, so the 51% gap cannot be attributed to
+> either. The cohort claim above rests on case 3 against case 5, which share `pilot-day-180`.
+> The 2.26× *request count* is still read against case 2, which is sound: pages per sync
+> follow from records and `PAGE_SIZE`, neither of which the dataset swap changes. It is the
+> millisecond cost of a page that is not transferable.
+>
+> **That gap is worth its own look.** 184.2 ms on a two-tenant, 2.8M-row database against 274.5 ms
+> on a ten-tenant, 6.9M-row one is the same family of effect as case 6's co-tenant finding, at a
+> much larger magnitude. It is not established here — the cohorts differ too — but Block A's
+> planned re-run of case 2 on the pilot would isolate it exactly.
 
 ### Which is an argument about `PAGE_SIZE`
 
@@ -79,50 +91,36 @@ request and `DummyInterceptor.postHandle` another 5.57% — about 31 ms of the 2
 supervisor pays it **38.6 times per sync**. Roughly **1.2 seconds per sync of pure per-request
 cost**, before a single record is read.
 
-That is the strongest argument yet for the page size mattering, and it cuts the opposite way from
-the usual concern. D8 notes the client ships `pageSize: 1000` while the simulation once defaulted
-to 100; the runs here used 1000, matching the client. Going *larger* would amortise the fixed cost
-across more records. Going smaller multiplies it.
+That is the strongest argument yet for page size mattering, and it cuts the opposite way from the
+usual concern. D8 notes the client ships `pageSize: 1000` while the simulation once defaulted to
+100; these runs used 1000, matching the client. Going *larger* would amortise the fixed cost across
+more records. Going smaller multiplies it.
 
 It also means the two interceptor costs found in case 9/12a are not a flat 11% tax on a sync —
 they are 11% of each of 38.6 requests, and a supervisor pays nearly four times what the arithmetic
 on one request suggests.
 
-## A bound on what New Relic can answer — added 14 Oct 2026
+## What New Relic can and cannot reach — added 14 Oct 2026, corrected the same day
 
-**Case 2 has no New Relic data**, which is why the table above compares the supervisor against
-case 5/6 rather than against case 2 directly.
+**`Transaction` events are retained for 8 days; `Metric` for far longer.** At the time of writing
+the earliest `Transaction` was 6 Oct 10:33 UTC, exactly eight days and eight minutes before the
+query — a sliding retention boundary, not a fact about the runs.
 
-The earliest transaction in the account is **6 October 10:33:28 UTC**. Case 1 ran on 5 October;
-case 2 ran 05:38–09:38 on 6 October. Both predate it. So
-[`findings-case9-12a.md`](findings-case9-12a.md)'s statement that *"New Relic has been attached as
-a javaagent on every run"* is not correct, and **no retrospective New Relic analysis of cases 1 or
-2 is possible**.
+**It was briefly recorded here as an instrumentation gap, and that was wrong.** `Metric` shows
+141,568 events on 5 October, so the agent was attached and reporting during case 1, and a
+licence-key explanation written on the earlier reading has been removed rather than left standing.
 
-**The agent was attached throughout. It could not report.** The distinction matters, and the
-cause is a 41-minute window on 29 September:
+What follows for analysis:
 
-```
-/avni/loadtest/newrelic-license-key
-  v1   29 Sep 10:50:48 IST
-  v2   29 Sep 11:31:28 IST   <- the correct key
-```
-
-`avni-infra` had enabled the agent for loadtest in `e991b4b` on 15 September and wired the key from
-SSM in `fa8a52b` on 29 September, and nothing has touched either since. But **`newrelic.yml` is a
-rendered template, and the agent reads it at JVM start.** A render during that 41-minute window
-baked v1's key onto the host. Correcting the SSM parameter at 11:31 changed nothing by itself: a
-plain application restart re-reads the same rendered file, so every start from 29 September to 6
-October presented the wrong key and failed to authenticate. Reporting began the moment Ansible next
-re-rendered the template with v2 — 6 October 10:33 UTC.
-
-**Which is consistent with case 14 recording zero failures.** First data at 10:33:28 falls inside
-its window of 09:50–11:20, and an agent connecting mid-run produces no failures where a restart
-mid-run almost certainly would.
-
-**The lesson is about the shape of the fix, not the key.** A secret corrected in SSM is not
-corrected on the host until the role that renders it runs again. Anything else templated from SSM
-has the same property, and a restart is not sufficient to pick it up.
+* **Request-level detail — `databaseDuration`, `databaseCallCount`, per-transaction attributes —
+  ages out after 8 days.** Anything needing it must be taken within the week, and the breakdowns in
+  [`findings-case9-12a.md`](findings-case9-12a.md) and [`findings-case6.md`](findings-case6.md)
+  were taken inside that window.
+* **Timeslice metrics survive**, so response time and throughput per endpoint remain available for
+  every run including cases 1 and 2 — which is how the 184.2 ms above was read.
+* **So the split that matters most is the perishable one.** Database versus application time at
+  constant call count, the measure that distinguished case 6 from case 10 and the case 11 pair,
+  comes from `Transaction`. For any run whose delta matters, take it within the week or it is gone.
 
 ## What this does not measure
 
