@@ -51,6 +51,66 @@ Those 14 requests are worth remembering rather than explaining. Planner statisti
 and neither is established by fourteen requests. **Case 7 is where to look**, because it puts real
 load behind those organisations instead of only their rows.
 
+## New Relic: the cost is in the database, and the call counts are identical
+
+*Added 14 Oct 2026, from `Transaction` data for both run windows. It needed no environment — both
+runs are already recorded.*
+
+**The aggregate hid it.** Request duration on the busiest endpoint is the same to a tenth of a
+millisecond across the two runs. Split, it is not:
+
+| `encounter (GET)` | case 5 (8 Oct) | case 6 (14 Oct) | |
+|---|---|---|---|
+| requests | 4,011 | 4,022 | |
+| total duration | 276.4 ms | 276.5 ms | **+0.04%** |
+| **database** | **37.3 ms** | **46.8 ms** | **+25.5%** |
+| application | 239.1 ms | 229.7 ms | −3.9% |
+| **database calls** | **28.6** | **28.6** | **identical** |
+
+**Same queries, each slower.** 1.30 ms per call to 1.64 ms. Not more work, not different plans —
+the same 28.6 calls costing a quarter more each. Application time drifted down by about as much as
+the database rose, which is why the total looks untouched and why the headline 0.3% per record
+understates the mechanism.
+
+### It is systemic, and sharpest where the metadata is
+
+| endpoint | db per call | | calls |
+|---|---|---|---|
+| `v2/syncDetails (POST)` | 0.51 → **0.88 ms** | **+74.9%** | 114.1 → 114.1, identical |
+| `encounter (GET)` | 1.30 → **1.64 ms** | **+25.5%** | 28.6 → 28.6, identical |
+| `individual (GET)` | 1.96 → 1.67 ms | −14.7% | 17.8 → 18.7, **moved** |
+
+Both endpoints whose query count is unchanged got slower per query. `individual` is not comparable
+— its call count moved, so the mix differs, and the −14.7% should not be read.
+
+**`syncDetails` rising most is the tell.** It makes 114 metadata lookups per request against
+`subject_type`, `encounter_type`, `form_mapping` and friends — exactly the tables into which 513
+organisations added roughly 262,000 config rows. So two mechanisms are consistent with this and
+both point the same way:
+
+* **Buffer cache**, which `CoTenantLoad` predicted in terms: *"16 busy organisations keep their
+  pages in `shared_buffers`; 513 lightly-busy ones touch five times the pages for the same request
+  rate and evict each other. That lands on the customer's own syncs as a buffer cache hit rate,
+  which is exactly what cases 7 and 13 are trying to measure."*
+* **Larger metadata indexes.** The co-tenants' config is not transactional volume; it is rows in
+  the small tables every sync reads. Deeper B-trees and more pages, for identical queries.
+
+This run cannot separate them — both produce the same signature. RDS `BufferCacheHitRatio` across
+the two windows would, and so would `pg_statio_user_tables` either side of a run.
+
+### Why it matters before case 7 rather than after
+
+Case 6 is the co-tenants *present and silent*. Case 7 adds them *syncing*, at 792 requests an hour
+against the same metadata tables. If the cost here is cache residency, case 7 is where it
+compounds — the co-tenants will be actively pulling their own pages in, evicting the customer's.
+**This is the quantity to watch in case 7, and it is the one the aggregate will hide again**:
+database time per call, at constant call count, per endpoint.
+
+It also makes the earlier framing sharper. The headline for case 6 is still right — 0.3% per
+record, no practical cost at this load. What it does not say is that the database portion of a sync
+rose a quarter while the server was idle enough for application time to absorb it. At a load where
+the app tier is not idle, nothing absorbs it.
+
 ## Why this comparison is readable at all
 
 The pilot was reloaded the same morning — orgs 10–19 torn down and restored from
