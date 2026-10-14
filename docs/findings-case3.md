@@ -122,6 +122,48 @@ What follows for analysis:
   constant call count, the measure that distinguished case 6 from case 10 and the case 11 pair,
   comes from `Transaction`. For any run whose delta matters, take it within the week or it is gone.
 
+### Which is now backed up rather than raced
+
+`tools/newrelic-export.py` (`make newrelic_export ACCOUNT=...`) copies the raw events out to
+gzipped JSONL, one file per UTC hour, and syncs them to the artefacts bucket beside the run
+directories. **Run it weekly at least.** The environment that produced a run is destroyed after
+it, so an hour that ages out cannot be re-measured by repeating anything — it is simply gone.
+
+The guard is the reason it is a tool rather than a query. NRQL caps a raw event query at 5,000
+rows and **truncates without saying so**, which would make a backup a silent prefix of each hour
+— the same shape as the feeder bug, and undetectable later for exactly the same reason. So every
+window is counted first, exported second, and the two asserted equal; windows above the cap are
+bisected until each piece fits and the children must sum to the parent. Anything short is written
+into `manifest.json` and exits non-zero.
+
+`tools/newrelic-query.py` (`make newrelic_query RUN=case3`) reads it back. It resolves a run to
+its UTC window and facets by transaction name, reporting duration, the database split and **database
+time per call** — which is to say, every New Relic figure quoted in these findings can be
+re-derived from the files, with no account, no key and no retention window. Ad-hoc work beyond that
+needs nothing special either: the files are gzipped JSONL, and DuckDB reads the whole set in place
+with `read_json_auto('nr-backup/Transaction/**/*.jsonl.gz', union_by_name=true)`.
+
+> **Run windows come from `run-log.md`, not from `run-log-detail.md`'s `injection` line.** That
+> line carries the configured defaults rather than what ran — it reports `120min @ 140/h, ramp
+> 33640 s` against case 1 bursts that lasted fifteen seconds. The first version of the query tool
+> read it and produced eleven-hour windows for a 45-minute run; the figures it printed looked
+> entirely reasonable. A window is also bounded by the next run's start, because back-to-back runs
+> share a box and a generous tail would otherwise blend two of them.
+
+**Three things found when it was first run, each its own small correction:**
+
+* `Metric` reaches back to **29 Sep 06:05 UTC**, four minutes after the corrected licence key
+  landed in SSM — so the agent has reported since the hour it was provisioned, and the 41-minute
+  v1 window touched no run. That is the coverage question closed from the other side.
+* **462 `TransactionTrace` events exist.** The note that `transaction_threshold: apdex_f` means no
+  traces from healthy runs is right about healthy runs and wrong as a statement about the account:
+  the stressed ones — 12a, case 11 run 1, the 15-minute burst — cleared the threshold and left
+  whole-trace breakdowns behind.
+* **2,357 `SqlTrace` events**, from 8 Oct 14:13 onward. Slow statements captured server-side, which
+  is a direct line on the `scopeBasedSyncService` individual-selects thread that
+  [`findings-case9-12a.md`](findings-case9-12a.md) leaves open — and the first place to look when
+  it is picked up.
+
 ## What this does not measure
 
 * **Push, and the push numbers would be wrong if it did.** The simulation scales a user's write

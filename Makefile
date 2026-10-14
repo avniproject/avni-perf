@@ -78,6 +78,14 @@ validate_dataset: ## Run the H5 statistical gate. STATS=stats.json from validate
 	@cd tools/data-generator && python3 validate.py "$(abspath $(STATS))"
 
 
+newrelic_export: ## Back up New Relic events before the 8-day Transaction retention drops them. ACCOUNT=... [SINCE=YYYY-MM-DD] [S3=1]
+	python3 tools/newrelic-export.py --account $(ACCOUNT) --out nr-backup \
+	  $(if $(SINCE),--since $(SINCE)) $(if $(EVENT_TYPES),--event-types $(EVENT_TYPES)) $(if $(S3),--s3)
+
+newrelic_query: ## Query the backup offline, no account needed. RUN=case3 [FACET=name] [WHERE=...]
+	python3 tools/newrelic-query.py $(if $(RUN),--run $(RUN),--list-runs) \
+	  $(if $(FACET),--facet $(FACET)) $(if $(WHERE),--where "$(WHERE)") $(if $(EVENT_TYPE),--event-type $(EVENT_TYPE))
+
 co_tenant_feeder: ## Install a generated co-tenant dataset's users as the feeder. DATASET=/path/to/co-tenants-day-180
 	@test -n "$(DATASET)" || (echo "usage: make co_tenant_feeder DATASET=/path/to/co-tenants-day-180" && exit 1)
 	@python3 tools/co-tenant-feeder.py "$(DATASET)"

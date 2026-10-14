@@ -67,3 +67,8 @@ tools/data-generator/**/__pycache__
 # macOS writes these into any directory opened in Finder. Nothing here needs them, and a repo
 # shared with people on other platforms should not carry them.
 .DS_Store
+
+# New Relic event backups, written by `make newrelic_export`. Gigabytes of raw per-request events
+# whose home is the artefacts bucket, not git -- the repo carries the tool and the findings drawn
+# from them. `manifest.json` records what was taken and whether any window came back short.
+/nr-backup/
