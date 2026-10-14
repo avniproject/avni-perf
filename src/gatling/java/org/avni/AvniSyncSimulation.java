@@ -455,9 +455,22 @@ public class AvniSyncSimulation extends Simulation {
     private static final long coTenantSeed =
         Long.getLong("CO_TENANT_SEED", 42L);
 
-    /** How long to sustain that rate. Defaults to the customer ramp, so the two overlap. */
+    /**
+     * How long to sustain that rate. Defaults to the RUN, so the two streams end together.
+     *
+     * **It used to default to `rampPeriod`, and that is not the run.** `rampPeriod` is the
+     * arrival window -- `recordsCount() * 20`, which for the 1,682-row pilot feeder is 33,640 s --
+     * while a steady run is bounded by `DURATION_MINUTES`. On 14 Oct case 7 was launched with the
+     * customer at 7,200 s and the co-tenants at 33,640 s: the customer's 280 syncs completed on
+     * schedule, Gatling then refused to end the simulation until the co-tenant stream drained, and
+     * the run was 22% through that after two hours. Nothing is written until the simulation ends,
+     * so a run killed there loses sync-durations.csv and the archive with it.
+     *
+     * Read from the property rather than the `durationMinutes` field: that field is declared
+     * further down this class, and a static initialiser referring to it from here would see 0.
+     */
     private static final int coTenantSeconds =
-        Integer.getInteger("CO_TENANT_SECONDS", rampPeriod);
+        Integer.getInteger("CO_TENANT_SECONDS", Integer.getInteger("DURATION_MINUTES", 120) * 60);
 
     /*
      * E3 - injection profiles.
