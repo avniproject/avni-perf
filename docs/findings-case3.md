@@ -79,7 +79,7 @@ requests 2.26×; the shortfall between those is the fixed per-sync traffic — `
 > follow from records and `PAGE_SIZE`, neither of which the dataset swap changes. It is the
 > millisecond cost of a page that is not transferable.
 >
-> **That gap is worth its own look.** 184.2 ms on a two-tenant, 2.8M-row database against 274.5 ms
+> **That gap is worth its own look.** 184.2 ms on a two-tenant, 2.3M-row database against 274.5 ms
 > on a ten-tenant, 6.9M-row one is the same family of effect as case 6's co-tenant finding, at a
 > much larger magnitude. It is not established here — the cohorts differ too — but Block A's
 > planned re-run of case 2 on the pilot would isolate it exactly.
@@ -135,6 +135,9 @@ rows and **truncates without saying so**, which would make a backup a silent pre
 window is counted first, exported second, and the two asserted equal; windows above the cap are
 bisected until each piece fits and the children must sum to the parent. Anything short is written
 into `manifest.json` and exits non-zero.
+
+[`newrelic.md`](newrelic.md) is the reference for all of this — what is attached, each retention
+tier, the measures worth taking and the two ways to compare the wrong things.
 
 `tools/newrelic-query.py` (`make newrelic_query RUN=case3`) reads it back. It resolves a run to
 its UTC window and facets by transaction name, reporting duration, the database split and **database

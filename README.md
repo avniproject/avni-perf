@@ -523,3 +523,17 @@ Two of those cannot be discovered and must be passed, or they are recorded as `u
 
 A `simulation.log` with no provenance cannot be compared with anything, which is the whole point of
 keeping it.
+
+## Server-side instrumentation
+
+The Gatling side sees a duration and a status code. **It cannot tell a request that waited on the
+database from one that spent its time in the JVM** — that comes from the New Relic agent on the
+server, and it is where the database-per-call measure behind the co-tenant and soak findings comes
+from.
+
+**Most of it expires in eight days**, and the environment that produced a run is destroyed after
+it, so an expired hour is not a measurement that can be retaken. `make newrelic_export` copies it
+out before that happens; `make newrelic_query RUN=case3` reads it back with no account and no key.
+
+See [docs/newrelic.md](docs/newrelic.md) for what is attached, what each retention tier holds, the
+measures worth taking and the two ways to compare the wrong things.

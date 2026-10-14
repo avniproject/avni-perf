@@ -48,8 +48,8 @@ heap matched to production deliberately so GC behaviour transfers). Its CPU seri
 CloudWatch to a tenth of a percent, which is a useful independent check on the figure above.
 
 **`Transaction` events are retained for 8 days, `Metric` for far longer**, so the request-level
-breakdowns below were taken inside that window and cannot be re-derived later. See
-[`findings-case3.md`](findings-case3.md).
+breakdowns below were taken inside that window and cannot be re-derived later — they are now
+backed up, and [`newrelic.md`](newrelic.md) says how to read them back.
 
 | IST | heap avg MB | heap peak MB | of 5,120 | G1 Old Gen | Eden | app CPU |
 |---|---|---|---|---|---|---|

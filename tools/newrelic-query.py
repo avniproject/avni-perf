@@ -44,6 +44,21 @@ RUN_LOG = ROOT / "docs/run-log.md"
 # the tail off a slow one -- and overridable.
 DEFAULT_TAIL_MIN = 20
 
+# Each event type names its transaction differently, and facetting on the wrong attribute produces
+# one "(absent)" row rather than an error -- a table that is empty without saying why.
+FACET_BY = {
+    "Transaction": "name",
+    "TransactionTrace": "path",
+    "SqlTrace": "databaseMetricName",
+    "TransactionError": "transactionName",
+    "ErrorTrace": "error.class",
+}
+
+# SqlTrace measures a statement rather than a request: totalCallTime over callCount, where
+# Transaction has duration over databaseCallCount. Same shape, different names.
+DURATION_KEYS = ("duration", "totalCallTime")
+CALLS_KEYS = ("databaseCallCount", "callCount")
+
 
 def runs() -> dict:
     """run id -> (start, end) in UTC.
@@ -129,6 +144,13 @@ def pct(values: list, p: float):
     return s[min(len(s) - 1, int(round((p / 100) * (len(s) - 1))))]
 
 
+def first(row: dict, keys):
+    for k in keys:
+        if row.get(k) is not None:
+            return float(row[k])
+    return None
+
+
 def summarise(rows, facet: str | None):
     groups = {}
     for r in rows:
@@ -136,9 +158,9 @@ def summarise(rows, facet: str | None):
         groups.setdefault(key, []).append(r)
     table = []
     for key, members in groups.items():
-        dur = [r["duration"] for r in members if r.get("duration") is not None]
+        dur = [v for r in members if (v := first(r, DURATION_KEYS)) is not None]
         db = [r["databaseDuration"] for r in members if r.get("databaseDuration") is not None]
-        calls = [r["databaseCallCount"] for r in members if r.get("databaseCallCount") is not None]
+        calls = [v for r in members if (v := first(r, CALLS_KEYS)) is not None]
         mean = lambda v: sum(v) / len(v) if v else None
         table.append({
             "facet": key, "n": len(members),
@@ -150,8 +172,10 @@ def summarise(rows, facet: str | None):
             "db_ms": mean(db) and mean(db) * 1000,
             "db_calls": mean(calls),
             # The measure the co-tenant and soak findings turn on: database time per call, which
-            # separates "more queries" from "slower queries" at constant call count.
-            "ms_per_call": (mean(db) * 1000 / mean(calls)) if db and calls and mean(calls) else None,
+            # separates "more queries" from "slower queries" at constant call count. For SqlTrace,
+            # which has no databaseDuration, the same ratio falls out of its own totalCallTime.
+            "ms_per_call": ((mean(db or dur) * 1000 / mean(calls))
+                            if (db or dur) and calls and mean(calls) else None),
         })
     return sorted(table, key=lambda t: -t["n"])
 
@@ -164,7 +188,8 @@ def main(argv=None) -> int:
     p.add_argument("--since"), p.add_argument("--until")
     p.add_argument("--tail-min", type=int, default=DEFAULT_TAIL_MIN,
                    help=f"minutes kept after the last arrival (default {DEFAULT_TAIL_MIN})")
-    p.add_argument("--facet", default="name", help="attribute to group by, or 'none'")
+    p.add_argument("--facet", help="attribute to group by, or 'none'; default is per event type "
+                                   "(" + ", ".join(f"{k}={v}" for k, v in FACET_BY.items()) + ")")
     p.add_argument("--where", help="python expression over the row dict `r`")
     p.add_argument("--top", type=int, default=15)
     p.add_argument("--csv", action="store_true")
@@ -196,7 +221,8 @@ def main(argv=None) -> int:
         expr = compile(args.where, "<--where>", "eval")
         rows = (r for r in rows if eval(expr, {"__builtins__": {}}, {"r": r}))
 
-    table = summarise(rows, None if args.facet == "none" else args.facet)
+    facet = args.facet or FACET_BY.get(args.event_type, "name")
+    table = summarise(rows, None if facet == "none" else facet)
     if not table:
         return 1
 

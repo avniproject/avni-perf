@@ -102,9 +102,12 @@ def fetch(q: Nrql, event_type: str, a: int, b: int, expected: int, shortfalls: l
     if expected <= ROW_CAP:
         rows = q(f"SELECT * FROM {event_type} {window(a, b)} LIMIT MAX")
         if len(rows) != expected:
+            more = len(rows) > expected
             shortfalls.append({"eventType": event_type, "since": a, "until": b,
                                "expected": expected, "got": len(rows),
-                               "why": "query returned fewer rows than count(*)"})
+                               "why": ("more rows than count(*) -- the window was still filling "
+                                       "between the two queries" if more else
+                                       "fewer rows than count(*)")})
         return rows
     if b - a <= 1:
         # Cannot narrow further: more than ROW_CAP events share one millisecond.
@@ -149,16 +152,32 @@ def write(path: Path, rows: list) -> str:
     return digest.hexdigest()
 
 
+def complete_hours_only(until: dt.datetime) -> dt.datetime:
+    """Never export the hour in progress.
+
+    An hour still being written returns a different count from one query to the next, and -- far
+    worse -- writing it and recording it complete means the next run *skips* it, losing whatever
+    arrived after the export. The hour is picked up whole on the following run instead.
+    """
+    now = dt.datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    return min(until, now)
+
+
 def export(q: Nrql, out: Path, event_types: list, since: dt.datetime, until: dt.datetime,
            force: bool) -> dict:
     manifest_path = out / "manifest.json"
     manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {"hours": {}}
     done, shortfalls, totals = manifest["hours"], [], {}
+    until = complete_hours_only(until)
+    # Carried forward so a later narrower export does not erase the record of an earlier wider one.
+    coverage = manifest.get("eventTypes", {})
 
     for event_type in event_types:
         available = q(f"SELECT earliest(timestamp) FROM {event_type} SINCE 90 days ago")
         earliest = available[0].get("earliest.timestamp") if available else None
         if not earliest:
+            coverage[event_type] = {"status": "nothing retained", "events": 0,
+                                    "asOf": dt.datetime.utcnow().isoformat() + "Z"}
             print(f"  {event_type}: nothing retained", file=sys.stderr)
             continue
         start = max(since, dt.datetime.utcfromtimestamp(earliest / 1000))
@@ -183,9 +202,18 @@ def export(q: Nrql, out: Path, event_types: list, since: dt.datetime, until: dt.
             n_total += len(rows)
             print(f"    {a:%Y-%m-%d %H}Z  {len(rows):>7,} events", file=sys.stderr)
         totals[event_type] = n_total
+        coverage[event_type] = {"status": "exported", "events": n_total,
+                                "retainedFrom": start.isoformat() + "Z",
+                                "asOf": dt.datetime.utcnow().isoformat() + "Z"}
 
+    # `requested` is what this invocation asked for; `eventTypes` accumulates across invocations.
+    # Without the pair, a type absent from the backup is indistinguishable from one that was asked
+    # for and came back empty -- and a reader months later cannot tell which.
+    for event_type in DEFAULT_EVENT_TYPES:
+        coverage.setdefault(event_type, {"status": "never requested", "events": 0})
     manifest.update({
         "account": q.account, "exportedAt": dt.datetime.utcnow().isoformat() + "Z",
+        "requested": event_types, "eventTypes": coverage,
         "totals": totals, "shortfalls": shortfalls, "hours": done,
     })
     manifest_path.parent.mkdir(parents=True, exist_ok=True)

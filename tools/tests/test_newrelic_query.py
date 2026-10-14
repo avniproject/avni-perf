@@ -92,3 +92,30 @@ def test_summarise_reports_database_time_per_call(tmp_path):
     assert t["n"] == 2 and round(t["db_calls"], 1) == 25.0
     # The measure the co-tenant and soak findings turn on: db ms / call, not db ms alone.
     assert round(t["ms_per_call"], 2) == 2.40
+
+
+def test_each_event_type_facets_on_the_attribute_it_actually_carries():
+    """A wrong facet yields one '(absent)' row, not an error -- empty without saying why."""
+    assert nq.FACET_BY["Transaction"] == "name"
+    assert nq.FACET_BY["TransactionTrace"] == "path", "TransactionTrace has no `name`"
+    assert nq.FACET_BY["SqlTrace"] == "databaseMetricName"
+    assert nq.FACET_BY["TransactionError"] == "transactionName"
+
+
+def test_sqltrace_is_summarised_from_its_own_measures():
+    """SqlTrace measures a statement, not a request: totalCallTime over callCount."""
+    rows = [{"databaseMetricName": "Datastore/statement/Postgres/gender/select",
+             "totalCallTime": 3.0, "callCount": 4.0},
+            {"databaseMetricName": "Datastore/statement/Postgres/gender/select",
+             "totalCallTime": 1.0, "callCount": 4.0}]
+    [t] = nq.summarise(rows, nq.FACET_BY["SqlTrace"])
+    assert t["n"] == 2 and t["db_calls"] == 4.0
+    assert t["mean_ms"] == 2000.0, "totalCallTime is seconds, like duration"
+    assert t["ms_per_call"] == 500.0, "no databaseDuration, so the ratio comes from its own fields"
+
+
+def test_database_time_per_call_still_prefers_databaseDuration_when_present():
+    # Transaction carries both; using duration would measure the request, not the database.
+    rows = [{"name": "x", "duration": 1.0, "databaseDuration": 0.1, "databaseCallCount": 10.0}]
+    [t] = nq.summarise(rows, "name")
+    assert t["ms_per_call"] == 10.0, "100 ms of database over 10 calls, not 1000 ms of request"

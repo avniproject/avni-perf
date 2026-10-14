@@ -20,6 +20,8 @@ _spec.loader.exec_module(nx)
 class FakeNrql:
     """Serves events from a dict of timestamp -> n, honouring NRQL's row cap and half-open window."""
 
+    account = 8563864
+
     def __init__(self, events, cap=nx.ROW_CAP, truncate_to=None):
         self.events, self.cap, self.truncate_to, self.queries = events, cap, truncate_to, 0
 
@@ -29,6 +31,8 @@ class FakeNrql:
 
     def __call__(self, nrql, attempts=4):
         self.queries += 1
+        if "earliest(timestamp)" in nrql:
+            return [{"earliest.timestamp": min(self.events)}] if self.events else [{}]
         since, until = nrql.split("SINCE ")[1].split(" UNTIL ")
         a, b = int(since), int(until.split()[0])
         rows = self._in(a, b)
@@ -111,3 +115,54 @@ def test_hours_covers_the_window_without_gaps_or_overlap():
     assert spans[0][0] == dt.datetime(2026, 10, 12, 2), "a partial hour is taken from its start"
     assert [b for _, b in spans[:-1]] == [a for a, _ in spans[1:]], "no gap, no overlap"
     assert spans[-1][1] == dt.datetime(2026, 10, 12, 6)
+
+
+def test_an_unrequested_event_type_is_recorded_as_such(tmp_path, monkeypatch):
+    """`Metric` absent from the backup must not read as `Metric` absent from the account.
+
+    The first export deliberately narrowed --event-types and left no Metric directory. Nothing in
+    the output said whether that was a choice, an empty source or a failure, and a reader coming
+    to the files later has no way to tell.
+    """
+    q = FakeNrql({})
+    monkeypatch.setattr(nx, "count", lambda *a: 0)
+    manifest = nx.export(q, tmp_path, ["Transaction"], __import__("datetime").datetime(2026, 10, 1),
+                         __import__("datetime").datetime(2026, 10, 1, 1), force=False)
+    assert manifest["requested"] == ["Transaction"]
+    assert manifest["eventTypes"]["Metric"]["status"] == "never requested"
+    assert manifest["eventTypes"]["SqlTrace"]["status"] == "never requested"
+
+
+def test_a_narrower_export_does_not_erase_what_a_wider_one_recorded(tmp_path):
+    import json as _json
+    (tmp_path / "manifest.json").write_text(_json.dumps({
+        "hours": {}, "eventTypes": {"Metric": {"status": "exported", "events": 2_553_374}}}))
+    q = FakeNrql({})
+    manifest = nx.export(q, tmp_path, [], __import__("datetime").datetime(2026, 10, 1),
+                         __import__("datetime").datetime(2026, 10, 1, 1), force=False)
+    assert manifest["eventTypes"]["Metric"]["events"] == 2_553_374, \
+        "a later Transaction-only run must not downgrade Metric to 'never requested'"
+
+
+def test_the_hour_in_progress_is_never_exported(monkeypatch):
+    """A still-filling hour written and marked complete is skipped next run, losing its tail."""
+    import datetime as _dt
+
+    class Clock(_dt.datetime):
+        @classmethod
+        def utcnow(cls):
+            return cls(2026, 10, 14, 11, 23)
+    monkeypatch.setattr(nx, "dt", type("m", (), {"datetime": Clock,
+                                                 "timedelta": _dt.timedelta,
+                                                 "timezone": _dt.timezone}))
+    assert nx.complete_hours_only(_dt.datetime(2026, 10, 14, 23)) == _dt.datetime(2026, 10, 14, 11)
+    assert nx.complete_hours_only(_dt.datetime(2026, 10, 9, 5)) == _dt.datetime(2026, 10, 9, 5), \
+        "an explicit earlier --until is still honoured"
+
+
+def test_a_window_that_grew_between_the_two_queries_says_so():
+    q = FakeNrql({1000 + i: 1 for i in range(100)})
+    shortfalls = []
+    nx.fetch(q, "Transaction", 0, 10_000, 80, shortfalls)      # count taken before 20 more landed
+    assert len(shortfalls) == 1 and shortfalls[0]["got"] == 100
+    assert "still filling" in shortfalls[0]["why"], "the direction of the mismatch matters"
