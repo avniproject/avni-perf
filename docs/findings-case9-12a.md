@@ -130,6 +130,100 @@ managed 6.2. Push requests are cheap too — `Media uploadUrl` alone was 39% of 
 pushing run — which is why case 11's burst shows a *higher* rps than 12a while retiring *fewer*
 syncs per hour. **Syncs per hour is the unit that compares; rps is not.**
 
+## Where the request work goes, from New Relic — added 14 Oct 2026
+
+The finding above names the resource and not the work. This closes half of that, read from New
+Relic's transaction data for the saturated window, **02:32–03:02 UTC**.
+
+### One endpoint is 86% of it
+
+| endpoint | calls | avg | total |
+|---|---|---|---|
+| **`encounter (GET)`** | 10,154 | **22.7 s** | **230,584 s** |
+| `v2/syncDetails (POST)` | 1,634 | 11.7 s | 19,100 s |
+| `resetSyncs (GET)` | 817 | 8.1 s | 6,613 s |
+| `syncTelemetry (POST)` | 597 | 9.4 s | 5,606 s |
+| `individual (GET)` | 162 | 17.8 s | 2,889 s |
+
+230,584 of roughly 267,000 transaction-seconds. Any optimisation that is not about `encounter`
+is rounding error.
+
+### The database is not in the picture, and that holds unsaturated
+
+|  | avg total | database | **application** |
+|---|---|---|---|
+| saturated, 02:32–03:02 | 22.71 s | 0.94 s (4.1%) | **21.77 s** |
+| healthy, 03:50–04:25 (12b at 50/h) | 331 ms | 60 ms (18.2%) | **271 ms** |
+
+**The healthy figure is the one that matters.** At 99% CPU most of the 21.8 s is a request waiting
+for a slice, so the saturated ratio describes the queue. Unsaturated there is no queue, and
+application code is still 82% of the request. The work really is app-side.
+
+The contrast across endpoints says the same thing from the other direction: `syncDetails` makes
+**114.5** database calls and spends 60 ms in application code; `executeSearch` makes 93.9 and
+spends 54 ms. `encounter` makes **31.5** and spends **270 ms** — four times the application time on
+a third of the queries.
+
+### Inside one request
+
+A transaction trace from the saturated window, 45.25 s total. Absolute figures are inflated by
+queueing; the **shares** are what to read.
+
+| segment | share | |
+|---|---|---|
+| `EncounterController.getEncountersByOperatingIndividualScope` | **52.6%** | the controller node, including the service and repository beneath it |
+| 9 × lazy `individual` select | 11.18% | 1.03 s of actual database time spread over 5.06 s |
+| `AuthenticationFilter` own code | **5.62%** | |
+| `DummyInterceptor.postHandle` | **5.57%** | |
+| `PgStatement/execute` | 0.01% | 5 ms of 45.25 s |
+
+### Two of the plan's code-read suspicions are now measured
+
+**F2.1 — the per-borrow interceptor, 5.57% of every request.** `DummyInterceptor` runs
+`genderRepository.findAll()` in a `@Transactional` block after every web request, and its own
+comment says why: *"Hack. Ensure a transactional data query is made at the end of a web request so
+that all dirty objects are flushed out. Somehow, changing flush mode does not seem to fix the
+problem."* The `gender select` itself is 66 ms of the 2.52 s segment — **97% of it is the
+transaction wrapper, not the query.** Opening a transaction borrows a pooled connection, and every
+borrow pays `set role`, `set application_name` and `RESET ROLE`. F2.1 predicted exactly this from
+reading the code, including that *"requests that need no database at all still pay it whenever they
+are wrapped in `@Transactional`"*. Here it is, on every request.
+
+**F2 — `AuthenticationFilter`'s own code, 5.62%.** F2 suspected the two INFO log lines per request,
+including the full query string. This does not prove logging is the cost, but it prices the
+filter's own work at a tenth of what the whole controller costs.
+
+**Together ~11% of every request**, on a server that is 99% CPU-bound, and neither needs a
+serialisation rewrite. A read-only sync endpoint has no dirty objects to flush, so skipping
+`DummyInterceptor` for `@Transactional(readOnly = true)` requests may be safe and free — though the
+comment is explicit that the obvious fix, changing flush mode, was tried and did not work, so this
+wants care rather than deletion.
+
+### What is still not known
+
+**Serialisation has not been priced.** Jackson writes the response *after* the controller returns,
+so it is a sibling of that 52.6% node and not inside it. The named segments account for roughly
+two thirds of the request; the remaining third is where `writeWithMessageConverters` and the
+message converter would sit, and that fragment has not been read. **So "optimise serialisation"
+remains a hypothesis** — better supported than before, because the work is app-side and on one
+endpoint, but not yet attributed.
+
+**And there is no span data.** `distributed_tracing.enabled` is `"false"` in
+`avni-infra`'s `configure/group_vars/loadtest_vars.yml`, as it is in every other environment, so
+`Span` events do not exist and the breakdown above came from transaction traces in the UI rather
+than from NRQL. Transaction traces only capture above `apdex_f`, about 2 seconds, so **there are no
+traces at all from the healthy 12b window** — every trace available is of a queued request. Turning
+distributed tracing on for a few minutes of 12b would give the clean segment split, at the cost of
+an app restart, a re-warm, and one more way in which loadtest differs from production.
+
+**The 9 lazy `individual` selects are unexplained.** `Encounter` carries
+`@JsonIgnoreProperties({"individual"})`, so Jackson should not touch the association, yet
+individuals are loaded one at a time during the request rather than with the page. Either the
+scope query resolves them per row or something reaches through `getIndividual()` after the query
+returns. Worth chasing: it is 11% of the request and it is the shape of an N+1.
+
+---
+
 ## What this does not say
 
 **One app server, 2 vCPU.** The ceiling is a property of this instance and configuration. Whether
