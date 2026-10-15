@@ -68,6 +68,12 @@ Three candidates, none established here:
   cleanly. A ramp that breaks at X does not prove X cannot be held.
 * **Record accounting may differ by sync mode.** 12b ran `SYNC_MODE=full`; this is `realistic`.
 
+**Resolved by case 13 the same day: 12.85 is the throughput of a *saturated* server, not a
+ceiling.** Case 13 saturated at 95.5% app CPU and settled at 13.0 Mrec/h — within 1.2% of 12b's
+figure — while case 12 below the knee delivered 21.0. See [`findings-case13.md`](findings-case13.md).
+The original reasoning is kept below because the three candidates it lists remain partly live:
+fresh B-trees may still account for some of case 12's 21.0.
+
 The cheapest discriminator is a `realistic` steady run at a rate between the two — if 21 Mrec/h
 holds and 12.85 was a ramp artefact, the ceiling number in `findings-case9-12b.md` needs
 qualifying, and every capacity statement derived from it with it.

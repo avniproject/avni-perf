@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-15 10:59 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-15 12:38 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -42,6 +42,7 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-14T04-26-19Z-case6-cf77819`](run-log-detail.md#2026-10-14t04-26-19z-case6-cf77819) | 2026-10-14 09:56 | case6 | steady | 1682 | 120min @ 140/h | ~0.2 | ~2.8 | 5237 | 0.0% | 333 | 81.9 | 0.72 |
 | [`2026-10-14T09-19-33Z-case7-33396d9`](run-log-detail.md#2026-10-14t09-19-33z-case7-33396d9) | 2026-10-14 14:49 | case7 | steady | 1682 | 120min @ 140/h | ~1.0 | ~7.6 | 61683 | 0.0% | 323 | 82.7 | 8.53 |
 | [`2026-10-15T04-01-52Z-case12-c2a0e76`](run-log-detail.md#2026-10-15t04-01-52z-case12-c2a0e76) | 2026-10-15 09:31 | case12 | steady | 1682 | 60min @ 1682/h | ~5.5 | ~36 | 31409 | 0.0% | 1709 | 254.9 | 8.52 |
+| [`2026-10-15T05-33-35Z-case13-c2a0e76`](run-log-detail.md#2026-10-15t05-33-35z-case13-c2a0e76) | 2026-10-15 11:03 | case13 | steady | 1682 | 60min @ 1682/h | ~388 | ~313 | 51727 | 1.22% | 55919 | 2031.6 | 12.06 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 
@@ -68,3 +69,4 @@ Listed rather than left blank, because a blank column reads as a measurement and
 - `2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e` — recorded no `AUTOVACUUM` — so it cannot be compared with a run that differs in it
 - `2026-10-12T02-07-36Z-case9-12a-cf77819` — **failed 0.54% of requests against its own `MAX_FAILED_PERCENT` gate of 0.05%** — Gatling asserted and failed at the time. Read its throughput and latency as a run that broke, not as a point on a curve
 - `2026-10-12T04-55-23Z-case9-12b-rerun-cf77819` — **failed 0.24% of requests against its own `MAX_FAILED_PERCENT` gate of 0.05%** — Gatling asserted and failed at the time. Read its throughput and latency as a run that broke, not as a point on a curve
+- `2026-10-15T05-33-35Z-case13-c2a0e76` — **failed 1.22% of requests against its own `MAX_FAILED_PERCENT` gate of 0.05%** — Gatling asserted and failed at the time. Read its throughput and latency as a run that broke, not as a point on a curve
