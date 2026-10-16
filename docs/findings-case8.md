@@ -1,8 +1,9 @@
-# Case 8: the growth curve. Days 60 and 120 in, day 365 to come
+# Case 8: the growth curve, complete. No knee at six times the history
 
-**15–16 October 2026.** `2026-10-15T09-47-54Z-case8-day60-c2a0e76` and
-`2026-10-16T04-54-41Z-case8-day-120-c2a0e76`. Day 120: 94 syncs, 1,624 requests, zero failures,
-mean 177 ms, p95 302 ms.
+**15–16 October 2026.** Three runs on `c2a0e76` — day 60, day 120 and day 365 — plus case 4 at
+day 180 as corroboration. 94 syncs each, zero failures throughout. Day 365:
+`2026-10-16T09-06-38Z-case8-day-365-c2a0e76`, 3,112 requests, mean 257 ms, p95 337 ms, 98.75%
+under 800 ms.
 
 Day 60: Case 4's workload — 561 users,
 46.75 syncs/hour, realistic, `case4-users-pilot.csv` — at `DURATION_MINUTES=120` on
@@ -22,7 +23,59 @@ three points measured under identical conditions; days 120 and 365 follow.
 same tenant 120 days later. Three times the elapsed days, three times the encounters, to within
 rounding.
 
-## The curve so far: day 60, day 120, and case 4 at day 180
+## The curve, complete
+
+| incremental syncs | day 60 | day 120 | day 180* | day 365 |
+|---|---|---|---|---|
+| dataset encounters | 1.79 M | 3.59 M | 5.39 M | **10.92 M** |
+| records per sync, mean | 4,356 | 8,714 | 10,812 | **26,506** |
+| duration p50 | 21.4 s | 41.0 s | 60.6 s | **122.5 s** |
+| duration p95 | 60.6 s | 121.3 s | 61.3 s | **369.5 s** |
+| server ms p50 | 1,466 | 2,513 | 3,461 | **6,848** |
+| **server ms per record** | **0.386** | **0.347** | **0.322** | **0.326** |
+
+\* day 180 is case 4 from 7 October, on a different harness and index state.
+
+Relative to day 60, at the three directly comparable points:
+
+| | encounters | records/sync | per-record cost |
+|---|---|---|---|
+| day 120 | x2.00 | **x2.00** | x0.898 |
+| day 365 | x6.08 | **x6.08** | x0.843 |
+
+**Two things hold exactly, and one is the answer.**
+
+**Records per sync tracks dataset depth one-for-one.** Twice the encounters, twice the records;
+six times the encounters, six times the records — x2.00 against x2.00 and x6.08 against x6.08,
+with no drift at either step. At a fixed sync cadence a device carries what accumulated since it
+last synced, and that is linear in how much the tenant does.
+
+**The per-record cost falls and then flattens**: 0.386, 0.347, 0.326. The fall is −10.2% over the
+first doubling and only −6.1% more across the next tripling, settling near 0.33 ms. It is per-sync
+fixed cost — authentication, `syncDetails`, the entity walk — spread over more rows, and the
+spreading has nearly run its course by day 120.
+
+**There is no knee.** Six times the history, 94 syncs, 3,112 requests, zero failures, 98.75% of
+requests under 800 ms. Nothing in this range degrades.
+
+## What does grow, and it is the device's problem
+
+Per-record cost is the server's view. The device's view is the whole sync:
+
+| | day 60 | day 365 |
+|---|---|---|
+| duration p50 | 21.4 s | **122.5 s** |
+| duration p95 | 60.6 s | **369.5 s** |
+
+**A median sync goes from 21 seconds to over two minutes, and p95 to six minutes.** That is linear
+in dataset depth and it is exactly what "no knee" means: the work per record did not get worse, so
+six times the records takes six times as long. A field worker returning to a tenant with a year of
+history waits two minutes for a routine sync and six for an unlucky one.
+
+Whether that is acceptable is a product question, not a performance one. The server is not the
+constraint at any point on this curve.
+
+## What "growth" means here, which is not what it sounds like
 
 | incremental syncs | day 60 | day 120 | day 180* |
 |---|---|---|---|

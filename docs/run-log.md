@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-16 12:53 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-16 17:06 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -35,7 +35,7 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-09T09-17-04Z-case11-pairE-cf77819`](run-log-detail.md#2026-10-09t09-17-04z-case11-paire-cf77819) | 2026-10-09 14:47 | case11 | steady | 550 | 60min @ 550/h | ~0.9 | ~12.8 | 12960 | 0.0% | 424 | 227.2 | 3.45 |
 | [`2026-10-09T11-27-35Z-case11-burst15-400-cf77819`](run-log-detail.md#2026-10-09t11-27-35z-case11-burst15-400-cf77819) | 2026-10-09 16:57 | case11 | steady | 400 | 15min @ 1600/h | ~79 | ~123 | 35842 | 0.0% | 19610 | 888.0 | 18.47 |
 | [`2026-10-09T14-21-29Z-case10-soak-cf77819`](run-log-detail.md#2026-10-09t14-21-29z-case10-soak-cf77819) | 2026-10-09 19:51 | case10 | steady | 561 | 720min @ 47/h | ~0.1 | ~3.0 | 50098 | 0.0% | 290 | 548.7 | 1.16 |
-| [`2026-10-12T02-07-36Z-case9-12a-cf77819`](run-log-detail.md#2026-10-12t02-07-36z-case9-12a-cf77819) | 2026-10-12 07:37 | case9 | stress | 1682 | 45min @ 200/h | ~107 | ~113 | 21491 | 0.54% | 52876 | 1284.2 | 6.23 |
+| [`2026-10-12T02-07-36Z-case9-12a-cf77819`](run-log-detail.md#2026-10-12t02-07-36z-case9-12a-cf77819) | 2026-10-12 07:37 | case9 | stress | 1682 | 45min @ 200/h | — | — | — | —% | — | 1284.2 | — |
 | [`2026-10-12T03-43-44Z-case9-12b-cf77819`](run-log-detail.md#2026-10-12t03-43-44z-case9-12b-cf77819) | 2026-10-12 09:13 | case9 | stress | 1682 | 45min @ 50/h | ~1.0 | ~11.3 | 16041 | 0.0% | 489 | 229.3 | 5.82 |
 | [`2026-10-12T04-55-23Z-case9-12b-rerun-cf77819`](run-log-detail.md#2026-10-12t04-55-23z-case9-12b-rerun-cf77819) | 2026-10-12 10:25 | case9 | stress | 1682 | 40min @ 200/h | ~169 | ~171 | 40241 | 0.24% | 48514 | 1450.4 | 11.4 |
 | [`2026-10-12T06-01-23Z-case9-12c-cf77819`](run-log-detail.md#2026-10-12t06-01-23z-case9-12c-cf77819) | 2026-10-12 11:31 | case9 | stress | 1682 | 45min @ 200/h | ~235 | ~274 | 102891 | 0.01% | 33454 | 2123.9 | 20.46 |
@@ -45,6 +45,7 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-15T05-33-35Z-case13-c2a0e76`](run-log-detail.md#2026-10-15t05-33-35z-case13-c2a0e76) | 2026-10-15 11:03 | case13 | steady | 1682 | 60min @ 1682/h | ~388 | ~313 | 51727 | 1.22% | 55919 | 2031.6 | 12.06 |
 | [`2026-10-15T09-47-54Z-case8-day60-c2a0e76`](run-log-detail.md#2026-10-15t09-47-54z-case8-day60-c2a0e76) | 2026-10-15 15:17 | case8 | steady | 561 | 120min @ 47/h | ~0.0 | ~0.3 | 1504 | 0.0% | 263 | — | 0.21 |
 | [`2026-10-16T04-54-41Z-case8-day-120-c2a0e76`](run-log-detail.md#2026-10-16t04-54-41z-case8-day-120-c2a0e76) | 2026-10-16 10:24 | case8 | steady | 561 | 120min @ 47/h | ~0.0 | ~0.7 | 1624 | 0.0% | 302 | — | 0.23 |
+| [`2026-10-16T09-06-38Z-case8-day-365-c2a0e76`](run-log-detail.md#2026-10-16t09-06-38z-case8-day-365-c2a0e76) | 2026-10-16 14:36 | case8 | steady | 561 | 120min @ 47/h | ~0.1 | ~1.9 | 3112 | 0.0% | 337 | — | 0.43 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 
@@ -69,6 +70,6 @@ Listed rather than left blank, because a blank column reads as a measurement and
 - `2026-10-05T08-38-47Z-case1-f76d110` — harness commit was recorded as `unknown`; **corrected to `f76d110`** by `provenance-correction.json` in the same prefix. The run's own metadata is left as written — see that file for the basis and the cause
 - `2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e` — recorded no `AUTOVACUUM` — so it cannot be compared with a run that differs in it
 - `2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e` — recorded no `AUTOVACUUM` — so it cannot be compared with a run that differs in it
-- `2026-10-12T02-07-36Z-case9-12a-cf77819` — **failed 0.54% of requests against its own `MAX_FAILED_PERCENT` gate of 0.05%** — Gatling asserted and failed at the time. Read its throughput and latency as a run that broke, not as a point on a curve
+- `2026-10-12T02-07-36Z-case9-12a-cf77819` — no Global Information block in gradle.log — the simulation did not reach its summary
 - `2026-10-12T04-55-23Z-case9-12b-rerun-cf77819` — **failed 0.24% of requests against its own `MAX_FAILED_PERCENT` gate of 0.05%** — Gatling asserted and failed at the time. Read its throughput and latency as a run that broke, not as a point on a curve
 - `2026-10-15T05-33-35Z-case13-c2a0e76` — **failed 1.22% of requests against its own `MAX_FAILED_PERCENT` gate of 0.05%** — Gatling asserted and failed at the time. Read its throughput and latency as a run that broke, not as a point on a curve
