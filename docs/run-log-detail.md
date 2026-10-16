@@ -1,6 +1,6 @@
 # Run log — detail
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-15 17:30 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-16 12:53 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script, as [`run-log.md`](run-log.md) is. That file is the index and carries the results table and any caveats; this one records what each run was configured with and what environment it met, which is what makes a number interpretable once the environment is gone.
 
@@ -1014,4 +1014,32 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T09-47-54Z-case8
 | sync duration p50 / mean / p95 s | 21.4 / 25.5 / 60.6 (94 syncs) |
 | full syncs | none — `SYNC_MODE=realistic` produced no sync that pulled from 1900 |
 | cache policy | warm-jvm-pristine-indexes |
+| autovacuum | on |
+
+## `2026-10-16T04-54-41Z-case8-day-120-c2a0e76`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-16T04-54-41Z-case8-day-120-c2a0e76/`
+
+| | |
+|---|---|
+| requests (ok) | 1624 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 184 / 302 / 341 / 573 |
+| mean ms | 177 |
+| mean throughput rps | 0.23 |
+| harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 17.3.0-SNAPSHOT |
+| dataset | pilot-day-120 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.26 / 0.35 |
+| est. sync overhead s | 0.04 |
+| injection | profile steady, 561 users arriving over 120min @ 47/h, ~0.0 requests in flight (rps x mean), ramp 11220 s |
+| sync | mode realistic, feeder case4-users-pilot.csv (561 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 41.0 / 49.6 / 121.3 (94 syncs) |
+| full syncs | none — `SYNC_MODE=realistic` produced no sync that pulled from 1900 |
+| cache policy | warm-after-discarded-warmup |
 | autovacuum | on |
