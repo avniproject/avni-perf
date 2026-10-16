@@ -1079,14 +1079,14 @@ is binding; the calendar is not.
 
 | # | Block | Run | State |
 |---|---|---|---|
-| 1 | A | **1** — training cohort, 30 min, swept across arrival windows 900 s to 15 s | done, 10 runs |
-| 2 | A | **14** — full sync, 90 min | done |
-| 3 | A | **2** — field workers, 4 h | done |
-| 4 | A | **3** — supervisors, 2 h driven | done |
-| 5 | A | **4** — combined, 4 h | done; first attempt sampled one role and is not a measurement |
-| 6 | — | **D7** — client storage, device, Realm and SQLite | done |
-| 7 | A | **5** — ten tenants, 2 h | done |
-| 8 | A | **11** — clustered, 1 h | done at the full 1,682; saturated |
+| 1 | A | **1** — training cohort, 30 min, swept across arrival windows 900 s to 15 s | done, 10 runs. [`findings-case1.md`](findings-case1.md) |
+| 2 | A | **14** — full sync, 90 min | done. [`findings-case14.md`](findings-case14.md) |
+| 3 | A | **2** — field workers, 4 h | done. [`findings-case2.md`](findings-case2.md) |
+| 4 | A | **3** — supervisors, 2 h driven | done. [`findings-case3.md`](findings-case3.md) |
+| 5 | A | **4** — combined, 4 h | done; the first attempt sampled one role and is not a measurement. [`findings-case4.md`](findings-case4.md) |
+| 6 | — | **D7** — client storage, device, Realm and SQLite | done. [`findings-d7.md`](findings-d7.md) |
+| 7 | A | **5** — ten tenants, 2 h | done. **No findings document**: case 5 is the baseline cases 6, 12 and 13 are read against, and it is written up in theirs. The run itself is [`2026-10-08T12-04-15Z-case5-d484f18`](run-log-detail.md#2026-10-08t12-04-15z-case5-d484f18) |
+| 8 | A | **11** — clustered, 1 h | done at the full 1,682; saturated. **No findings document** — the run is [`2026-10-08T14-05-56Z-case11-run1-d484f18`](run-log-detail.md#2026-10-08t14-05-56z-case11-run1-d484f18) |
 | 9 | A | **11 twice, back to back, no reset** — the block-strategy validation | **inconclusive, 9 Oct.** Five runs at 550/h — A/B, C/D and a `PUSH=off` control — could not resolve drift, because the harness is not reproducible. The block strategy was settled another way: see *Resolved 9 Oct 2026* above. [`findings-case11-pair.md`](findings-case11-pair.md) |
 | 10 | A | **10** — soak, 12 h, overnight | **done 2026-10-10.** 561 syncs, 50,098 requests, **0 failed**, p95 290 ms. **No measurable degradation over twelve hours** once normalised per record — the trend is noise, not drift. No reload: the finding is hour 1 against hour 12 of one run. Confirmed at the endpoint and in the JVM, 14 Oct. [`findings-case10.md`](findings-case10.md) |
 | 11 | A | **11 at a 15-minute window**, 15 min | **done 9 Oct, ahead of 10.** Scaled to 400 users rather than the full 1,682, so the backlog is 400 syncs. Reaches 18.5 rps, not the ~35 predicted — **saturates on app CPU**. [`findings-case11-burst.md`](findings-case11-burst.md) |
