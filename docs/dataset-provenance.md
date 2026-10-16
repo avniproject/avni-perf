@@ -154,6 +154,13 @@ provisioning and record them, as the eight NGO tenants were.
 `unassigned_organisations()` cannot catch this one — these ids look assigned, which
 is exactly how the pilot came to name four live organisations.
 
+**Provisioned 13 Oct 2026, and the assigned ids are not contiguous.** The 513 organisations
+landed at **24–566**, which is 543 ids for 513 tenants: 406–435 belong to an allocation block
+lost when the environment was restarted mid-run. So the extent of the range is not the map
+either. The `co-NNN` → id mapping is recorded in
+[`co-tenant-provisioning.tsv`](co-tenant-provisioning.tsv) and has to be read from there —
+deriving it from the recipe's 1001–1513 or from the assigned range gives thirty wrong answers.
+
 **Measured 9 Oct 2026: one `large-pull-heavy` organisation takes 232 seconds**, and
 that reframes the step. This previously read "nobody has timed a single
 `provision-org.sh`", bracketing it at 85 minutes to 8.5 hours. It is neither.
