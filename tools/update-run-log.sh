@@ -578,9 +578,20 @@ for r, link, meta, stats, sha7, corr in details:
         D.append(f"| injector RTT min / median ms | {at(meta,'settings.injector.rtt.minMillis','—')} / "
                  f"{at(meta,'settings.injector.rtt.medianMillis','—')} |")
         D.append(f"| est. sync overhead s | {at(meta,'settings.injector.rtt.estimatedSyncOverheadSeconds','—')} |")
+        # **Both of these are looked up per run, and were not.** `window` and
+        # `inflight` are computed in the summary loop above, and this loop simply
+        # referred to the names -- so every detail block printed the values left
+        # behind by the LAST run that loop processed. Every run's injection line
+        # read "120min @ 47/h, ~0.1 requests in flight" whatever the run did:
+        # case 3 ran at 30/h, case 5 at 140/h, case 4 for 240 minutes. The
+        # summary table was right throughout, because it reads the same values
+        # from the row it is building. Caught on 19 Oct 2026 when a Block A'
+        # run was set up from this line and drove the wrong arrival rate.
+        inj = next((x for x in rows if x['run'] == r), None)
         D.append(f"| injection | profile {at(meta,'settings.injection.profile','—')}, "
                  f"{at(meta,'settings.injection.userCount','—')} users arriving over "
-                 f"{window}, ~{inflight.lstrip('~')} requests in flight (rps x mean), "
+                 f"{inj['window'] if inj else '—'}, "
+                 f"~{(inj['inflight'] if inj else '—').lstrip('~')} requests in flight (rps x mean), "
                  f"ramp {at(meta,'settings.injection.rampPeriodSeconds','—')} s |")
         D.append(f"| sync | mode {at(meta,'settings.sync.syncMode','—')}, "
                  f"feeder {at(meta,'settings.sync.feeder','—')} "
