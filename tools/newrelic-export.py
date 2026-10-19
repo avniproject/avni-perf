@@ -255,13 +255,32 @@ def main(argv=None) -> int:
     for event_type, n in sorted(manifest["totals"].items()):
         print(f"  {event_type:<18} {n:>9,} events", file=sys.stderr)
 
+    # **Holes are reported, and they no longer suppress the upload.** This used to
+    # `return 1` here, before the sync -- which meant a backup with any hole at all
+    # stayed on one laptop. That is the exact failure the weekly backup exists to
+    # prevent, and it was unreachable rather than unlikely: every run so far has
+    # had Metric shortfalls, 901 on 16 Oct and 1,038 on 19 Oct, and neither cause
+    # is fixable from this side. 955 of them are NRDB returning fewer rows than its
+    # own count(*); the rest are single MILLISECONDS holding more than the 5,000-row
+    # cap, which no further splitting can divide. So `--s3` would never have fired
+    # again, while Transaction -- the type that ages out in 8 days and the only one
+    # that cannot be re-fetched -- sat undisplaced on local disk.
+    #
+    # The exit code still says 1, so CI and a human both still learn the backup is
+    # incomplete. What changed is that the bytes reach S3 first.
+    rc = 0
     if manifest["shortfalls"]:
-        print(f"\n{len(manifest['shortfalls'])} INCOMPLETE window(s) -- this backup has holes:",
-              file=sys.stderr)
+        rc = 1
+        by_type = {}
+        for s in manifest["shortfalls"]:
+            by_type[s["eventType"]] = by_type.get(s["eventType"], 0) + 1
+        print(f"\n{len(manifest['shortfalls'])} INCOMPLETE window(s) -- this backup has holes "
+              f"({', '.join(f'{k}: {v}' for k, v in sorted(by_type.items()))}):", file=sys.stderr)
         for s in manifest["shortfalls"][:10]:
             print(f"  {s['eventType']} {s['since']}-{s['until']}: "
                   f"{s['got']}/{s['expected']} -- {s['why']}", file=sys.stderr)
-        return 1
+        print("  (the upload below still runs -- an incomplete backup in S3 beats a "
+              "complete one on a laptop)", file=sys.stderr)
 
     if args.s3:
         bucket = args.bucket
@@ -276,7 +295,7 @@ def main(argv=None) -> int:
             return rc
         print(f"done -- {dest}", file=sys.stderr)
 
-    return 0
+    return rc
 
 
 if __name__ == "__main__":
