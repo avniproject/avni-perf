@@ -110,11 +110,22 @@ detached(){ # $1 label, $2 sql path
   local t0=$(date +%s) rc=''
   while :; do
     rc=$(sshapp "cat /tmp/$TAG.$1.rc 2>/dev/null"); [ -n "$rc" ] && break
-    # Report the counter that actually moves for this phase. A teardown emits no
-    # COPY lines, so reporting "rows copied" made a working teardown read as
-    # seven minutes of nothing.
+    # **A teardown cannot report progress, and two attempts at one have now failed.**
+    # "rows copied" showed nothing because a teardown emits no COPY lines.
+    # `n_tup_del` then showed 0 for all 13 minutes of a delete of 12.4 M rows,
+    # because Postgres buffers a backend's statistics locally and does not flush
+    # them to the collector until the transaction commits -- and this is one
+    # transaction by design. Counting the rows that remain fails for the same
+    # reason from the other side: MVCC hands the polling session a snapshot
+    # taken before the delete, so it would read 1,506,000 until the moment it
+    # reads 0.
+    #
+    # So report what can be known from outside: that the backend is alive, how
+    # long its transaction has run, and whether it is waiting on a lock. That
+    # last one is the failure actually worth catching -- a teardown queued
+    # behind an ACCESS EXCLUSIVE lock looks exactly like a slow one.
     if [ "$1" = "td" ]; then
-      echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshapp "$Q -c \"SELECT sum(n_tup_del) FROM pg_stat_user_tables WHERE relname IN ('individual','encounter','program_encounter','program_enrolment');\"") rows deleted (cumulative)"
+      echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshapp "$Q -c \"SELECT coalesce(state, '?') || coalesce(' waiting on ' || wait_event_type || ':' || wait_event, ', not waiting') || ', ' || date_trunc('second', now() - xact_start) || ' into the transaction' FROM pg_stat_activity WHERE application_name = 'psql' AND pid <> pg_backend_pid() AND xact_start IS NOT NULL ORDER BY xact_start LIMIT 1;\"")"
     else
       echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshapp "awk '/^COPY /{n+=\$2} END{print n+0}' /tmp/$TAG.$1.log") rows copied"
     fi
@@ -134,10 +145,13 @@ want={10,11,12,13,14,15,16,17,18,19}; got=set()
 for m in glob.glob('/tmp/$SET/*/manifest.json'): got|=set(json.load(open(m))['target']['organisations'])
 print('   targets', sorted(got)); raise SystemExit(0 if got==want else 1)\"" \
   || { echo "ABORT: $SET does not target exactly 10-19" >&2; exit 1; }
-# Reported, not asserted. The teardown below cuts structural rows by id range
-# (--id-base), so the incoming dataset's base belongs in the log beside the base
-# being torn down -- a mismatch is how a load collides with rows the teardown
-# had no reason to touch.
+# Reported, not asserted, and it is reported for the reader rather than for the
+# teardown. The manifest carries an id_base PER TENANT -- ten of them, not one --
+# and `teardown_org.py` no longer uses the value at all: "id_base is accepted and
+# recorded, not used: the cut is by provenance now" (teardown_org.py:214). The
+# range cut was removed because `id >= id_base` also took the bundle's own
+# bundleloader@ user. So --id-base below is inert, and this line exists so that
+# nobody reading the log infers otherwise.
 sshapp "python3 -c \"
 import json,glob
 b=set()
