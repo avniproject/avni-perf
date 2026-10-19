@@ -1,6 +1,6 @@
 # Run log — detail
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-19 10:43 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-19 18:55 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script, as [`run-log.md`](run-log.md) is. That file is the index and carries the results table and any caveats; this one records what each run was configured with and what environment it met, which is what makes a number interpretable once the environment is gone.
 
@@ -1070,4 +1070,88 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-16T09-06-38Z-case8
 | sync duration p50 / mean / p95 s | 122.5 / 148.9 / 369.6 (94 syncs) |
 | full syncs | none — `SYNC_MODE=realistic` produced no sync that pulled from 1900 |
 | cache policy | warm-after-discarded-warmup |
+| autovacuum | on |
+
+## `2026-10-19T05-06-40Z-case3-span20-c2a0e76`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T05-06-40Z-case3-span20-c2a0e76/`
+
+| | |
+|---|---|
+| requests (ok) | 5053 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 327 / 357 / 388 / 588 |
+| mean ms | 294 |
+| mean throughput rps | 0.67 |
+| harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 17.3.0-SNAPSHOT |
+| dataset | pilot-day-180-span20 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.6 / 0.68 |
+| est. sync overhead s | 0.07 |
+| injection | profile steady, 25 users arriving over 120min @ 30/h, ~0.2 requests in flight (rps x mean), ramp 500 s |
+| sync | mode realistic, feeder case3-users-span20.csv (25 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 425.8 / 409.6 / 426.3 (60 syncs) |
+| full syncs | none — `SYNC_MODE=realistic` produced no sync that pulled from 1900 |
+| cache policy | warm-after-discarded-warmup |
+| autovacuum | on |
+
+## `2026-10-19T07-14-41Z-case4-span20-c2a0e76`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T07-14-41Z-case4-span20-c2a0e76/`
+
+| | |
+|---|---|
+| requests (ok) | 3436 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 263 / 336 / 360 / 536 |
+| mean ms | 232 |
+| mean throughput rps | 0.24 |
+| harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 17.3.0-SNAPSHOT |
+| dataset | pilot-day-180-span20 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.24 / 0.33 |
+| est. sync overhead s | 0.04 |
+| injection | profile steady, 526 users arriving over 240min @ 44/h, ~0.1 requests in flight (rps x mean), ramp 10520 s |
+| sync | mode realistic, feeder case4-users-span20.csv (526 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 60.5 / 77.5 / 80.5 (175 syncs) |
+| full syncs p50 / p95 s | 80.5 / 80.5 (2 of 175, recorded) |
+| cache policy | warm-after-case3-span20 |
+| autovacuum | on |
+
+## `2026-10-19T11-15-25Z-case5-span20-c2a0e76`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T11-15-25Z-case5-span20-c2a0e76/`
+
+| | |
+|---|---|
+| requests (ok) | 5120 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 267 / 348 / 379 / 1660 |
+| mean ms | 238 |
+| mean throughput rps | 0.68 |
+| harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 17.3.0-SNAPSHOT |
+| dataset | pilot-day-180-span20 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.25 / 0.48 |
+| est. sync overhead s | 0.05 |
+| injection | profile steady, 1580 users arriving over 120min @ 132/h, ~0.2 requests in flight (rps x mean), ramp 31600 s |
+| sync | mode realistic, feeder case5-users-span20.csv (1580 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 60.6 / 75.9 / 80.4 (263 syncs) |
+| full syncs p50 / p95 s | 80.7 / 80.9 (4 of 263, recorded) |
+| cache policy | warm-after-case4-span20 |
 | autovacuum | on |

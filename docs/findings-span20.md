@@ -71,7 +71,80 @@ pressure — four devices in flight throughout, 0.67 rps, every request under 80
 > stands: the simulation scales push volume by a `pushScale` whose default is a *field worker's*
 > twenty encounters a day, which a supervisor covering 20,000 subjects certainly does not write.
 
-## Cases 4 and 5
+## Cases 4 and 5 — where the span disappears into the cohort
 
-Pending — case 4 launched 12:44 on 19 Oct, case 5 after it, both against this same load with no
-reset between them, mirroring Block A.
+`2026-10-19T07-14-41Z-case4-span20-c2a0e76` (526 users, 44/h, 4 h, **175 syncs**) and
+`2026-10-19T11-15-25Z-case5-span20-c2a0e76` (1,580 users, 132/h, 2 h, **263 syncs**). Both at the
+derived rate, both `PUSH=off`, both on the same load as case 3 with **no reset between any of the
+three**, mirroring Block A. 3,436 and 5,120 requests, **zero failures**.
+
+**Read as wholes, these two runs say the span changed nothing:**
+
+| | case 4 8.4 → 20 | case 5 8.4 → 20 |
+|---|---|---|
+| records per sync p50 | 10,778 → 10,778 | 10,778 → 10,778 |
+| sync duration p50 | 60.6 s → 60.5 s | 60.6 s → 60.6 s |
+| mean records per sync | 13,190 → 13,791 (1.05×) | 12,989 → 13,498 (1.04×) |
+| server ms per record | 0.3306 → 0.3294 | 0.3365 → 0.3396 |
+
+**That is dilution, not absence.** The span widens supervisor catchments, and supervisors are
+**60 of 561 users at span 8.4 and 25 of 526 at span 20** — a tenth of the cohort falling to a
+twentieth. Splitting each run by role recovers the effect, and gives something case 3 could not:
+a control group measured on the same server at the same moment.
+
+| | n | records per sync | ms per record |
+|---|---|---|---|
+| **case 4** field workers | 166 → 165 | 10,799 → 10,778 (**1.00×**) | 0.3287 → 0.3228 (**−1.8%**) |
+| **case 4** supervisors | 19 → 8 | 32,358 → 75,446 (**2.33×**) | 0.3348 → 0.3465 (**+3.5%**) |
+| **case 5** field workers | 249 → 248 | 10,775 → 10,727 (**1.00×**) | 0.3338 → 0.3315 (**−0.7%**) |
+| **case 5** supervisors | 29 → 11 | 30,856 → 75,160 (**2.44×**) | 0.3437 → 0.3628 (**+5.6%**) |
+
+### The catchment ratio reproduces three times
+
+**2.33×, 2.33× and 2.44×** against the 2.38× ratio of 20,000 subjects to 8,400 — measured on
+supervisors alone, inside a one-tenant cohort, and inside a ten-tenant one. **Field workers, whom
+the span does not touch, hold at 1.00× in both runs that contain them**, to within half a percent.
+
+### The control is what makes the per-record number honest
+
+Supervisors cost **+5.5%, +3.5% and +5.6%** more per record across the three runs. Field workers,
+who should show **zero**, moved **−1.8%** and **−0.7%**. So run-to-run variation here is on the
+order of one to two points, and the defensible statement is **about +5%, give or take 1.5**, not
+any single figure to three significant digits. Roughly 0.3 points of it is co-tenant presence
+rather than span ([case 6](findings-case6.md)).
+
+Supervisor counts are small at span 20 — **8 and 11 syncs** — which is the other reason not to
+quote a precise figure. Case 3 exists precisely because driving supervisors alone is the only way
+to get a decent sample of them.
+
+### Do not read case 4's and case 5's p95 as an improvement
+
+**Both show sync duration p95 falling from 182 s to 80 s, and nothing got faster.** At span 8.4 a
+supervisor is ~10.4% of the syncs, so a supervisor's sync sits above the 95th percentile; at span
+20 it is ~4.2%, so it sits below. **The percentile moved because the cohort's composition changed.**
+Every span-20 supervisor sync is *slower* than every span-8.4 one — 75,000 records against 32,000.
+This is the clearest example in the campaign of a headline statistic reversing the direction of the
+thing it describes, and it is why the role split is not optional for these two runs.
+
+---
+
+## What the span sweep settles
+
+**The span scales the work and barely touches the cost of it.** Widening a supervisor's catchment
+by 2.38× gives 2.33–2.44× the records per sync, 2.34× the sync duration, and about 5% more server
+time per record. There is no knee, no new bottleneck, and nothing that behaves differently in kind
+from span 8.4.
+
+**This is the same answer case 8 gave for history**, reached from an independent input: ×6.08 the
+dataset depth gave ×6.08 the records per sync at a flat per-record cost. Volume — however it
+arrives, through deeper history or wider catchments — is linear on this server, and the application
+server's CPU remains the constraint only when arrivals are compressed (cases 12 and 13).
+
+**What it costs the person holding the device**: a supervisor at span 20 waits **7.1 minutes** for
+a median sync against **3.0** at span 8.4, 94% of it the modelled client-side storage pause. Field
+workers are unaffected. That is a product question about supervisor tooling, not a server one.
+
+**The sweep does not justify widening itself.** The plan reserved the right to extend the sweep if
+"one span-20 result shows the span matters more than this expects". None does: every measurement
+landed within a couple of percent of simple proportionality. The span can be treated as an
+interpolation between 8.4 and 20 rather than a factor needing its own runs.

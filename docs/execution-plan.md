@@ -25,7 +25,7 @@ so treat the shape as firm and the dates as provisional.
 | **4 · Execution** | *ordered, not dated* | Cases 1 to 14, in a sequence where each is interpretable when it runs — see **The sequence**. |
 | **5 · Findings** | *after* | Saturate, name the resource, fix, re-run. Four to six iterations, not one pass. |
 
-**Status as of 16 Oct 2026.** Phases 0–3 complete. **Block A is done** — the soak (**10**) on
+**Status as of 19 Oct 2026.** Phases 0–3 complete, and **Phase 4 is done: every case in the sequence has run.** **Block A is done** — the soak (**10**) on
 10 Oct, and the stress ramp (**9**) on 12 Oct as 12a/12b/12c, which settled the ceiling at
 12.85 Mrec/h without push and 11.32 with; case 11 has run at 1,682/h, at 550/h four times, and
 at a 15-minute window. **Block B's dataset is provisioned, loaded and verified** — 513 co-tenant
@@ -47,6 +47,14 @@ server is not the constraint anywhere on this curve, which makes the remaining q
 one rather than a performance one. The reset before it emptied the co-tenants' 6.25 M transactional rows so the curve
 is not damped by a constant background. The
 day 60/120/365 archives are in S3.
+**Block A′ is complete (19 Oct) and the sequence has no unrun rows left.** The span sweep
+settles the outermost loop: widening a supervisor's catchment 2.38× gives **2.33–2.44× the records
+per sync** across three independent runs, at **about +5% per record** — and field workers, whom the
+span does not touch, hold at 1.00× in the same runs and bound that figure's noise at 1–2 points.
+**It is case 8's answer reached from a different input**: volume is linear on this server however
+it arrives. A supervisor's median sync goes 3.0 → 7.1 minutes, which is a product question about
+supervisor tooling rather than a server one. Nothing in it justifies widening the sweep.
+[`findings-span20.md`](findings-span20.md).
 Run-by-run state is in **[The sequence](#the-sequence)**; results are in
 [`run-log.md`](run-log.md) and the `findings-*.md` files. `pilot-day-180` was **reloaded on
 14 Oct** — organisations 10–19 torn down and restored with the co-tenants left in place, removing
@@ -1099,7 +1107,7 @@ is binding; the calendar is not.
 | 16 | B | **12** and **13** — clustered, 1 h each | **12 done 2026-10-15; 13 is row 16b.** Case 6 compressed: **6.59 devices in flight against 0.55**, co-tenants present and idle. 31,409 requests, **0 failed**. **The same work twelve times denser costs 170% more server time per record** — contention, not extra work — and takes app CPU to 81%. [`findings-case12.md`](findings-case12.md) | 
 | 16b | B | **13** — clustered, co-tenants syncing, 1 h | **done 2026-10-15.** Case 12 plus `CO_TENANTS=on`, **9.7 in flight**, three times production's peak. **The first run to break** — 1.22% failed, almost all clients giving up at 60 s. **Asking 47% more removed 38% of the throughput**, which resolves case 12's ceiling question: **12.85 Mrec/h is a saturated server, not a maximum**. [`findings-case13.md`](findings-case13.md) |
 | 17 | C | **8** — growth, 2 h each at day 60, 120 and 365 | **done 2026-10-16 — no knee at six times the history.** 94 syncs at each point, **0 failed** throughout. **Records per sync tracks dataset depth one-for-one** and **per-record server cost falls then flattens**, 0.386 → 0.347 → 0.326 ms. **What grows is the device's wait**: a median sync goes 21.4 s → 122.5 s, linear in depth. The server is not the constraint anywhere on this curve. [`findings-case8.md`](findings-case8.md) |
-| 18 | A′ | Reload `pilot-day-180-span20`, split with `--variant span20`, re-run **3**, **4**, **5** | **dataset loaded and verified 19 Oct**; the feeders were already split. **3 done** — records per sync track the catchment one-for-one, 2.33× for 2.38×, and duration tracks the records 2.34×; per record it is **+5.5%**, of which 0.3 points is co-tenant presence rather than the span. A median supervisor sync goes **3.0 → 7.1 minutes**, 94% of it the modelled client pause. **4** and **5** running against the same load, no reset between them. [`findings-span20.md`](findings-span20.md) |
+| 18 | A′ | Reload `pilot-day-180-span20`, split with `--variant span20`, re-run **3**, **4**, **5** | **done 2026-10-19 — the span scales the work and barely touches the cost of it.** All three runs on one load with no reset between them, **zero failures in 13,609 requests**. **Records per sync track the catchment three times independently** — 2.33×, 2.33×, 2.44× against a 2.38× ratio — while **field workers, whom the span does not touch, hold at 1.00×** and serve as the control. Supervisors cost **about +5% more per record**, and the control says that figure carries 1–2 points of run-to-run noise. A median supervisor sync goes **3.0 → 7.1 minutes**, 94% of it the modelled client pause. **Cases 4 and 5 look like nothing happened until split by role**, and their p95 *falls* 182 s → 80 s purely because supervisors drop from a tenth of the cohort to a twentieth — composition, not speed. No knee, and nothing that justifies widening the sweep. [`findings-span20.md`](findings-span20.md) |
 
 #### Standing task: back up New Relic weekly
 

@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-19 10:43 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-19 18:55 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -46,6 +46,9 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-15T09-47-54Z-case8-day60-c2a0e76`](run-log-detail.md#2026-10-15t09-47-54z-case8-day60-c2a0e76) | 2026-10-15 15:17 | case8 | steady | 561 | 120min @ 47/h | ~0.0 | ~0.3 | 1504 | 0.0% | 263 | — | 0.21 |
 | [`2026-10-16T04-54-41Z-case8-day-120-c2a0e76`](run-log-detail.md#2026-10-16t04-54-41z-case8-day-120-c2a0e76) | 2026-10-16 10:24 | case8 | steady | 561 | 120min @ 47/h | ~0.0 | ~0.7 | 1624 | 0.0% | 302 | — | 0.23 |
 | [`2026-10-16T09-06-38Z-case8-day-365-c2a0e76`](run-log-detail.md#2026-10-16t09-06-38z-case8-day-365-c2a0e76) | 2026-10-16 14:36 | case8 | steady | 561 | 120min @ 47/h | ~0.1 | ~1.9 | 3112 | 0.0% | 337 | — | 0.43 |
+| [`2026-10-19T05-06-40Z-case3-span20-c2a0e76`](run-log-detail.md#2026-10-19t05-06-40z-case3-span20-c2a0e76) | 2026-10-19 10:36 | case3 | steady | 25 | 120min @ 30/h | ~0.2 | ~3.3 | 5053 | 0.0% | 357 | — | 0.67 |
+| [`2026-10-19T07-14-41Z-case4-span20-c2a0e76`](run-log-detail.md#2026-10-19t07-14-41z-case4-span20-c2a0e76) | 2026-10-19 12:44 | case4 | steady | 526 | 240min @ 44/h | ~0.1 | ~0.9 | 3436 | 0.0% | 336 | 80.5 | 0.24 |
+| [`2026-10-19T11-15-25Z-case5-span20-c2a0e76`](run-log-detail.md#2026-10-19t11-15-25z-case5-span20-c2a0e76) | 2026-10-19 16:45 | case5 | steady | 1580 | 120min @ 132/h | ~0.2 | ~2.7 | 5120 | 0.0% | 348 | 80.9 | 0.68 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 
