@@ -290,9 +290,13 @@ def main(argv=None) -> int:
             bucket = f"avni-loadtest-{acct}"
         dest = f"s3://{bucket}/{args.prefix}/"
         print(f"\nsyncing to {dest}", file=sys.stderr)
-        rc = subprocess.run(["aws", "s3", "sync", str(out), dest, "--only-show-errors"]).returncode
-        if rc != 0:
-            return rc
+        # **Its own variable.** Assigning the sync's status to `rc` would erase the 1
+        # set by the shortfall check above, so a backup with holes that uploaded
+        # cleanly would exit 0 and report itself complete.
+        sync_rc = subprocess.run(["aws", "s3", "sync", str(out), dest,
+                                  "--only-show-errors"]).returncode
+        if sync_rc != 0:
+            return sync_rc
         print(f"done -- {dest}", file=sys.stderr)
 
     return rc
