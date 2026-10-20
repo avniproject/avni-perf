@@ -132,8 +132,10 @@ from five runs where CPU saturated and the database did not. Re-run case 13 on l
 throughput does not scale, there is a second constraint nobody has found, and that matters more
 than any tuning.
 
-**3. Program data.** `program_enrolment` and `program_encounter` are 0 rows where the recipe
-specifies 0.22 enrolment. Worse than "smaller": `ProgramEncounter` is production's **largest table**
+**3. Program data for the customer cohort.** `program_enrolment` and `program_encounter` are 0
+rows **in the ten pilot tenants** where the recipe specifies 0.22 enrolment. The co-tenants do have
+them — 2.41 M rows — so this is a gap in what the measured syncs pull, not a table the server has
+never touched. Worse than "smaller": `ProgramEncounter` is production's **largest table**
 and carries the **highest measured storage rate** in `StorageProfiles` — 8.44 ms/record against
 `Encounter`'s 6.14. The missing entity is the expensive one. Regenerate and re-run cases 5 and 13.
 
@@ -191,9 +193,19 @@ time.
 
 Limits on the numbers above. Each is closed by a run in the section above, by number.
 
-* **No program data** — `program_enrolment` and `program_encounter` are 0 rows database-wide where
-  the recipe specifies 0.22 enrolment, so **every sync here is smaller than a real one**, and the
-  entity missing is the most expensive one. (3)
+* **No program data in the measured cohort** — `program_enrolment` and `program_encounter` are
+  **0 rows across the ten pilot tenants**, where the recipe specifies 0.22 enrolment, so **every
+  customer sync measured here is smaller than a real one** and the entity missing is the most
+  expensive one. (3)
+
+  **Not "0 rows database-wide", which this said until 20 Oct 2026 and which is wrong.** The 513
+  co-tenants carry **560,523 enrolments and 1,845,829 program encounters** — 2.41 M rows, 38% of
+  their data, and more program encounters than ordinary ones. So the program path is resident and
+  co-tenant syncs read it in [case 7](findings-case7.md) and [case 13](findings-case13.md); what is
+  untested is a *customer* sync that pulls it. The pilot's `program_*.tsv` files are empty by
+  generation, not by teardown — they carry the sha256 of the empty string. The earlier wording
+  dated from Block C, which had emptied the co-tenants, and generalised a true statement about that
+  moment into a false one about the dataset. (3)
 * **Media density is production's platform-wide rate**, not the customer's: 0.02 files per
   encounter against **16 on a single encounter** in the screening bundle. Media push itself is
   measured; what `MEDIA_MODEL=pause` skips is the S3 PUT, deliberately, and media *pull* is on
