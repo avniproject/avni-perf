@@ -316,106 +316,38 @@ it into the same change.
    previous role. Make the borrow path always set or reset explicitly and it can go. **Do this one
    last**: it is the only item here that trades a safety property for a round trip.
 
-## 3. `DummyInterceptor` is 12.6% of request time, and it also runs on `/ping`
+## 3. `DummyInterceptor` is 12.6% of request time, and appears never to fire
 
-> **No card.** It is not among avniproject/avni-server#1060's seven suspects, which were drawn
-> from reading the code before any measurement existed.
+**The largest single removable cost here** — more than every database fix combined, and **96% of
+all interceptor time**. The 5.57% in [`findings-case9-12a.md`](findings-case9-12a.md) came from a
+saturated trace where queueing diluted a fixed cost's share; 12.6% is the healthy-server figure.
+97% of it is the `@Transactional` wrapper borrowing a connection, not the `gender` query it runs.
 
-**The largest single removable cost in this document** — more than every database fix here
-combined, and **96% of all interceptor time**. The 5.57% quoted in
-[`findings-case9-12a.md`](findings-case9-12a.md) came from a saturated trace, where queueing
-inflated everything around it; **12.6% is what it costs on a healthy server**.
+> **No card.** It is not among avniproject/avni-server#1060's seven suspects, which were drawn from
+> reading the code before any measurement existed.
 
-> **That 12.6% is a share of sync load, not of production.** Every run behind it serves sync and
-> nothing else: no admin or reporting requests, no concurrent ETL, `PUSH=off` on most of them.
-> Production's avni-server also carries the web app, the API and bulk imports — `importZipJob`
-> alone left 173 transaction traces outside every run window here, up to 189.2 s each — and its
-> database is shared with avni-etl and Metabase (avni-server#1060 suspect 5).
->
-> **Two consequences, and they pull opposite ways.** The interceptor fires on **every** web request,
-> so against production's wider request mix the absolute waste is larger than these runs show. But
-> the **share** does not transfer: heavier work per request — deeper pages, colder cache, larger
-> organisations, which is the regime
-> [avni-product#1904](https://github.com/avniproject/avni-product/issues/1904) measured — dilutes a
-> fixed per-request cost. And CPU freed on the application tier does not become headroom
-> one-for-one while other workloads contend for the same database.
->
-> **So treat 12.6% as the reason to act, not as the saving to promise.**
+**It has its own document: [`dummy-interceptor.md`](dummy-interceptor.md)** — five measurements,
+the 2019 archaeology, and a timezone bug found along the way. In short:
 
-It is also registered unscoped:
+* **It cannot fire on a pull.** `readOnly = true` propagates into read-only entity loading, so
+  Hibernate takes no dirty-check snapshot — nothing to detect, nothing to flush.
+* **On a UTC server it is never dirty at all**: 186 `postHandle` invocations across the full 1,051
+  test suite, **0 dirty**. The same suite in `Asia/Kolkata` gives 18, which turns out to be a
+  `JodaDateTimeConverter` timezone bug costing one redundant UPDATE per POST — worth fixing on its
+  own account.
+* **No code path relies on the flush.** Of 346 handlers, 278 are `@Transactional`; of the 68 that
+  are not, 37 mutate, and **none mutates a managed entity without saving**. That argument does not
+  depend on test coverage, which is 21 URIs of 346.
+* It is registered **unscoped**, so it also runs on `/ping` — 3 database calls and 17.6 ms for a
+  health check.
+* **It would not work even if it did fire.** Given a genuinely dirty entity, an active
+  transaction and `flushMode=AUTO`, the mutation was still lost: Hibernate's auto-flush is
+  query-space scoped, and `genderRepository.findAll()` queries `gender` while the dirty entity is
+  an `encounter`. No intersection, no flush.
 
-```java
-public void addInterceptors(InterceptorRegistry registry) {
-    registry.addInterceptor(dummyInterceptor);        // SyncConfiguration:111 — no path patterns
-}
-```
-
-So the flush hack runs on **health checks**. `ping` reports exactly 3.0 database calls — the borrow
-floor from item 2 — for an endpoint that reads nothing, and 17.6 ms of application time for one
-that should have none. 2,940 calls in this four-hour run; in production the load balancer probes
-forever.
-
-**Two fixes, and they are not the same size.**
-
-1. **Scope it** — `.addPathPatterns(...)` restricted to the sync and API paths. One line, changes
-   nothing about the flush behaviour the hack exists for, removes it from `/ping` immediately.
-   **Do this now**; it is strictly cheaper than removal and does not wait on anything.
-2. **Remove it** — worth 12.6%, but it is a lost-update guard and
-   [item 6](#6-java-serialization--measured-20-oct-2026-it-does-not-happen-on-the-read-path)
-   explains what it guards against. `tools/read-only-sync-writes-check.sql` on a quiet server
-   decides whether it guards anything real: if a `PUSH=off` sync moves neither `n_tup_upd` nor the
-   WAL LSN, the dirtiness was spurious.
-
-### Measured 20 Oct 2026: on a UTC server it never has anything to flush
-
-A counter on `session.isDirty()` at the top of `postHandle`, across the controller integration
-suite:
-
-| JVM zone | invocations | dirty |
-|---|---|---|
-| `Asia/Kolkata` | 186 | **18** — all `POST /encounters`, `/programEnrolments`, `/programEncounters` |
-| **`Etc/UTC`** — what production runs | 186 | **0** |
-
-Same suite, same endpoints; only the JVM default zone differs. **No GET dirtied the session in
-either run**, which is step 0's result arriving from the other direction.
-
-**The dirtiness is a timezone artefact, not a sign the guard is working.**
-`JodaDateTimeConverter.convertToEntityAttribute` returns `new DateTime(data.getTime())` — the JVM
-default zone — while Jackson's `JodaModule` deserializes client timestamps as **UTC**. Joda's
-`equals()` compares instant *and* chronology, so the same moment compares unequal and the entity is
-**permanently dirty**; flushing cannot settle it, because the reloaded state takes the database
-representation again.
-
-```
-from client         : 2018-02-21T17:10:30.000Z        (Jackson -> UTC)
-from database       : 2018-02-21T22:40:30.000+05:30   (converter -> default zone)
-equals()            : false   <- what Hibernate's dirty check uses
-isEqual() (instant) : true
-with UTC pinned     : true    <- the fix
-```
-
-Where it does fire, it writes: Hibernate statistics showed **`entityUpdates` delta = 1 on every
-`POST`** — one redundant UPDATE per write, of a row whose values never changed. In UTC that
-disappears entirely.
-
-**So on production's `Etc/UTC` this guard appears to do nothing on any path the suite exercises**,
-while costing 12.6% of request time. That is the argument for removal rather than only scoping —
-tempered by the suite not being production traffic, which is what
-`tools/read-only-sync-writes-check.sql` would confirm against a real sync.
-
-> **Fix `JodaDateTimeConverter` regardless**: `new DateTime(data.getTime(), DateTimeZone.UTC)`.
-> One line. It is not a production performance fix — production is already UTC — but it removes a
-> latent correctness hazard and stops developer machines in IST behaving differently from servers.
-> **It also explains the 2019 origin**: a developer in IST would see entities permanently dirty and
-> reasonably conclude that flushing was broken.
-
-> **Item 6's measurement is evidence for removal, on the sync path at least.** Under
-> `readOnly = true` Hibernate takes **no dirty-check snapshot** — so it cannot detect a change,
-> and with flush mode `MANUAL` it would not write one either. **On a pull there is nothing for the
-> guard to flush.** That is not licence to delete it: it still runs on the write and admin paths,
-> where transactions are read-write and the original lost-update risk is real. It does mean the
-> **12.6% is being paid on pulls for a guard that cannot fire there**, which is the strongest
-> argument yet for fix 1 — scope it — even before the write-check settles fix 2.
+**Path-scoping it is one line, safe on this evidence, and waits on nothing.** Removal has no
+demonstrated downside either, though a spell disabled on prerelease is still the cheap way to cover
+the admin paths — a load test only exercises `@Transactional` sync endpoints and cannot answer it.
 
 ## 4. Paged endpoints run a COUNT per page, and the Slice versions already exist
 
@@ -506,12 +438,10 @@ discussed, and sitting exactly where the constraint is. **It does not.**
 > encounter saved, and `PUSH` was off in most runs here, so that cost is unmeasured rather than
 > absent. And it is one entity on one load: it establishes the mechanism, not a volume.
 
-**It is also the explanation for `DummyInterceptor`.** `spring.jpa.open-in-view` is not set, so
-Spring Boot's default of `true` applies: one Session spans the whole request, outside any
-transaction, where entities can be dirty with nothing to flush them. The interceptor forces a
-transaction so a flush happens. Both halves — OSIV on by default, and a serialization-based
-`deepCopy` in a mutable `UserType` — are well-documented anti-patterns rather than anything
-peculiar to this codebase.
+**OSIV is the other half of this**, and the reason `DummyInterceptor` exists — see
+[`dummy-interceptor.md`](dummy-interceptor.md). Both halves, OSIV on by default and a
+serialization-based `deepCopy` in a mutable `UserType`, are well-documented anti-patterns rather
+than anything peculiar to this codebase.
 
 **Fixes, in descending order of how much they remove:**
 
@@ -528,10 +458,9 @@ peculiar to this codebase.
    collection instead. All four are on the write path, applying decisions during save, so the
    change is bounded.
 
-**Do not delete `DummyInterceptor` on this reasoning alone.** Run
-`tools/read-only-sync-writes-check.sql` first: if a `PUSH=off` sync moves `n_tup_upd` or the WAL
-LSN, something genuinely mutates entities on a read path and that must be found before the guard
-comes out. If it moves neither, the dirtiness was spurious and the guard was protecting nothing.
+**The `DummyInterceptor` removal question is settled separately** in
+[`dummy-interceptor.md`](dummy-interceptor.md), which carries the measurements and the order to do
+them in.
 
 ### How to settle it
 
@@ -688,7 +617,7 @@ is the constraint — not share of database calls.
 
 | | fix | effort | share of request time |
 |---|---|---|---|
-| **3** | **remove or path-scope `DummyInterceptor`** | one line to scope; more to remove | **12.6%** |
+| **3** | **path-scope `DummyInterceptor`**, then remove — [own doc](dummy-interceptor.md) | one line to scope | **12.6%** |
 | 6 | — | — | **closed for reads**; write path unsized |
 | 1 | `@EntityGraph` on five `syncDetails` finders; hoist `isCommentEnabled()` | hours; 1b is one line | 2.7% (32% of database calls) |
 | 4 | ship avni-client#2096 (`/v2` Slice) | specified, not built | slowest statement class |
@@ -696,9 +625,9 @@ is the constraint — not share of database calls.
 | 7 | Blackbird + fix the Jackson version split | hours | ~1–2% |
 | 5 | demote INFO logs | one line | 5.62% precedent, sample uncertain |
 
-**Item 3 is now the headline.** Path-scoping it is one line and removes it from `/ping` today;
-removing it outright needs the flush question settled first, and that is what
-`tools/read-only-sync-writes-check.sql` is for.
+**Item 3 is the headline.** Path-scoping it is one line and waits on nothing. Removing it outright
+wants a spell disabled on prerelease, where the admin paths it might still guard actually get
+used — the sequencing is in [`dummy-interceptor.md`](dummy-interceptor.md).
 
 **Item 8 is not in the table**: there is no proxy tier to move gzip to, so it has no fix to rank.
 
