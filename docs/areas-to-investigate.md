@@ -516,11 +516,20 @@ have taken to answer the same yes/no.
 > `TransactionTemplate` with `setReadOnly` explicitly**, for exactly this reason — it is the same
 > mechanism `@Transactional(readOnly = true)` uses, without inheriting the harness's transaction.
 
-### The profiling setup, which is now for the scale sweep rather than for this item
+### The profiling setup, kept for the write path and for later questions
 
-Step 0 removed the reason to profile *this*. The setup below is kept because the 2 → 4 → 8 vCPU
-sweep has its own contingency — see "Riding on the vertical-scale runs" — and because sizing the
-**write path** cost would still need it.
+Step 0 removed the reason to profile *this*. The setup below is kept only for sizing the **write
+path**, and for any later question that needs method-level detail.
+
+> **Not on a measured run.** No async-profiler and no JFR on the vertical-scale sweep or any other
+> run whose numbers are published. Two reasons, and the second is decisive: the observer effect
+> lands differently at 2 vCPU than at 8, scaling inversely with the variable under test rather
+> than cancelling; and the comparison point is **case 13 of 15 October, which had no profiler** —
+> so there is nothing for an identical-across-sizes overhead to cancel against. The New Relic
+> javaagent stays exactly as it is, for the reason `loadtest_vars.yml` already gives: production
+> runs it, and changing instrumentation between the two points confounds what is being measured.
+>
+> **A method-level profile belongs in a separate, unmeasured run afterwards.**
 
 **Two things about this deployment shape what follows.** `appserver.service.template.j2` sets
 **`PrivateTmp=true`**, so the service has a private `/tmp` namespace and the JVM attach socket
@@ -577,30 +586,6 @@ Search the stacks for `ObjectOutputStream.writeObject`, `ObjectInputStream.readO
 | absent on pull paths | matches step 0; nothing further to do for reads |
 | present under `POST /encounters` | the **write** path cost, still unsized — take fix 3 |
 | present on a pull path | step 0 is contradicted; re-check the transaction boundary first |
-
-### Riding on the vertical-scale runs
-
-The 2 → 4 → 8 vCPU sweep resizes the instance, so a restart happens anyway and the JFR flags cost
-**no extra downtime**. Worth doing — but for its own reason rather than this one.
-
-**Those runs re-run case 13, which saturates.** A saturated profile can confirm `deepCopy` is
-*present* — presence is not distorted by queueing — but cannot size its share. So it half-answers
-this item.
-
-**Its real value is insurance on the sweep's own contingency.** If throughput scales with vCPU,
-"app CPU is the constraint, more vCPU is the relief" is confirmed and the profile was unnecessary.
-If it does **not** scale, a second constraint exists that nobody has found, and the profile is the
-only thing that names it — lock contention being the obvious candidate, and invisible at 2 vCPU by
-construction. `settings=profile` captures `jdk.JavaMonitorEnter` and `jdk.ThreadPark` alongside
-execution samples. **That evidence cannot be retrofitted** once the environment is gone.
-
-> **One rule if it is done: identical configuration on all three sizes, or none.** JFR at
-> `settings=profile` costs roughly 2%. Constant across the three it cancels in the comparison;
-> on one instance only it biases exactly the number the sweep exists to produce.
-
-**Add a fourth run** at the end — one size, unsaturated, ~50/h, twenty minutes. That is the one
-that sizes this item, and it is cheap while the environment is already up. **And do not let any of
-this delay the sweep**: an unprofiled scale result is worth more than a profiled one that slipped.
 
 ## 7. Jackson: Blackbird, and a version split to fix regardless
 
