@@ -121,8 +121,15 @@ Both are ceilings, not measurements. The gzip bound is what rules item 8 out.
 
 113.6 calls per invocation, **twice per sync**, to tell the client which entities changed.
 
+> **Partly tracked.** avniproject/avni-server#1057 (`count(*)` → `exists`) and #1060
+> suspect 2 (`filterChangedEntities`) cover parts of this endpoint. **1a, 1b and 1c below are on
+> neither.** Fix them in one pass — and note that the 113.6 calls split across all of these
+> mechanisms in a proportion nobody has measured.
+
+### 1a. Lazy associations dereferenced inside five loops
+
 `SyncDetailsService.getAllSyncableItems` opens with ~6 bulk repository reads, which is correct, and
-then iterates:
+then walks each result:
 
 ```java
 generalEncounters.forEach(formMapping -> {
@@ -130,20 +137,145 @@ generalEncounters.forEach(formMapping -> {
                                            formMapping.getEncounterType(), null)) { ... }
 ```
 
-`getSubjectType()`, `getEncounterType()` and `getProgram()` are **lazy associations resolved inside
-the loop** — one select each, over four such loops. Confirmed in `FormMapping.java:25-35`: all
-three are `@ManyToOne(fetch = FetchType.LAZY)`. The archetype bundle carries **118 form
-mappings**.
+`FormMapping.subjectType`, `.program` and `.encounterType` are all
+`@ManyToOne(fetch = FetchType.LAZY)` (`FormMapping.java:25-35`), and so is
+`OperationalSubjectType.subjectType` — **five collections, not four**:
 
-> **Partly tracked.** avniproject/avni-server#1057 (`count(*)` → `exists`) and #1060
-> suspect 2 (`filterChangedEntities`) cover two other costs in this endpoint. **This N+1
-> is on neither.** Fix all three in one pass.
+| collection | associations touched |
+|---|---|
+| `subjectTypeRepository.findAll()` → `map(OperationalSubjectType::getSubjectType)` | `subjectType` |
+| `getAllGeneralEncounterFormMappings()` | `subjectType`, `encounterType` |
+| `getAllProgramEncounterFormMappings()` | `subjectType`, `program`, `encounterType` |
+| `getAllProgramEnrolmentFormMappings()` | `subjectType`, `program` |
+| `getAllRegistrationFormMappings()` | `subjectType` |
 
-**Fix.** `JOIN FETCH` on the four `FormMappingRepository.getAll*FormMappings()` queries. The result
-also depends only on the organisation and the user's privileges — not on anything about the sync —
-so it is cacheable per `(organisation, user)` once the N+1 is gone.
+**The privilege check is not the only dereference.** `getEncounterTypeUuid()` and `getProgramUuid()`
+are convenience accessors doing `this.getProgram().getUuid()`, so the `addToSyncableItems(...)`
+lines load proxies too.
 
-**Effort: hours. The largest single win available.**
+**Fix: `@EntityGraph`, not `JOIN FETCH`.** All four form-mapping finders are Spring Data *derived*
+queries — `findAllByProgramNullAndEncounterTypeNotNullAndIsVoidedFalseAndFormFormTypeAndImplVersion`
+and siblings — so there is no query text to add a fetch join to:
+
+```java
+@EntityGraph(attributePaths = {"subjectType", "program", "encounterType"})
+List<FormMapping> findByEncounterTypeNotNullAndProgramNotNullAndIsVoidedFalseAnd...(...);
+```
+
+`OperationalSubjectTypeRepository` needs a dedicated annotated method rather than an annotation on
+inherited `findAll()`.
+
+> **If these are rewritten as `@Query` instead, `join fetch` is an INNER join.** `program` is null
+> by definition for general-encounter and registration mappings, so an inner fetch **silently drops
+> exactly those rows** and `syncDetails` stops reporting some entity types as syncable — a sync
+> that quietly pulls less. It must be `left join fetch`. `@EntityGraph` avoids this: Hibernate
+> applies it as a left outer join. All three associations are to-one, so there is no
+> cartesian-product risk.
+
+**Size it honestly.** The persistence context caches by identity within the session, so the second
+reference to the same `SubjectType` is a hit, not a query. **The select count is bounded by the
+number of *distinct* associated entities, not by row count** — with 12 subject types and 36
+encounter types in the archetype bundle, roughly 50–60 selects, not 118 × 3.
+
+### 1b. `isCommentEnabled()` is called inside the subject-type loop
+
+```java
+subjectTypes.forEach(subjectType -> {
+    ...
+    if (organisationConfigService.isCommentEnabled()) {      // <- inside the loop
+```
+
+It resolves to `organisationConfigRepository.findByOrganisationId(...)`
+(`OrganisationConfigService:330-337`). That is a **derived query, not `findById`**, so the
+first-level cache does not short-circuit it and it reaches the database on every iteration. The
+organisation cannot change within a request, so the call is loop-invariant.
+
+**Measured: 6,885 `organisation_config/select` calls** across 350 `syncDetails` invocations in
+`case4-span20` — about 20 per call, against 12 subject types plus other callers.
+
+**Fix: hoist it above the loop.** One line, independent of 1a, and it needs no review beyond
+reading it.
+
+### 1c. The change check repeats catchment resolution per syncable item
+
+**Corrected 20 Oct 2026.** An earlier draft of this document said the `count(*)` → `exists` fix
+(avniproject/avni-server#1057) would pay best on `Encounter`, as the entity with the most rows and
+the most changes. **That is wrong, and the code says so plainly:**
+
+```java
+// EncounterService:174
+public boolean isScopeEntityChanged(DateTime lastModifiedDateTime, String encounterTypeUuid) {
+    return true;
+}
+```
+
+**Four services already answer unconditionally and issue no query at all** — `EncounterService`,
+`ProgramEncounterService`, `ProgramEnrolmentService` and `ScopedEntityApprovalStatusService`. The
+three heaviest transactional entities are **already exempt**, so the counting cost never touched
+them.
+
+**What the remaining services do, per syncable item**, is three steps, not one:
+
+| | step | repeated for |
+|---|---|---|
+| 1 | `subjectTypeRepository.findByUuid(...)` | every item naming the same subject type |
+| 2 | `getAllRegistrationAddressIdsBySubjectType(catchment, subjectType)` | the same `(catchment, subjectType)` pair, every time |
+| 3 | `count(spec) > 0`, with those address ids as an `IN` list | — |
+
+Step 2 is the one to look at. `AddressLevelService:44-54` resolves a custom registration setting,
+then address-level types, then the catchment-address projection — **with no cache** — and
+`ScopeAwareService` caps the result at `MAX_SUPPORTED_LOCATIONS_IN_CATCHMENT = 65535`. A supervisor
+with a wide catchment therefore resolves a large id list **and then passes it into the count as an
+`IN` clause**, once per item, for `Individual`, `SubjectMigration`, `SubjectProgramEligibility`,
+`Comment`, `CommentThread`, `IndividualRelationship` and `GroupSubject` alike.
+
+**So the expensive part may not be the count the card names.** `#1057` replaces step 3; steps 1 and
+2 survive it, and step 2 scales with catchment width — which is exactly what
+[Block A′](findings-span20.md) varied.
+
+### What `#1057` does and does not cover
+
+**It changes step 3 only.** Its tech approach names `getChangedEntities` (`:383-392`) and
+`filterChangedEntities` (`:432-460`) as entry points and `SyncableRepository.isEntityChanged` as
+"the shape to change", then enumerates 23 implementations in four groups — 13 spec-built to convert
+to `exists()`, 6 native SQL to rewrite as `select exists(select 1 …)`, 4 needing nothing. Every one
+is the final query. The card mentions none of `AddressLevelService`,
+`getAllRegistrationAddressIdsBySubjectType`, `findByUuid`, `getAllSyncableItems` or any caching.
+
+**Structurally it cannot reach them.** The only callers of `isEntityChanged` are the three
+`ScopeAwareService` default methods (`:24`, `:29`, `:34`), and steps 1 and 2 run in the
+implementations *before* that call. So 1a, 1b and 1c all survive it.
+
+**The two fixes are complementary, not competing.** `#1057` makes step 3 cheap **when the answer is
+yes**; memoising steps 1 and 2 removes work that happens **whatever the answer**, and that scales
+with catchment width. The card is explicit that routine sync gains least from it — *"stopping at
+the first match gains nothing when there is no match, because the database still has to read every
+candidate to prove there is none"* — which is the regime these runs measure.
+
+> **Four of its 13 group-1 conversions look dead on this path.** `EncounterRepository`,
+> `ProgramEncounterRepository`, `ProgramEnrolmentRepository` and `EntityApprovalStatusRepository`
+> are all listed, but their services return `true` unconditionally, so `isEntityChanged` is never
+> reached from `syncDetails` for them. Harmless to convert; it buys nothing here. **Worth
+> confirming they have no caller outside this path** before treating the work as wasted — and
+> worth knowing if the card's estimate assumed otherwise.
+
+**Fix: memoise steps 1 and 2 for the duration of the request.** Both are pure functions of
+`(catchment, subjectType)`, which cannot change mid request.
+
+> **And the precedent for going further already exists.** If `Individual` is as certainly changed
+> as `Encounter` was judged to be, it can join the four that return `true` — removing its check
+> entirely rather than optimising it. That is a product judgement about staleness, not a
+> performance one, and **avniproject/avni-server#1060 names the measurement**: Q9 against
+> production, giving the distribution of entities actually changed per sync, with no load test
+> needed.
+
+### And then it is cacheable
+
+The result depends only on the organisation and the user's privileges — nothing about the sync —
+so once 1a and 1b are gone it can be cached per `(organisation, user)` rather than recomputed twice
+per sync.
+
+**Effort: hours. 1b is one line.**
 
 ## 2. The role-switching tax — 10.7% of every database call
 
@@ -399,7 +531,7 @@ is the constraint — not share of database calls.
 |---|---|---|---|
 | **3** | **remove or path-scope `DummyInterceptor`** | one line to scope; more to remove | **12.6%** |
 | 6 | native JSON mapping / stop serializing in `deepCopy` | days | **unconfirmed** — profile first |
-| 1 | `JOIN FETCH` in `syncDetails` | hours | 2.7% (32% of database calls) |
+| 1 | `@EntityGraph` on five `syncDetails` finders; hoist `isCommentEnabled()` | hours; 1b is one line | 2.7% (32% of database calls) |
 | 4 | ship avni-client#2096 (`/v2` Slice) | specified, not built | slowest statement class |
 | 2 | one-statement role set; drop `application_name` | one line | ~1.8% |
 | 7 | Blackbird + fix the Jackson version split | hours | ~1–2% |
@@ -432,8 +564,9 @@ lost 38% of its throughput to 47% more load.
 constraint and most of its time is not database time, so a change that removes 10% of calls does
 not remove 10% of the request. [`findings-case9-12a.md`](findings-case9-12a.md) recommends
 async-profiler against `encounter (GET)` at an unsaturated load for that, and it remains the right
-next measurement — these five are what can be acted on without it.
+next measurement — the rest are what can be acted on without it.
 
-**Items 1 and 4 need a correctness review, not just a benchmark.** `JOIN FETCH` changes what a
-query returns when associations are null, and `Slice` removes a total the client may be reading.
-Items 2, 3 and 5 are behaviour-preserving by inspection.
+**Items 1a and 6 need a correctness review, not just a benchmark.** A fetch join changes what a
+query returns when associations are null — `left`, not inner — and changing a `UserType`'s
+mutability changes when Hibernate detects a write. Items 1b, 2, 3 and 5 are behaviour-preserving by
+inspection, and item 4 is specified on avni-client#2096.
