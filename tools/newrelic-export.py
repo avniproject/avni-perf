@@ -4,6 +4,10 @@
     python3 tools/newrelic-export.py --account 8563864 --out nr-backup
     python3 tools/newrelic-export.py --account 8563864 --out nr-backup --s3
 
+    # the per-segment timeslice tree for one run window -- see --timeslices below
+    python3 tools/newrelic-export.py --account 8563864 --timeslices \
+        --label case13-m6g.large --from 2026-10-20T08:30:00Z --to 2026-10-20T09:45:00Z --s3
+
 **`Transaction` events are retained for 8 days and the boundary slides by the minute.** Everything
 this suite reads per request -- `databaseDuration`, `databaseCallCount`, `name`, `duration` -- lives
 only there, and once an hour falls off nothing can bring it back: the environment that produced it
@@ -221,6 +225,91 @@ def export(q: Nrql, out: Path, event_types: list, since: dt.datetime, until: dt.
     return manifest
 
 
+# The facet limit NRQL will return. A result that comes back exactly this long is
+# indistinguishable from a truncated one, so it is reported rather than trusted --
+# the same rule the event export applies to its 5,000-row cap.
+FACET_LIMIT = 2000
+
+
+def timeslices(q: Nrql, out: Path, app: str, label: str,
+               since: dt.datetime, until: dt.datetime) -> int:
+    """Capture the per-segment timeslice tree for one run window.
+
+    **This is the one thing the event export cannot hold.** `metricTimesliceName` is a
+    dimension NRQL resolves at query time, so `SELECT * FROM Metric` does not return it
+    and the hourly files carry only the golden metrics. The per-class segment shares in
+    docs/areas-to-investigate.md -- DummyInterceptor at 12.6% of request time, the N+1
+    `individual` selects at 11.18% -- came from this tree, queried live, and could not be
+    re-derived from the backup.
+
+    `Metric` is retained ~20 days rather than `Transaction`'s 8, so this is recoverable
+    for a while after a run. It is captured per run anyway because the window is what
+    gets lost: a tree without the run it belongs to is an average over whatever else the
+    server was doing.
+    """
+    a, b = ms(since), ms(until)
+    w = window(a, b)
+    doc = {
+        "label": label, "appName": app,
+        "since": since.isoformat() + "Z", "until": until.isoformat() + "Z",
+        "capturedAt": dt.datetime.utcnow().isoformat() + "Z",
+        "queries": {},
+    }
+    # One query for the whole tree. The totals are in it, so there is nothing to
+    # reconcile between two queries taken moments apart.
+    nrql = (f"SELECT sum(newrelic.timeslice.value) AS value, count(*) AS samples "
+            f"FROM Metric WHERE appName = '{app}' FACET metricTimesliceName "
+            f"{w} LIMIT {FACET_LIMIT}")
+    rows = q(nrql)
+    doc["queries"]["segments"] = {"nrql": nrql, "rowCount": len(rows), "results": rows}
+    print(f"  segments   {len(rows):>5} facets", file=sys.stderr)
+    truncated = ["segments"] if len(rows) >= FACET_LIMIT else []
+    doc["truncated"] = truncated
+
+    # **`newrelic.timeslice.value` is not seconds for every metric**, so summing the
+    # tree and taking percentages of it is meaningless: `Supportability/TransactionSize`
+    # is a byte count and alone came to 78% of a naive total, and `Java/other` reads
+    # 1588% of request time. Shares are therefore taken against an explicit denominator,
+    # and only for the prefixes where the value really is time.
+    by = {r["metricTimesliceName"]: (r.get("value") or 0.0) for r in rows}
+    wt = by.get("WebTransactionTotalTime") or 0.0
+    doc["denominators"] = {
+        "WebTransactionTotalTime": wt,
+        "HttpDispatcher": by.get("HttpDispatcher"),
+        "Datastore/all": by.get("Datastore/all"),
+        "Datastore/allWeb": by.get("Datastore/allWeb"),
+    }
+    TIME_PREFIXES = ("Spring/", "Filter/", "Datastore/", "WebTransactionTotalTime/", "External/")
+    doc["shares"] = (
+        [{"segment": n, "seconds": round(v, 1), "pctOfWebTransactionTotalTime": round(100 * v / wt, 2)}
+         for n, v in sorted(by.items(), key=lambda kv: -kv[1])
+         if n.startswith(TIME_PREFIXES)][:40]
+        if wt else []
+    )
+    if wt:
+        print(f"  WebTransactionTotalTime {wt:,.0f} s; database "
+              f"{100 * (by.get('Datastore/all') or 0) / wt:.1f}% of it", file=sys.stderr)
+    else:
+        print("  WARNING: no WebTransactionTotalTime in this window -- shares not computed",
+              file=sys.stderr)
+
+    path = out / "timeslices" / f"{label}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(doc, indent=2, sort_keys=True))
+    print(f"  wrote {path}", file=sys.stderr)
+
+    if truncated:
+        print(f"\nTRUNCATED: {', '.join(truncated)} returned exactly {FACET_LIMIT} facets, "
+              f"which is the limit -- the tree may be incomplete and the shares wrong.",
+              file=sys.stderr)
+        return 1
+    if not doc["queries"]["segments"]["rowCount"]:
+        print("\nEMPTY: no timeslices in that window. Check --app and that the window is UTC "
+              "and covers a period the agent was reporting.", file=sys.stderr)
+        return 1
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("--account", type=int, required=True)
@@ -233,6 +322,13 @@ def main(argv=None) -> int:
     p.add_argument("--s3", action="store_true", help="sync --out to the artefacts bucket after")
     p.add_argument("--bucket", help="default: avni-loadtest-<aws account id>")
     p.add_argument("--prefix", default="newrelic")
+    p.add_argument("--timeslices", action="store_true",
+                   help="capture the per-segment timeslice tree for one run window instead of "
+                        "exporting events; needs --label, --from and --to")
+    p.add_argument("--label", help="--timeslices: names the output file, e.g. case13-m6g.large")
+    p.add_argument("--from", dest="w_from", help="--timeslices: UTC start, YYYY-MM-DDTHH:MM:SSZ")
+    p.add_argument("--to", dest="w_to", help="--timeslices: UTC end, YYYY-MM-DDTHH:MM:SSZ")
+    p.add_argument("--app", default="avni-loadtest", help="New Relic appName for --timeslices")
     args = p.parse_args(argv)
 
     key = os.environ.get("NEW_RELIC_API_KEY", "")
@@ -240,6 +336,48 @@ def main(argv=None) -> int:
         print("set NEW_RELIC_API_KEY to a user key (NRAK-...). An ingest/query key (NRIQ-...) is "
               "not accepted by NerdGraph and returns 401.", file=sys.stderr)
         return 2
+
+    if args.timeslices:
+        missing = [f for f, v in (("--label", args.label), ("--from", args.w_from),
+                                  ("--to", args.w_to)) if not v]
+        if missing:
+            print("--timeslices needs " + ", ".join(missing), file=sys.stderr)
+            return 2
+
+        def parse(t, which):
+            # Accepts the shape run ids and run-log.md use. Insisting on UTC rather than
+            # guessing a local zone: a window an hour out silently averages the wrong
+            # period and the tree still looks plausible.
+            for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"):
+                try:
+                    return dt.datetime.strptime(t, fmt)
+                except ValueError:
+                    continue
+            raise SystemExit(f"{which}: expected UTC YYYY-MM-DDTHH:MM:SSZ, got {t!r}")
+
+        w_from, w_to = parse(args.w_from, "--from"), parse(args.w_to, "--to")
+        if w_to <= w_from:
+            print("--to must be after --from", file=sys.stderr)
+            return 2
+        q = Nrql(key, args.account, args.region)
+        out = Path(args.out)
+        print(f"timeslices for {args.label}: {w_from}Z to {w_to}Z "
+              f"({(w_to - w_from).total_seconds() / 60:.0f} min), appName {args.app}",
+              file=sys.stderr)
+        rc = timeslices(q, out, args.app, args.label, w_from, w_to)
+        if args.s3:
+            bucket = args.bucket
+            if not bucket:
+                acct = subprocess.run(["aws", "sts", "get-caller-identity", "--query", "Account",
+                                       "--output", "text"], capture_output=True, text=True).stdout.strip()
+                bucket = f"avni-loadtest-{acct}"
+            dest = f"s3://{bucket}/{args.prefix}/"
+            print(f"syncing to {dest}", file=sys.stderr)
+            sync_rc = subprocess.run(["aws", "s3", "sync", str(out), dest,
+                                      "--only-show-errors"]).returncode
+            if sync_rc != 0:
+                return sync_rc
+        return rc
 
     since = (dt.datetime.strptime(args.since, "%Y-%m-%d") if args.since
              else dt.datetime.utcnow() - dt.timedelta(days=90))
