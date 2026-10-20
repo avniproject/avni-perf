@@ -11,9 +11,9 @@ others: **work the server does on every request that nothing downstream needs.**
 
 All eight below are of that shape. None is an algorithmic improvement; each removes work.
 
-**Items 1 to 5 and 8 are measured. Items 6 and 7 are read from the code**, and item 6 carries an
-open question — it is listed because if it is real it is larger than
-almost everything else here, and because one profiler run settles it.
+**Items 1 to 6 and 8 are measured. Item 7 is read from the code.** Item 6 was the open question
+and is now answered: it does **not** cost the read path anything, which is a result worth keeping
+rather than a line to delete.
 
 ## How these were measured, and how to re-derive them
 
@@ -361,10 +361,18 @@ forever.
    nothing about the flush behaviour the hack exists for, removes it from `/ping` immediately.
    **Do this now**; it is strictly cheaper than removal and does not wait on anything.
 2. **Remove it** — worth 12.6%, but it is a lost-update guard and
-   [item 6](#6-java-serialization-on-the-read-path--unconfirmed-and-the-largest-if-it-holds)
+   [item 6](#6-java-serialization--measured-20-oct-2026-it-does-not-happen-on-the-read-path)
    explains what it guards against. `tools/read-only-sync-writes-check.sql` on a quiet server
    decides whether it guards anything real: if a `PUSH=off` sync moves neither `n_tup_upd` nor the
    WAL LSN, the dirtiness was spurious.
+
+> **Item 6's measurement is evidence for removal, on the sync path at least.** Under
+> `readOnly = true` Hibernate takes **no dirty-check snapshot** — so it cannot detect a change,
+> and with flush mode `MANUAL` it would not write one either. **On a pull there is nothing for the
+> guard to flush.** That is not licence to delete it: it still runs on the write and admin paths,
+> where transactions are read-write and the original lost-update risk is real. It does mean the
+> **12.6% is being paid on pulls for a guard that cannot fire there**, which is the strongest
+> argument yet for fix 1 — scope it — even before the write-check settles fix 2.
 
 ## 4. Paged endpoints run a COUNT per page, and the Slice versions already exist
 
@@ -413,7 +421,7 @@ every request**, and F2 attributed it to its two INFO lines ([9/12a](findings-ca
 
 ---
 
-## 6. Java serialization on the read path — *unconfirmed, and the largest if it holds*
+## 6. Java serialization — **measured 20 Oct 2026: it does not happen on the read path**
 
 ```java
 public boolean isMutable() { return true; }
@@ -425,24 +433,35 @@ public T deepCopy(final Object value) {
 }
 ```
 
-> **No card.**
+> **No card, and none needed for the read path.** Step 0 below settled it: Hibernate skips the
+> snapshot under `readOnly = true`, so this costs the sync pull nothing. **The write path still
+> pays it**, which is what remains open.
 
 `AbstractUserType` backs every `ObservationCollection` column — confirmed: `AbstractEncounter:39` carries `@Type(ObservationCollectionUserType.class)`, and that type extends `AbstractJsonbUserType`, which extends `AbstractUserType`. `isMutable() = true` tells Hibernate
 to take a **deep-copied snapshot of every observation column it loads**, to dirty-check later by
 `equals()`. `disassemble()`, `assemble()` and `replace()` route through `deepCopy` as well.
 
-If that runs on pulls, it is **Java serialization per record** on an endpoint that returns 1,000
-records a page — far more expensive than the Jackson response serialization usually discussed, and
-sitting exactly where the constraint is: the application tier at 99% CPU with the database at a
-fifth of capacity.
+Had that run on pulls it would have been **Java serialization per record** on an endpoint
+returning 1,000 records a page — far more expensive than the Jackson response serialization usually
+discussed, and sitting exactly where the constraint is. **It does not.**
 
-> **Whether it runs on pulls is not established.** The sync endpoints are
-> `@Transactional(readOnly = true)`. If that propagates to Hibernate loading entities read-only,
-> snapshots are skipped and `deepCopy` never fires on the read path. If it only sets flush mode to
-> `MANUAL` — which is the behaviour we know it has, and the behaviour that makes
-> `DummyInterceptor` necessary — the snapshots are still taken. **This is the one item here that
-> must be measured before it is believed**: async-profiler against `encounter (GET)` at an
-> unsaturated load shows `ObjectOutputStream` immediately, or shows it absent.
+> **Measured, 20 October 2026 — and the answer is no.** A counter in `deepCopy`, loading one
+> `Encounter` through `EncounterRepository.findByUuid` inside a `TransactionTemplate`, on the local
+> `openchs_test` database:
+>
+> ```
+> readOnly = true   ->  0 deepCopy calls
+> readOnly = false  ->  2 deepCopy calls
+> ```
+>
+> **`readOnly = true` propagates to Hibernate loading entities read-only, so no snapshot is taken
+> and `deepCopy` never fires.** The sync endpoints are all `@Transactional(readOnly = true)`
+> (`EncounterController:248`), so **the pull path pays none of this.** The 2 calls on the
+> read-write path are one per observation column — `AbstractEncounter` has two.
+>
+> **What this does not close.** The **write path** still pays two serialization round trips per
+> encounter saved, and `PUSH` was off in most runs here, so that cost is unmeasured rather than
+> absent. And it is one entity on one load: it establishes the mechanism, not a volume.
 
 **It is also the explanation for `DummyInterceptor`.** `spring.jpa.open-in-view` is not set, so
 Spring Boot's default of `true` applies: one Session spans the whole request, outside any
@@ -470,6 +489,118 @@ peculiar to this codebase.
 `tools/read-only-sync-writes-check.sql` first: if a `PUSH=off` sync moves `n_tup_upd` or the WAL
 LSN, something genuinely mutates entities on a read path and that must be found before the guard
 comes out. If it moves neither, the dirtiness was spurious and the guard was protecting nothing.
+
+### How to settle it
+
+**Step 0 — done, 20 Oct 2026.** The open question is narrow: does Hibernate take
+a dirty-check snapshot on the sync read path? Put a counter in `AbstractUserType.deepCopy`, pull
+encounters the way a sync does, assert on the count.
+
+Run on a developer machine against the local `openchs_test` database using the existing
+`AbstractControllerIntegrationTest` harness — no loadtest environment, no New Relic, no run.
+**Result: 0 calls under `readOnly = true`, 2 under `readOnly = false`.** The read path is clear and
+this item is closed for pulls. Elapsed: under an hour, against the days a profiling round would
+have taken to answer the same yes/no.
+
+> **One trap, and it fails towards a false positive.** Spring applies `readOnly = true` only when
+> it **starts** a transaction. `@DataJpaTest` in this codebase is itself annotated `@Transactional`,
+> so a service call with default `REQUIRED` propagation **joins the test's read-write transaction
+> and the `readOnly` flag is silently ignored** — snapshots get taken, and the test reports this
+> item as real when it may not be.
+>
+> **Go through the controller** (`AbstractControllerIntegrationTest`, hitting `GET /encounter`)
+> rather than calling a repository from a `@Transactional` test. That reproduces the real
+> transaction boundary *and* OSIV, which is half the mechanism. If you must call the service
+> directly, the test class must not be `@Transactional`, or the inner call needs
+> `Propagation.REQUIRES_NEW`. **The test that produced the result above used a
+> `TransactionTemplate` with `setReadOnly` explicitly**, for exactly this reason — it is the same
+> mechanism `@Transactional(readOnly = true)` uses, without inheriting the harness's transaction.
+
+### The profiling setup, which is now for the scale sweep rather than for this item
+
+Step 0 removed the reason to profile *this*. The setup below is kept because the 2 → 4 → 8 vCPU
+sweep has its own contingency — see "Riding on the vertical-scale runs" — and because sizing the
+**write path** cost would still need it.
+
+**Two things about this deployment shape what follows.** `appserver.service.template.j2` sets
+**`PrivateTmp=true`**, so the service has a private `/tmp` namespace and the JVM attach socket
+(`/tmp/.java_pid<pid>`) is not visible from an ordinary shell — a plain `asprof` or `jcmd` fails
+with "could not start attach mechanism". And the box is **aarch64** (m6g.large), so any
+async-profiler binary must be the `linux-arm64` build.
+
+**Step 1 — JFR, which avoids attaching at all.** Java 17 has Flight Recorder built in, and starting
+it at launch sidesteps the namespace, the arm64 binary and `perf_event_paranoid` together. Append
+to `avni_server_opts` in `loadtest_vars.yml`:
+
+```yaml
+-XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints
+-XX:StartFlightRecording=delay=300s,duration=300s,settings=profile,filename={{ avni_server_access_log_dir }}/profile.jfr
+```
+
+`DebugNonSafepoints` is what makes the stacks trustworthy — without it samples land only at
+safepoints and inlined frames vanish. `delay` puts the window past the ramp. Then:
+
+```
+jfr summary profile.jfr
+jfr print --events jdk.ExecutionSample profile.jfr | grep -c ObjectOutputStream
+jfr print --events jdk.ObjectAllocationSample profile.jfr
+```
+
+**Two checks before a run depends on it:** a malformed flag stops the JVM starting, so try it on one
+instance first, and the path must be writable by `application_user`.
+
+**Step 2 — async-profiler, only if JFR lacks resolution.** Enter the service's mount namespace:
+
+```bash
+PID=$(systemctl show -p MainPID --value avni-server)
+nsenter -t $PID -m -- /opt/async-profiler/bin/asprof \
+  -d 120 -e ctimer -o collapsed -f /tmp/cpu.txt $PID
+```
+
+`-e ctimer` avoids `perf_events`, so `kernel.perf_event_paranoid` and `kptr_restrict` can stay as
+they are. Run it twice — `-e ctimer` for CPU and **`-e alloc` for allocation**. The allocation
+profile matters as much here: serialization churns byte arrays, and
+[`findings-case9-12a.md`](findings-case9-12a.md) left open whether the constraint is CPU or
+*allocation against a fixed heap*, noting that "more vCPU is the wrong relief" if it is the latter.
+One `-e alloc` run answers that and this item together.
+
+**Profile unsaturated**, around case 12b's 50/h. At 99% CPU the profile is dominated by scheduling,
+which is what made the 12a trace unreadable.
+
+### Reading the result
+
+Search the stacks for `ObjectOutputStream.writeObject`, `ObjectInputStream.readObject` and
+`AbstractUserType.deepCopy` beneath `EncounterController.getEncountersByOperatingIndividualScope`.
+
+| outcome | meaning |
+|---|---|
+| absent on pull paths | matches step 0; nothing further to do for reads |
+| present under `POST /encounters` | the **write** path cost, still unsized — take fix 3 |
+| present on a pull path | step 0 is contradicted; re-check the transaction boundary first |
+
+### Riding on the vertical-scale runs
+
+The 2 → 4 → 8 vCPU sweep resizes the instance, so a restart happens anyway and the JFR flags cost
+**no extra downtime**. Worth doing — but for its own reason rather than this one.
+
+**Those runs re-run case 13, which saturates.** A saturated profile can confirm `deepCopy` is
+*present* — presence is not distorted by queueing — but cannot size its share. So it half-answers
+this item.
+
+**Its real value is insurance on the sweep's own contingency.** If throughput scales with vCPU,
+"app CPU is the constraint, more vCPU is the relief" is confirmed and the profile was unnecessary.
+If it does **not** scale, a second constraint exists that nobody has found, and the profile is the
+only thing that names it — lock contention being the obvious candidate, and invisible at 2 vCPU by
+construction. `settings=profile` captures `jdk.JavaMonitorEnter` and `jdk.ThreadPark` alongside
+execution samples. **That evidence cannot be retrofitted** once the environment is gone.
+
+> **One rule if it is done: identical configuration on all three sizes, or none.** JFR at
+> `settings=profile` costs roughly 2%. Constant across the three it cancels in the comparison;
+> on one instance only it biases exactly the number the sweep exists to produce.
+
+**Add a fourth run** at the end — one size, unsaturated, ~50/h, twenty minutes. That is the one
+that sizes this item, and it is cheap while the environment is already up. **And do not let any of
+this delay the sweep**: an unprofiled scale result is worth more than a profiled one that slipped.
 
 ## 7. Jackson: Blackbird, and a version split to fix regardless
 
@@ -530,7 +661,7 @@ is the constraint — not share of database calls.
 | | fix | effort | share of request time |
 |---|---|---|---|
 | **3** | **remove or path-scope `DummyInterceptor`** | one line to scope; more to remove | **12.6%** |
-| 6 | native JSON mapping / stop serializing in `deepCopy` | days | **unconfirmed** — profile first |
+| 6 | — | — | **closed for reads**; write path unsized |
 | 1 | `@EntityGraph` on five `syncDetails` finders; hoist `isCommentEnabled()` | hours; 1b is one line | 2.7% (32% of database calls) |
 | 4 | ship avni-client#2096 (`/v2` Slice) | specified, not built | slowest statement class |
 | 2 | one-statement role set; drop `application_name` | one line | ~1.8% |
@@ -543,8 +674,9 @@ removing it outright needs the flush question settled first, and that is what
 
 **Item 8 is not in the table**: there is no proxy tier to move gzip to, so it has no fix to rank.
 
-**Item 6 is the one that could beat it**, and it is not measured yet — one async-profiler run
-against `encounter (GET)` settles it.
+**Item 6 was the one that could have beaten it, and no longer is.** A local test on 20 Oct showed
+Hibernate skips the snapshot under `readOnly = true`, so the serialization never runs on a pull.
+What remains is the write path, which `PUSH=off` left unmeasured.
 
 > **Validated against `avni-client`, 20 Oct 2026.** A ninth item — dropping Spring HATEOAS wrapping
 > on the sync endpoints — was removed: `SubjectMigrationService.js:68` reads `_links`, so the
@@ -566,7 +698,8 @@ not remove 10% of the request. [`findings-case9-12a.md`](findings-case9-12a.md) 
 async-profiler against `encounter (GET)` at an unsaturated load for that, and it remains the right
 next measurement — the rest are what can be acted on without it.
 
-**Items 1a and 6 need a correctness review, not just a benchmark.** A fetch join changes what a
-query returns when associations are null — `left`, not inner — and changing a `UserType`'s
-mutability changes when Hibernate detects a write. Items 1b, 2, 3 and 5 are behaviour-preserving by
+**Item 1a needs a correctness review, not just a benchmark**: a fetch join changes what a query
+returns when associations are null — `left`, not inner. So would item 6's fix 3, if the write path
+is ever worth pursuing, since changing a `UserType`'s mutability changes when Hibernate detects a
+write. Items 1b, 2, 3 and 5 are behaviour-preserving by
 inspection, and item 4 is specified on avni-client#2096.
