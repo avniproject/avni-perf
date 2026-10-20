@@ -155,14 +155,27 @@ def test_sequences_are_reset_because_copy_does_not_advance_them():
     assert "MAX(id) FROM individual" in script
 
 
-def test_the_load_is_one_transaction():
+def test_the_load_is_not_one_transaction():
+    """**Each copy commits on its own, and that is a performance contract, not a style choice.**
+
+    Measured 20 Oct 2026, 50,000 program_encounter rows into the real table: 185,165 ms when the
+    two larger tables had been loaded earlier in the SAME transaction, against 10,875 ms when they
+    had committed table-by-table, and 1,712 ms with no prefix at all. Inserting into a transaction
+    already holding ~700k new rows costs about 100x per row and degrades as it grows -- 413,320
+    rows had not finished after 33 minutes.
+
+    The cost is atomicity: a failed load leaves the tenant partly loaded. That is the right trade,
+    because the loader verifies counts against the manifest afterwards and a partial tenant is torn
+    down and redone, while a load that cannot finish is worth nothing.
+    """
     script = cw.load_script({"individual": ["id"]}, verify_schema=False)
-    assert script.index("BEGIN;") < script.index("copy individual") < script.index("COMMIT;")
+    assert "\nBEGIN;" not in script
+    assert "\nCOMMIT;" not in script
 
 
 def test_statistics_are_refreshed_after_the_load():
     script = cw.load_script({"individual": ["id"]}, verify_schema=False)
-    assert script.index("COMMIT;") < script.index("ANALYZE ")
+    assert script.index("copy individual") < script.index("ANALYZE ")
     # Named tables, not a bare ANALYZE: a bare one analyses every table in the database, which on
     # a multi-tenant target is every other tenant's metadata too. 64% of a 513-tenant load.
     assert "\nANALYZE;" not in script
@@ -267,14 +280,14 @@ def test_the_load_silences_the_audit_triggers_per_row_notices():
     Suppressing them changes nothing about what is loaded, and warnings and errors still arrive.
     """
     s = cw.load_script({"individual": ["id", "uuid"]}, directory="/tmp/x", verify_schema=False)
-    assert s.index("SET client_min_messages = warning;") < s.index("BEGIN;")
+    assert s.index("SET client_min_messages = warning;") < s.index("copy individual")
 
 
 def test_the_sequence_block_gets_its_notices_back():
     """They are the record of which sequences it raised, and a load that raised none would mean
     the application was already allocating above the dataset."""
     s = cw.load_script({"individual": ["id", "uuid"]}, directory="/tmp/x", verify_schema=False)
-    assert s.index("COMMIT;") < s.index("SET client_min_messages = notice;") < s.index("DO $$")
+    assert s.index("copy individual") < s.index("SET client_min_messages = notice;") < s.index("DO $$")
 
 
 def test_the_reload_script_carries_only_the_transactional_tables():
@@ -299,8 +312,10 @@ def test_the_reload_script_keeps_everything_else_the_load_script_does():
     cannot drift apart from load.sql's."""
     tables = {"individual": ["id", "uuid"], "encounter": ["id", "uuid"]}
     r = cw.reload_script(tables, directory="/tmp/x", verify_schema=False)
-    assert r.index("SET client_min_messages = warning;") < r.index("BEGIN;")
-    assert "setval" in r and "COMMIT;" in r
+    assert r.index("SET client_min_messages = warning;") < r.index("copy individual")
+    assert "setval" in r
+    # The reload must not reintroduce the wrapper either -- it loads the same large tables.
+    assert "\nBEGIN;" not in r and "\nCOMMIT;" not in r
 
 
 def _reset_sql():

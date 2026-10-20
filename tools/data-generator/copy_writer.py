@@ -192,7 +192,33 @@ def load_script(tables: Mapping[str, Sequence[str]], *, directory: str = ".",
         "-- it inflates the load measurement G4's cadence is derived from. Nothing about what gets",
         "-- loaded changes; warnings and errors still arrive.",
         "SET client_min_messages = warning;",
-        "BEGIN;",
+        "",
+        "-- **NO TRANSACTION AROUND THE WHOLE LOAD, and this is load-bearing.**",
+        "--",
+        "-- Measured 20 Oct 2026 on `co-001`, 50,000 program_encounter rows into the real table:",
+        "--",
+        "--   prefix in ONE transaction          185,165 ms        270 rows/s",
+        "--   prefix COMMITTED table-by-table     10,875 ms      4,600 rows/s",
+        "--   no prefix at all                     1,712 ms     29,200 rows/s",
+        "--",
+        "-- Inserting into a transaction that already holds ~700k new rows is about 100x slower",
+        "-- per row, and it degrades as the transaction grows. `program_encounter` is loaded after",
+        "-- `individual` and `program_enrolment`, the two largest tables, so under a single BEGIN",
+        "-- it always paid this -- 413,320 rows had not finished after 33 minutes, one core pinned,",
+        "-- zero IO wait.",
+        "--",
+        "-- Everything else was measured and ruled out: the CPU (RDS beats Python on the same",
+        "-- instance family), EBS (balances at 99%, 0.00 ms latency), bloat (zero dead tuples), the",
+        "-- data itself (identical into a bare table: 365 ms vs 405 ms per 50k), all 54 secondary",
+        "-- indexes (3.6x), the audit trigger (~5x), stale statistics (no measurable effect),",
+        "-- foreign keys (`session_replication_role = replica` still gave 270 rows/s) and WAL",
+        "-- (logged 1,610 ms vs unlogged 1,497 ms).",
+        "--",
+        "-- **The cost of dropping the wrapper is atomicity**: a failed load leaves the tenant",
+        "-- partly loaded rather than rolling back. That is the right trade here because the loader",
+        "-- verifies row counts against the manifest afterwards and a partial tenant is torn down",
+        "-- and redone, whereas a load that cannot finish is worth nothing. Do not reintroduce a",
+        "-- BEGIN around multiple tables in any reset or load step for the same reason.",
         "",
     ]
     for t in ordered:
@@ -211,7 +237,9 @@ def load_script(tables: Mapping[str, Sequence[str]], *, directory: str = ".",
                     f"COALESCE((SELECT MAX(id) FROM {t}), 1));")
         out.append("")
 
-    out += ["COMMIT;", ""]
+    # No COMMIT: there is no transaction to close. See the note above -- each \\copy commits on
+    # its own, which is what keeps the later tables from paying ~100x for the earlier ones.
+    out += [""]
 
     # **Raise every sequence past what was just loaded.**
     #
