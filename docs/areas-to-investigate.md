@@ -194,6 +194,22 @@ combined, and **96% of all interceptor time**. The 5.57% quoted in
 [`findings-case9-12a.md`](findings-case9-12a.md) came from a saturated trace, where queueing
 inflated everything around it; **12.6% is what it costs on a healthy server**.
 
+> **That 12.6% is a share of sync load, not of production.** Every run behind it serves sync and
+> nothing else: no admin or reporting requests, no concurrent ETL, `PUSH=off` on most of them.
+> Production's avni-server also carries the web app, the API and bulk imports — `importZipJob`
+> alone left 173 transaction traces outside every run window here, up to 189.2 s each — and its
+> database is shared with avni-etl and Metabase (avni-server#1060 suspect 5).
+>
+> **Two consequences, and they pull opposite ways.** The interceptor fires on **every** web request,
+> so against production's wider request mix the absolute waste is larger than these runs show. But
+> the **share** does not transfer: heavier work per request — deeper pages, colder cache, larger
+> organisations, which is the regime
+> [avni-product#1904](https://github.com/avniproject/avni-product/issues/1904) measured — dilutes a
+> fixed per-request cost. And CPU freed on the application tier does not become headroom
+> one-for-one while other workloads contend for the same database.
+>
+> **So treat 12.6% as the reason to act, not as the saving to promise.**
+
 It is also registered unscoped:
 
 ```java

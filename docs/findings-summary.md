@@ -43,6 +43,10 @@ a SQLite fleet and understates a Realm one by about three times.
 **Server optimisation is a capacity argument, not a latency one.** It raises how many devices can
 sync at once; it does not make a sync feel faster.
 
+> **Every run here is sync and nothing else**, so this understates how contended the server is.
+> Production also carries the web app, the API and bulk imports, and shares its database with
+> avni-etl and Metabase — so a share measured against sync-only load does not transfer to it.
+
 ## 4. Who syncs matters; how they are mixed does not
 
 A supervisor covers a Taluka, so the sync scales with the catchment: **2.8× the records, 2.3× the
