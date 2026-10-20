@@ -127,44 +127,32 @@ if [ "$PLAN" = "1" ]; then
   exit 0
 fi
 
-# **The GIN indexes come off for the load and go back on afterwards.**
-# `program_encounter` carries 18 indexes, two of them GIN over the observation
-# JSONB, and maintaining those per row is what makes this load pathological:
-# on 20 Oct 2026 a single tenant's 413,320 program encounters had not finished
-# after 33 minutes, one core pinned and almost no IO -- against 3.5 M rows in 21
-# minutes for eleven tenants on 13 Oct. A bulk GIN build over the finished rows
-# is cheap where 1.85 M incremental insertions are not.
+# **LEAVE THE INDEXES AND TRIGGERS ALONE.** An earlier version of this script
+# dropped the GIN indexes before the load and rebuilt them after, on the theory
+# that index maintenance was what made program_encounter slow. It is not, and
+# dropping them makes things dramatically WORSE. Measured 20 Oct 2026 on
+# co-002's 136,381 program_encounter rows:
 #
-# The definitions are read from pg_indexes rather than written here, so the
-# rebuild cannot drift from what the database actually had, and they are
-# captured BEFORE anything is dropped.
-t=$(date +%s); say "5. take the GIN indexes off the transactional tables"
-sshapp "$Q -c \"SELECT indexdef || ';' FROM pg_indexes WHERE tablename IN
-   ('individual','encounter','program_enrolment','program_encounter')
-   AND indexdef LIKE '%USING gin%' ORDER BY indexname;\" > /tmp/$TAG.gin.sql
-  wc -l < /tmp/$TAG.gin.sql | sed 's/^/     GIN indexes captured: /'
-  sed 's/^CREATE INDEX \([a-z_0-9]*\) .*/DROP INDEX \1;/' /tmp/$TAG.gin.sql > /tmp/$TAG.gindrop.sql"
-GINN=$(sshapp "grep -c . /tmp/$TAG.gin.sql")
-[ "${GINN:-0}" -ge 1 ] || { echo "ABORT: captured no GIN definitions -- refusing to drop blindly" >&2; sshapp "rm -f /tmp/.pgpass_$TAG"; exit 1; }
-sshapp "$PSQL -f /tmp/$TAG.gindrop.sql" >/dev/null || { echo "ABORT: dropping the GIN indexes failed" >&2; exit 1; }
-sshapp "cat /tmp/$TAG.gindrop.sql" | sed 's/^/     /'
-phase gin_drop $t
-
-# **The tenant load.sql files must not wrap their tables in one transaction.**
-# Measured 20 Oct 2026: 50,000 program_encounter rows took 185,165 ms when the two
-# larger tables had been loaded earlier in the same transaction, 10,875 ms when
-# they had committed table-by-table, and 1,712 ms with no prefix at all. About
-# 100x, degrading as the transaction grows. Datasets generated after
-# copy_writer.py was fixed carry no BEGIN/COMMIT; older archives do, so this
-# strips them rather than trusting the archive's vintage.
-say "5b. strip any per-tenant BEGIN/COMMIT from the archive's load.sql files"
-sshapp "cd /tmp/co-tenants-day-180
-  b=\$(grep -c '^BEGIN;' */load.sql | awk -F: '{s+=\$2} END{print s+0}')
-  sed -i '/^BEGIN;\$/d; /^COMMIT;\$/d' */load.sql
-  a=\$(grep -c '^BEGIN;' */load.sql | awk -F: '{s+=\$2} END{print s+0}')
-  echo \"     wrappers removed: \$b -> \$a\""
-
-t=$(date +%s); say "6. load, per-tenant ANALYZE stripped and one at the end"
+#   indexes dropped, program_encounter already holding 413k rows     13 rows/s
+#   indexes present, same load                                    4,570 rows/s
+#
+# 350x slower without them. Something fires per row and does a lookup; without
+# its index that becomes a sequential scan over a table that grows as the load
+# proceeds, so the cost climbs with every tenant. The same mistake also makes a
+# teardown quadratic -- deleting a parent row checks every child table, and
+# without the child-side index that is a scan per row. A cleanup that took 3.4
+# seconds with the indexes present had not finished in 26 minutes without them.
+#
+# The one change that genuinely matters is that the per-tenant BEGIN...COMMIT is
+# gone, so each table commits on its own. See the note in copy_writer.py.
+# **No per-tenant ANALYZE either.** One was added on 20 Oct on the theory that
+# stale statistics on the freshly-loaded FK parents were the problem. An A/B
+# test disproved that, and the mitigation was left in anyway: it re-analysed
+# `individual` on every tenant and grew from 2.7 s to 39 s as the table filled,
+# reaching ~16 s average -- about two hours across 513 tenants, against twelve
+# minutes of actual copying for the rows that remained. The single VACUUM
+# ANALYZE after the load is where that work belongs.
+t=$(date +%s); say "5. load all tenants -- indexes, triggers and all"
 sshapp "sed -i 's/^ANALYZE;\$/-- ANALYZE moved to the end of the driver/' /tmp/co-tenants-day-180*/*/load.sql
   { echo '\\timing on'; while read -r d; do echo \"\\\\echo === TENANT \$(basename \$d) ===\"; echo \"\\\\i \${d}/load.sql\"; done < /tmp/$TAG.dirs; echo 'ANALYZE;'; } > /tmp/$TAG.load.sql
   wc -l < /tmp/$TAG.load.sql | sed 's/^/     driver lines: /'"
@@ -180,17 +168,9 @@ echo "     load exit $rc after $(( ($(date +%s)-t0)/60 ))m"
 [ "$rc" = "0" ] || { echo "LOAD FAILED" >&2; sshapp "tail -15 /tmp/$TAG.log"; sshapp "rm -f /tmp/.pgpass_$TAG"; exit 1; }
 phase load $t
 
-t=$(date +%s); say "7. rebuild the GIN indexes"
-sshapp "$PSQL -f /tmp/$TAG.gin.sql" >/dev/null || { echo "ABORT: rebuilding the GIN indexes failed -- the data is loaded but the indexes are NOT back. /tmp/$TAG.gin.sql on the app host holds the definitions." >&2; exit 1; }
-BACK=$(sshapp "$Q -c \"SELECT count(*) FROM pg_indexes WHERE tablename IN
-  ('individual','encounter','program_enrolment','program_encounter') AND indexdef LIKE '%USING gin%';\"")
-echo "     GIN indexes present again: ${BACK:-?} (dropped $GINN)"
-[ "${BACK:-0}" = "${GINN:-x}" ] || { echo "ABORT: $BACK GIN indexes present, $GINN were dropped" >&2; exit 1; }
-phase gin_rebuild $t
+t=$(date +%s); say "6. VACUUM ANALYZE"; sshapp "$PSQL -c 'VACUUM ANALYZE;'" >/dev/null; phase vacuum $t
 
-t=$(date +%s); say "8. VACUUM ANALYZE"; sshapp "$PSQL -c 'VACUUM ANALYZE;'" >/dev/null; phase vacuum $t
-
-say "9. verification"
+say "7. verification"
 sshapp "$Q -F'|' -c \"
 SELECT 'co-tenant organisations with data', count(DISTINCT organisation_id) FROM individual WHERE organisation_id >= 24
 UNION ALL SELECT 'co-tenant individuals', count(*) FROM individual WHERE organisation_id >= 24

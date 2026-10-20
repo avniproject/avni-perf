@@ -468,6 +468,61 @@ unloaded.
 > rework — a stale generation for the 11 `large-pull-heavy` tenants, and a teardown that scanned
 > 4.4 GB per user until two foreign keys were indexed. Both are written up in the runbook.
 >
+> ### The 20 Oct 2026 reload, and what it cost to learn
+>
+> **The co-tenant bed was reloaded on 20 October in 38 min 39 s** — within the ~40 minutes above —
+> after a day spent making it take hours. Every number below is measured, and the write-ups live
+> beside the code they constrain: `copy_writer.py` and `tools/restore-co-tenants.sh`.
+>
+> **1. A multi-table load must not be wrapped in one transaction.** Each tenant's `load.sql` used
+> to be a single `BEGIN … COMMIT`. `program_encounter` is loaded after the two largest tables, so
+> it always inserted into a transaction already holding ~700k new rows, and that costs about
+> **100x per row** and worsens as the transaction grows:
+>
+> | 50,000 `program_encounter` rows | |
+> |---|---|
+> | prefix in one transaction | 185,165 ms — **270 rows/s** |
+> | prefix committed table-by-table | 10,875 ms — **4,600 rows/s** |
+> | no prefix at all | 1,712 ms — **29,200 rows/s** |
+>
+> One tenant's 413,320 rows had not finished after 33 minutes; without the wrapper the same copy
+> took **31 seconds**. The generator no longer emits it and the tests assert its absence. The cost
+> is atomicity — a failed load leaves a tenant partly loaded — which is the right trade, because
+> the loader verifies counts against the manifest and a partial tenant is torn down and redone.
+>
+> **2. Do not drop indexes to speed a load. It makes it 350x slower.** Measured in isolation on an
+> empty table the secondary indexes cost 3.6x, which is a trap: during a real load, dropping them
+> took `program_encounter` from **4,570 rows/s to 13**. Something fires per row and does a lookup,
+> and without its index that becomes a sequential scan over a table growing under it. The same
+> mistake makes a **teardown quadratic** — deleting a parent checks every child table, and without
+> the child-side index that is a scan per row. A cleanup that ran in **3.4 seconds** with indexes
+> present had not finished in **26 minutes** without them. This is the `filled_by_id` lesson of
+> 13 Oct in a more expensive form.
+>
+> **3. `audit` is unbounded and nothing resets it.** 89,330,284 rows and 11 GB by 20 Oct. Every
+> insert into an audited table fires `audit_table_trigger`, worth about **5x** on bulk load, and
+> `teardown_org.py` deliberately never touches it — which is how it got that big. It can only be
+> reset when nothing references it, i.e. between campaigns. **Write-path cost therefore drifts
+> upward across a campaign**, which no finding currently accounts for, because every one of them
+> measures read-dominated sync.
+>
+> **4. Snapshot the bed after anything expensive.** Until 20 Oct the newest snapshot predated the
+> 11-hour co-tenant provisioning and `BackupRetentionPeriod` was **0**, so there was no cheap way
+> back to a known-good database — which is why one bad load cost a day.
+> `avni-loadtest-bed-pilot180-cotenants-20261020-1734` is the pilot at span 8.4 with all 513
+> co-tenants loaded and verified. Restore it instead of rebuilding.
+>
+> **5. Two operational traps that wasted hours.**
+> `pkill` on a psql client does **not** stop the server backend — the transaction keeps running and
+> `count(*) = 0` from another session is MVCC hiding it, not a rollback; use `pg_terminate_backend`
+> and check `pg_stat_activity`. And `ALTER TABLE … DISABLE TRIGGER USER` does **not** disable
+> foreign-key triggers, which are internal; only `session_replication_role = replica` does.
+>
+> **6. Never identify generated rows by id range.** `id >= 301000000` also matches bundle rows,
+> whose server-assigned ids sit near 2,100,005,408 — so a count of "generated structural rows"
+> came back as 513 organisations when the true answer was zero, and sent the restore down a wrong
+> path. `teardown_org.py` cuts structural tables **by provenance** precisely for this reason.
+>
 > **Three numbers to carry into any reset estimate for this dataset**, none of which the Block A
 > figures predict:
 >

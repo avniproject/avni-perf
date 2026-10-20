@@ -171,6 +171,27 @@ every published duration by a factor of three. More devices, not in low power mo
   duration — 26 s to 402 s across the documented range — but during the transfer the device asks
   avni-server for nothing. It belongs with [D7](findings-d7.md) as device experience, not here.
 
+## The write path is not measured, and it is not cheap
+
+**Everything above measures sync, which is read-dominated.** "The database never binds" is a
+statement about reads. Bulk insert behaves differently, and 20 Oct 2026's reload of the co-tenant
+bed made that concrete:
+
+* **Every insert into an audited table fires `audit_table_trigger`**, which inserts into or updates
+  `audit` — **89,330,284 rows and 11 GB** on the rig by 20 Oct. Suppressing it was worth about
+  **5x** on bulk load. Nothing resets that table, so this cost has been rising all campaign.
+* **A per-row trigger or constraint lookup depends on an index nobody would think to keep.**
+  Dropping the secondary indexes made `program_encounter` **350x slower** — 13 rows/s against
+  4,570 — because the lookup degrades to a sequential scan over a growing table.
+* **Loading a child table inside a transaction that already holds ~700k new rows costs ~100x per
+  row.** 413,320 rows did not finish in 33 minutes; the same copy took 31 seconds once each table
+  committed on its own.
+
+None of this changes a sync finding. It bears on **imports, bulk operations and any future reset**,
+and it is the kind of per-request work [`areas-to-investigate.md`](areas-to-investigate.md) is
+built around — except on the write side, which that document does not cover. Details and the
+measurements are in [`execution-plan.md`](execution-plan.md) under *The 20 Oct 2026 reload*.
+
 ## Areas to investigate
 
 **Code-level work, needing no environment**, all of one shape: work the server does on every
