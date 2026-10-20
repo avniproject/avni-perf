@@ -366,6 +366,49 @@ forever.
    decides whether it guards anything real: if a `PUSH=off` sync moves neither `n_tup_upd` nor the
    WAL LSN, the dirtiness was spurious.
 
+### Measured 20 Oct 2026: on a UTC server it never has anything to flush
+
+A counter on `session.isDirty()` at the top of `postHandle`, across the controller integration
+suite:
+
+| JVM zone | invocations | dirty |
+|---|---|---|
+| `Asia/Kolkata` | 186 | **18** — all `POST /encounters`, `/programEnrolments`, `/programEncounters` |
+| **`Etc/UTC`** — what production runs | 186 | **0** |
+
+Same suite, same endpoints; only the JVM default zone differs. **No GET dirtied the session in
+either run**, which is step 0's result arriving from the other direction.
+
+**The dirtiness is a timezone artefact, not a sign the guard is working.**
+`JodaDateTimeConverter.convertToEntityAttribute` returns `new DateTime(data.getTime())` — the JVM
+default zone — while Jackson's `JodaModule` deserializes client timestamps as **UTC**. Joda's
+`equals()` compares instant *and* chronology, so the same moment compares unequal and the entity is
+**permanently dirty**; flushing cannot settle it, because the reloaded state takes the database
+representation again.
+
+```
+from client         : 2018-02-21T17:10:30.000Z        (Jackson -> UTC)
+from database       : 2018-02-21T22:40:30.000+05:30   (converter -> default zone)
+equals()            : false   <- what Hibernate's dirty check uses
+isEqual() (instant) : true
+with UTC pinned     : true    <- the fix
+```
+
+Where it does fire, it writes: Hibernate statistics showed **`entityUpdates` delta = 1 on every
+`POST`** — one redundant UPDATE per write, of a row whose values never changed. In UTC that
+disappears entirely.
+
+**So on production's `Etc/UTC` this guard appears to do nothing on any path the suite exercises**,
+while costing 12.6% of request time. That is the argument for removal rather than only scoping —
+tempered by the suite not being production traffic, which is what
+`tools/read-only-sync-writes-check.sql` would confirm against a real sync.
+
+> **Fix `JodaDateTimeConverter` regardless**: `new DateTime(data.getTime(), DateTimeZone.UTC)`.
+> One line. It is not a production performance fix — production is already UTC — but it removes a
+> latent correctness hazard and stops developer machines in IST behaving differently from servers.
+> **It also explains the 2019 origin**: a developer in IST would see entities permanently dirty and
+> reasonably conclude that flushing was broken.
+
 > **Item 6's measurement is evidence for removal, on the sync path at least.** Under
 > `readOnly = true` Hibernate takes **no dirty-check snapshot** — so it cannot detect a change,
 > and with flush mode `MANUAL` it would not write one either. **On a pull there is nothing for the
