@@ -100,27 +100,36 @@ through an hour of serialized upload, and the run's wall time for any media run 
 |---|---|---|
 | ~215 requests per customer sync | **249.6** | 16% over. The prediction used the median encounter count (20 → 160 files); the draw's mean is 24.6 → 197 files. The document flagged exactly this: *"20 encounters a day is the customer's median, so p95 syncs push more"* |
 | 160 media files per sync | **p50 160**, mean 197 | the median landed exactly |
-| ~5.96 CPU s per customer sync | *pending `make cpu_per_sync`* | |
-| ~10,300 CPU s for the hour | *pending* | |
-| app CPU 61–68% on 4 vCPU | **85–90% observed during the hour** (CloudWatch, 5-min means); the cached figure follows | **materially over the prediction** — see below |
-| whether RDS moved | **RDS 80–85% during the hour**, against 38–42% in the 4 vCPU case 13 run | **it moved a lot** |
+| ~5.96 CPU s per customer sync | **~6.8** — 11,542 total less the co-tenants at case 7's 1.68 s × 792, over 1,500 | 14% over, in step with the extra media calls |
+| ~10,300 CPU s for the hour | **11,542** in the standard window (injection + 20 min); the drain beyond it adds ~370 | 12% over |
+| app CPU 61–68% on 4 vCPU | **68.3% mean over the injection hour, peaks 93.6%** (62.4% over the 80-min window) | the mean lands at the top of the band; the peaks do not |
+| whether RDS moved | **RDS 70.4% mean, 98.5% peak over the hour**, against 38–42% in the 4 vCPU case 13 run | **it moved to the ceiling** |
 
-The CPU rows are filled from `tools/cpu-per-sync.py`, which needs a New Relic user key and runs
-before `make run_log`.
+CPU from `tools/cpu-per-sync.py` (New Relic `apm.service.cpu.usertime`, window
+`06:58:37–08:18:37Z`), utilisation from CloudWatch 5-minute means. Per-sync overall: **5.04 s**.
 
-**The miss that matters.** Both tiers sat 20–25 points above the estimate. The arithmetic priced
-`uploadUrl` at ~8 ms of CPU, *inferred*, and multiplied it by 127 extra calls per sync; the run
-made 197 per sync, not 160, and RDS went to 80–85% on a request the model treated as nearly free.
-The document said the inferred `uploadUrl` cost was *"the single largest lever here and the one
-input nobody measured"*, and asked for one more run to measure it — the scenario at the default
-media rate against this one, `ΔCPU ÷ Δ(uploadUrl calls)`. That run is now the obvious next
-measurement, because at 80–85% RDS **the database is the next constraint**, and it is being driven
-there by the cheapest request in the mix.
+**The customer figure is corrected, not read off.** `cpu-per-sync.py` attributes whole-server
+CPU to cohorts in proportion to `serverMs`, and `serverMs` carries the upload wait for customers
+(see the caveat above) — so its raw split, 7.69 s per customer sync and 0.14 per co-tenant, hands
+nearly everything to the customers. Co-tenants have never cost 0.14 s; case 7 measured 1.68. The
+6.8 above subtracts them at that rate. Until the harness records the media pause, the weighted
+split is wrong for every media-bearing run.
+
+**The miss that matters is the database.** The application landed where the arithmetic said it
+would; RDS did not. The estimate priced `uploadUrl` at ~8 ms of *application* CPU, inferred, and
+said nothing about the database because the request was assumed to touch it lightly. 295,000 of
+them in an hour took RDS from the low forties to a 70% mean and a 98.5% peak. The scenario
+document called the inferred `uploadUrl` cost *"the single largest lever here and the one input
+nobody measured"* and asked for one paired run — this scenario at the default media rate against
+this one, `ΔCPU ÷ Δ(uploadUrl calls)`, on both tiers. That run is now the obvious next
+measurement, because **the database is the next constraint**, and it is being driven there by the
+cheapest-looking request in the mix.
 
 ## What this settles, and what it does not
 
-- **4 vCPU holds the hour** — 0 failures, p95 503 ms — but with less headroom than estimated, and
-  RDS closer to its ceiling than the app server is to its own.
+- **4 vCPU holds the hour** — 0 failures, p95 503 ms — and the application CPU landed inside the
+  estimate. **RDS did not**: a 98.5% peak is the ceiling, and it is where the next failure comes
+  from if this load grows.
 - **The server is not what a field worker waits for.** 2.3% of sync time. The product problem
   this scenario exposes is a quarter-hour sync on a 1 Mbps uplink, and it is a client problem:
   uploading concurrently, uploading in the background, or uploading less.

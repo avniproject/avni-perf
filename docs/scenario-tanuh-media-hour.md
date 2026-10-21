@@ -140,3 +140,9 @@ When this runs, four numbers decide whether the model held:
 **Record all four against the predictions here**, including when they are wrong. The campaign has
 already published one figure that did not survive its context — 12.85 Mrec/h read as a ceiling
 when it was a saturated server's throughput — and an estimate nobody scores becomes folklore.
+
+> **Scored on 21 Oct 2026** — [`findings-media-hour.md`](findings-media-hour.md). Requests per
+> sync 249.6 against ~215; media files p50 160 exactly; CPU 11,542 s against ~10,300; app CPU
+> 68% mean against 61–68%, so the application held. **RDS went to a 70% mean and a 98.5% peak**,
+> which this document did not predict, and the inferred `uploadUrl` cost is the reason: it was
+> priced on the application and not on the database.

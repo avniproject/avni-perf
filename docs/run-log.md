@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-21 14:32 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-21 15:11 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -53,6 +53,7 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-19T11-15-25Z-case5-span20-c2a0e76`](run-log-detail.md#2026-10-19t11-15-25z-case5-span20-c2a0e76) | 2026-10-19 16:45 | case5 | steady | 1580 | 120min @ 132/h | ~0.2 | ~2.7 | 5120 | 0.0% | 348 | 80.9 | 0.68 | 998 | 3.79 |
 | [`2026-10-21T04-10-50Z-case13-m6g.large-c2a0e76`](run-log-detail.md#2026-10-21t04-10-50z-case13-m6glarge-c2a0e76) | 2026-10-21 09:40 | case13 | steady | 1682 | 60min @ 1682/h | ~398 | ~359 | 50848 | 0.91% | 56293 | 2082.5 | 11.94 | 8,403 | 4.19 |
 | [`2026-10-21T05-43-20Z-case13-m6g.xlarge-c2a0e76`](run-log-detail.md#2026-10-21t05-43-20z-case13-m6gxlarge-c2a0e76) | 2026-10-21 11:13 | case13 | steady | 1682 | 60min @ 1682/h | ~3.3 | ~38 | 57386 | 0.0% | 434 | 84.2 | 15.57 | 7,743 | 3.13 |
+| [`2026-10-21T06-58-37Z-media-hour-m6g.xlarge-c2a0e76`](run-log-detail.md#2026-10-21t06-58-37z-media-hour-m6gxlarge-c2a0e76) | 2026-10-21 12:28 | media-hour-m6g.xlarge | steady | 1500 | 60min @ 1500/h | ~5.0 | ~162 | 415082 | 0.0% | 503 | 1878.4 | 49.43 | 11,542 | 5.04 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 
