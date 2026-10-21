@@ -4,6 +4,9 @@
 the case that carries the evidence; nothing here is new, and where a finding has been corrected the
 correction is what appears.
 
+**For which runs belong to which case**, and what each varied, see
+[`case-index.md`](case-index.md).
+
 **For what a run actually does**, see
 [`what-a-simulated-sync-does.md`](what-a-simulated-sync-does.md) — one virtual user end to end,
 and which parts are modelled rather than performed.
@@ -159,8 +162,8 @@ never touched. Worse than "smaller": `ProgramEncounter` is production's **larges
 and carries the **highest measured storage rate** in `StorageProfiles` — 8.44 ms/record against
 `Encounter`'s 6.14. The missing entity is the expensive one. Regenerate and re-run cases 5 and 13.
 
-**4. Media density.** **Done 21 Oct 2026 as the media hour** — see suggestion 9 and
-[`findings-media-hour.md`](findings-media-hour.md). Before it, customer push runs carried the
+**4. Media density.** **Done 21 Oct 2026 as *clustered — co-tenant load, media push*** — see suggestion 9 and
+[`findings-clustered-media-push.md`](findings-clustered-media-push.md). Before it, customer push runs carried the
 harness default of 1.42 files per encounter and co-tenants production's 0.23 per pushed encounter;
 the customer's screening bundle reaches **16 on a single encounter**. At 8 per encounter
 `uploadUrl` became 79% of customer requests and took RDS to a 98.5% peak.
@@ -182,11 +185,12 @@ case that was repeated differed by **5% in throughput and 23% in p95**.
 power mode** — and §3 makes them the largest user-facing finding in the set, since they decide
 every published duration by a factor of three. More devices, not in low power mode, both engines.
 
-**9. The media-heavy hour, sized rather than run.** 1,500 workers over an hour, push on, **8
-images per encounter**, co-tenants live — **~90 rps and ~10,300 CPU seconds, so 4 vCPU floor and 8
-to sit below the knee**. The arithmetic, its inputs and what would make it wrong are in
-[`scenario-tanuh-media-hour.md`](scenario-tanuh-media-hour.md), with four predictions to score it
-against when it runs.
+**9. Clustered — co-tenant load, media push.** **Done 21 Oct 2026** as row 20: 1,500 workers over
+an hour, push on, **8 media files per encounter**, co-tenants syncing, on 4 vCPU. Sized in advance in
+[`scenario-clustered-media-push.md`](scenario-clustered-media-push.md) at ~10,300 CPU seconds; it measured
+11,542, app CPU landed inside the estimate, and **RDS went to a 98.5% peak** driven by `uploadUrl` —
+the database is the next constraint. 0 failures. Row 23 re-draws it with supervisors pushing nothing
+and the customer's own encounter spread. [`findings-clustered-media-push.md`](findings-clustered-media-push.md)
 
 ### Considered and not recommended
 
@@ -253,9 +257,9 @@ Limits on the numbers above. Each is closed by a run in the section above, by nu
   generation, not by teardown — they carry the sha256 of the empty string. The earlier wording
   dated from Block C, which had emptied the co-tenants, and generalised a true statement about that
   moment into a false one about the dataset. (3)
-* **Media density was below the customer's until the media hour** — 1.42 files per encounter
+* **Media density was below the customer's until row 20** (clustered — co-tenant load, media push) — 1.42 files per encounter
   against up to **16 on a single encounter** in the screening bundle; 8 per encounter is now
-  measured ([`findings-media-hour.md`](findings-media-hour.md)). Media push itself is
+  measured ([`findings-clustered-media-push.md`](findings-clustered-media-push.md)). Media push itself is
   measured; what `MEDIA_MODEL=pause` skips is the S3 PUT, deliberately, and media *pull* is on
   demand rather than part of a sync. (4)
 * **Uniform catchments** — every village holds identical volume, so the mean is sound and **the

@@ -6,6 +6,9 @@ virtual user from feeder row to telemetry POST — the request sequence, what is
 than performed, and the things people most often get wrong about it. The sections below document
 each knob; that one is the shape they fit into.
 
+**Lost track of the cases?** [docs/case-index.md](docs/case-index.md) maps every case to the runs
+made against it, what each varied, and the findings that came out of them.
+
 ## Configurations
 
 ### Users

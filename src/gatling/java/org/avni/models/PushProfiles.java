@@ -79,7 +79,7 @@ public final class PushProfiles {
      *
      * **Replaces 8 / 20 / 45 / 150, mean 24**, whose spread was a modelling choice with no customer
      * basis. Its tail put 150 encounters - 1,200 files at 8 a visit, eighty minutes of upload - on
-     * a single sync, and was why the media hour took 2 h 20 m to drain. See findings-media-hour.md.
+     * a single sync, and was why the clustered media-push run took 2 h 20 m to drain. See findings-clustered-media-push.md.
      *
      * Registrations and enrolments have no customer figure at all and borrow production's shape.
      *
@@ -106,7 +106,7 @@ public final class PushProfiles {
      * **`v1`**: 8 / 20 / 45 / 150, mean 24 — the draw every push run before 21 Oct used, whose
      * spread had no customer basis. **Kept so those nine runs can be reproduced like for like**:
      * case 11 run 1, the four case 11 pairs, the 15-minute burst, the case 10 soak, 9-12c and the
-     * media hour. Comparing a new push run against any of them on `v2` mixes the change under test
+     * clustered media-push run. Comparing a new push run against any of them on `v2` mixes the change under test
      * with a fifth less push work.
      *
      * An unknown name throws. Falling back to a default would let a typo run the wrong workload

@@ -1,8 +1,11 @@
-# Findings: the media-heavy hour
+# Findings: clustered — co-tenant load, media push
+
+Case 13's shape — syncs clustered into one hour with co-tenants syncing — with push on and 8 media
+files per encounter.
 
 **Run** `2026-10-21T06-58-37Z-media-hour-m6g.xlarge-c2a0e76` — row 20 of the
 [execution plan](execution-plan.md). The scenario was sized in advance in
-[`scenario-tanuh-media-hour.md`](scenario-tanuh-media-hour.md), and that document asked for four
+[`scenario-clustered-media-push.md`](scenario-clustered-media-push.md), and that document asked for four
 numbers to be scored against its predictions. They are scored below, including the one it got wrong.
 
 **One sentence.** The hour that worried us holds on 4 vCPU with zero failures, and the server is
