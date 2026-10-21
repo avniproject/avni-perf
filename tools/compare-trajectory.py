@@ -11,7 +11,9 @@ and KO. --rate adds requests per minute over each 5-minute interval.
 WHY THE CUSTOMER LINE IS NAMED, NOT THE FIRST ONE FOUND. A block carries one waiting line per
 scenario, and a comparison that takes the first line it meets will compare the co-tenant
 scenario of one run against the customer scenario of the other. It did, on 21 Oct 2026, and
-the arrivals arithmetic (co-tenants at 792/h, customers at 1682/h) is what exposed it.
+the arrivals arithmetic (co-tenants at 792/h, customers at 1682/h) is what exposed it. A run
+without co-tenants has one scenario, named for its sync mode ("Sync realistic"); that one is
+the customers and is taken as such.
 
 WHAT "ACTIVE" MEANS HERE. For a steady profile it is the number of syncs in flight. Flat means
 the server is completing syncs as fast as they arrive; climbing without recovering is the queue
@@ -40,11 +42,14 @@ def parse(path, upto=7200):
         g = re.search(r"> Global\s*\|\s*([\d,]+)\s*\|\s*([\d,]+)\s*\|\s*([\d,]+)", b)
         sc = {}
         for name, w, a, d in re.findall(
-                r"---- (Customer|Co-tenant) -+.*?\n.*?waiting:\s*([\d,]+)\s*/\s*active:\s*([\d,]+)\s*/\s*done:\s*([\d,]+)",
+                r"---- ([A-Za-z][A-Za-z -]*?) -+\n.*?waiting:\s*([\d,]+)\s*/\s*active:\s*([\d,]+)\s*/\s*done:\s*([\d,]+)",
                 b, re.S):
-            sc[name] = (int(a.replace(",", "")), int(d.replace(",", "")))
-        if g and "Customer" in sc:
-            out[k] = (e, sc["Customer"], int(g[1].replace(",", "")), int(g[3].replace(",", "")))
+            sc[name.strip()] = (int(a.replace(",", "")), int(d.replace(",", "")))
+        # With co-tenants the customer scenario is "Customer"; without them the one scenario is
+        # named for its sync mode ("Sync realistic"). Either way the customers are the one wanted.
+        chosen = sc.get("Customer") or (next(iter(sc.values())) if len(sc) == 1 else None)
+        if g and chosen:
+            out[k] = (e, chosen, int(g[1].replace(",", "")), int(g[3].replace(",", "")))
     return out
 
 def main(argv):
@@ -53,7 +58,7 @@ def main(argv):
     if len(paths) != 2:
         print(__doc__); return 2
     A, B = parse(paths[0]), parse(paths[1])
-    hdr = f"{'':9s}{'cust done':>10s}{'active':>8s}{'requests':>10s}{'KO':>6s}"
+    hdr = f"{'':9s}{'done':>10s}{'active':>8s}{'requests':>10s}{'KO':>6s}"
     if rate:
         hdr += f"{'req/min':>9s}"
     print(hdr)
