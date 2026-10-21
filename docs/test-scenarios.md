@@ -37,6 +37,7 @@ are parameters with a documented range, defaulted to their conservative end.
 | **12** | **Clustered — co-tenant data** | **10 + 513** | Case 6 | Same as case 6 | Incremental, 1% full | **1 h** | Case 6 compressed: **6.6 syncs in flight against 0.55** |
 | **13** | **Clustered — co-tenant load** | **10 + 513** | Case 7 | Same as case 6 | Incremental, 1% full | **1 h** | Case 7 compressed: **9.7 in flight**, three times production's peak and the heaviest sustained load in the suite |
 | **14** | **Re-enrolled device** | 1 state | Case 2's 501 | Day 180 | **Full** | **90 min** | What a full sync costs when the catchment actually holds data — the expensive path the 1% stands for |
+| **15** | **Clustered — co-tenant load, media push** | **10 + 513** | 1,500 field workers over 1 h, co-tenants at 792/h | Same as case 6 | Incremental, 1% full, **push on, 8 media files per encounter** | **1 h** | Case 13's shape with the customer's media-heavy bundle: what the hour that worries us needs, sized in advance in [`scenario-clustered-media-push.md`](scenario-clustered-media-push.md) |
 
 **What the columns refer to.** "10" is the customer's own deployment — two state tenants and eight
 NGO ones, organisations 10 to 19; "+ 513" adds production's co-tenants beside them. The datasets

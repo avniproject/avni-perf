@@ -18,7 +18,7 @@
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
 | [**12**](#case-12) | Clustered — co-tenant data | 1 + 1 running | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 4 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
-| [**—**](#clustered-co-tenant-load-media-push) | Clustered — co-tenant load, media push | 1 + 1 pending | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
+| [**15**](#case-15) | Clustered — co-tenant load, media push | 1 + 1 pending | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
 
 <a id="case-1"></a>
@@ -235,8 +235,8 @@ Case 7 compressed into one hour: ~9.7 in flight, three times production's peak. 
 
 **The first run to break**: 1.22% failed, and 47% more load *removed* 38% of the throughput. **On 4 vCPU it is uneventful** — 0 failures, p95 from ~56 s to 434 ms, CPU per sync 4.19 → 3.13, because a collapsing server spends CPU on work that never completes. The constraint moved toward the database: RDS 33% → 41%. **And on 2 vCPU with `DummyInterceptor` removed it stays on the cliff's safe side** — 467 failures become none, a 39 s median request becomes 295 ms, and CPU per sync falls 4.19 → 2.57, on a dataset carrying row 20's residue.
 
-<a id="clustered-co-tenant-load-media-push"></a>
-## Clustered — co-tenant load, media push
+<a id="case-15"></a>
+## Case 15 — Clustered — co-tenant load, media push
 
 Case 13's shape — clustered into one hour, co-tenants syncing — with push on and **8 media files per encounter**: 1,500 workers over 1 h on 4 vCPU. Sized in advance in [`scenario-clustered-media-push.md`](scenario-clustered-media-push.md).
 

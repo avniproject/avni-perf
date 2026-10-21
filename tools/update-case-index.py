@@ -30,7 +30,7 @@ from pathlib import Path
 # run label -> the <a id="..."> of the section whose table holds it
 CASE_OF = [
     (re.compile(r"-case(\d+)-"), lambda m: f"case-{m[1]}"),
-    (re.compile(r"-media-hour-"), lambda m: "clustered-co-tenant-load-media-push"),
+    (re.compile(r"-media-hour-"), lambda m: "case-15"),   # the run label predates the number
 ]
 NEW_FLAG = "*(new — describe the variation)*"
 NOT_A_MEASUREMENT = "**not a measurement**"
