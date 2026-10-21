@@ -1,6 +1,11 @@
 # Load Tests for Avni Sync
 `./gradlew gatlingRun`
 
+**New to this?** [docs/what-a-simulated-sync-does.md](docs/what-a-simulated-sync-does.md) walks one
+virtual user from feeder row to telemetry POST — the request sequence, what is modelled rather
+than performed, and the things people most often get wrong about it. The sections below document
+each knob; that one is the shape they fit into.
+
 ## Configurations
 
 ### Users

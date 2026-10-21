@@ -4,6 +4,10 @@
 the case that carries the evidence; nothing here is new, and where a finding has been corrected the
 correction is what appears.
 
+**For what a run actually does**, see
+[`what-a-simulated-sync-does.md`](what-a-simulated-sync-does.md) — one virtual user end to end,
+and which parts are modelled rather than performed.
+
 ## The one-line answer
 
 **The application server's CPU is the constraint, the database never is, and under the sync
