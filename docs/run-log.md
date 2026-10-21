@@ -1,12 +1,12 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-21 13:47 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-21 14:32 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
 **Times are IST; run ids are UTC.** The id is the identifier and keeps the `Z` it was minted with — `...T11-37-03Z...` is the 17:07 row. Dates are converted with the time, so anything before 18:30 UTC lands on the same IST day but a late-evening run will not.
 
-Artefacts are **not** copied into the repo. Each run directory holds Gatling's `simulation.log`, the HTML report and `run-metadata.json`, plus the environment context captured at run time — `parity-report.md`, `pg_settings.csv`, `stats.json` — and `sync-durations.csv`, one row per completed sync. Those are what make a number interpretable once the environment that produced it has been destroyed.
+Artefacts are **not** copied into the repo. Each run directory holds Gatling's `simulation.log`, the HTML report and `run-metadata.json`, plus the environment context captured at run time — `parity-report.md`, `pg_settings.csv`, `stats.json` — and `sync-durations.csv`, one row per completed sync. Those are what make a number interpretable once the environment that produced it has been destroyed. The bucket is private and the report's ~250 objects only render together, so each run also carries a single `<run-id>.zip` of the whole directory; the detail page links it. Download, unzip, open `index.html`.
 
 **`app CPU s` is application CPU over the run's window, from New Relic's `apm.service.cpu.usertime`, which is absolute seconds rather than a percentage.** It is cached in `docs/cpu-per-sync.json` by `tools/cpu-per-sync.py` so this log can be regenerated without New Relic access; a run missing from the cache shows a dash. **`CPU s/sync` is an attribution, not a measurement** -- whole-server CPU divided by the run's syncs, so it carries the health checks and anything else on the box, and it spans the ramp and tail where CPU is low and syncs still count. Read it for capacity, where CPU seconds are additive and wall clock is not; the per-run detail splits it by cohort and by full against incremental.
 
