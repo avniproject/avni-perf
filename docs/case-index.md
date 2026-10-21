@@ -1,24 +1,5 @@
 # Case index: what each case is, what ran, and what it found
 
-**One page from case to run to finding.** Each case below gives its definition in a line, every run
-made against it and what that run varied, and a short summary with a link to the findings that
-carry the evidence. Case definitions are [`test-scenarios.md`](test-scenarios.md); the order runs
-went in is [`execution-plan.md`](execution-plan.md); the campaign's conclusions are
-[`findings-summary.md`](findings-summary.md).
-
-**The run tables are generated from [`run-log.md`](run-log.md) and
-[`run-log-detail.md`](run-log-detail.md)** by `tools/update-case-index.py`, which
-`update-run-log.sh` runs after every refresh — so ids, datasets, sync counts, failure rates and
-p95 are what the runs recorded, CPU per sync is from [`cpu-per-sync.json`](cpu-per-sync.json),
-and a new run appears in its case's table on the same pass that adds it to the run log, with its
-*variation* cell flagged until someone writes it. The *variation* column and the summaries are
-written by hand and never touched by the tool. Times are UTC, as the run ids are. A run
-marked **not a measurement** is kept for the record and excluded from every comparison.
-
-> **CPU s/sync is whole-server CPU over the run's syncs** — an attribution, not a per-sync
-> measurement. It compares well across healthy runs and badly across saturated ones, and badly for
-> any run mixing co-tenant and customer syncs; see the run log's header.
-
 ## At a glance
 
 | case | what it tests | runs | findings |
@@ -282,3 +263,24 @@ threefold. [`findings-d7.md`](findings-d7.md)
 * [`dummy-interceptor.md`](dummy-interceptor.md) — the largest of them, and rows 21–22's evidence
 * [`what-a-simulated-sync-does.md`](what-a-simulated-sync-does.md) — what one virtual user does
 * [`newrelic.md`](newrelic.md) — what the server-side instrumentation holds and how to read it back
+
+## About this page
+
+**One page from case to run to finding.** Each case below gives its definition in a line, every run
+made against it and what that run varied, and a short summary with a link to the findings that
+carry the evidence. Case definitions are [`test-scenarios.md`](test-scenarios.md); the order runs
+went in is [`execution-plan.md`](execution-plan.md); the campaign's conclusions are
+[`findings-summary.md`](findings-summary.md).
+
+**The run tables are generated from [`run-log.md`](run-log.md) and
+[`run-log-detail.md`](run-log-detail.md)** by `tools/update-case-index.py`, which
+`update-run-log.sh` runs after every refresh — so ids, datasets, sync counts, failure rates and
+p95 are what the runs recorded, CPU per sync is from [`cpu-per-sync.json`](cpu-per-sync.json),
+and a new run appears in its case's table on the same pass that adds it to the run log, with its
+*variation* cell flagged until someone writes it. The *variation* column and the summaries are
+written by hand and never touched by the tool. Times are UTC, as the run ids are. A run
+marked **not a measurement** is kept for the record and excluded from every comparison.
+
+> **CPU s/sync is whole-server CPU over the run's syncs** — an attribution, not a per-sync
+> measurement. It compares well across healthy runs and badly across saturated ones, and badly for
+> any run mixing co-tenant and customer syncs; see the run log's header.
