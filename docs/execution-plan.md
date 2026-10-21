@@ -55,6 +55,12 @@ span does not touch, hold at 1.00× in the same runs and bound that figure's noi
 it arrives. A supervisor's median sync goes 3.0 → 7.1 minutes, which is a product question about
 supervisor tooling rather than a server one. Nothing in it justifies widening the sweep.
 [`findings-span20.md`](findings-span20.md).
+**The vertical scale sweep is done (21 Oct) and the campaign's most repeated claim survives a
+direct test**: app CPU is the constraint, and more of it is the relief. Case 13 at 4 vCPU went from
+467 failures to **zero** and from a p95 of 56.7 s to **434 ms**, with CPU at 54% rather than 99% —
+the same bed, the same load, only the instance type changed. The constraint has moved most of the
+way to the database (RDS 33% → 41%), so capacity planning past 4 vCPU should expect to size that
+next. [`findings-vertical-scale.md`](findings-vertical-scale.md).
 Run-by-run state is in **[The sequence](#the-sequence)**; results are in
 [`run-log.md`](run-log.md) and the `findings-*.md` files. `pilot-day-180` was **reloaded on
 14 Oct** — organisations 10–19 torn down and restored with the co-tenants left in place, removing
@@ -1163,6 +1169,8 @@ is binding; the calendar is not.
 | 16b | B | **13** — clustered, co-tenants syncing, 1 h | **done 2026-10-15.** Case 12 plus `CO_TENANTS=on`, **9.7 in flight**, three times production's peak. **The first run to break** — 1.22% failed, almost all clients giving up at 60 s. **Asking 47% more removed 38% of the throughput**, which resolves case 12's ceiling question: **12.85 Mrec/h is a saturated server, not a maximum**. [`findings-case13.md`](findings-case13.md) |
 | 17 | C | **8** — growth, 2 h each at day 60, 120 and 365 | **done 2026-10-16 — no knee at six times the history.** 94 syncs at each point, **0 failed** throughout. **Records per sync tracks dataset depth one-for-one** and **per-record server cost falls then flattens**, 0.386 → 0.347 → 0.326 ms. **What grows is the device's wait**: a median sync goes 21.4 s → 122.5 s, linear in depth. The server is not the constraint anywhere on this curve. [`findings-case8.md`](findings-case8.md) |
 | 18 | A′ | Reload `pilot-day-180-span20`, split with `--variant span20`, re-run **3**, **4**, **5** | **done 2026-10-19 — the span scales the work and barely touches the cost of it.** All three runs on one load with no reset between them, **zero failures in 13,609 requests**. **Records per sync track the catchment three times independently** — 2.33×, 2.33×, 2.44× against a 2.38× ratio — while **field workers, whom the span does not touch, hold at 1.00×** and serve as the control. Supervisors cost **about +5% more per record**, and the control says that figure carries 1–2 points of run-to-run noise. A median supervisor sync goes **3.0 → 7.1 minutes**, 94% of it the modelled client pause. **Cases 4 and 5 look like nothing happened until split by role**, and their p95 *falls* 182 s → 80 s purely because supervisors drop from a tenth of the cohort to a twentieth — composition, not speed. No knee, and nothing that justifies widening the sweep. [`findings-span20.md`](findings-span20.md) |
+
+| 19 | — | **Vertical scale sweep** — case 13 at 2 vCPU and 4 vCPU | **done 2026-10-21 — more vCPU is the relief, and it is now measured rather than inferred.** The run that broke at `m6g.large` is uneventful at `m6g.xlarge`: **467 failures → 0**, p95 **56,714 ms → 434 ms**, under-800 ms **5.15% → 99.6%**, app CPU **99% → 54%**. Only the instance type changed; heap stayed pinned at 5120m and the pool at 100. **The constraint moved toward the database** — RDS 33% → 41%, the gap between tiers narrowing from ~65 points to ~13 — which makes 8 vCPU the interesting next point and the 4 vCPU injector a thing to watch. [`findings-vertical-scale.md`](findings-vertical-scale.md) |
 
 #### Standing task: back up New Relic weekly
 

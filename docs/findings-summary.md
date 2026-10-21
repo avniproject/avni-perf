@@ -24,6 +24,22 @@ At 99% application CPU the database sits at **a fifth of its capacity**. The wri
 bind either ([12c](findings-case9-12c.md)); push costs the database about ten percentage points of
 CPU and nothing else. **More vCPU is the relief; a bigger database is not.**
 
+**That is now tested rather than inferred** ([vertical scale sweep](findings-vertical-scale.md),
+21 Oct). Case 13 — the only run that ever broke — re-run on 4 vCPU instead of 2, nothing else
+changed:
+
+| | 2 vCPU | 4 vCPU |
+|---|---|---|
+| failures | 467 (0.91%) | **0** |
+| response p95 | 56,714 ms | **434 ms** |
+| under 800 ms | 5.15% | **99.6%** |
+| app CPU | 94–99% | **49–55%** |
+| RDS CPU | 32–38% | 38–42% |
+
+**The constraint moved toward the database**: the gap between the tiers fell from ~65 points to
+~13, so 8 vCPU may be where the database finally binds — which four earlier runs could not make
+happen.
+
 The knee sits between **57 and 72 requests per second** of demand. 100 devices arriving over 75
 seconds is workable; over 60 seconds is not.
 
@@ -165,6 +181,12 @@ case that was repeated differed by **5% in throughput and 23% in p95**.
 **8. Extend D7.** The storage constants rest on **one handset, four syncs, both engines in low
 power mode** — and §3 makes them the largest user-facing finding in the set, since they decide
 every published duration by a factor of three. More devices, not in low power mode, both engines.
+
+**9. The media-heavy hour, sized rather than run.** 1,500 workers over an hour, push on, **8
+images per encounter**, co-tenants live — **~90 rps and ~10,300 CPU seconds, so 4 vCPU floor and 8
+to sit below the knee**. The arithmetic, its inputs and what would make it wrong are in
+[`scenario-tanuh-media-hour.md`](scenario-tanuh-media-hour.md), with four predictions to score it
+against when it runs.
 
 ### Considered and not recommended
 
