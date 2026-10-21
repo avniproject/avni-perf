@@ -406,6 +406,17 @@ public class AvniSyncSimulation extends Simulation {
     private static final boolean encountersAreProgramEncounters =
         "program".equalsIgnoreCase(System.getProperty("PUSH_ENCOUNTER_MODEL", "general"));
 
+    /**
+     * Which spread of the customer's twenty a day to draw from: `v2` (default) or `v1`.
+     *
+     * `v2` is 10 / 20 / 30 / 45, mean 20 — the customer's heavy day is under thirty. `v1` is the
+     * 8 / 20 / 45 / 150, mean 24 that every push run before 21 Oct 2026 used, kept so those runs can
+     * be reproduced like for like. Only applies with `PUSH_PROFILE=customer`. See
+     * `PushProfiles.customerEncounters`.
+     */
+    private static final String customerPushDraw =
+        System.getProperty("CUSTOMER_PUSH_DRAW", PushProfiles.DEFAULT_CUSTOMER_DRAW);
+
     /*
      * Records queued per sync, per entity. The tables and the rules that pick between them live in
      * PushProfiles, which - unlike this class - can be loaded and checked without running Gatling.
@@ -414,7 +425,14 @@ public class AvniSyncSimulation extends Simulation {
      * probability:p50:p95:max:mean or probability:min:p50:p95:max:mean.
      */
     private static final Map<String, PushVolume> pushVolumes =
-        PushProfiles.forProfile(customerProfile, encountersAreProgramEncounters);
+        PushProfiles.forProfile(customerProfile, encountersAreProgramEncounters, customerPushDraw);
+
+    /** e.g. `CUSTOMER_PUSH_DRAW=v2 (min 10, p50 20, p95 30, max 45, mean 20)`, for the banner. */
+    private static String describeCustomerDraw() {
+        PushVolume v = pushVolumes.get(encountersAreProgramEncounters ? "ProgramEncounter" : "Encounter");
+        return String.format("CUSTOMER_PUSH_DRAW=%s (min %d, p50 %d, p95 %d, max %d, mean %.0f)",
+            customerPushDraw, v.min, v.p50, v.p95, v.max, v.mean);
+    }
 
     private static PushVolume volumeFor(String entityName, String property) {
         return PushVolume.parse(entityName, System.getProperty(property), pushVolumes.get(entityName));
@@ -1035,8 +1053,9 @@ public class AvniSyncSimulation extends Simulation {
                     .filter(v -> v.probability > 0).mapToInt(v -> v.p95).sum()));
             if (customerProfile) {
                 out.println(String.format(
-                    "  The customer's projection: 20 encounters per worker per day, as the median, "
+                    "  The customer's projection: 20 encounters per worker per day, drawn as %s, "
                     + "on %s. %s",
+                    describeCustomerDraw(),
                     encountersAreProgramEncounters
                         ? "program_encounter (the designed shape)"
                         : "encounter (the shape their current bundle exports)",
@@ -1356,6 +1375,9 @@ public class AvniSyncSimulation extends Simulation {
         push.put("enabled", pushEnabled);
         if (pushEnabled) {
             push.put("volumeProfile", customerProfile ? "customer" : "production");
+            if (customerProfile) {
+                push.put("customerDraw", customerPushDraw);
+            }
             push.put("encounterModel", encountersAreProgramEncounters ? "program" : "general");
             push.put("recordsPerSync", round(customerWorkload.recordsPerSync()));
             Map<String, Object> volumes = new LinkedHashMap<>();

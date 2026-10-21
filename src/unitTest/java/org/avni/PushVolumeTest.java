@@ -32,12 +32,50 @@ class PushVolumeTest {
             assertTrue(e.getValue().warnings.isEmpty(),
                 () -> "production profile " + e.getKey() + " warned: " + e.getValue().warnings);
         }
-        for (boolean programModel : new boolean[]{true, false}) {
-            for (Map.Entry<String, PushVolume> e : PushProfiles.customer(programModel).entrySet()) {
-                assertTrue(e.getValue().warnings.isEmpty(),
-                    () -> "customer profile " + e.getKey() + " warned: " + e.getValue().warnings);
+        for (String draw : new String[]{"v1", "v2"}) {
+            for (boolean programModel : new boolean[]{true, false}) {
+                for (Map.Entry<String, PushVolume> e : PushProfiles.customer(programModel, draw).entrySet()) {
+                    assertTrue(e.getValue().warnings.isEmpty(),
+                        () -> "customer profile " + draw + " " + e.getKey() + " warned: " + e.getValue().warnings);
+                }
             }
         }
+    }
+
+    @Test
+    @DisplayName("v2 is the default and the customer's spread; v1 reproduces the runs before it")
+    void customerDrawsAreWhatTheySayTheyAre() {
+        PushVolume v2 = PushProfiles.customerEncounters("v2");
+        assertEquals(10, v2.min); assertEquals(20, v2.p50); assertEquals(30, v2.p95); assertEquals(45, v2.max);
+        assertEquals(20.0, sampledMean(v2), 0.1, "v2 must average twenty a day, not just median it");
+
+        PushVolume v1 = PushProfiles.customerEncounters("v1");
+        assertEquals(8, v1.min); assertEquals(20, v1.p50); assertEquals(45, v1.p95); assertEquals(150, v1.max);
+        assertEquals(24.0, sampledMean(v1), 0.3);
+
+        // The default must be v2, and the one-argument overload must mean the default.
+        assertEquals("v2", PushProfiles.DEFAULT_CUSTOMER_DRAW);
+        assertEquals(45, PushProfiles.customer(false).get("Encounter").max);
+        assertEquals(45, PushProfiles.customerEncounters(null).max);
+        assertEquals(150, PushProfiles.customerEncounters(" V1 ").max, "trimmed, case-insensitive");
+    }
+
+    @Test
+    @DisplayName("an unknown draw is refused rather than quietly running the default")
+    void unknownDrawThrows() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+            () -> PushProfiles.customerEncounters("v3"));
+        assertTrue(e.getMessage().contains("v1 or v2"), e.getMessage());
+        assertTrue(e.getMessage().contains("'v3'"), e.getMessage());
+    }
+
+    private static double sampledMean(PushVolume v) {
+        int n = 200_000;
+        long sum = 0;
+        for (int i = 0; i < n; i++) {
+            sum += v.quantile((i + 0.5) / n);
+        }
+        return sum / (double) n;
     }
 
     @Test

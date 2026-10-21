@@ -71,10 +71,17 @@ public final class PushProfiles {
     /**
      * The deployment this exercise exists to size.
      *
-     * The level is the customer's: twenty encounters per field worker per day, read as the median.
-     * **The spread is a modelling choice** - p95 at 45, floor at 8 - because one number is not a
-     * distribution. Registrations and enrolments have no customer figure at all and borrow
-     * production's shape.
+     * The level is the customer's: twenty encounters per field worker per day, as both median and
+     * mean. **The spread is the customer's too, as of 21 Oct 2026**: a heavy day is unlikely to pass
+     * thirty, so p95 sits at 30 and the ceiling at 45 - deliberately above thirty so a busy day is
+     * not undercounted. The floor of 10 is what keeps the mean at twenty; at 8 the bottom half
+     * drags it to 19.5 and a 45 ceiling is too short to lift it back.
+     *
+     * **Replaces 8 / 20 / 45 / 150, mean 24**, whose spread was a modelling choice with no customer
+     * basis. Its tail put 150 encounters - 1,200 files at 8 a visit, eighty minutes of upload - on
+     * a single sync, and was why the media hour took 2 h 20 m to drain. See findings-media-hour.md.
+     *
+     * Registrations and enrolments have no customer figure at all and borrow production's shape.
      *
      * `programModel` decides which table the twenty a day land on. **Their programme design is
      * work in progress**, so the bundle exported today has no live programs while the description
@@ -84,7 +91,43 @@ public final class PushProfiles {
      * `program_enrolment` parent, or `encounter` hanging straight off the subject.
      */
     public static Map<String, PushVolume> customer(boolean programModel) {
-        PushVolume theTwentyADay = new PushVolume("encounters", 1.0, 8, 20, 45, 150, 24.0);
+        return customer(programModel, DEFAULT_CUSTOMER_DRAW);
+    }
+
+    /** The draw a run uses unless `CUSTOMER_PUSH_DRAW` says otherwise. */
+    public static final String DEFAULT_CUSTOMER_DRAW = "v2";
+
+    /**
+     * The customer's encounters per sync, by name, so a run can choose between them.
+     *
+     * **`v2`, the default since 21 Oct 2026**: 10 / 20 / 30 / 45, mean 20 — the customer's own
+     * spread, with the ceiling set above their heavy day so it is not undercounted.
+     *
+     * **`v1`**: 8 / 20 / 45 / 150, mean 24 — the draw every push run before 21 Oct used, whose
+     * spread had no customer basis. **Kept so those nine runs can be reproduced like for like**:
+     * case 11 run 1, the four case 11 pairs, the 15-minute burst, the case 10 soak, 9-12c and the
+     * media hour. Comparing a new push run against any of them on `v2` mixes the change under test
+     * with a fifth less push work.
+     *
+     * An unknown name throws. Falling back to a default would let a typo run the wrong workload
+     * and record it as the right one.
+     */
+    public static PushVolume customerEncounters(String draw) {
+        String d = draw == null ? DEFAULT_CUSTOMER_DRAW : draw.trim().toLowerCase();
+        switch (d) {
+            case "v2":
+                return new PushVolume("encounters", 1.0, 10, 20, 30, 45, 20.0);
+            case "v1":
+                return new PushVolume("encounters", 1.0, 8, 20, 45, 150, 24.0);
+            default:
+                throw new IllegalArgumentException("CUSTOMER_PUSH_DRAW must be v1 or v2, got '"
+                    + draw + "'. v2 (10/20/30/45, mean 20) is the default; v1 (8/20/45/150, mean"
+                    + " 24) reproduces push runs from before 21 Oct 2026.");
+        }
+    }
+
+    public static Map<String, PushVolume> customer(boolean programModel, String draw) {
+        PushVolume theTwentyADay = customerEncounters(draw);
         Map<String, PushVolume> m = new LinkedHashMap<>();
         Map<String, PushVolume> shape = production();
 
@@ -96,7 +139,12 @@ public final class PushProfiles {
     }
 
     public static Map<String, PushVolume> forProfile(boolean customerProfile, boolean programModel) {
-        return customerProfile ? customer(programModel) : production();
+        return forProfile(customerProfile, programModel, DEFAULT_CUSTOMER_DRAW);
+    }
+
+    public static Map<String, PushVolume> forProfile(boolean customerProfile, boolean programModel,
+                                                     String customerDraw) {
+        return customerProfile ? customer(programModel, customerDraw) : production();
     }
 
     /** The same distribution under a different entity's name. */

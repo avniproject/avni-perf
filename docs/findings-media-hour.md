@@ -94,6 +94,19 @@ through an hour of serialized upload, and the run's wall time for any media run 
 
 63 customer syncs exceeded 30 minutes, 16 exceeded an hour.
 
+> **The draw that produced this tail has since been replaced, 21 Oct 2026.** 8 / 20 / 45 / 150 was
+> a modelling choice; the customer's own figure is that a heavy day is unlikely to pass thirty
+> encounters. `PushProfiles.customer()` now draws **10 / 20 / 30 / 45, mean 20** — a 45 ceiling,
+> deliberately above thirty so a busy day is not undercounted. At 8 files a visit that caps a sync
+> at 360 files and **24 minutes of upload**, against 1,200 and 80 here. **A rerun would drain in
+> roughly the injection window plus 24 minutes, and carry about a fifth less media load** — mean
+> 20 encounters against this run's 24.6. The tail above is a property of the old draw, not of the
+> workload.
+>
+> **To reproduce this run like for like, pass `-DCUSTOMER_PUSH_DRAW=v1`**, which restores the old
+> draw. `v2` is the default. Every push run records which it used as `push.customerDraw` in
+> `run-metadata.json`.
+
 ## Scoring the scenario document
 
 | predicted | measured | verdict |
