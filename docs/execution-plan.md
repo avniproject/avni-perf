@@ -1169,8 +1169,67 @@ is binding; the calendar is not.
 | 16b | B | **13** — clustered, co-tenants syncing, 1 h | **done 2026-10-15.** Case 12 plus `CO_TENANTS=on`, **9.7 in flight**, three times production's peak. **The first run to break** — 1.22% failed, almost all clients giving up at 60 s. **Asking 47% more removed 38% of the throughput**, which resolves case 12's ceiling question: **12.85 Mrec/h is a saturated server, not a maximum**. [`findings-case13.md`](findings-case13.md) |
 | 17 | C | **8** — growth, 2 h each at day 60, 120 and 365 | **done 2026-10-16 — no knee at six times the history.** 94 syncs at each point, **0 failed** throughout. **Records per sync tracks dataset depth one-for-one** and **per-record server cost falls then flattens**, 0.386 → 0.347 → 0.326 ms. **What grows is the device's wait**: a median sync goes 21.4 s → 122.5 s, linear in depth. The server is not the constraint anywhere on this curve. [`findings-case8.md`](findings-case8.md) |
 | 18 | A′ | Reload `pilot-day-180-span20`, split with `--variant span20`, re-run **3**, **4**, **5** | **done 2026-10-19 — the span scales the work and barely touches the cost of it.** All three runs on one load with no reset between them, **zero failures in 13,609 requests**. **Records per sync track the catchment three times independently** — 2.33×, 2.33×, 2.44× against a 2.38× ratio — while **field workers, whom the span does not touch, hold at 1.00×** and serve as the control. Supervisors cost **about +5% more per record**, and the control says that figure carries 1–2 points of run-to-run noise. A median supervisor sync goes **3.0 → 7.1 minutes**, 94% of it the modelled client pause. **Cases 4 and 5 look like nothing happened until split by role**, and their p95 *falls* 182 s → 80 s purely because supervisors drop from a tenth of the cohort to a twentieth — composition, not speed. No knee, and nothing that justifies widening the sweep. [`findings-span20.md`](findings-span20.md) |
-
 | 19 | — | **Vertical scale sweep** — case 13 at 2 vCPU and 4 vCPU | **done 2026-10-21 — more vCPU is the relief, and it is now measured rather than inferred.** The run that broke at `m6g.large` is uneventful at `m6g.xlarge`: **467 failures → 0**, p95 **56,714 ms → 434 ms**, under-800 ms **5.15% → 99.6%**, app CPU **99% → 54%**. Only the instance type changed; heap stayed pinned at 5120m and the pool at 100. **The constraint moved toward the database** — RDS 33% → 41%, the gap between tiers narrowing from ~65 points to ~13 — which makes 8 vCPU the interesting next point and the 4 vCPU injector a thing to watch. [`findings-vertical-scale.md`](findings-vertical-scale.md) |
+| 20 | — | **`DummyInterceptor` removed — case 13 at 2 vCPU** | **pending.** The temp-fix jar against the run that broke. Control is row 19's `m6g.large` run, already on the same build. **Binary outcome**: does removing the interceptor take case 13 off the cliff. See [*Rows 20 and 21*](#rows-20-and-21-removing-dummyinterceptor) |
+| 21 | — | **`DummyInterceptor` removed — case 12 at 2 vCPU** | **pending.** The clean delta. Case 12 passes at 81% CPU, so both sides complete the same work and the CPU-per-sync difference is the saving rather than saturation waste. Control is row 16's case 12 run |
+
+#### Rows 20 and 21: removing `DummyInterceptor`
+
+**What is being tested.** `DummyInterceptor` runs a `@Transactional` query against `gender` after
+every web request. It is **12.6% of request time** on a healthy server, it never has anything to
+flush on a UTC JVM, and it could not flush a dirty entity if it had one, because Hibernate's
+auto-flush only fires when the query touches the dirty entity's table. The evidence is in
+[`dummy-interceptor.md`](dummy-interceptor.md); the card is avniproject/avni-server#1097. These
+two runs price its removal.
+
+**The jars, and why the control needs no new run**
+
+| | file | build |
+|---|---|---|
+| control | `avni-server-17.3.0-SNAPSHOT.jar` — the jar every run so far has used | `origin/17.3` @ `2c0215679` |
+| test | `avni-server-17.3-2c0215679-NO-INTERCEPTOR.jar` | the same commit, with the registration removed from `SyncConfiguration` and `ApiConfiguration` |
+
+**The deployed jar was identified, not assumed.** No run records a server commit — all of them say
+`17.3.0-SNAPSHOT` — so `origin/17.3` was rebuilt and compared class by class against the jar in use:
+every class identical. A first attempt built from a local checkout 17 commits behind, which would
+have folded ETL-export and form-validation changes into the comparison. **The two jars differ in
+nothing but the interceptor's registration**, confirmed in the bytecode.
+
+So row 19's `m6g.large` case 13 and row 16's case 12 are valid controls as they stand. Re-running
+the control on the same day is still worth doing if the environment has been touched since.
+
+**Run each exactly as its control ran** — same instance size, same dataset (`pilot-day-180`), same
+feeder and rate, same co-tenant load and seed, New Relic attached, **no profiler**. Only the jar
+changes. Pass `-DSERVER_BUILD=2c0215679-no-interceptor`, or the run log cannot tell the two builds
+apart. Afterwards run `make cpu_per_sync ACCOUNT=8563864 RUN=case13` before `make run_log`, or the
+CPU columns show a dash.
+
+**Predictions, written down before the runs:**
+
+| | control | test, if the full 12.6% comes off |
+|---|---|---|
+| case 13: CPU s per sync | 4.19 | **~3.7** |
+| case 13: total CPU s | 8,403 | **~7,350** |
+| case 13: outcome | BUILD FAILED, 467 failures | **the question** |
+| case 12: CPU s per sync | 3.66 | **~3.2** |
+
+Expect less than the full 12.6%. It is a share of request time measured under sync-only load, not a
+flat per-request constant, and case 13's requests are large — 28 per sync against case 11's 88 — so
+a fixed per-request cost is a smaller fraction of each. **Measure in CPU seconds, not wall clock**:
+under load wall clock mixes the saving with queueing relief and overstates it.
+
+**Why these two and not a push-heavy case.** The interceptor is a fixed cost per request, so a
+media-heavy run with many cheap requests would show a larger effect. But a `PUSH=on` run writes
+tens of thousands of rows newer than anything else in `pilot-day-180`, which lands them inside every
+`realistic` sync window and forces a reload — exactly what happened after case 11 run 1. Cases 12
+and 13 are `PUSH=off` and leave the dataset untouched. **If case 13 comes back ambiguous, spend the
+reload on a case 11 pair then.**
+
+**Removed, not path-scoped.** Scoping it to the sync paths takes it off `/ping` and almost nothing
+else under a sync workload, which would read as a null result for the wrong reason.
+
+**Housekeeping.** The temp fix lives in a git worktree at `/tmp/avni-17.3-tip`, uncommitted and
+marked `DO NOT MERGE`. Remove it with `git worktree remove /tmp/avni-17.3-tip` once both runs are in.
 
 #### Standing task: back up New Relic weekly
 
