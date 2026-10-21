@@ -323,8 +323,10 @@ all interceptor time**. The 5.57% in [`findings-case9-12a.md`](findings-case9-12
 saturated trace where queueing diluted a fixed cost's share; 12.6% is the healthy-server figure.
 97% of it is the `@Transactional` wrapper borrowing a connection, not the `gender` query it runs.
 
-> **No card.** It is not among avniproject/avni-server#1060's seven suspects, which were drawn from
-> reading the code before any measurement existed.
+> **Tracked as avniproject/avni-server#1097**, raised 21 Oct 2026. It was not among
+> avniproject/avni-server#1060's seven suspects, which were drawn from reading the code before any
+> measurement existed. The timezone defect found alongside it is
+> avniproject/avni-server#1098.
 
 **It has its own document: [`dummy-interceptor.md`](dummy-interceptor.md)** — five measurements,
 the 2019 archaeology, and a timezone bug found along the way. In short:

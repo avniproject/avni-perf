@@ -4,6 +4,9 @@
 to characterise. Split out of [`areas-to-investigate.md`](areas-to-investigate.md) item 3 on 20
 October 2026 because the evidence outgrew the summary.
 
+> **Raised 21 Oct 2026 as avniproject/avni-server#1097**, with the timezone defect of measurement 2
+> as avniproject/avni-server#1098. This document is the evidence behind both.
+
 ```java
 /**
  * Hack. Ensure a transactional data query is made at the end of a web request so that all dirty
@@ -122,7 +125,8 @@ Where it fires, it **writes**: Hibernate statistics showed `entityUpdates` **del
 POST** — one redundant UPDATE per write, of a row whose values never changed. In UTC that
 disappears entirely.
 
-**Fix the converter regardless**: `new DateTime(data.getTime(), DateTimeZone.UTC)`. One line. Not a
+**Fix the converter regardless** — avniproject/avni-server#1098:
+`new DateTime(data.getTime(), DateTimeZone.UTC)`. One line. Not a
 production performance fix — production is already UTC — but it removes a latent correctness hazard
 and stops developer machines in IST behaving differently from servers. **It also explains the 2019
 origin**: a developer in IST would see entities permanently dirty and reasonably conclude flushing
