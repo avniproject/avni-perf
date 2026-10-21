@@ -9,6 +9,9 @@ run_perf:
 run_log:
 	./tools/update-run-log.sh $(if $(BUCKET),--bucket $(BUCKET))
 
+case_index: ## Refresh the run tables in docs/case-index.md from the run log (run_log does this itself)
+	python3 tools/update-case-index.py
+
 run_perf_local:
 	./gradlew gatlingRun -DBASE_URL=http://localhost:8021
 

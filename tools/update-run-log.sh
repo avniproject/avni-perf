@@ -730,3 +730,7 @@ detail_path.write_text("\n".join(D))
 print(f"wrote {out}: {len(rows)} run(s), {len(problems)} caveat(s)")
 print(f"wrote {detail_path}: {len(details)} run(s)")
 PY
+
+# The case index reads what was just written, so it is refreshed in the same pass: a run that
+# lands in the run log lands in its case's table too, flagged for its variation to be written.
+python3 "$(dirname "$0")/update-case-index.py" --docs "$(dirname "$OUT")"

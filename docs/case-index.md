@@ -7,9 +7,12 @@ went in is [`execution-plan.md`](execution-plan.md); the campaign's conclusions 
 [`findings-summary.md`](findings-summary.md).
 
 **The run tables are generated from [`run-log.md`](run-log.md) and
-[`run-log-detail.md`](run-log-detail.md)**, so ids, datasets, sync counts, failure rates and p95 are
-what the runs recorded; CPU per sync is from [`cpu-per-sync.json`](cpu-per-sync.json). The
-*variation* column and the summaries are written by hand. Times are UTC, as the run ids are. A run
+[`run-log-detail.md`](run-log-detail.md)** by `tools/update-case-index.py`, which
+`update-run-log.sh` runs after every refresh — so ids, datasets, sync counts, failure rates and
+p95 are what the runs recorded, CPU per sync is from [`cpu-per-sync.json`](cpu-per-sync.json),
+and a new run appears in its case's table on the same pass that adds it to the run log, with its
+*variation* cell flagged until someone writes it. The *variation* column and the summaries are
+written by hand and never touched by the tool. Times are UTC, as the run ids are. A run
 marked **not a measurement** is kept for the record and excluded from every comparison.
 
 > **CPU s/sync is whole-server CPU over the run's syncs** — an attribution, not a per-sync
@@ -32,7 +35,7 @@ marked **not a measurement** is kept for the record and excluded from every comp
 | [**9**](#case-9) | Stress ramp | 4 | [`12a`](findings-case9-12a.md), [`12b`](findings-case9-12b.md), [`12c`](findings-case9-12c.md) |
 | [**10**](#case-10) | Soak | 1 | [`findings-case10.md`](findings-case10.md) |
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
-| [**12**](#case-12) | Clustered — co-tenant data | 1 + 1 pending | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
+| [**12**](#case-12) | Clustered — co-tenant data | 1 + 1 running | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 4 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
 | [**—**](#clustered-co-tenant-load-media-push) | Clustered — co-tenant load, media push | 1 + 1 pending | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
@@ -56,7 +59,7 @@ marked **not a measurement** is kept for the record and excluded from every comp
 | [`2026-10-05 12:02`](run-log-detail.md#2026-10-05t12-02-47z-case1-burst15-warm-d9eac3e) | 15 s, warm | tanuh-small-v2 | 100 | 0.0% | 6741 | 2.74 |
 | [`2026-10-06 04:40`](run-log-detail.md#2026-10-06t04-40-26z-case1-burst900-e7a130d) | 900 s window | tanuh-small-v2 | 100 | 0.0% | 200 | 0.93 |
 | [`2026-10-06 04:55`](run-log-detail.md#2026-10-06t04-55-47z-case1-burst75-e7a130d) | 75 s window | tanuh-small-v2 | — | — | — | **not a measurement** — the database credential had rotated and the app server held the old one, so every new pooled connection failed with HTTP 500 |
-| [`2026-10-06 05:16`](run-log-detail.md#2026-10-06t05-16-44z-case1-burst75-e7a130d) | 75 s window, re-run | tanuh-small-v2 | 100 | 0.0% | 918 | 1.9 |
+| [`2026-10-06 05:16`](run-log-detail.md#2026-10-06t05-16-44z-case1-burst75-e7a130d) | 75 s window, re-run | tanuh-small-v2 | 100 | 0.0% | 918 | 1.90 |
 
 **Findings:** [`findings-case1.md`](findings-case1.md)
 
@@ -109,7 +112,7 @@ Field workers and supervisors together, one state, 4 h.
 
 | run (UTC) | variation | dataset | syncs | failed | p95 ms | CPU s/sync |
 |---|---|---|---|---|---|---|
-| [`2026-10-07 08:38`](run-log-detail.md#2026-10-07t08-38-32z-case4-eb5e4b3) | first attempt | pilot-day-180 | — | — | — | **not a measurement** — the feeder listed all 501 field workers before the first supervisor at row 502, and `circular()` reached only 187 rows in four hours, so this sampled … |
+| [`2026-10-07 08:38`](run-log-detail.md#2026-10-07t08-38-32z-case4-eb5e4b3) | first attempt | pilot-day-180 | — | — | — | **not a measurement** — the feeder listed all 501 field workers before the first supervisor at row 502, and `circular()` reached only 187 rows in four hours, so this sampled one role and re-measured case … |
 | [`2026-10-08 06:17`](run-log-detail.md#2026-10-08t06-17-46z-case4-d484f18) | span 8.4, interleaved feeder | pilot-day-180 | 187 | 0.0% | 322 | 4.23 |
 | [`2026-10-19 07:14`](run-log-detail.md#2026-10-19t07-14-41z-case4-span20-c2a0e76) | **span 20** | pilot-day-180-span20 | 175 | 0.0% | 336 | 4.01 |
 
@@ -229,7 +232,7 @@ Case 6 compressed into one hour: ~6.6 devices in flight against 0.55.
 | run (UTC) | variation | dataset | syncs | failed | p95 ms | CPU s/sync |
 |---|---|---|---|---|---|---|
 | [`2026-10-15 04:01`](run-log-detail.md#2026-10-15t04-01-52z-case12-c2a0e76) | case 6 compressed to 1 h | pilot-day-180 | 1682 | 0.0% | 1709 | 3.66 |
-| *row 22 — planned* | 2 vCPU, `DummyInterceptor` removed; a lower bound if run on row 20's residue | | | | | |
+| *row 22 — running* | 2 vCPU, `DummyInterceptor` removed; a lower bound if run on row 20's residue | | | | | |
 
 **Findings:** [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md)
 
@@ -279,6 +282,3 @@ threefold. [`findings-d7.md`](findings-d7.md)
 * [`dummy-interceptor.md`](dummy-interceptor.md) — the largest of them, and rows 21–22's evidence
 * [`what-a-simulated-sync-does.md`](what-a-simulated-sync-does.md) — what one virtual user does
 * [`newrelic.md`](newrelic.md) — what the server-side instrumentation holds and how to read it back
-
-**Keeping this current:** a new run appears in the run log automatically but not here. Add it to
-its case's table, with what it varied, when its findings are written.
