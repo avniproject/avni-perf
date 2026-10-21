@@ -80,6 +80,17 @@ runs  = os.environ['RUNS'].split()
 work  = pathlib.Path(os.environ['WORK'])
 bucket, prefix, out = os.environ['BUCKET'], os.environ['PREFIX'], os.environ['OUT']
 
+# **Application CPU, from `docs/cpu-per-sync.json`, written by `tools/cpu-per-sync.py`.**
+# Wall clock conflates work with queueing; CPU seconds measure the work and are additive, which
+# is what capacity planning needs. Cached rather than queried so the log can be regenerated
+# without New Relic access or a key -- a run missing from the cache simply shows a dash.
+try:
+    with open('docs/cpu-per-sync.json') as fh:
+        CPU = json.load(fh)
+except (OSError, ValueError):
+    CPU = {}
+
+
 def jload(p):
     try: return json.loads(p.read_text())
     except Exception: return None
@@ -465,6 +476,15 @@ L.append("Artefacts are **not** copied into the repo. Each run directory holds G
          "and `sync-durations.csv`, one row per completed sync. "
          "Those are what make a number interpretable once the environment that produced it has "
          "been destroyed.\n")
+L.append("**`app CPU s` is application CPU over the run's window, from New Relic's "
+         "`apm.service.cpu.usertime`, which is absolute seconds rather than a percentage.** It is "
+         "cached in `docs/cpu-per-sync.json` by `tools/cpu-per-sync.py` so this log can be "
+         "regenerated without New Relic access; a run missing from the cache shows a dash. "
+         "**`CPU s/sync` is an attribution, not a measurement** -- whole-server CPU divided by the "
+         "run's syncs, so it carries the health checks and anything else on the box, and it spans "
+         "the ramp and tail where CPU is low and syncs still count. Read it for capacity, where "
+         "CPU seconds are additive and wall clock is not; the per-run detail splits it by cohort "
+         "and by full against incremental.\n")
 L.append("Findings drawn from these runs are written up separately, by hand, in "
          "`findings-case1.md` and its siblings — this file is the index, not the analysis.\n")
 # Two concurrency columns because they answer different questions. Requests in flight is the
@@ -472,8 +492,17 @@ L.append("Findings drawn from these runs are written up separately, by hand, in 
 # is the scenario's narrative -- how much of the cohort is mid-sync -- and needs the archived
 # per-sync durations, so it is blank for runs before 5 Oct 2026 rather than guessed at.
 L.append("| run | date (IST) | scenario | profile | users | arrival window | ~requests in flight "
-         "| ~devices in flight | requests | failed | p95 ms | full sync p95 s | rps |")
-L.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+         "| ~devices in flight | requests | failed | p95 ms | full sync p95 s | rps | app CPU s "
+         "| CPU s/sync |")
+L.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+def cpu_cell(run_id, key):
+    entry = CPU.get(run_id)
+    if not entry or entry.get(key) is None:
+        return '—'
+    value = entry[key]
+    return f"{value:,.0f}" if key == 'cpuSeconds' else f"{value:.2f}"
+
+
 for x in [y for y in rows if not y.get('excluded')]:
     # The run id links to its detail section rather than to S3: the bucket is where the
     # artefacts are, and the detail file is where a reader can actually look something up.
@@ -481,7 +510,8 @@ for x in [y for y in rows if not y.get('excluded')]:
     L.append(f"| [`{x['run']}`]({DETAIL_NAME}#{anchor(x['run'])}) | {x['date']} | {x['label']} | "
              f"{x['profile']} | {x['users']} | {x['window']} | {x['inflight']} | "
              f"{x['indevices']} | {x['requests']} | {x['failed_pct']}% | {x['p95']} | "
-             f"{x['fullp95']} | {x['rps']} |")
+             f"{x['fullp95']} | {x['rps']} | {cpu_cell(x['run'], 'cpuSeconds')} "
+             f"| {cpu_cell(x['run'], 'cpuPerSync')} |")
 L.append("")
 # **The detail is a separate file, because the index has to stay readable.** One run contributes
 # a dozen rows of settings and environment, so at thirty runs this file would be four hundred
@@ -553,6 +583,24 @@ for r, link, meta, stats, sha7, corr in details:
                  f"{stats.get('p99_ms','—')} / {stats.get('max_ms','—')} |")
         D.append(f"| mean ms | {stats.get('mean_ms','—')} |")
         D.append(f"| mean throughput rps | {stats.get('rps','—')} |")
+        entry = CPU.get(x['run'])
+        if entry:
+            # Whole-server CPU over the run's window divided by its syncs: an attribution, not a
+            # per-sync measurement, and it carries whatever else ran on the box.
+            D.append(f"| app CPU seconds | {entry['cpuSeconds']:,.0f} |")
+            if entry.get('cpuPerSync') is not None:
+                D.append(f"| app CPU s per sync | {entry['cpuPerSync']:.2f} |")
+            if entry.get('cpuPerCustomerSync') is not None:
+                D.append(f"| app CPU s per **customer** sync | "
+                         f"{entry['cpuPerCustomerSync']:.2f} "
+                         f"({entry.get('coTenantSyncs', 0):,} co-tenant syncs excluded from the "
+                         f"denominator, their CPU included) |")
+            dist = entry.get('distribution') or {}
+            for label, key in (("incremental", "incremental"), ("full", "full")):
+                d = dist.get(key)
+                if d:
+                    D.append(f"| app CPU s per {label} sync p50 / p95 | "
+                             f"{d['p50']:.2f} / {d['p95']:.2f} (n={d['n']}) |")
     if meta:
         cs = (corr.get('actual') or {}).get('simulation.gitSha') if corr else None
         cd = (corr.get('actual') or {}).get('simulation.gitDirty') if corr else None
