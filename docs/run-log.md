@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-21 12:20 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-21 13:47 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -51,8 +51,8 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-19T05-06-40Z-case3-span20-c2a0e76`](run-log-detail.md#2026-10-19t05-06-40z-case3-span20-c2a0e76) | 2026-10-19 10:36 | case3 | steady | 25 | 120min @ 30/h | ~0.2 | ~3.3 | 5053 | 0.0% | 357 | — | 0.67 | 1,233 | 20.55 |
 | [`2026-10-19T07-14-41Z-case4-span20-c2a0e76`](run-log-detail.md#2026-10-19t07-14-41z-case4-span20-c2a0e76) | 2026-10-19 12:44 | case4 | steady | 526 | 240min @ 44/h | ~0.1 | ~0.9 | 3436 | 0.0% | 336 | 80.5 | 0.24 | 702 | 4.01 |
 | [`2026-10-19T11-15-25Z-case5-span20-c2a0e76`](run-log-detail.md#2026-10-19t11-15-25z-case5-span20-c2a0e76) | 2026-10-19 16:45 | case5 | steady | 1580 | 120min @ 132/h | ~0.2 | ~2.7 | 5120 | 0.0% | 348 | 80.9 | 0.68 | 998 | 3.79 |
-| [`2026-10-21T04-10-50Z-case13-m6g.large-c2a0e76`](run-log-detail.md#2026-10-21t04-10-50z-case13-m6glarge-c2a0e76) | 2026-10-21 09:40 | case13 | steady | 1682 | 60min @ 1682/h | ~398 | ~359 | 50848 | 0.91% | 56293 | 2082.5 | 11.94 | — | — |
-| [`2026-10-21T05-43-20Z-case13-m6g.xlarge-c2a0e76`](run-log-detail.md#2026-10-21t05-43-20z-case13-m6gxlarge-c2a0e76) | 2026-10-21 11:13 | case13 | steady | 1682 | 60min @ 1682/h | ~3.3 | ~38 | 57386 | 0.0% | 434 | 84.2 | 15.57 | — | — |
+| [`2026-10-21T04-10-50Z-case13-m6g.large-c2a0e76`](run-log-detail.md#2026-10-21t04-10-50z-case13-m6glarge-c2a0e76) | 2026-10-21 09:40 | case13 | steady | 1682 | 60min @ 1682/h | ~398 | ~359 | 50848 | 0.91% | 56293 | 2082.5 | 11.94 | 8,403 | 4.19 |
+| [`2026-10-21T05-43-20Z-case13-m6g.xlarge-c2a0e76`](run-log-detail.md#2026-10-21t05-43-20z-case13-m6gxlarge-c2a0e76) | 2026-10-21 11:13 | case13 | steady | 1682 | 60min @ 1682/h | ~3.3 | ~38 | 57386 | 0.0% | 434 | 84.2 | 15.57 | 7,743 | 3.13 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 

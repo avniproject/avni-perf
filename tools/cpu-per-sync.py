@@ -154,6 +154,74 @@ def syncs_from_run_log(run_id: str):
     return None
 
 
+# **App memory comes from New Relic and RDS from CloudWatch, because that is where each one
+# is.** The app host has no CloudWatch agent, so EC2 publishes CPU and nothing else; the JVM's
+# heap is only visible through the agent. RDS publishes both, plus the two numbers that say
+# whether its memory was actually under pressure -- FreeableMemory and SwapUsage. Reporting
+# "memory" without those is reporting a number nobody can act on.
+APP_MEMORY_TIMESLICES = {
+    "appHeapUsedMb": "Memory/Heap/Used",
+    "appHeapCommittedMb": "Memory/Heap/Committed",
+    "appHeapMaxMb": "Memory/Heap/Max",
+    "appPhysicalMemMb": "Memory/Physical",
+}
+
+
+def app_memory(key, account, region, app, start, until):
+    """Average and peak heap over the run window, in MB."""
+    out = {}
+    window = (f"SINCE '{start:%Y-%m-%d %H:%M:%S}+0000' "
+              f"UNTIL '{until:%Y-%m-%d %H:%M:%S}+0000'")
+    for field, timeslice in APP_MEMORY_TIMESLICES.items():
+        rows = nrql(key, account, region,
+                    f"SELECT average(newrelic.timeslice.value) AS avg, "
+                    f"max(newrelic.timeslice.value) AS max FROM Metric "
+                    f"WHERE appName='{app}' AND metricTimesliceName='{timeslice}' {window}")
+        if rows and rows[0].get("avg") is not None:
+            out[field] = round(rows[0]["avg"], 1)
+            if field == "appHeapUsedMb" and rows[0].get("max") is not None:
+                out["appHeapUsedMbMax"] = round(rows[0]["max"], 1)
+    return out
+
+
+def cloudwatch(namespace, metric, dim_name, dim_value, start, until, stat):
+    """One CloudWatch statistic over the window. Shelling out to the CLI rather than taking a
+    boto3 dependency, which is what the rest of this repository does."""
+    import subprocess
+    r = subprocess.run(
+        ["aws", "cloudwatch", "get-metric-statistics", "--namespace", namespace,
+         "--metric-name", metric, "--dimensions", f"Name={dim_name},Value={dim_value}",
+         "--start-time", f"{start:%Y-%m-%dT%H:%M:%SZ}", "--end-time", f"{until:%Y-%m-%dT%H:%M:%SZ}",
+         "--period", "300", "--statistics", stat,
+         "--query", f"Datapoints[].{stat}", "--output", "text"],
+        capture_output=True, text=True)
+    vals = [float(v) for v in r.stdout.split() if v not in ("", "None")]
+    if not vals:
+        return None
+    return max(vals) if stat == "Maximum" else sum(vals) / len(vals)
+
+
+def infrastructure(app_instance, db_instance, start, until):
+    """CPU and memory for both tiers. Absent metrics are omitted rather than reported as zero."""
+    out = {}
+    MB = 1024 * 1024
+    pairs = [
+        ("appCpuAvg", "AWS/EC2", "CPUUtilization", "InstanceId", app_instance, "Average", 1),
+        ("appCpuMax", "AWS/EC2", "CPUUtilization", "InstanceId", app_instance, "Maximum", 1),
+        ("rdsCpuAvg", "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", db_instance, "Average", 1),
+        ("rdsCpuMax", "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", db_instance, "Maximum", 1),
+        ("rdsFreeableMemMbMin", "AWS/RDS", "FreeableMemory", "DBInstanceIdentifier", db_instance, "Minimum", MB),
+        ("rdsSwapMbMax", "AWS/RDS", "SwapUsage", "DBInstanceIdentifier", db_instance, "Maximum", MB),
+    ]
+    for field, ns, metric, dname, dvalue, stat, divisor in pairs:
+        if not dvalue:
+            continue
+        v = cloudwatch(ns, metric, dname, dvalue, start, until, stat)
+        if v is not None:
+            out[field] = round(v / divisor, 1)
+    return out
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("--account", type=int)
@@ -163,6 +231,12 @@ def main(argv=None) -> int:
     p.add_argument("--artefacts", help="directory of downloaded run artefacts, for the cohort "
                                        "split (each run a subdirectory with sync-durations.csv)")
     p.add_argument("--tail-min", type=int, default=20)
+    p.add_argument("--app-instance", default=os.environ.get("AVNI_APP_INSTANCE", "i-044c88e15e8ea9e0f"),
+                   help="EC2 instance id for app CPU; AVNI_APP_INSTANCE overrides")
+    p.add_argument("--db-instance", default=os.environ.get("AVNI_DB_INSTANCE", "avni-loadtest"),
+                   help="RDS identifier for database CPU and memory")
+    p.add_argument("--no-infra", action="store_true",
+                   help="skip the CloudWatch and heap lookups (New Relic CPU only)")
     p.add_argument("--table", action="store_true", help="print the cache and exit")
     args = p.parse_args(argv)
 
@@ -204,8 +278,15 @@ def main(argv=None) -> int:
                     # costs on a server also carrying production's other tenants.
                     entry["cpuPerCustomerSync"] = round(cpu / len(customer), 2)
                 entry["distribution"] = distribute(cpu, rows)
+            if not args.no_infra:
+                entry.update(app_memory(key, args.account, args.region, args.app, start, until))
+                entry.update(infrastructure(args.app_instance, args.db_instance, start, until))
             cache[run_id] = entry
-            print(f"  {run_id}  {cpu:,.0f} CPU s", file=sys.stderr)
+            extra = ""
+            if entry.get("appCpuAvg") is not None and entry.get("rdsCpuAvg") is not None:
+                extra = (f"  app {entry['appCpuAvg']:.0f}%/rds {entry['rdsCpuAvg']:.0f}%"
+                         f"  heap {entry.get('appHeapUsedMb', float('nan')):,.0f} MB")
+            print(f"  {run_id}  {cpu:,.0f} CPU s{extra}", file=sys.stderr)
         CACHE.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
         print(f"\nwrote {CACHE.relative_to(ROOT)} ({len(cache)} runs)", file=sys.stderr)
 

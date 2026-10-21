@@ -1,6 +1,6 @@
 # Run log — detail
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-21 12:20 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-21 13:47 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script, as [`run-log.md`](run-log.md) is. That file is the index and carries the results table and any caveats; this one records what each run was configured with and what environment it met, which is what makes a number interpretable once the environment is gone.
 
@@ -15,7 +15,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T08-38-47Z-case1
 | response time p50 / p95 / p99 / max ms | 19 / 202 / 297 / 716 |
 | mean ms | 45 |
 | mean throughput rps | 4.77 |
-| app CPU seconds | 124 |
+| app CPU seconds | 135 |
 | harness commit | `f76d1103e56c8da0078b4d3aa2097a00acaf8c14` — **corrected**, the run recorded `unknown` |
 | tree dirty | False — **corrected**, the run recorded `True` |
 | target | https://loadtest.avniproject.org |
@@ -43,7 +43,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-43-14Z-case1
 | response time p50 / p95 / p99 / max ms | 152 / 2242 / 4014 / 5860 |
 | mean ms | 417 |
 | mean throughput rps | 52.44 |
-| app CPU seconds | 124 |
+| app CPU seconds | 50 |
 | harness commit | e47afd506861852fe2d7372627434f45cfbce95c (run id says `e47afd5`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -71,7 +71,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-53-13Z-case1
 | response time p50 / p95 / p99 / max ms | 486 / 6768 / 9013 / 16195 |
 | mean ms | 1254 |
 | mean throughput rps | 56.58 |
-| app CPU seconds | 124 |
+| app CPU seconds | 123 |
 | harness commit | e47afd506861852fe2d7372627434f45cfbce95c (run id says `e47afd5`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -99,7 +99,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-28-06Z-case1
 | response time p50 / p95 / p99 / max ms | 31 / 376 / 868 / 1157 |
 | mean ms | 74 |
 | mean throughput rps | 43 |
-| app CPU seconds | 124 |
+| app CPU seconds | 13 |
+| app CPU s per sync | 0.13 |
 | harness commit | d9eac3e96fd977bec20fa837d18d6e29ab86e17b (run id says `d9eac3e`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -128,7 +129,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-30-01Z-case1
 | response time p50 / p95 / p99 / max ms | 21 / 222 / 437 / 644 |
 | mean ms | 50 |
 | mean throughput rps | 33.33 |
-| app CPU seconds | 124 |
+| app CPU seconds | 19 |
+| app CPU s per sync | 0.19 |
 | harness commit | d9eac3e96fd977bec20fa837d18d6e29ab86e17b (run id says `d9eac3e`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -157,7 +159,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-32-25Z-case1
 | response time p50 / p95 / p99 / max ms | 19 / 196 / 330 / 597 |
 | mean ms | 42 |
 | mean throughput rps | 22.75 |
-| app CPU seconds | 124 |
+| app CPU seconds | 146 |
+| app CPU s per sync | 1.46 |
 | harness commit | d9eac3e96fd977bec20fa837d18d6e29ab86e17b (run id says `d9eac3e`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -186,7 +189,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-37-03Z-case1
 | response time p50 / p95 / p99 / max ms | 1143 / 25635 / 34970 / 51788 |
 | mean ms | 4083 |
 | mean throughput rps | 18.43 |
-| app CPU seconds | 124 |
+| app CPU seconds | 85 |
+| app CPU s per sync | 0.93 |
 | harness commit | d9eac3e96fd977bec20fa837d18d6e29ab86e17b (run id says `d9eac3e`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -215,7 +219,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-41-10Z-case1
 | response time p50 / p95 / p99 / max ms | 1020 / 14214 / 20225 / 27018 |
 | mean ms | 2693 |
 | mean throughput rps | 30.94 |
-| app CPU seconds | 124 |
+| app CPU seconds | 292 |
+| app CPU s per sync | 2.92 |
 | harness commit | d9eac3e96fd977bec20fa837d18d6e29ab86e17b (run id says `d9eac3e`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -244,7 +249,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-01-03Z-case1
 | response time p50 / p95 / p99 / max ms | 207 / 2767 / 5326 / 6728 |
 | mean ms | 539 |
 | mean throughput rps | 50 |
-| app CPU seconds | 124 |
+| app CPU seconds | 34 |
+| app CPU s per sync | 0.34 |
 | harness commit | d9eac3e96fd977bec20fa837d18d6e29ab86e17b (run id says `d9eac3e`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -273,7 +279,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-02-47Z-case1
 | response time p50 / p95 / p99 / max ms | 499 / 6741 / 9834 / 17959 |
 | mean ms | 1253 |
 | mean throughput rps | 56.58 |
-| app CPU seconds | 124 |
+| app CPU seconds | 274 |
+| app CPU s per sync | 2.74 |
 | harness commit | d9eac3e96fd977bec20fa837d18d6e29ab86e17b (run id says `d9eac3e`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -302,7 +309,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-40-26Z-case1
 | response time p50 / p95 / p99 / max ms | 24 / 200 / 363 / 705 |
 | mean ms | 48 |
 | mean throughput rps | 4.77 |
-| app CPU seconds | 124 |
+| app CPU seconds | 93 |
+| app CPU s per sync | 0.93 |
 | harness commit | e7a130d9d13507142b1d9ec1a8c34e894c79dc72 (run id says `e7a130d`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -331,7 +339,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-55-47Z-case1
 | response time p50 / p95 / p99 / max ms | 34 / 402 / 750 / 1118 |
 | mean ms | 83 |
 | mean throughput rps | 39.48 |
-| app CPU seconds | 124 |
+| app CPU seconds | 159 |
+| app CPU s per sync | 2.56 |
 | harness commit | e7a130d9d13507142b1d9ec1a8c34e894c79dc72 (run id says `e7a130d`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -360,7 +369,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-16-44Z-case1
 | response time p50 / p95 / p99 / max ms | 74 / 918 / 1426 / 1919 |
 | mean ms | 178 |
 | mean throughput rps | 49.43 |
-| app CPU seconds | 124 |
+| app CPU seconds | 190 |
+| app CPU s per sync | 1.90 |
 | harness commit | e7a130d9d13507142b1d9ec1a8c34e894c79dc72 (run id says `e7a130d`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -389,7 +399,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-38-32Z-case2
 | response time p50 / p95 / p99 / max ms | 251 / 288 / 533 / 611 |
 | mean ms | 209 |
 | mean throughput rps | 0.2 |
-| app CPU seconds | 124 |
+| app CPU seconds | 702 |
+| app CPU s per sync | 4.21 |
 | harness commit | e7a130d9d13507142b1d9ec1a8c34e894c79dc72 (run id says `e7a130d`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -418,7 +429,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T09-50-36Z-case1
 | response time p50 / p95 / p99 / max ms | 44 / 272 / 311 / 772 |
 | mean ms | 117 |
 | mean throughput rps | 0.54 |
-| app CPU seconds | 124 |
+| app CPU seconds | 267 |
+| app CPU s per sync | 4.24 |
 | harness commit | 4c7b807737e887f2d33311086d00a1a787018dd8 (run id says `4c7b807`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -447,7 +459,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-07T06-15-54Z-case3
 | response time p50 / p95 / p99 / max ms | 294 / 333 / 376 / 428 |
 | mean ms | 255 |
 | mean throughput rps | 0.32 |
-| app CPU seconds | 124 |
+| app CPU seconds | 490 |
+| app CPU s per sync | 8.17 |
 | harness commit | eb5e4b3596e90d1e48bae50186dc4bace0d4ea8c (run id says `eb5e4b3`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -476,7 +489,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-07T08-38-32Z-case4
 | response time p50 / p95 / p99 / max ms | 259 / 287 / 301 / 623 |
 | mean ms | 212 |
 | mean throughput rps | 0.22 |
-| app CPU seconds | 124 |
+| app CPU seconds | 37 |
+| app CPU s per sync | 0.20 |
 | harness commit | eb5e4b3596e90d1e48bae50186dc4bace0d4ea8c (run id says `eb5e4b3`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -505,7 +519,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T06-17-46Z-case4
 | response time p50 / p95 / p99 / max ms | 265 / 322 / 387 / 532 |
 | mean ms | 229 |
 | mean throughput rps | 0.25 |
-| app CPU seconds | 124 |
+| app CPU seconds | 792 |
+| app CPU s per sync | 4.23 |
 | harness commit | d484f18e1c8666dee40f981d162390061e3c91f6 (run id says `d484f18`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -541,7 +556,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T12-04-15Z-case5
 | response time p50 / p95 / p99 / max ms | 268 / 329 / 367 / 523 |
 | mean ms | 228 |
 | mean throughput rps | 0.74 |
-| app CPU seconds | 124 |
+| app CPU seconds | 1,576 |
+| app CPU s per sync | 5.63 |
 | harness commit | d484f18e1c8666dee40f981d162390061e3c91f6 (run id says `d484f18`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -570,7 +586,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T14-05-56Z-case1
 | response time p50 / p95 / p99 / max ms | 18771 / 41912 / 51544 / 59909 |
 | mean ms | 18568 |
 | mean throughput rps | 22.27 |
-| app CPU seconds | 124 |
+| app CPU seconds | 8,060 |
+| app CPU s per sync | 4.94 |
 | harness commit | d484f18e1c8666dee40f981d162390061e3c91f6 (run id says `d484f18`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -599,7 +616,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T04-28-45Z-case1
 | response time p50 / p95 / p99 / max ms | 28 / 342 / 1222 / 2469 |
 | mean ms | 83 |
 | mean throughput rps | 12.14 |
-| app CPU seconds | 124 |
+| app CPU seconds | 2,194 |
+| app CPU s per sync | 3.99 |
 | harness commit | d484f18e1c8666dee40f981d162390061e3c91f6 (run id says `d484f18`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -628,7 +646,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T05-37-25Z-case1
 | response time p50 / p95 / p99 / max ms | 28 / 367 / 710 / 916 |
 | mean ms | 84 |
 | mean throughput rps | 11.88 |
-| app CPU seconds | 124 |
+| app CPU seconds | 2,620 |
+| app CPU s per sync | 4.76 |
 | harness commit | d484f18e1c8666dee40f981d162390061e3c91f6 (run id says `d484f18`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -657,7 +676,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T06-55-55Z-case1
 | response time p50 / p95 / p99 / max ms | 28 / 327 / 527 / 1137 |
 | mean ms | 81 |
 | mean throughput rps | 12.13 |
-| app CPU seconds | 124 |
+| app CPU seconds | 2,622 |
+| app CPU s per sync | 4.77 |
 | harness commit | cf778198f71abde6af399aa036c9cf7d2797da02 (run id says `cf77819`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -686,7 +706,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T08-00-22Z-case1
 | response time p50 / p95 / p99 / max ms | 28 / 364 / 685 / 2144 |
 | mean ms | 90 |
 | mean throughput rps | 11.88 |
-| app CPU seconds | 124 |
+| app CPU seconds | 3,285 |
+| app CPU s per sync | 5.97 |
 | harness commit | cf778198f71abde6af399aa036c9cf7d2797da02 (run id says `cf77819`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -715,7 +736,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T09-17-04Z-case1
 | response time p50 / p95 / p99 / max ms | 284 / 424 / 610 / 1369 |
 | mean ms | 253 |
 | mean throughput rps | 3.45 |
-| app CPU seconds | 124 |
+| app CPU seconds | 1,904 |
+| app CPU s per sync | 3.46 |
 | harness commit | cf778198f71abde6af399aa036c9cf7d2797da02 (run id says `cf77819`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -744,7 +766,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T11-27-35Z-case1
 | response time p50 / p95 / p99 / max ms | 2082 / 19610 / 23226 / 30570 |
 | mean ms | 4294 |
 | mean throughput rps | 18.47 |
-| app CPU seconds | 124 |
+| app CPU seconds | 1,729 |
+| app CPU s per sync | 4.32 |
 | harness commit | cf778198f71abde6af399aa036c9cf7d2797da02 (run id says `cf77819`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -773,7 +796,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T14-21-29Z-case1
 | response time p50 / p95 / p99 / max ms | 29 / 290 / 325 / 2103 |
 | mean ms | 72 |
 | mean throughput rps | 1.16 |
-| app CPU seconds | 124 |
+| app CPU seconds | 3,005 |
+| app CPU s per sync | 5.36 |
 | harness commit | cf778198f71abde6af399aa036c9cf7d2797da02 (run id says `cf77819`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -802,7 +826,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T02-07-36Z-case9
 | response time p50 / p95 / p99 / max ms | 5129 / 52876 / 57940 / 59992 |
 | mean ms | 17151 |
 | mean throughput rps | 6.23 |
-| app CPU seconds | 124 |
+| app CPU seconds | 4,411 |
+| app CPU s per sync | 4.07 |
 | harness commit | cf778198f71abde6af399aa036c9cf7d2797da02 (run id says `cf77819`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -831,7 +856,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T03-43-44Z-case9
 | response time p50 / p95 / p99 / max ms | 88 / 489 / 769 / 1384 |
 | mean ms | 167 |
 | mean throughput rps | 5.82 |
-| app CPU seconds | 124 |
+| app CPU seconds | 1,507 |
+| app CPU s per sync | 4.74 |
 | harness commit | cf778198f71abde6af399aa036c9cf7d2797da02 (run id says `cf77819`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -860,7 +886,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T04-55-23Z-case9
 | response time p50 / p95 / p99 / max ms | 6112 / 48514 / 54197 / 59988 |
 | mean ms | 14810 |
 | mean throughput rps | 11.4 |
-| app CPU seconds | 124 |
+| app CPU seconds | 5,486 |
+| app CPU s per sync | 7.14 |
 | harness commit | cf778198f71abde6af399aa036c9cf7d2797da02 (run id says `cf77819`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -889,7 +916,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T06-01-23Z-case9
 | response time p50 / p95 / p99 / max ms | 8464 / 33454 / 41619 / 52693 |
 | mean ms | 11470 |
 | mean throughput rps | 20.46 |
-| app CPU seconds | 124 |
+| app CPU seconds | 5,894 |
+| app CPU s per sync | 4.95 |
 | harness commit | cf778198f71abde6af399aa036c9cf7d2797da02 (run id says `cf77819`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -918,7 +946,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-14T04-26-19Z-case6
 | response time p50 / p95 / p99 / max ms | 263 / 333 / 549 / 3730 |
 | mean ms | 238 |
 | mean throughput rps | 0.72 |
-| app CPU seconds | 124 |
+| app CPU seconds | 1,078 |
+| app CPU s per sync | 3.85 |
 | harness commit | cf778198f71abde6af399aa036c9cf7d2797da02 (run id says `cf77819`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -947,7 +976,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-14T09-19-33Z-case7
 | response time p50 / p95 / p99 / max ms | 79 / 323 / 623 / 3895 |
 | mean ms | 115 |
 | mean throughput rps | 8.53 |
-| app CPU seconds | 124 |
+| app CPU seconds | 3,741 |
+| app CPU s per sync | 2.01 |
 | harness commit | 33396d90121f2da6f7bc38271bc08c120ac77ba2 (run id says `33396d9`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -976,7 +1006,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T04-01-52Z-case1
 | response time p50 / p95 / p99 / max ms | 498 / 1709 / 2207 / 4314 |
 | mean ms | 641 |
 | mean throughput rps | 8.52 |
-| app CPU seconds | 124 |
+| app CPU seconds | 6,152 |
+| app CPU s per sync | 3.66 |
 | harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -1005,7 +1036,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T05-33-35Z-case1
 | response time p50 / p95 / p99 / max ms | 37484 / 55919 / 58692 / 59998 |
 | mean ms | 32170 |
 | mean throughput rps | 12.06 |
-| app CPU seconds | 124 |
+| app CPU seconds | 8,298 |
+| app CPU s per sync | 4.52 |
 | harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -1034,7 +1066,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T09-47-54Z-case8
 | response time p50 / p95 / p99 / max ms | 103 / 263 / 292 / 399 |
 | mean ms | 111 |
 | mean throughput rps | 0.21 |
-| app CPU seconds | 124 |
+| app CPU seconds | 145 |
+| app CPU s per sync | 1.55 |
 | harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -1063,7 +1096,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-16T04-54-41Z-case8
 | response time p50 / p95 / p99 / max ms | 184 / 302 / 341 / 573 |
 | mean ms | 177 |
 | mean throughput rps | 0.23 |
-| app CPU seconds | 124 |
+| app CPU seconds | 280 |
+| app CPU s per sync | 2.98 |
 | harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -1092,7 +1126,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-16T09-06-38Z-case8
 | response time p50 / p95 / p99 / max ms | 271 / 337 / 831 / 1416 |
 | mean ms | 257 |
 | mean throughput rps | 0.43 |
-| app CPU seconds | 124 |
+| app CPU seconds | 694 |
+| app CPU s per sync | 7.38 |
 | harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -1121,7 +1156,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T05-06-40Z-case3
 | response time p50 / p95 / p99 / max ms | 327 / 357 / 388 / 588 |
 | mean ms | 294 |
 | mean throughput rps | 0.67 |
-| app CPU seconds | 124 |
+| app CPU seconds | 1,233 |
+| app CPU s per sync | 20.55 |
 | harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -1150,7 +1186,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T07-14-41Z-case4
 | response time p50 / p95 / p99 / max ms | 263 / 336 / 360 / 536 |
 | mean ms | 232 |
 | mean throughput rps | 0.24 |
-| app CPU seconds | 124 |
+| app CPU seconds | 702 |
+| app CPU s per sync | 4.01 |
 | harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -1179,7 +1216,8 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T11-15-25Z-case5
 | response time p50 / p95 / p99 / max ms | 267 / 348 / 379 / 1660 |
 | mean ms | 238 |
 | mean throughput rps | 0.68 |
-| app CPU seconds | 124 |
+| app CPU seconds | 998 |
+| app CPU s per sync | 3.79 |
 | harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -1208,7 +1246,12 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T04-10-50Z-case1
 | response time p50 / p95 / p99 / max ms | 38689 / 56293 / 58755 / 60001 |
 | mean ms | 33299 |
 | mean throughput rps | 11.94 |
-| app CPU seconds | 124 |
+| app CPU seconds | 8,403 |
+| app CPU | 86% mean, peak 99% |
+| app heap | 2,778 MB mean, peak 5,096 of 5,120 MB max |
+| RDS CPU | 31% mean, peak 43% |
+| RDS memory | 1,151 MB freeable at its lowest, swap peak 2 MB |
+| app CPU s per sync | 4.19 |
 | harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |
@@ -1237,7 +1280,12 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T05-43-20Z-case1
 | response time p50 / p95 / p99 / max ms | 169 / 434 / 615 / 5895 |
 | mean ms | 215 |
 | mean throughput rps | 15.57 |
-| app CPU seconds | 124 |
+| app CPU seconds | 7,743 |
+| app CPU | 42% mean, peak 71% |
+| app heap | 1,073 MB mean, peak 1,796 of 5,120 MB max |
+| RDS CPU | 33% mean, peak 48% |
+| RDS memory | 4,302 MB freeable at its lowest, swap peak 2 MB |
+| app CPU s per sync | 3.13 |
 | harness commit | c2a0e76417d3ac980bb476d835e9b132df7c8a92 (run id says `c2a0e76`) |
 | tree dirty | False |
 | target | https://loadtest.avniproject.org |

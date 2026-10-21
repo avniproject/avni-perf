@@ -583,11 +583,41 @@ for r, link, meta, stats, sha7, corr in details:
                  f"{stats.get('p99_ms','—')} / {stats.get('max_ms','—')} |")
         D.append(f"| mean ms | {stats.get('mean_ms','—')} |")
         D.append(f"| mean throughput rps | {stats.get('rps','—')} |")
-        entry = CPU.get(x['run'])
+        # **Looked up by the run being rendered, not by `x`.** `x` is the summary loop's
+        # variable and leaks into this one, so `CPU.get(x['run'])` returned the LAST run's
+        # figures on every detail page -- all 43 of them printed the same app CPU seconds.
+        # This is the second time a leaked `x` has silently filled this loop with one run's
+        # data; the injection line had the same fault.
+        entry = CPU.get(r)
         if entry:
             # Whole-server CPU over the run's window divided by its syncs: an attribution, not a
             # per-sync measurement, and it carries whatever else ran on the box.
             D.append(f"| app CPU seconds | {entry['cpuSeconds']:,.0f} |")
+            # **Utilisation and memory for both tiers**, so a run can be read for headroom
+            # rather than only for throughput. App CPU is EC2's and app heap is the agent's --
+            # the app host has no CloudWatch agent, so EC2 publishes no memory at all. RDS
+            # carries FreeableMemory and SwapUsage because "memory used" on a database says
+            # nothing on its own: Postgres fills the page cache by design, and the question is
+            # whether it had to swap.
+            if entry.get('appCpuAvg') is not None:
+                peak = (f", peak {entry['appCpuMax']:.0f}%"
+                        if entry.get('appCpuMax') is not None else "")
+                D.append(f"| app CPU | {entry['appCpuAvg']:.0f}% mean{peak} |")
+            if entry.get('appHeapUsedMb') is not None:
+                of = (f" of {entry['appHeapMaxMb']:,.0f} MB max"
+                      if entry.get('appHeapMaxMb') is not None else "")
+                peak = (f", peak {entry['appHeapUsedMbMax']:,.0f}"
+                        if entry.get('appHeapUsedMbMax') is not None else "")
+                D.append(f"| app heap | {entry['appHeapUsedMb']:,.0f} MB mean{peak}{of} |")
+            if entry.get('rdsCpuAvg') is not None:
+                peak = (f", peak {entry['rdsCpuMax']:.0f}%"
+                        if entry.get('rdsCpuMax') is not None else "")
+                D.append(f"| RDS CPU | {entry['rdsCpuAvg']:.0f}% mean{peak} |")
+            if entry.get('rdsFreeableMemMbMin') is not None:
+                swap = (f", swap peak {entry['rdsSwapMbMax']:,.0f} MB"
+                        if entry.get('rdsSwapMbMax') else ", no swap")
+                D.append(f"| RDS memory | {entry['rdsFreeableMemMbMin']:,.0f} MB freeable at its "
+                         f"lowest{swap} |")
             if entry.get('cpuPerSync') is not None:
                 D.append(f"| app CPU s per sync | {entry['cpuPerSync']:.2f} |")
             if entry.get('cpuPerCustomerSync') is not None:
