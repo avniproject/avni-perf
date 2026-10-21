@@ -20,7 +20,7 @@
 | [**9**](#case-9) | Stress ramp | 4 | [`12a`](findings-case9-12a.md), [`12b`](findings-case9-12b.md), [`12c`](findings-case9-12c.md) |
 | [**10**](#case-10) | Soak | 1 | [`findings-case10.md`](findings-case10.md) |
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
-| [**12**](#case-12) | Clustered — co-tenant data | 1 + 1 running | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
+| [**12**](#case-12) | Clustered — co-tenant data | 2 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 4 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
 | [**15**](#case-15) | Clustered — co-tenant load, media push | 1 + 1 pending | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
@@ -217,11 +217,11 @@ Case 6 compressed into one hour: ~6.6 devices in flight against 0.55.
 | run (UTC) | variation | dataset | syncs | failed | p95 ms | CPU s/sync |
 |---|---|---|---|---|---|---|
 | [`2026-10-15 04:01`](run-log-detail.md#2026-10-15t04-01-52z-case12-c2a0e76) | case 6 compressed to 1 h | pilot-day-180 | 1682 | 0.0% | 1709 | 3.66 |
-| *row 22 — running* | 2 vCPU, `DummyInterceptor` removed; a lower bound if run on row 20's residue | | | | | |
+| [`2026-10-21 10:59`](run-log-detail.md#2026-10-21t10-59-35z-case12-2vcpu-b-no-interceptor-f038788) | **2 vCPU, `DummyInterceptor` removed** (row 22); on row 20's residue, so a lower bound | pilot-day-180 | 1682 | 0.0% | 748 | 2.97 |
 
 **Findings:** [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md)
 
-**The same work twelve times denser costs 170% more server time per record** — contention, not extra work — and takes app CPU to 81%, healthy. 0 failed.
+**The same work twelve times denser costs 170% more server time per record** — contention, not extra work — and takes app CPU to 81%, healthy. 0 failed. **With `DummyInterceptor` removed the same hour costs 19% less CPU**: 6,152 → 4,999 s, 3.66 → 2.97 per sync, `serverMs` p50 8.7 → 5.2 s, app CPU 81% → 65%, on a healthy server both times — the clean size of the saving that case 13 could not give.
 
 <a id="case-13"></a>
 ## Case 13 — Clustered — co-tenant load

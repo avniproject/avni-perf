@@ -1,6 +1,6 @@
 # Run log — detail
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-21 16:36 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-21 17:37 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script, as [`run-log.md`](run-log.md) is. That file is the index and carries the results table and any caveats; this one records what each run was configured with and what environment it met, which is what makes a number interpretable once the environment is gone.
 
@@ -1375,4 +1375,41 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T09-56-40Z-case1
 | sync duration p50 / mean / p95 s | 64.8 / 66.8 / 196.7 (2474 syncs) |
 | full syncs p50 / p95 s | 93.8 / 255.7 (26 of 2474, recorded) |
 | cache policy | warm-after-discarded-warmup-m6g.large |
+| autovacuum | on |
+
+## `2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788/2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788/2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788.zip .`; unzip and open `index.html`.
+
+| | |
+|---|---|
+| requests (ok) | 33709 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 283 / 748 / 1087 / 1806 |
+| mean ms | 325 |
+| mean throughput rps | 9.1 |
+| app CPU seconds | 4,999 |
+| app CPU | 65% mean, peak 85% |
+| app heap | 1,285 MB mean, peak 2,070 of 5,120 MB max |
+| RDS CPU | 25% mean, peak 34% |
+| RDS memory | 4,261 MB freeable at its lowest, swap peak 6 MB |
+| app CPU s per sync | 2.97 |
+| app CPU s per **customer** sync | 2.97 (0 co-tenant syncs excluded from the denominator, their CPU included) |
+| app CPU s per incremental sync p50 / p95 | 2.42 / 7.84 (n=1670) |
+| app CPU s per full sync p50 / p95 | 4.36 / 5.40 (n=12) |
+| harness commit | f038788ffc86f00170921f81aacf4a2c4d44da27 (run id says `f038788`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 2c0215679-no-interceptor |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 4 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.37 / 0.43 |
+| est. sync overhead s | 0.05 |
+| injection | profile steady, 1682 users arriving over 60min @ 1682/h, ~3.0 requests in flight (rps x mean), ramp 33640 s |
+| sync | mode realistic, feeder case5-users-pilot.csv (1682 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 63.2 / 78.6 / 188.2 (1682 syncs) |
+| full syncs p50 / p95 s | 84.7 / 157.5 (12 of 1682, recorded) |
+| cache policy | warm-from-preceding-run-m6g.large |
 | autovacuum | on |

@@ -4,9 +4,9 @@ Rows 21 and 22 of the [execution plan](execution-plan.md). The case for removal 
 [`dummy-interceptor.md`](dummy-interceptor.md); the card is avniproject/avni-server#1097. These runs
 price it.
 
-**One sentence.** On the box where case 13 fell off the cliff, removing one class registration keeps
-it on: 467 failures become none, a 39-second median request becomes 295 ms, and the server does the
-same work with its queue flat the whole hour.
+**One sentence.** Removing one class registration takes a fifth of the server's CPU off every
+request — 18.7%, measured clean on case 12 — and on the box where case 13 fell off the cliff that
+is the difference between 467 failures and none, a 39-second median request and 295 ms.
 
 ## The arms
 
@@ -128,16 +128,48 @@ row 22 — both arms healthy, same work — is the measurement for that number.
 The test arm sits at 84% mean app CPU with 99% peaks: **it is not far from its own knee**. The
 removal bought the margin that case 13 needed on 2 vCPU, not a large one.
 
-## Row 22: case 12 at 2 vCPU
+## Row 22: case 12 at 2 vCPU — the clean delta
 
-_pending — launched 16:29 IST without a warm-up, directly after row 21's drain, with
-`CACHE_POLICY=warm-from-preceding-run` recorded._
+Case 12 is case 13 without the co-tenants, and it passes on the old build at 81% CPU. So both
+arms complete the same work on a healthy server, and the CPU difference is the interceptor's own
+cost rather than saturation waste. Control is row 16's `2026-10-15T04-01-52Z-case12`; the test
+arm is `2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor`, launched straight after row 21's
+drain with no warm-up (`CACHE_POLICY=warm-from-preceding-run-m6g.large`, JVM up 79 minutes under
+load).
+
+| | control | no interceptor | |
+|---|---|---|---|
+| syncs | 1,682, 0 failed | 1,682, 0 failed | |
+| records per sync p50 | 10,778 | 10,872 | the same work |
+| **app CPU seconds** | **6,152** | **4,999** | **−18.7%** |
+| CPU s per sync | 3.66 | 2.97 | predicted ~3.2 |
+| app CPU, mean | 81% | 64.7% (peak 85%) | |
+| RDS CPU, mean / peak | — | 24.8% / 33.8% | |
+| `serverMs` p50 / p95 / mean | 8.7 / 31.2 / 11.8 s | 5.2 / 16.8 / 6.4 s | −40% at the median |
+| request p50 / p95 / p99 | 498 / 1,707 / 2,206 ms | 283 / 746 / 1,133 ms | |
+| under 800 ms | 70.6% | 96.1% | |
+| sync duration p50 | 65.5 s | 63.2 s | the device's time is its storage pause |
+
+The two trajectories are indistinguishable in shape — the same syncs done at every five-minute
+mark, active flat at 30–46 in both — which is what makes the CPU figure clean.
+
+**The saving is half again larger than the 12.6% the profiler measured.** That figure was the
+interceptor's share of request *wall time* under sync-only load. What it costs in CPU is larger:
+every request opens a `@Transactional` boundary, takes a pooled connection, runs the `gender` query
+and returns through Hibernate's flush check, and at lower utilisation the rest of the request
+contends less. 18.7% of the server's CPU seconds, for a query whose result nothing reads.
+
+**The control is older than row 21's** — six days and a dataset reload — and was not re-run. The
+span20 runs put run-to-run noise at 1–2 points; this delta is 19.
 
 ## What this settles
 
 - **The binary question, yes.** Removing `DummyInterceptor` takes case 13 off the cliff on the
   hardware that broke.
 - **The knee of the old build**, bounded for the first time: 900–1,030 req/min on 2 vCPU.
-- **Not settled by row 21:** the clean size of the saving in CPU seconds. The control's 4.19 s/sync
-  includes saturation waste, so the case 13 delta overstates the interceptor's own cost. Row 22 is
-  the measurement for that.
+- **The clean size of the saving: 18.7% of application CPU**, from row 22 on a healthy server
+  doing identical work — 6,152 → 4,999 CPU s for the same 1,682 syncs. Case 13's −24% carries
+  saturation waste on top of that; case 12's does not.
+- **What to carry to avniproject/avni-server#1097:** removing the registration costs nothing
+  measurable and buys roughly a fifth of the server's CPU at every load level — enough, on the
+  hardware that broke, to be the difference between 467 failures and none.
