@@ -1171,9 +1171,9 @@ is binding; the calendar is not.
 | 18 | A′ | Reload `pilot-day-180-span20`, split with `--variant span20`, re-run **3**, **4**, **5** | **done 2026-10-19 — the span scales the work and barely touches the cost of it.** All three runs on one load with no reset between them, **zero failures in 13,609 requests**. **Records per sync track the catchment three times independently** — 2.33×, 2.33×, 2.44× against a 2.38× ratio — while **field workers, whom the span does not touch, hold at 1.00×** and serve as the control. Supervisors cost **about +5% more per record**, and the control says that figure carries 1–2 points of run-to-run noise. A median supervisor sync goes **3.0 → 7.1 minutes**, 94% of it the modelled client pause. **Cases 4 and 5 look like nothing happened until split by role**, and their p95 *falls* 182 s → 80 s purely because supervisors drop from a tenth of the cohort to a twentieth — composition, not speed. No knee, and nothing that justifies widening the sweep. [`findings-span20.md`](findings-span20.md) |
 | 19 | — | **Vertical scale sweep** — case 13 at 2 vCPU and 4 vCPU | **done 2026-10-21 — more vCPU is the relief, and it is now measured rather than inferred.** The run that broke at `m6g.large` is uneventful at `m6g.xlarge`: **467 failures → 0**, p95 **56,714 ms → 434 ms**, under-800 ms **5.15% → 99.6%**, app CPU **99% → 54%**. Only the instance type changed; heap stayed pinned at 5120m and the pool at 100. **The constraint moved toward the database** — RDS 33% → 41%, the gap between tiers narrowing from ~65 points to ~13 — which makes 8 vCPU the interesting next point and the 4 vCPU injector a thing to watch. [`findings-vertical-scale.md`](findings-vertical-scale.md) |
 | 20 | — | **The media-heavy hour** — 1,500 workers at 8 files per encounter, co-tenants at 792/h, on 4 vCPU; the scenario [`scenario-tanuh-media-hour.md`](scenario-tanuh-media-hour.md) sized in advance | **done 2026-10-21 — it holds, and the server is 2% of it.** **415,082 requests, 0 failed**, p95 503 ms, 98.05% under 800 ms. Media files per customer sync **p50 160, exactly the 20 × 8 predicted**, mean 197, max 1,184. **A median customer sync is 12.5 minutes, of which 10.7 is the device uploading** — 88.9% of sync time is upload wait, 8.8% the modelled storage pause, **2.3% the server, queueing included** (18 s median). The run's wall time was 2 h 20 m for a 1 h injection: 20 users drew 100+ encounters, so 800+ files, and each spent 53–80 min uploading serially before pushing a record — the last injected at 13:28 finished at 14:49. **CPU 11,542 s for the hour (predicted ~10,300), app 68% mean / 94% peak (predicted 61–68%), RDS 70% mean / 98.5% peak** — the application landed inside the estimate and **the database went to its ceiling**, driven by 295,000 `uploadUrl` calls the model priced as nearly free. **The instrument caveat**: `serverMs` in `sync-durations.csv` includes the upload wait, because only the storage pause is subtracted; corrected from the server's own log. [`findings-media-hour.md`](findings-media-hour.md) |
-| 21 | — | **`DummyInterceptor` removed — case 13 at 2 vCPU** | **pending.** The temp-fix jar against the run that broke. Control is row 19's `m6g.large` run, already on the same build. **Binary outcome**: does removing the interceptor take case 13 off the cliff. See [*Rows 21 and 22*](#rows-21-and-22-removing-dummyinterceptor) |
+| 21 | — | **`DummyInterceptor` removed — case 13 at 2 vCPU** | **running 2026-10-21, without a reset by choice** — row 20's residue biases against the test jar, so a saving reads as a lower bound. The temp-fix jar against the run that broke. Control is row 19's `m6g.large` run, already on the same build. **Binary outcome**: does removing the interceptor take case 13 off the cliff. See [*Rows 21 and 22*](#rows-21-and-22-removing-dummyinterceptor) |
 | 22 | — | **`DummyInterceptor` removed — case 12 at 2 vCPU** | **pending.** The clean delta. Case 12 passes at 81% CPU, so both sides complete the same work and the CPU-per-sync difference is the saving rather than saturation waste. Control is row 16's case 12 run |
-| 23 | — | **The media hour, re-drawn** — row 20 with supervisors pushing nothing and the customer's own spread (`CUSTOMER_PUSH_DRAW=v2`) | **pending — run after 21 and 22, on a reset dataset.** The honest version of row 20: no supervisor writing a field worker's twenty a day, and no 150-encounter syncs. **The question is whether RDS comes off its 98.5% peak** with about 27% fewer `uploadUrl` calls. See [*Row 23*](#row-23-the-media-hour-re-drawn) |
+| 23 | — | **The media hour, re-drawn** — row 20 with supervisors pushing nothing and the customer's own spread (`CUSTOMER_PUSH_DRAW=v2`) | **pending — run after 21 and 22, without a reset**: row 20's residue adds about 1% of pull work and biases against the drop being looked for. The honest version of row 20: no supervisor writing a field worker's twenty a day, and no 150-encounter syncs. **The question is whether RDS comes off its 98.5% peak** with about 27% fewer `uploadUrl` calls. See [*Row 23*](#row-23-the-media-hour-re-drawn) |
 
 #### Rows 21 and 22: removing `DummyInterceptor`
 
@@ -1200,7 +1200,9 @@ nothing but the interceptor's registration**, confirmed in the bytecode.
 So row 19's `m6g.large` case 13 and row 16's case 12 are valid controls as they stand. Re-running
 the control on the same day is still worth doing if the environment has been touched since.
 
-**Reset `pilot-day-180` first.** Row 20, the media hour, ran with push on after these controls and left its rows behind — see *Row 23* for why that matters and the order to run in.
+**Row 21 runs without a reset, deliberately.** Row 20, the media hour, ran with push on after these controls and left its rows behind — ten months newer than the generated data, so inside every `realistic` sync window. That can only *add* work: more records to pull per sync. The test jar therefore carries a heavier load than its clean control did, so **any saving it shows is a lower bound**, and the residue cannot flatter the result.
+
+Two consequences for the read-out. **A pass is strong and a failure is ambiguous** — if case 13 comes off the cliff despite the extra work the answer is clear; if it does not, the residue is a live explanation. And **report two figures**: CPU s per sync, the conservative raw comparison, and CPU s per record pulled, which removes most of the residue's effect because case 13 pushes nothing and the residue arrives as extra records. `sync-durations.csv` carries `records` for both runs. Row 22 inherits the same reasoning if it also runs unreset; read it the same way.
 
 **Run each exactly as its control ran** — same instance size, same dataset (`pilot-day-180`), same
 feeder and rate, same co-tenant load and seed, New Relic attached, **no profiler**. Only the jar
@@ -1288,13 +1290,16 @@ at 0. **Per-request costs still compare directly with row 20**: CPU and database
 **Read `serverMs` corrected, as row 20 had to be.** The harness still adds the media pause to it, so
 the raw column overstates server time by the whole upload wait.
 
-> **Order: reset `pilot-day-180` before rows 21 and 22, run this last, and reset after it.** Row 20
-> pushed on the order of 37,000 customer encounters plus co-tenant writes, all ten months newer than
-> the generated data, so they sit inside every `realistic` sync window — exactly what forced the
-> reload after case 11 run 1. **Rows 21 and 22 are compared against controls that ran before row
-> 20**, on the clean dataset; run them on this one and the interceptor's saving is mixed with
-> larger pulls. Nothing records a reload since row 20, so treat the dataset as carrying its residue
-> until a count says otherwise. This run pushes again, which is why it goes last.
+> **Order: run this last, without a reset, and reset after it.** Row 20 left on the order of 37,000
+> customer encounters plus co-tenant writes in `pilot-day-180`, ten months newer than the generated
+> data, so inside every `realistic` window. **For this run that is about +1% of pull work**: a field
+> worker's village holds three workers' pushes, ~74 extra records against ~13,800 pulled (+0.5%), and
+> a supervisor's Taluka ~207 against ~30,000 (+0.7%). **The media count, upload wait and wall time do
+> not depend on the dataset at all**, and the small extra pull load biases CPU and RDS *against* the
+> drop this run is looking for — so a fall from row 20's 98.5% RDS peak is real, the same lower-bound
+> argument as rows 21 and 22. **Cross-check it**: records pulled per field-worker sync against row 20
+> should rise by roughly that +0.5%; much more would undercut the estimate, here and for 21 and 22.
+> **Reset after it** — it pushes again and roughly doubles the residue.
 
 #### Standing task: back up New Relic weekly
 
