@@ -468,5 +468,61 @@
    "2026-10-21T06:58:37Z",
    "2026-10-21T08:18:37Z"
   ]
+ },
+ "2026-10-21T09-56-40Z-case13-2vcpu-B-no-interceptor-f038788": {
+  "appCpuAvg": 83.5,
+  "appCpuMax": 98.9,
+  "appHeapCommittedMb": 2560.0,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 1041.5,
+  "appHeapUsedMbMax": 1977.0,
+  "appPhysicalMemMb": 2860.6,
+  "coTenantSyncs": 792,
+  "cpuPerCustomerSync": 3.78,
+  "cpuPerSync": 2.57,
+  "cpuSeconds": 6358.3,
+  "customerSyncs": 1682,
+  "distribution": {
+   "all": {
+    "mean": 2.57,
+    "n": 2474,
+    "p50": 1.88,
+    "p95": 6.82
+   },
+   "coTenant": {
+    "mean": 1.74,
+    "n": 792,
+    "p50": 1.34,
+    "p95": 3.92
+   },
+   "customer": {
+    "mean": 2.96,
+    "n": 1682,
+    "p50": 2.15,
+    "p95": 7.32
+   },
+   "full": {
+    "mean": 6.89,
+    "n": 26,
+    "p50": 5.02,
+    "p95": 16.75
+   },
+   "incremental": {
+    "mean": 2.52,
+    "n": 2448,
+    "p50": 1.86,
+    "p95": 6.74
+   },
+   "weightedBy": "serverMs"
+  },
+  "rdsCpuAvg": 39.4,
+  "rdsCpuMax": 48.4,
+  "rdsFreeableMemMbMin": 3926.1,
+  "rdsSwapMbMax": 5.8,
+  "syncs": 2474,
+  "window": [
+   "2026-10-21T09:56:40Z",
+   "2026-10-21T10:59:40Z"
+  ]
  }
 }
