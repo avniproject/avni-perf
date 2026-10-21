@@ -1329,6 +1329,12 @@ public class AvniSyncSimulation extends Simulation {
         // restated this default once and the two could drift, which is the failure A11 fixed
         // everywhere else in this file.
         settings.put("baseUrl", baseUrl);
+        // Which server build answered. Every run so far says 17.3.0-SNAPSHOT and nothing
+        // else, which is why the DummyInterceptor A/B could not be told apart from its control
+        // without this: the two jars differ only in one registration. The run script cannot
+        // learn it from the server, so the operator states it -- the price of a wrong value is
+        // a mislabelled run, which is why it defaults to a word rather than a plausible sha.
+        settings.put("serverBuild", System.getProperty("SERVER_BUILD", "unstated"));
 
         Map<String, Object> sync = new LinkedHashMap<>();
         sync.put("paging", paging);

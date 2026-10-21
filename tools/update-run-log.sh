@@ -596,6 +596,12 @@ for r, link, meta, stats, sha7, corr in details:
                  f"`tools/archive-runs.sh --only {r}` makes one.\n")
     D.append("| | |")
     D.append("|---|---|")
+    # Stated by the operator at launch (-DSERVER_BUILD), recorded by the harness since 21 Oct
+    # 2026. Before that every run says 17.3.0-SNAPSHOT, which is why an A/B on the server jar
+    # needed this: the arms differ in nothing the archive otherwise records.
+    sb = at(meta, 'settings.serverBuild') if meta else None
+    if sb and sb != 'unstated':
+        D.append(f"| server build | `{sb}` |")
     if stats:
         D.append(f"| requests (ok) | {stats.get('requests','—')} |")
         D.append(f"| failed | {stats.get('failed','—')} ({stats.get('failed_pct','—')}%) |")
