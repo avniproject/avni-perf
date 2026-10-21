@@ -102,43 +102,44 @@ The simulation pauses after each page to stand in for the time a device spends p
 persisting it. `STORAGE_MODEL=weighted` (default) computes that as
 
 ```
-MS_PER_PAGE + records x entity tier x BASE_MS_PER_RECORD
+MS_PER_PAGE + records x per-record cost
 ```
 
-**Both terms are needed — they dominate in different places.** The crossover is at 19 records a
-page. Below it the fixed term is most of the cost, and 98% of production's syncs are down there;
-above it the per-record term takes over, and that is where the heavy syncs live. Drop the per-record
-term and a full heavy page is understated 159x; drop the per-page term and a 3-record page is
-understated 7x.
+**The per-record cost is measured for the entities that matter and modelled for the rest.** The five
+observation-bearing entities take rates measured from production's own server logs
+(`StorageProfiles`, 11 days, 24,667 confirmed full pages): under the default
+`STORAGE_PROFILE=customer`, **Individual 3.28, ProgramEnrolment 2.84, Encounter 5.17,
+ProgramEncounter 4.76, GroupSubject 5.45 ms/record**. Everything else uses
+`entity tier x BASE_MS_PER_RECORD`, with three tiers assigned by the entity generator: **0.2x** for
+flat lookup rows, **1.0x** for configuration and light transactional, **3.0x** for
+observation-bearing.
 
-Three tiers, assigned by the entity generator so a new entity arrives with one: **0.2x** for flat
-lookup rows, **1.0x** for configuration and light transactional, **3.0x** for the
-observation-bearing four. A page of subjects therefore costs fifteen times a page of genders, which
-one uniform constant could not express.
+**Both terms are needed — they dominate in different places.** On an encounter page they are equal
+at about 22 records. Below that the fixed term is most of the cost; above it the per-record term
+takes over, which is where heavy syncs live. Drop the per-record term and a full encounter page is
+understated about 47x; drop the per-page term and a 3-record page is understated about 8x.
 
-Defaults are **174 ms a page** and **0.60 ms a record**, and a page is capped at
-`MAX_STORAGE_PAUSE_MS`, **2000 ms**. A full 1000-record page therefore costs 0.3 s light, 0.8 s
-medium and 2.0 s heavy.
+Defaults are **112 ms a page**, **2.78 ms a record** for the tiered fallback, and a cap of
+`MAX_STORAGE_PAUSE_MS`, **30,000 ms**. A full 1000-record page therefore costs about 0.7 s on a light
+entity, 2.9 s on a medium one and 5.3 s on encounters.
 
-> **The per-page term is a floor, not a maximum.** It is added to every page whatever its size,
-> and the per-record term accumulates on top. The two are equal at about 290 records on a 1× entity.
+> **`MS_PER_PAGE` is measured, and net of network.** 174 ms observed between pages, less this
+> environment's 62 ms median request — which the simulation already pays for real, so charging it
+> again would count the round trip twice.
 
-> **0.60 is not Q1's 9.19, and that is deliberate.** Q1 measured the marginal cost of a record
-> across a *whole sync* — server, network and client together — and its own result says so: the
-> slope is "an upper bound on client-side parse-and-persist… do not use it as `baseMsPerRecord`
-> unmodified". Using it unmodified double-counts, because the simulation makes the request for real
-> and already pays the server and network share. At 9.19 a heavy page modelled **27.7 seconds**,
-> which is 27.7 ms to write one row and twice a whole median sync in a single page.
->
-> 0.60 is derived from the ceiling rather than measured: it puts the heaviest page a device can
-> pull at 1.97 s, just under the cap. **A deliberate upper bound, not an estimate.** `MS_PER_PAGE`
-> wants the same treatment — 174 minus the server's median response, since the simulation genuinely
-> incurs that part. F7 fits both against production's `14.1s + 8.85ms x records`.
+> **`BASE_MS_PER_RECORD` is a fallback, and its history is a warning.** Q1's 9.19 was first used
+> unmodified, which double-counted server and network and modelled **27.7 seconds** for one heavy
+> page. Then 0.60, derived from the cap rather than measured. 2.78 survives because measurement
+> endorsed it for the entities the logs reach thinly — the 1.0 tier's 2.78 against a measured
+> 2.27–3.13. It now applies to metadata and lookup entities, a small share of any sync.
+
+> **All of it is SQLite-shaped.** [D7](docs/findings-d7.md) measured a real device: 2.22–2.53
+> ms/record on SQLite, 10.18–11.37 on Realm. Durations from this model are about right for a SQLite
+> fleet and understate a Realm one by roughly three times.
 
 > **The cap is a guard, not the mechanism.** Once it binds, page size stops changing the pause,
 > and that relationship is the whole point of the model. The defaults are chosen so it never binds;
-> the banner warns if it does, and names the record count where it starts. Lower
-> `BASE_MS_PER_RECORD` rather than leaning on the cap.
+> the banner warns if it does, and names the record count where it starts.
 
 > **`STORAGE_MODEL=zero` is not a neutral fallback.** Removing the pause lets a virtual user fire
 > its 81 requests back to back, bounded only by the server — at a 20 ms response that is **9x a real
@@ -186,7 +187,7 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
 `DURATION_MINUTES` default 120 — `steady` and `stress`
 
-`BURST_MINUTES` default 15 — `burst` only
+`BURST_SECONDS` default 60 — `burst` only. **Renamed from `BURST_MINUTES`**, which is no longer read: passing it is silently ignored
 
 `STRESS_TO_SYNCS_PER_HOUR` defaults to ten times the starting rate — `stress` only
 
@@ -206,15 +207,17 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
 `STORAGE_MODEL` `weighted` (default) or `zero` — see above
 
-`BASE_MS_PER_RECORD` defaults to 0.60 — see above
+`BASE_MS_PER_RECORD` defaults to 2.78, the fallback for entities `StorageProfiles` does not cover — see above
 
-`MAX_STORAGE_PAUSE_MS` caps one page's modelled client cost, default 2000 — see above
+`MAX_STORAGE_PAUSE_MS` caps one page's modelled client cost, default 30000 — see above
 
-`MS_PER_PAGE` defaults to 174 — see above
+`MS_PER_PAGE` defaults to 112, measured and net of network — see above
 
 `PUSH` `true` includes the upload path. **Default false** — see below
 
 `PUSH_PROFILE` `customer` (default) or `production` — see below
+
+`CUSTOMER_PUSH_DRAW` `v2` (default) or `v1` — the spread of the customer's twenty a day. `v2` is 10/20/30/45, mean 20; `v1` is 8/20/45/150, mean 24, and reproduces every push run before 21 Oct 2026. Recorded as `push.customerDraw` in `run-metadata.json`
 
 `PUSH_ENCOUNTER_MODEL` `general` (default) or `program` — which table the customer's
 encounters land on. The programme design is out of scope for this exercise, so `general` matches
@@ -228,7 +231,7 @@ what the datasets actually contain
 
 `CO_TENANT_USERS` their user file, default `co-tenant-users.csv`
 
-`CO_TENANT_MEDIA_PER_ENCOUNTER` default 0.0214, production-wide rather than the customer's bundle
+`CO_TENANT_MEDIA_PER_ENCOUNTER` default 0.2306, production-wide rather than the customer's bundle — `uploadUrl` calls per pushed encounter, measured from 30,736 calls over 133,259 encounters. An earlier 0.0214 was 10.8x low
 
 `PUSH_INDIVIDUALS` / `PUSH_ENROLMENTS` / `PUSH_PROGRAM_ENCOUNTERS` / `PUSH_ENCOUNTERS` override one
 entity's distribution, as `probability:[min:]p50:p95:max:mean`
@@ -311,7 +314,7 @@ per day over `SYNC_WINDOW_HOURS` — so 500 workers over twelve hours is 42 an h
 |---|---|---|
 | `ramp` **(default)** | every user in the file syncs once, then exits | the H5 structural check |
 | `steady` | constant arrival for `DURATION_MINUTES` | most test cases |
-| `burst` | `USER_COUNT` devices arriving over `BURST_MINUTES` | a training cohort |
+| `burst` | `USER_COUNT` devices arriving over `BURST_SECONDS` | a training cohort |
 | `stress` | rate climbing to `STRESS_TO_SYNCS_PER_HOUR` | finding the knee |
 | `smoke` | one sync | CI |
 
@@ -422,8 +425,8 @@ record is pushed** — `PARALLEL_UPLOAD_COUNT` is 1, despite the chunking around
 
 **Set the rate from the deployment's bundle, not from the default.** `survey.py BUNDLE
 --media-repeats N` reports files per filled form, per form type. A platform-wide average is the
-wrong base rate for any one implementation: production sits at 0.02 files per encounter across 986
-organisations, while the customer's screening bundle reaches **16 on a single encounter**.
+wrong base rate for any one implementation: production sits at 0.23 files per pushed encounter,
+while the customer's screening bundle reaches **16 on a single encounter**.
 
 Two structural details drive that, and a flat count of media form elements misses both. Images sit
 inside **repeatable question groups** — one is named *"Take photos of all lesions and 1 photo

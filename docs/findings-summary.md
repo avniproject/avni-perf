@@ -159,11 +159,11 @@ never touched. Worse than "smaller": `ProgramEncounter` is production's **larges
 and carries the **highest measured storage rate** in `StorageProfiles` — 8.44 ms/record against
 `Encounter`'s 6.14. The missing entity is the expensive one. Regenerate and re-run cases 5 and 13.
 
-**4. Media density.** Media push is already exercised — `media/uploadUrl` was the highest-count
-endpoint in case 11 pair C at 18,269 calls. What is untested is **rate**: these runs carry
-production's platform-wide 0.02 files per encounter, while the customer's screening bundle reaches
-**16 on a single encounter**. Run case 11 or 13 with `--media-repeats` from that bundle. This
-multiplies request count, not just device wall-clock.
+**4. Media density.** **Done 21 Oct 2026 as the media hour** — see suggestion 9 and
+[`findings-media-hour.md`](findings-media-hour.md). Before it, customer push runs carried the
+harness default of 1.42 files per encounter and co-tenants production's 0.23 per pushed encounter;
+the customer's screening bundle reaches **16 on a single encounter**. At 8 per encounter
+`uploadUrl` became 79% of customer requests and took RDS to a 98.5% peak.
 
 **5. Varied catchment sizes.** The generator gives every village identical volume, so case 14's 63
 full syncs pulled *exactly* 15,732 records each. The mean is sound and the spread is an artefact —
@@ -253,8 +253,9 @@ Limits on the numbers above. Each is closed by a run in the section above, by nu
   generation, not by teardown — they carry the sha256 of the empty string. The earlier wording
   dated from Block C, which had emptied the co-tenants, and generalised a true statement about that
   moment into a false one about the dataset. (3)
-* **Media density is production's platform-wide rate**, not the customer's: 0.02 files per
-  encounter against **16 on a single encounter** in the screening bundle. Media push itself is
+* **Media density was below the customer's until the media hour** — 1.42 files per encounter
+  against up to **16 on a single encounter** in the screening bundle; 8 per encounter is now
+  measured ([`findings-media-hour.md`](findings-media-hour.md)). Media push itself is
   measured; what `MEDIA_MODEL=pause` skips is the S3 PUT, deliberately, and media *pull* is on
   demand rather than part of a sync. (4)
 * **Uniform catchments** — every village holds identical volume, so the mean is sound and **the

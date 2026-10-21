@@ -76,7 +76,7 @@ for how long the `PUT` would take. The bytes never leave the injector.
 |---|---|---|
 | `MEDIA_FILE_KB` | **500** | the client captures 1280×960 at quality 1 (`MediaV2FormElement`), a full-quality 1.2 MP JPEG. **Audio and video are larger**, so this understates them. |
 | `MEDIA_UPLOAD_KBPS` | **125** | about 1 Mbps — "optimistic for rural 3G, pessimistic for a town on 4G" |
-| `PUSH_MEDIA_PER_ENCOUNTER` | **1.42** | **a default the code tells you not to trust** — "set it from the deployment", via `make survey_bundle`. Production averages 0.02 per encounter; the customer's screening bundle reaches **16 on one**, which the code's own table puts at 1,408 s of transfer per sync. |
+| `PUSH_MEDIA_PER_ENCOUNTER` | **1.42** | **a default the code tells you not to trust** — "set it from the deployment", via `make survey_bundle`. Production averages 0.23 per pushed encounter; the customer's screening bundle reaches **16 on one**, which the code's own table puts at 1,408 s of transfer per sync. |
 
 > **Both are assumptions, not measurements.** Unlike `StorageProfiles`, which came from 11 days of
 > production logs, neither was derived from anything observed. **And `MEDIA_UPLOAD_KBPS` has never
