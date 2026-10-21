@@ -82,6 +82,10 @@ newrelic_export: ## Back up New Relic events before the 8-day Transaction retent
 	python3 tools/newrelic-export.py --account $(ACCOUNT) --out nr-backup \
 	  $(if $(SINCE),--since $(SINCE)) $(if $(EVENT_TYPES),--event-types $(EVENT_TYPES)) $(if $(S3),--s3)
 
+cpu_per_sync: ## CPU seconds per sync, per run. ACCOUNT=... [RUN=case3] [ARTEFACTS=dir] | no args prints the cache
+	python3 tools/cpu-per-sync.py $(if $(ACCOUNT),--account $(ACCOUNT),--table) \
+	  $(if $(RUN),--run $(RUN)) $(if $(ARTEFACTS),--artefacts $(ARTEFACTS))
+
 newrelic_query: ## Query the backup offline, no account needed. RUN=case3 [FACET=name] [WHERE=...]
 	python3 tools/newrelic-query.py $(if $(RUN),--run $(RUN),--list-runs) \
 	  $(if $(FACET),--facet $(FACET)) $(if $(WHERE),--where "$(WHERE)") $(if $(EVENT_TYPE),--event-type $(EVENT_TYPE))
