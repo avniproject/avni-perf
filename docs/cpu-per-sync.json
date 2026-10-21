@@ -568,5 +568,61 @@
    "2026-10-21T10:59:35Z",
    "2026-10-21T12:04:35Z"
   ]
+ },
+ "2026-10-21T12-27-12Z-case15-redrawn-m6g.xlarge-40f08e2": {
+  "appCpuAvg": 54.4,
+  "appCpuMax": 88.9,
+  "appHeapCommittedMb": 2560.0,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 1101.3,
+  "appHeapUsedMbMax": 1937.9,
+  "appPhysicalMemMb": 2868.4,
+  "coTenantSyncs": 790,
+  "cpuPerCustomerSync": 7.14,
+  "cpuPerSync": 4.68,
+  "cpuSeconds": 10713.9,
+  "customerSyncs": 1500,
+  "distribution": {
+   "all": {
+    "mean": 4.68,
+    "n": 2290,
+    "p50": 4.73,
+    "p95": 11.52
+   },
+   "coTenant": {
+    "mean": 0.14,
+    "n": 790,
+    "p50": 0.09,
+    "p95": 0.28
+   },
+   "customer": {
+    "mean": 7.07,
+    "n": 1500,
+    "p50": 7.39,
+    "p95": 11.63
+   },
+   "full": {
+    "mean": 7.21,
+    "n": 24,
+    "p50": 7.86,
+    "p95": 13.21
+   },
+   "incremental": {
+    "mean": 4.65,
+    "n": 2266,
+    "p50": 4.72,
+    "p95": 11.3
+   },
+   "weightedBy": "serverMs"
+  },
+  "rdsCpuAvg": 51.7,
+  "rdsCpuMax": 81.4,
+  "rdsFreeableMemMbMin": 3771.7,
+  "rdsSwapMbMax": 5.5,
+  "syncs": 2290,
+  "window": [
+   "2026-10-21T12:27:12Z",
+   "2026-10-21T13:52:12Z"
+  ]
  }
 }

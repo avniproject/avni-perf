@@ -22,7 +22,7 @@
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
 | [**12**](#case-12) | Clustered — co-tenant data | 2 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 4 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
-| [**15**](#case-15) | Clustered — co-tenant load, media push | 1 + 1 pending | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
+| [**15**](#case-15) | Clustered — co-tenant load, media push | 2 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
 
 <a id="case-1"></a>
@@ -247,11 +247,11 @@ Case 13's shape — clustered into one hour, co-tenants syncing — with push on
 | run (UTC) | variation | dataset | syncs | failed | p95 ms | CPU s/sync |
 |---|---|---|---|---|---|---|
 | [`2026-10-21 06:58`](run-log-detail.md#2026-10-21t06-58-37z-media-hour-m6gxlarge-c2a0e76) | 1,500 over 1 h, push on, 8 files/encounter, co-tenants, 4 vCPU | pilot-day-180 | 2292 | 0.0% | 503 | 5.04 |
-| *row 23 — planned* | supervisors push nothing, `CUSTOMER_PUSH_DRAW=v2`; on row 20's residue | | | | | |
+| [`2026-10-21 12:27`](run-log-detail.md#2026-10-21t12-27-12z-case15-redrawn-m6gxlarge-40f08e2) | **re-drawn** (row 23): supervisors push nothing, `CUSTOMER_PUSH_DRAW=v2`; on row 20's residue. 2 KO = org 24's groups defect | pilot-day-180 | 2290 | 0.0% | 426 | 4.68 |
 
 **Findings:** [`findings-clustered-media-push.md`](findings-clustered-media-push.md)
 
-**It holds, and the server is 2% of it.** A median sync is 12.5 minutes, 10.7 of them the device uploading. App CPU landed inside the estimate; **RDS went to a 98.5% peak**, driven by `uploadUrl`. The 2 h 20 m drain came from the old encounter draw's tail, since replaced; supervisors were also pushing, which row 23 removes.
+**It holds, and the server is 2% of it.** A median sync is 12.5 minutes, 10.7 of them the device uploading. App CPU landed inside the estimate; **RDS went to a 98.5% peak**, driven by `uploadUrl`. The 2 h 20 m drain came from the old encounter draw's tail, since replaced; supervisors were also pushing. **Row 23 removed both and RDS came off its ceiling** — peak 98.5% → 81.4%, mean 62% → 52%, for 26% fewer `uploadUrl` calls — with every prediction landing: 217,400 files, p50 160 / max 360 per sync, 1 h 20 m wall, 10,714 CPU s. Its 2 KO are org 24's groups endpoint, a standing data defect.
 
 ## D7 — client storage
 

@@ -141,15 +141,75 @@ this one, `ΔCPU ÷ Δ(uploadUrl calls)`, on both tiers. That run is now the obv
 measurement, because **the database is the next constraint**, and it is being driven there by the
 cheapest-looking request in the mix.
 
+## Row 23: the re-draw — supervisors push nothing, the customer's own spread
+
+Row 20 overstated its own workload twice over: supervisors pushed a field worker's twenty a day,
+and the encounter draw's tail (max 150) put 1,200 files on one sync. Row 23 —
+`2026-10-21T12-27-12Z-case15-redrawn-m6g.xlarge` — removes both (`case5-users-pilot-nosuppush.csv`,
+`CUSTOMER_PUSH_DRAW=v2`: 10 / 20 / 30 / 45) and changes nothing else: same `m6g.xlarge`, same
+control jar, same co-tenants, on row 20's residue by choice. Warmed by a 900 s burst after a
+resize and redeploy, where row 20 was warm from case 13.
+
+**It landed where the plan put it.** Scored against the predictions written beforehand:
+
+| | row 20 | predicted | **row 23** |
+|---|---|---|---|
+| media files, customer syncs | 295,232 | ~215,000 | **217,400** |
+| users pushing media | 1,500 | 1,344 field workers | **1,344** — the 156 supervisors pushed nothing |
+| files per field-worker sync | p50 160, mean 197, max 1,184 | p50 160, mean 160, max 360 | **p50 160, mean 161.8, p95 240, max 360** |
+| upload wait, worst sync | 80 min | 24 min | **24 min** (25.6 min sync) |
+| wall time | 2 h 20 m | ~1 h 25 m | **1 h 20 m** |
+| requests | 415,082 | | 327,309, p50 28 ms, p95 426, 99.2% under 800 |
+| app CPU s | 11,542 | ~10,400 | **10,714** |
+| customer CPU s per sync, corrected | ~6.8 | ~6.0 | **~6.3** |
+| app CPU, mean | 68% over the hour | ~61% | **~62% over the hour**, 54% over the 85-min window, peak 89% |
+| **RDS, mean / peak** | **62% / 98.5%** | ~60% / ~85% if it follows `uploadUrl` | **52% / 81.4%** |
+
+**The question was whether RDS comes off its ceiling, and it does.** 26% fewer `uploadUrl` calls
+took the peak from 98.5% to 81.4% and the mean down 17%. Not one-for-one: the pulls, identical in
+both runs, are the floor the database sits on, and the media calls were what spiked it. The paired
+run the scenario document asked for is in effect answered by this one.
+
+Per customer sync, from `sync-durations.csv` joined to the server's own `uploadUrl` counts:
+
+| | field workers (1,344) | supervisors (156) | row 20, all 1,500 |
+|---|---|---|---|
+| duration p50 / p95 / max | 722 / 1,047 / 1,536 s | 197 / 233 / 246 s | 749 / 1,657 / 4,825 s |
+| upload wait p50 | 640 s | 0 | 640 s |
+| storage pause p50 | 68 s | 173 s | 67 s |
+| **server + queue p50 / p95** | **13.3 / 19.7 s** | 21.4 / 30.5 s | 18.1 / 43.1 s |
+| records pulled p50 | 13,844 | 32,647 | 13,778 |
+| share: upload / storage / server | 89% / 9% / 2% | 0% / 89% / 11% | 89% / 9% / 2% |
+
+No customer sync exceeded 30 minutes; row 20 had 63, and 16 over an hour. The server's share of a
+field worker's wait is unchanged at 2%, and its absolute time fell 18 → 13 s at the median — less
+queueing behind media calls. A supervisor's sync is now what it should be: a large pull, a long
+storage pause, no upload.
+
+**Gatling reports `BUILD FAILED`, on 2 KO in 327,309 requests.** Both are `Co-tenant → Groups`,
+both from **organisation 24**, both HTTP 500 after ~30 s: `GET /groups/search/lastModified` for the
+first co-tenant organisation has **failed on every call today — 4 of 4**, two of them inside row
+19's control run, where they sit among its 467. No other organisation's groups call has failed.
+Only a full sync reaches that endpoint for a co-tenant, which is why it surfaces at the 0.01%
+level. It is a standing data defect in org 24, not load, and it needs a look at what that
+organisation's groups hold — a database question, not a harness one.
+
+The identifier generator also warned throughout — `No non-exhausted identifier assignments found`
+— for customer users whose pushed individuals had exhausted their ID pools. A push-model artefact
+of running the same users through many push runs, not a server fault, and worth knowing before
+reading any `individual` POST latency from a media run.
+
 ## What this settles, and what it does not
 
 - **4 vCPU holds the hour** — 0 failures, p95 503 ms — and the application CPU landed inside the
-  estimate. **RDS did not**: a 98.5% peak is the ceiling, and it is where the next failure comes
-  from if this load grows.
+  estimate. **RDS did not, on row 20**: a 98.5% peak is the ceiling. **On row 23, the realistic
+  version, it is 81%**: the media calls were the spike, and with the customer's own spread the
+  database has headroom again — though the pulls hold it at ~52% mean regardless.
 - **The server is not what a field worker waits for.** 2.3% of sync time. The product problem
   this scenario exposes is a quarter-hour sync on a 1 Mbps uplink, and it is a client problem:
   uploading concurrently, uploading in the background, or uploading less.
 - **It is a model.** 8 files/encounter × a p50-20 draw × a serial 125 KB/s uplink is the harness's
   rendering of the customer's bundle. If the real device uploads concurrently, or the real bundle
   is lighter, the upload wait scales down proportionally; the server numbers do not change.
-- **Not settled:** what `uploadUrl` costs the database. One paired run answers it.
+- **Mostly settled by row 23:** `uploadUrl` is what drove the database to its ceiling — 26% fewer calls took the peak down 17 points — while the pulls are its floor. A true paired run (same draw, media rate only) would give the per-call figure; the direction no longer needs one.
+- **Open, and not the server's:** org 24's groups endpoint, and the exhausted identifier pools of the load users.
