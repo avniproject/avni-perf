@@ -59,6 +59,34 @@ throttling it. **The gap between the tiers narrowed from about 65 points to abou
 > ([12b](findings-case9-12b.md)). That would be a new finding either way. **The injector is
 > `m6g.xlarge` with 4 vCPU and would need watching or resizing**, or the harness becomes the limit.
 
+## Saturation costs CPU, not only latency
+
+**Added 21 Oct 2026, from `tools/cpu-per-sync.py`.** The throughput comparison understates the
+change because the workload is fixed at 1,682 syncs/hour. CPU seconds do not have that problem —
+they are additive, and they say something the rate cannot.
+
+| | syncs | app CPU s | **CPU s per sync** |
+|---|---|---|---|
+| 2 vCPU `m6g.large` | 2,007 | 8,403 | **4.19** |
+| 4 vCPU `m6g.xlarge` | 2,474 | 7,743 | **3.13** |
+
+**The larger server completed 23% more syncs on 8% less total CPU — 25% less CPU per sync.**
+
+The same work got *cheaper*. A collapsing server spends CPU on work that never completes: the 467
+failed requests, the queueing, the context switching, and the responses it finished computing for
+clients that had already timed out at 60,007 ms. None of that reaches a user and all of it is
+paid for.
+
+> **Read the denominator honestly.** This is CPU over **completed** syncs, while the numerator
+> includes the CPU spent on everything that failed. That is the right way to express "what it cost
+> to get this work done", and it is **not** "what a sync intrinsically costs" — the two diverge
+> exactly when a server is collapsing, which is the case here. The 3.13 figure is the better
+> estimate of the intrinsic cost, because almost nothing was wasted.
+
+**Which is why the gain is larger than 29%.** Throughput rose by that much against a fixed offered
+load; headroom went 99% to 54%; and the work itself became a quarter cheaper. The three are
+different measures of the same move and the first is the least informative.
+
 ## What this does not establish
 
 * **n = 1 at each size.** The effect is far larger than the harness's known run-to-run variance —
