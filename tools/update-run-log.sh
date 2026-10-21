@@ -30,6 +30,7 @@
 set -euo pipefail
 
 BUCKET=""; PREFIX="artefacts"; OUT="docs/run-log.md"
+REGION="${AWS_REGION:-ap-south-1}"
 while [ $# -gt 0 ]; do
   case "$1" in
     --bucket) BUCKET="$2"; shift 2 ;;
@@ -71,14 +72,21 @@ for r in $RUNS; do
   # device concurrency and the per-sync spread measured rather than derived; absent
   # for earlier runs, and the columns read as absent rather than being invented.
   aws s3 cp --only-show-errors "s3://$BUCKET/$PREFIX/$r/sync-durations.csv" "$WORK/$r/" 2>/dev/null || true
+  # The one-file archive: written by the run script since 21 Oct 2026, back-filled
+  # by tools/archive-runs.sh. Its presence decides whether the detail page offers
+  # a download or says there is none -- a link to a missing object helps nobody.
+  if aws s3api head-object --bucket "$BUCKET" --key "$PREFIX/$r/$r.zip" >/dev/null 2>&1; then
+    touch "$WORK/$r/.has-archive"
+  fi
 done
 
-RUNS="$RUNS" WORK="$WORK" BUCKET="$BUCKET" PREFIX="$PREFIX" OUT="$OUT" python3 - <<'PY'
+RUNS="$RUNS" WORK="$WORK" BUCKET="$BUCKET" PREFIX="$PREFIX" REGION="$REGION" OUT="$OUT" python3 - <<'PY'
 import json, os, pathlib, re, datetime
 
 runs  = os.environ['RUNS'].split()
 work  = pathlib.Path(os.environ['WORK'])
 bucket, prefix, out = os.environ['BUCKET'], os.environ['PREFIX'], os.environ['OUT']
+region = os.environ['REGION']
 
 # **Application CPU, from `docs/cpu-per-sync.json`, written by `tools/cpu-per-sync.py`.**
 # Wall clock conflates work with queueing; CPU seconds measure the work and are additive, which
@@ -475,7 +483,9 @@ L.append("Artefacts are **not** copied into the repo. Each run directory holds G
          "context captured at run time — `parity-report.md`, `pg_settings.csv`, `stats.json` — "
          "and `sync-durations.csv`, one row per completed sync. "
          "Those are what make a number interpretable once the environment that produced it has "
-         "been destroyed.\n")
+         "been destroyed. The bucket is private and the report's ~250 objects only render "
+         "together, so each run also carries a single `<run-id>.zip` of the whole directory; the "
+         "detail page links it. Download, unzip, open `index.html`.\n")
 L.append("**`app CPU s` is application CPU over the run's window, from New Relic's "
          "`apm.service.cpu.usertime`, which is absolute seconds rather than a percentage.** It is "
          "cached in `docs/cpu-per-sync.json` by `tools/cpu-per-sync.py` so this log can be "
@@ -572,7 +582,18 @@ D.append("**Do not edit by hand.** Rewritten wholesale on every run of that scri
          "is gone.\n")
 for r, link, meta, stats, sha7, corr in details:
     D.append(f"## `{r}`\n")
-    D.append(f"Artefacts: `{link}`\n")
+    # s3:// is the identifier, not a way in: the bucket is private and the report's
+    # ~250 objects only render together. The archive is the way in.
+    zkey = f"{prefix}/{r}/{r}.zip"
+    if (work/r/'.has-archive').exists():
+        console = (f"https://{region}.console.aws.amazon.com/s3/object/{bucket}"
+                   f"?region={region}&prefix={zkey}")
+        D.append(f"Artefacts: `{link}` — [download the run as one zip]({console}) "
+                 f"from the AWS console (load-test account), or "
+                 f"`aws s3 cp s3://{bucket}/{zkey} .`; unzip and open `index.html`.\n")
+    else:
+        D.append(f"Artefacts: `{link}` — no one-file archive yet; "
+                 f"`tools/archive-runs.sh --only {r}` makes one.\n")
     D.append("| | |")
     D.append("|---|---|")
     if stats:
