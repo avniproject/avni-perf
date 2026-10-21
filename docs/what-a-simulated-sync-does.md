@@ -68,7 +68,21 @@ fallback for entities the logs did not reach.
 ### 2. The S3 upload — bytes not sent, time still spent
 
 Each queued media file costs a real `GET /media/uploadUrl` against the server, and then a **pause**
-for how long the `PUT` would take at `MEDIA_UPLOAD_KBPS`. The bytes never leave the injector.
+for how long the `PUT` would take. The bytes never leave the injector.
+
+**500 KB per file at 125 KB/s, so a flat 4 seconds each, serial** — `1000 × fileKb / uploadKbps`.
+
+| | default | where it comes from |
+|---|---|---|
+| `MEDIA_FILE_KB` | **500** | the client captures 1280×960 at quality 1 (`MediaV2FormElement`), a full-quality 1.2 MP JPEG. **Audio and video are larger**, so this understates them. |
+| `MEDIA_UPLOAD_KBPS` | **125** | about 1 Mbps — "optimistic for rural 3G, pessimistic for a town on 4G" |
+| `PUSH_MEDIA_PER_ENCOUNTER` | **1.42** | **a default the code tells you not to trust** — "set it from the deployment", via `make survey_bundle`. Production averages 0.02 per encounter; the customer's screening bundle reaches **16 on one**, which the code's own table puts at 1,408 s of transfer per sync. |
+
+> **Both are assumptions, not measurements.** Unlike `StorageProfiles`, which came from 11 days of
+> production logs, neither was derived from anything observed. **And `MEDIA_UPLOAD_KBPS` has never
+> been swept**, though the code comment says to — it is the single biggest lever on how long a
+> media-bearing sync takes, moving a 31-file sync from 26 s to 402 s across the documented range.
+> Every run so far used 125.
 
 S3 serves those objects directly, so a `PUT` from the injector would measure an in-region pipe
 moving 500 KB in tens of milliseconds, where a field device on rural 3G takes four seconds —
@@ -111,6 +125,33 @@ step 9, and why `syncDetails` is expensive on the server side.
 | injection profile | `burst` or `steady`, and the arrival window |
 | `CO_TENANTS` | whether production's other organisations sync alongside, drawn by measured concentration rather than evenly |
 | the dataset | what is there to pull; the span of a supervisor's catchment is a **dataset**, not a flag |
+
+### The defaults, as the code ships them
+
+Every one is `-D`-overridable and every one is recorded in the run's `run-metadata.json`, so a past
+run can be checked rather than assumed.
+
+| | default | |
+|---|---|---|
+| `SYNC_MODE` | `csv` | runs use `realistic`, `full` or `incremental`; `csv` reads the window from the feeder |
+| `SYNC_WINDOW_HOURS` | `12` | the assumed working-day plateau — **the assumption cases 11–13 exist to test** |
+| `FULL_SYNC_PERCENT` | `1.0` | one sync in a hundred draws a full pull |
+| `INCREMENTAL_SINCE_HOURS` | `24` | only for `SYNC_MODE=incremental` |
+| `PAGE_SIZE` | `1000` | matches the client |
+| `PUSH` | `false` | off in most runs |
+| `CO_TENANTS` | `false` | |
+| `CO_TENANT_SYNCS_PER_HOUR` | `792` | production's busiest recorded hour |
+| `PUSH_PROFILE` / `STORAGE_PROFILE` | `customer` | the three organisations that agree, at 79% of the sample; `production` is the pooled figure |
+| `STORAGE_MODEL` | `weighted` | per-entity rates from `StorageProfiles`; `none` charges nothing |
+| `BASE_MS_PER_RECORD` | `2.78` | **fallback only**, for entities the production logs did not reach |
+| `MS_PER_PAGE` | `112` | fixed per-page client cost, **measured and net of network** — 174 observed minus this environment's 62 ms median request, so the simulation does not charge the round trip twice |
+| `MAX_STORAGE_PAUSE_MS` | `30000` | a cap that should never bind; if it does, the model is wrong |
+| `MEDIA_MODEL` | `pause` | `none` charges nothing for media |
+| `PROFILE` | `ramp` | or `burst` / `steady` |
+| `BURST_SECONDS` | `60` | |
+| `DURATION_MINUTES` | `120` | |
+| `AUTH_MODE` | `none` | Cognito otherwise |
+| `MAX_FAILED_PERCENT` / `MAX_P95_MS` | `0.05` / unset | the gates a run is judged against |
 
 ## Things people get wrong about it
 
