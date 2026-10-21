@@ -1173,6 +1173,7 @@ is binding; the calendar is not.
 | 20 | — | **The media-heavy hour** — 1,500 workers at 8 files per encounter, co-tenants at 792/h, on 4 vCPU; the scenario [`scenario-tanuh-media-hour.md`](scenario-tanuh-media-hour.md) sized in advance | **done 2026-10-21 — it holds, and the server is 2% of it.** **415,082 requests, 0 failed**, p95 503 ms, 98.05% under 800 ms. Media files per customer sync **p50 160, exactly the 20 × 8 predicted**, mean 197, max 1,184. **A median customer sync is 12.5 minutes, of which 10.7 is the device uploading** — 88.9% of sync time is upload wait, 8.8% the modelled storage pause, **2.3% the server, queueing included** (18 s median). The run's wall time was 2 h 20 m for a 1 h injection: 20 users drew 100+ encounters, so 800+ files, and each spent 53–80 min uploading serially before pushing a record — the last injected at 13:28 finished at 14:49. **CPU 11,542 s for the hour (predicted ~10,300), app 68% mean / 94% peak (predicted 61–68%), RDS 70% mean / 98.5% peak** — the application landed inside the estimate and **the database went to its ceiling**, driven by 295,000 `uploadUrl` calls the model priced as nearly free. **The instrument caveat**: `serverMs` in `sync-durations.csv` includes the upload wait, because only the storage pause is subtracted; corrected from the server's own log. [`findings-media-hour.md`](findings-media-hour.md) |
 | 21 | — | **`DummyInterceptor` removed — case 13 at 2 vCPU** | **pending.** The temp-fix jar against the run that broke. Control is row 19's `m6g.large` run, already on the same build. **Binary outcome**: does removing the interceptor take case 13 off the cliff. See [*Rows 21 and 22*](#rows-21-and-22-removing-dummyinterceptor) |
 | 22 | — | **`DummyInterceptor` removed — case 12 at 2 vCPU** | **pending.** The clean delta. Case 12 passes at 81% CPU, so both sides complete the same work and the CPU-per-sync difference is the saving rather than saturation waste. Control is row 16's case 12 run |
+| 23 | — | **The media hour, re-drawn** — row 20 with supervisors pushing nothing and the customer's own spread (`CUSTOMER_PUSH_DRAW=v2`) | **pending — run after 21 and 22, on a reset dataset.** The honest version of row 20: no supervisor writing a field worker's twenty a day, and no 150-encounter syncs. **The question is whether RDS comes off its 98.5% peak** with about 27% fewer `uploadUrl` calls. See [*Row 23*](#row-23-the-media-hour-re-drawn) |
 
 #### Rows 21 and 22: removing `DummyInterceptor`
 
@@ -1198,6 +1199,8 @@ nothing but the interceptor's registration**, confirmed in the bytecode.
 
 So row 19's `m6g.large` case 13 and row 16's case 12 are valid controls as they stand. Re-running
 the control on the same day is still worth doing if the environment has been touched since.
+
+**Reset `pilot-day-180` first.** Row 20, the media hour, ran with push on after these controls and left its rows behind — see *Row 23* for why that matters and the order to run in.
 
 **Run each exactly as its control ran** — same instance size, same dataset (`pilot-day-180`), same
 feeder and rate, same co-tenant load and seed, New Relic attached, **no profiler**. Only the jar
@@ -1231,6 +1234,67 @@ else under a sync workload, which would read as a null result for the wrong reas
 
 **Housekeeping.** The temp fix lives in a git worktree at `/tmp/avni-17.3-tip`, uncommitted and
 marked `DO NOT MERGE`. Remove it with `git worktree remove /tmp/avni-17.3-tip` once both runs are in.
+
+#### Row 23: the media hour, re-drawn
+
+**Row 20 overstated its own workload in two ways, both found after it ran.** Supervisors pushed at
+`pushScale` 1.0, so 156 of the 1,500 syncs carried a field worker's twenty encounters a day that a
+supervisor covering a Taluka does not record. And the encounter draw was 8 / 20 / 45 / 150 — a
+spread with no customer basis, whose tail put 1,200 files on one sync and stretched a one-hour
+injection to 2 h 20 m. The customer's own figure is that a heavy day is unlikely to pass thirty.
+
+**This run removes both and changes nothing else.**
+
+| | row 20 | **row 23** |
+|---|---|---|
+| feeder | `case5-users-pilot.csv` | **`case5-users-pilot-nosuppush.csv`** — the same 1,682 rows in the same order, supervisors at `pushScale` 0.0 |
+| encounter draw | 8 / 20 / 45 / 150, mean 24.6 measured | **`v2`: 10 / 20 / 30 / 45, mean 20** |
+| everything else | 1,500 over 1 h, 8 files/encounter, co-tenants at 792/h with push on, `m6g.xlarge`, `pilot-day-180`, `MEDIA_MODEL=pause`, New Relic on, no profiler | **identical** |
+
+```
+-DSYNC_USERS=case5-users-pilot-nosuppush.csv -DCUSTOMER_PUSH_DRAW=v2 \
+-DPUSH_MEDIA_PER_ENCOUNTER=8 -DSERVER_BUILD=<the jar's commit>     # plus row 20's settings unchanged
+```
+
+`v2` is the default, but pass it explicitly: the banner and `push.customerDraw` in
+`run-metadata.json` then confirm which ran. **A supervisor's `pushScale` of 0 zeroes every push
+entity, so its media count is zero too** — it still pays the per-user push seed, four page reads,
+once.
+
+**Predictions, written before the run:**
+
+| | row 20, measured | row 23, predicted |
+|---|---|---|
+| media files, all customer syncs | ~295,500 | **~215,000** (1,344 field workers × 160) |
+| media files per field-worker sync | p50 160, mean 197 | **p50 160, mean 160, max 360** |
+| upload wait, worst sync | 80 min | **24 min** |
+| wall time | 2 h 20 m | **~1 h 25 m** — injection plus the longest upload |
+| customer CPU s per sync | ~6.8 | **~6.0** |
+| total CPU s for the hour | 11,542 | **~10,400** |
+| app CPU, 4 vCPU, mean | 68% | **~61%** |
+| **RDS, mean / peak** | **70% / 98.5%** | **the question** — ~60% / ~85% if it falls in step with `uploadUrl` |
+
+The RDS figure is the least certain and the most useful. Row 20 showed the database driven to its
+ceiling by `uploadUrl`, a request the scenario priced as nearly free; if it scales with the call
+count this run lands well clear of it, and if it does not, something other than the media calls is
+holding the database up.
+
+**This is not an A/B.** It changes two things at once — both reductions in push work, so they move
+in the same direction — because the aim is the realistic version of the scenario, not to separate
+the two. Separating them would take two more runs: `v2` with supervisors at 1.0, or `v1` with them
+at 0. **Per-request costs still compare directly with row 20**: CPU and database time per
+`uploadUrl`, per encounter `POST`, per record pulled. Totals do not.
+
+**Read `serverMs` corrected, as row 20 had to be.** The harness still adds the media pause to it, so
+the raw column overstates server time by the whole upload wait.
+
+> **Order: reset `pilot-day-180` before rows 21 and 22, run this last, and reset after it.** Row 20
+> pushed on the order of 37,000 customer encounters plus co-tenant writes, all ten months newer than
+> the generated data, so they sit inside every `realistic` sync window — exactly what forced the
+> reload after case 11 run 1. **Rows 21 and 22 are compared against controls that ran before row
+> 20**, on the clean dataset; run them on this one and the interceptor's saving is mixed with
+> larger pulls. Nothing records a reload since row 20, so treat the dataset as carrying its residue
+> until a count says otherwise. This run pushes again, which is why it goes last.
 
 #### Standing task: back up New Relic weekly
 
