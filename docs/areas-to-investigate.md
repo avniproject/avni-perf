@@ -662,3 +662,18 @@ returns when associations are null — `left`, not inner. So would item 6's fix 
 is ever worth pursuing, since changing a `UserType`'s mutability changes when Hibernate detects a
 write. Items 1b, 2, 3 and 5 are behaviour-preserving by
 inspection, and item 4 is specified on avni-client#2096.
+
+## Where a saturated server queues, from the timeslices
+
+Added 22 Oct 2026 from the row 19 captures (`findings-vertical-scale.md`, *What the 2 vCPU
+saturation was made of*). On the run that broke, **98% of all request wall time was inside
+`AuthenticationFilter`** — 723,869 of 738,180 seconds — with 48,865 monitor-blocked and 240,000
+waited thread events against 571 and 70,000 on the same load at 4 vCPU. The filter takes a pooled
+connection to resolve the user and switch role before any controller runs, so it is where threads
+stack up when the box cannot schedule them. **Item 2 above (the role-switching tax) is not only a
+database-call cost, it is the point of collapse**, which raises its rank: anything that lets the
+filter answer without a connection — a user cache with a TTL, or the role switch moved to the
+transaction that needs it — moves the knee, not just the per-call cost. The monitor behind the
+48,865 blocks is not named by the timeslices; a thread dump under load, or async-profiler's lock
+profile, would name it.
+

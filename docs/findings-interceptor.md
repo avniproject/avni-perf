@@ -162,6 +162,42 @@ contends less. 18.7% of the server's CPU seconds, for a query whose result nothi
 **The control is older than row 21's** — six days and a dataset reload — and was not re-run. The
 span20 runs put run-to-run noise at 1–2 points; this delta is 19.
 
+### Where the 18.7% went
+
+Both arms' per-segment timeslices are in the New Relic backup (`nr-backup/timeslices/`,
+`case12-control-15oct` captured on 22 Oct while still retained, and `case12-2vcpu-B-no-interceptor`);
+`tools/compare-timeslices.py` puts them side by side. Whole-run seconds, 1,682 syncs each:
+
+| | control | no interceptor | |
+|---|---|---|---|
+| request time, all transactions (wall) | 20,016 | 10,842 | −46% |
+| **`Spring/HandlerInterceptor`** (wall) | **2,333** | 67 | −97% — **11.7% of the control's request time** |
+| of which `gender/select` | 179 (66,468 calls, 2.7 ms each) | 4 (3,370 calls) | the query is 8% of the interceptor's time |
+| database, all statements (wall) | 3,450 | 2,641 | −809: 175 is the gender query, **634 is the same statements running faster at equal call counts** |
+| `encounter (GET)` (wall) | 18,838 | 9,420 | the dominant request, halved |
+| **CPU/User Time** | **6,152** | **4,999** | **−1,153, the 18.7%** |
+| GC, young generation (collector s) | 41 | 26 | negligible either way |
+| thread blocked / waited events | 691 / 33,681 | 788 / 35,472 | no contention in either |
+
+**The interceptor's own segment is 11.7% of request time — the profiler's 12.6%, reproduced on a
+different day from the agent's timeslices.** But the query it runs is only 8% of that segment: 179
+of 2,333 seconds. The other 2,154 seconds are the `@Transactional` boundary around it — a pooled
+connection taken and returned, a transaction begun and committed, Hibernate's flush check run —
+for a result nothing reads. That is the "transactions opened, connection checkouts" part of the
+hypothesis, and it is the bulk of the cost, not the query.
+
+**Then the second-order effect.** Every other statement sped up with the interceptor gone —
+`individual/select` and `encounter/select` each −25% at the same call counts — worth 634 seconds
+of database wall time, and `encounter (GET)` halved while its own queries only fell by a quarter.
+On a 2 vCPU box at 81% that is less contention for CPU and for the pool, and it is why the CPU
+saving (−1,153 s) is half the interceptor's wall time (−2,266 s): the segment's wall time is partly
+waiting on the database round trip, which costs no CPU, and the CPU it does save is spread across
+every request that no longer queues behind it.
+
+What the capture cannot split: CPU is one number per run, so "interceptor CPU" against "contention
+CPU" is bounded, not measured — the interceptor's share is at most the 1,153 and at least the part
+of its 2,266 wall seconds that was not database waiting.
+
 ## What this settles
 
 - **The binary question, yes.** Removing `DummyInterceptor` takes case 13 off the cliff on the

@@ -87,6 +87,50 @@ paid for.
 load; headroom went 99% to 54%; and the work itself became a quarter cheaper. The three are
 different measures of the same move and the first is the least informative.
 
+## What the 2 vCPU saturation was made of
+
+Both row 19 runs' per-segment timeslices were captured from New Relic on 22 Oct
+(`nr-backup/timeslices/case13-m6g.large`, `case13-m6g.xlarge`), beside row 21's
+(`case13-2vcpu-B-no-interceptor`, the same box with the interceptor removed). Whole-run seconds;
+syncs recorded 2,007 / 2,474 / 2,474.
+
+| | 2 vCPU, control | 4 vCPU | 2 vCPU, no interceptor |
+|---|---|---|---|
+| **CPU/User Time** | **8,403** | 7,743 | 6,358 |
+| per sync | 4.19 | 3.13 | 2.57 |
+| **GC, young + old + concurrent** (collector s) | **519 + 34 + 2.5 = 555** | 18 | 53 |
+| heap used, mean / peak MB | 2,778 / 5,096 | 1,073 / 1,796 | 1,042 / 1,977 |
+| request time, all transactions (wall) | **738,180** | 12,571 | 28,038 |
+| `doFilter` (wall) | **723,869** — 98% of all request time | 1,710 | 2,733 |
+| `Spring/HandlerInterceptor` (wall) | 45,331 | 1,221 | 243 |
+| database, all statements (wall) | 48,703 | 4,425 | 7,625 |
+| `gender/select` calls | 108,247 | 133,175 | 4,862 |
+| thread **blocked** events (monitor contention) | **48,865** | 571 | 2,811 |
+| thread **waited** events | **240,061** | 69,663 | 68,533 |
+
+**Garbage collection is a quarter to a half of the gap.** The control collected for 555 seconds
+against 18 on the 4 vCPU run — thirty times more — with the old generation collecting at all only
+on the control, whose heap sat at 2,778 MB mean and 5,096 of 5,120 MB peak. G1's young collections
+are parallel, so on 2 vCPU that is roughly 555–1,100 CPU seconds of the 2,127 that separate 4.19
+from 3.13 per sync. The rest is what a starved box does: 48,865 monitor-blocked events against
+571, 240,000 waits against 70,000, and 467 requests that ran to a 60-second timeout doing work
+nobody received.
+
+**Where a saturated server queues: the authentication filter.** Of the control's 738,180 seconds
+of request wall time, **723,869 — 98% — were inside `AuthenticationFilter`**, the first thing
+every request meets; on 4 vCPU the same filter took 1,710 seconds for more requests. The filter
+resolves the user and switches role before the controller runs, which takes a pooled connection,
+and the thread states say what the queue was made of: the waits are the pool, the blocks are a
+monitor somewhere on that path. Every statement's wall time inflated ten to fifteen times at
+identical call counts while RDS sat at 31% — the database was not slow, the threads were not being
+scheduled. This is the first time the campaign has had a *place* for the cliff rather than a
+level, and it is the same filter whose role-switching `areas-to-investigate.md` already ranks as
+10.7% of every database call.
+
+The 2 vCPU run with the interceptor removed is the control's box with 25% less CPU per sync: GC
+back to 53 seconds, heap peak 1,977 MB, blocked events 2,811, request time 28,038 — a box that is
+busy, not drowning.
+
 ## What this does not establish
 
 * **n = 1 at each size.** The effect is far larger than the harness's known run-to-run variance —
