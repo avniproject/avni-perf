@@ -191,13 +191,78 @@ both from **organisation 24**, both HTTP 500 after ~30 s: `GET /groups/search/la
 first co-tenant organisation has **failed on every call today — 4 of 4**, two of them inside row
 19's control run, where they sit among its 467. No other organisation's groups call has failed.
 Only a full sync reaches that endpoint for a co-tenant, which is why it surfaces at the 0.01%
-level. It is a standing data defect in org 24, not load, and it needs a look at what that
-organisation's groups hold — a database question, not a harness one.
+level. It is a standing data defect in org 24, not load.
+
+**New Relic names the cause.** All four `ErrorTrace`s carry the same message: `Could not write
+JSON: Unable to find org.avni.server.domain.User with id 2100000117`. The query succeeds; the
+response fails while being written. `Group` inherits `CHSEntity`'s `createdBy` and
+`lastModifiedBy`, which serialise as usernames through a lazy `User` proxy, and resolving that
+proxy is what throws. Under the organisation's database role a `users` row is visible only if the
+user is in that organisation, is an admin of its account, or belongs to an organisation in an
+organisation group (`V1_144__ChangeUserTableRLS.sql`). So one of org 24's groups was created or
+last modified by **user 2100000117, who either does not exist or is outside what org 24's role can
+see** — most likely the identity that provisioned it. Which one it is takes a query, left to be run
+rather than run here:
+
+```sql
+select id, organisation_id, username, is_voided from users where id = 2100000117;
+select id, name, created_by_id, last_modified_by_id from groups
+ where organisation_id = 24 and 2100000117 in (created_by_id, last_modified_by_id);
+```
+
+Either way the fix is to the data — repoint the audit columns at a user of org 24 — and the server
+behaviour is worth an issue of its own: one unreadable audit user turns a whole metadata endpoint
+into a 500, which on a real device would fail every full sync for that organisation.
 
 The identifier generator also warned throughout — `No non-exhausted identifier assignments found`
 — for customer users whose pushed individuals had exhausted their ID pools. A push-model artefact
 of running the same users through many push runs, not a server fault, and worth knowing before
 reading any `individual` POST latency from a media run.
+
+## Why `uploadUrl` loads the database
+
+**Added 22 Oct 2026, from the New Relic backup.** `uploadUrl` signs an S3 URL and its handler
+makes no database call (`MediaController.generateUploadUrl`). It still costs the database **about
+twelve statements every time** — 11.9 per request and 18.1 ms of database time in row 20, 12.1 and
+15.7 ms in row 23, from 114,252 and 92,234 sampled `Transaction` events. At 71% of all requests,
+that is most of what the database did:
+
+| | row 20 | row 23 |
+|---|---|---|
+| `uploadUrl`, share of requests | 288,440 of 404,205 — **71%** | 218,170 of 327,685 — **67%** |
+| **share of every statement the database executed** | **46%** | **41%** |
+| share of database time | 23% | 24% |
+
+Windows are the timeslice captures — row 20's first 80 minutes, row 23's 85 — so counts are a
+little short of the run totals.
+
+**The twelve are per-request overhead, not media.** Differencing the per-statement timeslices
+between the two runs — 70,270 fewer `uploadUrl` calls, and 7,480 fewer push POSTs that account for
+the remainder — gives, per `uploadUrl`, about:
+
+| statements | from |
+|---|---|
+| 1 `users`, 1 `account_admin`, 1 `organisation` | authentication — `AuthService` looks up the user, checks admin status and loads the organisation, every request |
+| 1 `catchment` | the user's catchment, loaded lazily during the request; sampled SQL tags it to `uploadUrl` |
+| **2 `gender`** | **`DummyInterceptor`**, registered in both `ApiConfiguration` and `SyncConfiguration`, so it runs twice per request — an unfiltered `select … from gender` each time |
+| ~6 session statements | `SetOrganisationJdbcInterceptor`: `set role` and `set application_name` when a connection with an organisation leaves the pool, `RESET ROLE` on every return |
+
+The session count fits the code: the three authentication lookups run before the organisation is
+known, each on its own connection, so each pays only the `RESET ROLE`; the request's own connection
+pays all three. That is a reading of the code that matches the counts, not a trace.
+
+**Removing `DummyInterceptor` takes exactly two of them off.** The same request types in rows 21
+and 22, on the test jar, make **2.0 fewer database calls per GET** than in row 19's control —
+`resetSyncs` 13.7 → 11.5, `programEncounter` 23.8 → 21.5, `encounter` 30.2 → 28.5 — so an
+`uploadUrl` on the fixed build would cost about ten.
+
+**This is the mechanism behind row 20's 98.5% RDS peak.** The media did not reach the database;
+the per-request scaffolding of 288,000 small requests did, at nearly half of all statements. It
+also says where the remaining cost sits once the interceptor goes: **the authentication lookups and
+their connection resets are half of what is left**, repeated on every request a device makes. A
+short-lived cache of the authenticated context per token would take an `uploadUrl` from about ten
+statements to about four, and every other request down by the same six. That is an avni-server
+question rather than a finding, and it is untested here.
 
 ## What this settles, and what it does not
 
@@ -211,5 +276,5 @@ reading any `individual` POST latency from a media run.
 - **It is a model.** 8 files/encounter × a p50-20 draw × a serial 125 KB/s uplink is the harness's
   rendering of the customer's bundle. If the real device uploads concurrently, or the real bundle
   is lighter, the upload wait scales down proportionally; the server numbers do not change.
-- **Mostly settled by row 23:** `uploadUrl` is what drove the database to its ceiling — 26% fewer calls took the peak down 17 points — while the pulls are its floor. A true paired run (same draw, media rate only) would give the per-call figure; the direction no longer needs one.
-- **Open, and not the server's:** org 24's groups endpoint, and the exhausted identifier pools of the load users.
+- **Settled by row 23 and the backup:** `uploadUrl` is what drove the database to its ceiling — 26% fewer calls took the peak down 17 points — while the pulls are its floor. Per call it is about twelve statements of per-request overhead, 46% of everything the database executed in row 20 ([why](#why-uploadurl-loads-the-database)).
+- **Open:** org 24's groups endpoint — the cause is an unreadable audit user, 2100000117, and the query that settles which kind is above. Not the server's: the exhausted identifier pools of the load users.
