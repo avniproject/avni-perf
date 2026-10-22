@@ -61,6 +61,11 @@ DEFAULT_EVENT_TYPES = [
 ENDPOINTS = {"us": "https://api.newrelic.com/graphql", "eu": "https://api.eu.newrelic.com/graphql"}
 
 
+# What a flaky link raises out of Nrql after its own retries: the socket timeout and
+# connection reset seen on 21 Oct 2026, and urllib's wrapper around either.
+NETWORK_ERRORS = (TimeoutError, ConnectionError, OSError, urllib.error.URLError)
+
+
 class Nrql:
     def __init__(self, key: str, account: int, region: str, verbose: bool = False):
         self.key, self.account, self.url, self.verbose = key, account, ENDPOINTS[region], verbose
@@ -196,11 +201,26 @@ def export(q: Nrql, out: Path, event_types: list, since: dt.datetime, until: dt.
                     and path.exists():
                 n_total += done[key]["written"]
                 continue
-            expected = count(q, event_type, ms(a), ms(b))
-            if expected == 0:
-                done[key] = {"expected": 0, "written": 0, "sha256": None}
+            # **A network failure costs one hour, not the backup.** Nrql retries four
+            # times and then raises; before this, that exception ended the process
+            # before the manifest was written or `--s3` ran -- so on 21 Oct 2026 two
+            # connection resets on one hour left thirteen exported hours and four
+            # timeslice captures on a laptop, which is the exact outcome the sync
+            # exists to prevent. The hour is recorded as a shortfall and left out
+            # of `done`, so the next run retries it; everything else proceeds.
+            try:
+                expected = count(q, event_type, ms(a), ms(b))
+                if expected == 0:
+                    done[key] = {"expected": 0, "written": 0, "sha256": None}
+                    continue
+                rows = fetch(q, event_type, ms(a), ms(b), expected, shortfalls)
+            except NETWORK_ERRORS as exc:
+                shortfalls.append({"eventType": event_type, "since": ms(a), "until": ms(b),
+                                   "expected": None, "got": 0,
+                                   "why": f"network: {type(exc).__name__}: {exc}"})
+                print(f"    {a:%Y-%m-%d %H}Z  NOT EXPORTED -- {type(exc).__name__}; "
+                      f"left for the next run", file=sys.stderr)
                 continue
-            rows = fetch(q, event_type, ms(a), ms(b), expected, shortfalls)
             done[key] = {"expected": expected, "written": len(rows),
                          "sha256": write(path, rows), "bytes": path.stat().st_size}
             n_total += len(rows)

@@ -166,3 +166,40 @@ def test_a_window_that_grew_between_the_two_queries_says_so():
     nx.fetch(q, "Transaction", 0, 10_000, 80, shortfalls)      # count taken before 20 more landed
     assert len(shortfalls) == 1 and shortfalls[0]["got"] == 100
     assert "still filling" in shortfalls[0]["why"], "the direction of the mismatch matters"
+
+
+class FlakyNrql(FakeNrql):
+    """FakeNrql whose link drops for every query inside one hour, the way New Relic's did on
+    21 Oct 2026 -- after Nrql's own retries, which is why the fake raises outright."""
+
+    def __init__(self, events, dead_from_ms, dead_until_ms):
+        super().__init__(events)
+        self.dead = (dead_from_ms, dead_until_ms)
+
+    def __call__(self, nrql, attempts=4):
+        if "SINCE " in nrql and "earliest" not in nrql:
+            a = int(nrql.split("SINCE ")[1].split(" UNTIL ")[0])
+            if self.dead[0] <= a < self.dead[1]:
+                raise TimeoutError("The read operation timed out")
+        return super().__call__(nrql, attempts)
+
+
+def test_a_network_failure_costs_one_hour_and_not_the_backup(tmp_path):
+    """Before the fix the exception ended the process before the manifest was written and
+    before --s3 ran: thirteen exported hours stayed on a laptop. Now the hour is a shortfall,
+    left out of `done` so the next run retries it, and everything else proceeds."""
+    import datetime as dt
+    h0 = dt.datetime(2026, 10, 21, 12); h1 = h0 + dt.timedelta(hours=1); h2 = h1 + dt.timedelta(hours=1)
+    ms = lambda d: int(d.replace(tzinfo=dt.timezone.utc).timestamp() * 1000)
+    events = {ms(h0) + 1000: 3, ms(h1) + 1000: 5}           # one event burst in each hour
+    q = FlakyNrql(events, ms(h1), ms(h2))                    # hour 13 is unreachable
+    manifest = nx.export(q, tmp_path, ["Transaction"], h0, h2, force=False)
+    assert manifest["hours"]["Transaction/2026-10-21/12"]["written"] == 3
+    assert "Transaction/2026-10-21/13" not in manifest["hours"], "a failed hour must not be marked done"
+    net = [s for s in manifest["shortfalls"] if s["why"].startswith("network:")]
+    assert len(net) == 1 and "TimeoutError" in net[0]["why"]
+    assert (tmp_path / "Transaction" / "2026-10-21" / "12.jsonl.gz").exists()
+    # the link comes back: the next run fills the hole and nothing else is re-fetched
+    again = nx.export(FakeNrql(events), tmp_path, ["Transaction"], h0, h2, force=False)
+    assert again["hours"]["Transaction/2026-10-21/13"]["written"] == 5
+    assert not [s for s in again["shortfalls"] if s["why"].startswith("network:")]
