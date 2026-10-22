@@ -43,6 +43,14 @@ changed:
 ~13, so 8 vCPU may be where the database finally binds — which four earlier runs could not make
 happen.
 
+**What the 2 vCPU saturation was made of** ([timeslices, 22 Oct](findings-vertical-scale.md)):
+the broken run collected garbage for **555 seconds against 18** on 4 vCPU, with old-generation
+collections only on 2 vCPU and the heap at 5,096 of 5,120 MB — a quarter to a half of the 4.19
+→ 3.13 CPU s per sync gap. And **98% of its request time was the authentication filter's own
+code** (exclusive time; 14% at 4 vCPU), with 48,865 monitor-blocked thread events against 571.
+Every request takes a pooled connection there before any controller runs. **The cliff has a
+place, not only a level.**
+
 The knee sits between **57 and 72 requests per second** of demand. 100 devices arriving over 75
 seconds is workable; over 60 seconds is not.
 
@@ -123,6 +131,13 @@ the same syncs into one hour and concurrency rises twelvefold.
   constraint for the fourth time.
 * [Case 13](findings-case13.md) — **the first run to break.** Adding 47% more load *removed* 38% of
   the throughput: 21.0 Mrec/h at 81% CPU, 13.0 Mrec/h at 95.5%.
+* [Removing `DummyInterceptor`](findings-interceptor.md) — **takes case 13 off the cliff on the
+  hardware that broke**: 467 failures → 0, p50 38,782 → 295 ms, CPU 4.19 → 2.57 s per sync; the
+  queue that climbed 64 → 338 on the control held at 34–49 all hour. On case 12, healthy both
+  times, the clean saving is **18.7% of application CPU**. The timeslices put the interceptor's
+  segment at **11.7% of request time** — the profiler's 12.6% reproduced — with its `gender`
+  query only 8% of that and the `@Transactional` boundary around it the rest. The old build's
+  knee is bounded for the first time: **900–1,030 requests/min on 2 vCPU.**
 
 > **A ceiling measured on a saturated server is not the ceiling.** 12.85 Mrec/h was read as a limit;
 > it is what a *broken* server achieves. The healthy system is about **60% higher**. Capacity
@@ -230,9 +245,13 @@ request that nothing downstream needs. Six of them, ranked, with evidence and fi
 
 **82% of request time is Java, 17% is the database**, so the largest single item is
 `DummyInterceptor` at **12.6% of request time** — 96% of all interceptor time, and more than every
-database fix combined. Next are the N+1 lazy `individual` selects at **11.18%** and
-`AuthenticationFilter` at **5.62%**, and **a supervisor pays all of them 38.6 times per sync**,
-which is also the argument for raising `PAGE_SIZE` rather than lowering it.
+database fix combined. **That one is now measured, not estimated** (§7): removing it saves 18.7% of
+application CPU on a healthy server and is the difference between 467 failures and none on the
+one that broke. Next are the N+1 lazy `individual` selects at **11.18%** and `AuthenticationFilter`
+at **5.62%** — and the row 19 timeslices make the filter more than a per-call cost: **it is where a
+saturated server queues**, 98% of request time in its own code at 2 vCPU, so anything that lets it
+answer without a pooled connection moves the knee itself. **A supervisor pays all of them 38.6
+times per sync**, which is also the argument for raising `PAGE_SIZE` rather than lowering it.
 
 Ranking by *database calls* misleads here: `syncDetails` owns 32% of them and 2.7% of request
 time.
