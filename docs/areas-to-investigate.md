@@ -668,7 +668,7 @@ inspection, and item 4 is specified on avni-client#2096.
 Added 22 Oct 2026 from the row 19 captures (`findings-vertical-scale.md`, *What the 2 vCPU
 saturation was made of*). On the run that broke, **98% of all request wall time was inside
 `AuthenticationFilter`** — 723,869 of 738,180 seconds — with 48,865 monitor-blocked and 240,000
-waited thread events against 571 and 70,000 on the same load at 4 vCPU. The filter takes a pooled
+waited thread events against 571 and 70,000 on the same load at 4 vCPU. (Segment values are exclusive time, so this is the filter's own time, not the controllers it wraps — the same segment is 14% at 4 vCPU.) The filter takes a pooled
 connection to resolve the user and switch role before any controller runs, so it is where threads
 stack up when the box cannot schedule them. **Item 2 above (the role-switching tax) is not only a
 database-call cost, it is the point of collapse**, which raises its rank: anything that lets the

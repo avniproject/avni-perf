@@ -118,7 +118,7 @@ nobody received.
 
 **Where a saturated server queues: the authentication filter.** Of the control's 738,180 seconds
 of request wall time, **723,869 — 98% — were inside `AuthenticationFilter`**, the first thing
-every request meets; on 4 vCPU the same filter took 1,710 seconds for more requests. The filter
+every request meets; on 4 vCPU the same filter took 1,710 seconds for more requests. **A filter wraps the controller, so this is only a finding because timeslice segment values are exclusive time** — the filter's own, not what it encloses; an inclusive measure would read ~100% on both runs, and 14% on 4 vCPU is the proof. A pooled-connection checkout is not a child segment, so a thread waiting for a connection inside the filter is charged to the filter. The filter
 resolves the user and switches role before the controller runs, which takes a pooled connection,
 and the thread states say what the queue was made of: the waits are the pool, the blocks are a
 monitor somewhere on that path. Every statement's wall time inflated ten to fifteen times at
