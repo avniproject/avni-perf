@@ -221,7 +221,7 @@ Case 6 compressed into one hour: ~6.6 devices in flight against 0.55.
 
 **Findings:** [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md)
 
-**The same work twelve times denser costs 170% more server time per record** — contention, not extra work — and takes app CPU to 81%, healthy. 0 failed. **With `DummyInterceptor` removed the same hour costs 19% less CPU**: 6,152 → 4,999 s, 3.66 → 2.97 per sync, `serverMs` p50 8.7 → 5.2 s, app CPU 81% → 65%, on a healthy server both times — the clean size of the saving that case 13 could not give.
+**The same work twelve times denser costs 170% more server time per record** — contention, not extra work — and takes app CPU to 81%, healthy. 0 failed. **With `DummyInterceptor` removed the same hour costs 19% less CPU**: 6,152 → 4,999 s, 3.66 → 2.97 per sync, `serverMs` p50 8.7 → 5.2 s, app CPU 81% → 65%, on a healthy server both times — the clean size of the saving that case 13 could not give. The timeslices split it: the interceptor's segment is **11.7% of request time**, its `gender` query only 8% of that segment and the `@Transactional` boundary the rest, and every other statement ran ~25% faster once it was gone.
 
 <a id="case-13"></a>
 ## Case 13 — Clustered — co-tenant load
@@ -237,7 +237,7 @@ Case 7 compressed into one hour: ~9.7 in flight, three times production's peak. 
 
 **Findings:** [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md)
 
-**The first run to break**: 1.22% failed, and 47% more load *removed* 38% of the throughput. **On 4 vCPU it is uneventful** — 0 failures, p95 from ~56 s to 434 ms, CPU per sync 4.19 → 3.13, because a collapsing server spends CPU on work that never completes. The constraint moved toward the database: RDS 33% → 41%. **And on 2 vCPU with `DummyInterceptor` removed it stays on the cliff's safe side** — 467 failures become none, a 39 s median request becomes 295 ms, and CPU per sync falls 4.19 → 2.57, on a dataset carrying row 20's residue.
+**The first run to break**: 1.22% failed, and 47% more load *removed* 38% of the throughput. **On 4 vCPU it is uneventful** — 0 failures, p95 from ~56 s to 434 ms, CPU per sync 4.19 → 3.13, because a collapsing server spends CPU on work that never completes. The constraint moved toward the database: RDS 33% → 41%. **And on 2 vCPU with `DummyInterceptor` removed it stays on the cliff's safe side** — 467 failures become none, a 39 s median request becomes 295 ms, and CPU per sync falls 4.19 → 2.57, on a dataset carrying row 20's residue. **The timeslices say what the 2 vCPU saturation was made of**: 555 s of garbage collection against 18 on 4 vCPU, and **98% of request time spent in the authentication filter's own code** — where every request takes a pooled connection before any controller runs — with 48,865 monitor-blocked thread events against 571. The cliff has a place as well as a level.
 
 <a id="case-15"></a>
 ## Case 15 — Clustered — co-tenant load, media push
