@@ -365,6 +365,67 @@ GiB, and this volume is 250 — so row 25 ran on the baseline, where it was neve
 peak read IOPS). Row 26 runs on it too, with its reads projected at ~1,150; the raise would have
 mattered to the 10k *load*, which the parallel path made fast enough without it.
 
+## Row 26: 10,000 users on 16 app and 16 database vCPU
+
+`2026-10-23T12-09-02Z-case15-10k-m6g.4xlarge` — the second scale-out: 10,000 users over the hour
+on `pilot-day-180-10k` (9,970 field workers, 10.0 M individuals, 17.9 M encounters at ten a day),
+`m6g.4xlarge` and `db.m6g.4xlarge`, the control jar, co-tenants at 792/h, 900 s warm-up after the
+resize. The injector stayed at `m6g.xlarge`. The volume stayed at the gp3 baseline (the 12,000
+IOPS change needs 400 GiB). Org 24's deleted bootstrap user was repointed in all 27 of its tables
+that morning ([above](#fixed-23-oct-2026)).
+
+| | plan (an upper bound) | **row 26** | row 25 |
+|---|---|---|---|
+| requests | ~1.04 M, ~290 rps | **1,107,301, 307 rps** over the hour | 573,458, 159 rps |
+| failures | | **0** — the first run of the campaign with none | 1 |
+| request p50 / p95 / p99 | | **10 / 231 / 351 ms**; 22 of 1.1 M over 800 | 12 / 234 / 363 |
+| wall time | ~1 h 15 m | **1 h 10 m** | 1 h 11 m |
+| media files, customer syncs | 8,938 workers × 80 | **714,696** — mean 80.0, p50 80, max 184 | 357,736 |
+| **app CPU s** | ~49,700 | **35,564** | 18,536 |
+| app CPU, injection hour | ~86% of 16 | **58.9% mean, 69.6% peak** | 61.6% / 75.5% of 8 |
+| RDS CPU, injection hour | ~20% of 16, marked low | **27.4% mean, 32.7% peak** | 31.6% / 37.8% of 8 |
+| RDS read / write IOPS | reads ~1,150 | **41 mean, 212 peak** / 172 mean, 261 peak | 252 / 575 |
+| database connections | | **34.5 mean, 44 peak** of 100 | 24 / 35 |
+| heap peak | 5,120 MB pin | **1,220 MB** | 1,176 MB |
+| injector CPU | low teens | **11.5% mean, 21.9% peak** | 6.7% |
+| records per customer sync p50 | same as 25 | **8,400** | 8,402 |
+| per customer sync, CPU s, co-tenants out at 1.68 | ~4.8 | **~3.4** | ~3.4 |
+
+**Twice the users on twice the cores reproduced row 25.** CPU seconds grew 1.92× for 2× the
+syncs; per customer sync the cost is the same 3.4 s; both tiers' utilisation came in a few points
+*under* row 25's — the app at 59% of 16 against 62% of 8, the database at 27% of 16 against 32% of
+8. Nothing bent: per-sync CPU is flat from 8 to 16 vCPU, the pool peaked at 44 of 100, the heap at
+a quarter of its pin, the volume saw 212 read IOPS at most because the 128 GB instance holds the
+working set in memory, and the injector at 11.5% was where the plan put it. Latency is marginally
+the best of the campaign.
+
+Per field-worker sync (8,938), from `sync-durations.csv` joined to the server's own `uploadUrl`
+counts — identical to row 25 at every quantile:
+
+| | row 26 | row 25 | row 24 |
+|---|---|---|---|
+| duration p50 / p95 / max | **364 / 525 / 783 s** | 364 / 525 / 783 s | 396 / 558 / 816 s |
+| upload wait p50 | 320 s | 320 s | 320 s |
+| storage pause p50 | 39 s | 39 s | 68 s |
+| **server + queue p50 / p95** | **4.6 / 5.6 s** | 4.8 / 6.1 s | 9.0 / 12.6 s |
+| records pulled p50 | 8,400 | 8,402 | 13,903 |
+| share: upload / storage / server | 88% / 10% / **1.3%** | 88% / 10% / 1.3% | 81% / 17% / 2% |
+
+A supervisor's sync is 126 s (1,062 of them): a 25,170-record pull — larger than row 25's 16,869
+because the 10k dataset's catchments carry more workers — and its storage pause, no upload. A
+co-tenant's is 30 s at p50. No customer sync ran past 13 minutes.
+
+**Scoring the plan's predictions for 25 and 26.** They were written as upper bounds carrying row
+24's pull against a history half as dense, and the bound held with room: app CPU seconds 73% and
+72% of the predicted figures, app utilisation 62% and 59% against ~89% and ~86%. The database's
+"low" was wrong in the same direction both times — 32% and 27% against ~22% and ~20% — because the
+prediction scaled database time from `uploadUrl` alone while the pulls set the floor, as row 24
+had already shown. The prediction that mattered, *the app is the tier under load and the database
+idles*, holds in shape but not in degree: at 10,000 users neither tier is near a knee, so the
+cheaper configuration is not 16 and 16. On row 26's numbers, 10,000 users at ten encounters a
+day fit on **8 app vCPU at ~100% — too close — or 16 at 59%**, and on **8 database vCPU at ~55%**;
+the interceptor fix (row 22's −19%) would bring the app on 8 vCPU back to ~80%.
+
 ## What this settles, and what it does not
 
 - **4 vCPU holds the hour** — 0 failures, p95 503 ms — and the application CPU landed inside the
@@ -378,4 +439,5 @@ mattered to the 10k *load*, which the parallel path made fast enough without it.
   rendering of the customer's bundle. If the real device uploads concurrently, or the real bundle
   is lighter, the upload wait scales down proportionally; the server numbers do not change.
 - **Settled by row 23 and the backup:** `uploadUrl` is what drove the database to its ceiling — 26% fewer calls took the peak down 17 points — while the pulls are its floor. Per call it is about twelve statements of per-request overhead, 46% of everything the database executed in row 20 ([why](#why-uploadurl-loads-the-database)).
+- **Rows 25 and 26 settle the scale-out:** per customer sync the server costs 3.4 CPU s at ten a day whether 5,000 users run on 8+8 vCPU or 10,000 on 16+16; utilisation is flat at ~60% app / ~30% database across the doubling, the pool, heap, volume and injector are nowhere near a limit, and the device-side sync is the same 364 s at p50 — 88% of it the upload. The plan's upper bounds held; its "database idles" did not, because the pulls are the floor ([row 26](#row-26-10000-users-on-16-app-and-16-database-vcpu)).
 - **Closed 23 Oct:** org 24's groups and `groupPrivilege` endpoints — the cause was a deleted bootstrap user, 2100000117, referenced from 27 of the organisation's metadata tables; every reference repointed to `admin` ([above](#fixed-23-oct-2026)). Not the server's: the exhausted identifier pools of the load users.
