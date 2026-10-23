@@ -141,6 +141,13 @@ t=$(date +%s); say "1. fetch $SET and prove it targets 10-19"
 B=$(tofu -chdir=provision/tofu/envs/loadtest output -raw bucket 2>/dev/null)
 URL=$(aws s3 presign "s3://$B/datasets/$SET.tar.gz" --expires-in 10800)
 sshapp "rm -rf /tmp/$SET; curl -sSf -o /tmp/$SET.tgz '$URL' && tar -C /tmp -xzf /tmp/$SET.tgz 2>/dev/null && rm -f /tmp/$SET.tgz && echo \"   extracted \$(du -sh /tmp/$SET | cut -f1)\""
+# **The archive's load.sql names its TSVs by the absolute path the generator was given.** The
+# earlier datasets were generated into /tmp/<name> and so matched this extraction root by luck;
+# pilot-day-180-5k was generated into ~/avni-datasets and its first load died in three seconds on
+# "/Users/joy/avni-datasets/pilot-day-180-5k/ngo-1/address_level_type.tsv: No such file or
+# directory" (23 Oct 2026) -- after the teardown had already emptied organisations 10-19. Whatever
+# the generator was given, the files are at /tmp/$SET here, so say so.
+sshapp "sed -i -E \"s|FROM '[^']*/$SET/|FROM '/tmp/$SET/|g\" /tmp/$SET/*/load.sql; echo \"   load.sql paths: \$(grep -ohE \"FROM '[^']*/$SET/\" /tmp/$SET/*/load.sql | sort -u | tr '\\n' ' ')\""
 sshapp "python3 -c \"
 import json,glob
 want={10,11,12,13,14,15,16,17,18,19}; got=set()
