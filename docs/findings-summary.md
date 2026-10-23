@@ -43,6 +43,26 @@ changed:
 ~13, so 8 vCPU may be where the database finally binds — which four earlier runs could not make
 happen.
 
+**It does not, when the tiers are sized together** ([rows 25 and 26, 23 Oct](findings-clustered-media-push.md#row-26-10000-users-on-16-app-and-16-database-vcpu)).
+The scale-out runs — the customer at ten encounters a day and 8 files each, co-tenants on —
+doubled users and both tiers at once and the gap held at ~30 points:
+
+| | 5,000 users, 8 + 8 vCPU | **10,000 users, 16 + 16 vCPU** |
+|---|---|---|
+| requests | 573,458 at 159 rps | **1,107,301 at 307 rps** |
+| failures | 1 (a data defect, since fixed) | **0** |
+| response p95 | 234 ms | **231 ms** |
+| app CPU, mean | 61.6% | **58.9%** |
+| RDS CPU, mean | 31.6% | **27.4%** |
+| CPU s per customer sync | ~3.4 | **~3.4** |
+| field-worker sync p50, of which the server | 364 s, 1.3% | **364 s, 1.3%** |
+
+Per-sync cost is flat from 8 to 16 vCPU; the pool peaked at 44 of 100, the heap at a quarter of
+its pin, the volume at 212 read IOPS. On these numbers **10,000 users at ten a day fit on 16
+application vCPU at 59% — 8 would run at ~100% — and on 8 database vCPU at ~55%**; the plan's
+"16 and 16" over-provisions the database, and the interceptor fix (−19%) is what would make 8
+application vCPU comfortable.
+
 **What the 2 vCPU saturation was made of** ([timeslices, 22 Oct](findings-vertical-scale.md)):
 the broken run collected garbage for **555 seconds against 18** on 4 vCPU, with old-generation
 collections only on 2 vCPU and the heap at 5,096 of 5,120 MB — a quarter to a half of the 4.19
@@ -111,9 +131,11 @@ Two independent inputs, the same answer:
 |---|---|---|---|
 | **history** — day 60 → 365 ([case 8](findings-case8.md)) | ×6.08 | **×6.08** | falls 10%, then flat |
 | **catchment** — span 8.4 → 20 ([Block A′](findings-span20.md)) | ×2.38 | **×2.33–2.44** | **+5%** |
+| **users** — 5,000 → 10,000, both tiers doubled with them ([rows 25–26](findings-clustered-media-push.md#row-26-10000-users-on-16-app-and-16-database-vcpu)) | ×2 | unchanged, 8,400 | **unchanged**, 3.4 CPU s a sync |
 
-**No knee in either.** Deeper history and wider catchments are different inputs and the server
-answers both the same way: proportionally more rows at an almost unchanged cost each.
+**No knee in any of them.** Deeper history, wider catchments and more users are different inputs
+and the server answers all three the same way: proportionally more rows at an almost unchanged
+cost each — and, for users, the same cost on twice the cores.
 
 The cost lands on the device, not the server. History: a median sync goes from **21 seconds to over
 two minutes**. Span: a supervisor goes from **3.0 minutes to 7.1**, 94% of it the modelled storage
@@ -205,7 +227,12 @@ an hour, push on, **8 media files per encounter**, co-tenants syncing, on 4 vCPU
 [`scenario-clustered-media-push.md`](scenario-clustered-media-push.md) at ~10,300 CPU seconds; it measured
 11,542, app CPU landed inside the estimate, and **RDS went to a 98.5% peak** driven by `uploadUrl` —
 the database is the next constraint. 0 failures. Row 23 re-draws it with supervisors pushing nothing
-and the customer's own encounter spread. [`findings-clustered-media-push.md`](findings-clustered-media-push.md)
+and the customer's own encounter spread; **rows 24–26 (23 Oct) take it to ten encounters a day and
+scale it out** — 5,000 users on 8 + 8 vCPU, then 10,000 on 16 + 16, each on a dataset generated
+for it: **0 failures at 10,000, ~3.4 CPU s per customer sync at both sizes, app ~60% and database
+~30% at both**, the field worker's sync 364 s at p50 with the server 1.3% of it. The plan's upper
+bounds held; its "the database idles" did not — the pulls set its floor at ~30%. §1 has the table.
+[`findings-clustered-media-push.md`](findings-clustered-media-push.md)
 
 ### Considered and not recommended
 
