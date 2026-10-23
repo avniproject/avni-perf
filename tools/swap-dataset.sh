@@ -35,14 +35,16 @@
 #     produces a run that completes and measures the wrong thing.
 set -uo pipefail
 SET="${1:-}"
-case "$SET" in pilot-day-*) ;; *) echo "usage: $(basename "$0") pilot-day-120|pilot-day-365|pilot-day-180-span20" >&2; exit 2;; esac
+case "$SET" in pilot-day-*) ;; *) echo "usage: $(basename "$0") pilot-day-120|pilot-day-365|pilot-day-180-span20|pilot-day-180-5k|pilot-day-180-10k" >&2; exit 2;; esac
 # **The feeder follows the dataset, and getting it wrong is the trap this whole
 # naming scheme exists to stop.** `pilot-day-180-span20` is also a ten-tenant
 # pilot, so its slices carry the same case numbers as span 8.4's -- 526 users
 # where the pilot has 561. Checking a span-20 load against `case4-users-pilot.csv`
 # would report 561 missing users and look like a broken load; worse, a RUN
 # pointed at the pilot feeder would complete and measure users that are not there.
-case "$SET" in *-span20) FEEDVAR=span20 ;; *) FEEDVAR=pilot ;; esac
+# The 5k and 10k sets (plan rows 25-26) have their own users entirely, generated with
+# supervisors at pushScale 0, so their feeders carry the -nosuppush suffix.
+case "$SET" in *-span20) FEEDVAR=span20 ;; *-5k) FEEDVAR=pilot-5k-nosuppush ;; *-10k) FEEDVAR=pilot-10k-nosuppush ;; *) FEEDVAR=pilot ;; esac
 # **Paths are derived rather than written in.** This script lived in a
 # scratchpad directory until a tmp clean emptied it, which is why it is tracked
 # now -- and tracked means it cannot assume one person's checkout. avni-infra is
