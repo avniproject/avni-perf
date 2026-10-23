@@ -1176,7 +1176,7 @@ is binding; the calendar is not.
 | 23 | — | **Clustered — co-tenant load, media push, re-drawn** — row 20 with supervisors pushing nothing and the customer's own spread (`CUSTOMER_PUSH_DRAW=v2`) | **done 2026-10-21 — RDS comes off its ceiling: 98.5% → 81.4% peak.** Run after 21 and 22 without a reset, as planned. Every prediction landed: **217,400 media files** (~215,000), 1,344 users pushing (the 156 supervisors none), **p50 160 / max 360 files per sync**, wall **1 h 20 m** (~1 h 25 m), **10,714 CPU s** (~10,400), app ~62% over the hour (~61%). RDS mean 62% → 52% and peak 98.5% → 81.4% for 26% fewer `uploadUrl` calls — the media calls were the spike, the pulls are the floor. No customer sync over 30 min (row 20: 63); server+queue p50 18 → 13 s. **Gatling says BUILD FAILED on 2 KO of 327,309**: org 24's `groups` endpoint, which had 500'd on every call that day including two inside row 19 — a standing data defect, not load; **fixed 23 Oct** (18 rows whose creator, org 24's deleted bootstrap user, was repointed to `admin`). [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | 24 | — | **Case 15 at ten encounters a day** — row 23 with the customer draw halved (`CUSTOMER_PUSH_DRAW=v3`, mean 10), on row 23's hardware | **pending — the bridge to 25 and 26.** One change from row 23, so the per-sync CPU and database cost at ten a day are measured before 25 and 26 are sized on them rather than extrapolated. [Rows 24–26](#rows-24-26) |
 | 25 | — | **Case 15 scaled out, test 1** — 5,000 users, ten encounters a day, 8 files each; app **8 vCPU**, database **8 vCPU** | **pending — dataset generated 23 Oct (`pilot-day-180-5k`, 1.0 GiB in S3, feeder `case5-users-pilot-5k-nosuppush.csv`); needs the app and database resized, storage grown, and the load.** Predicted at the app's knee on the current jar (~89%), with the database at ~22%. [Rows 24–26](#rows-24-26) |
-| 26 | — | **Case 15 scaled out, test 2** — 10,000 users, ten encounters a day, 8 files each; app **16 vCPU**, database **16 vCPU** | **pending — dataset generated 23 Oct (`pilot-day-180-10k`, 2.1 GiB in S3, feeder `case5-users-pilot-10k-nosuppush.csv`); needs the resizes, a larger injector, and the load.** Same prediction as 25 at twice the scale. [Rows 24–26](#rows-24-26) |
+| 26 | — | **Case 15 scaled out, test 2** — 10,000 users, ten encounters a day, 8 files each; app **16 vCPU**, database **16 vCPU** | **pending — dataset generated 23 Oct (`pilot-day-180-10k`, 2.1 GiB in S3, feeder `case5-users-pilot-10k-nosuppush.csv`); needs the app and database resizes and the load; the injector stays at `m6g.xlarge`.** Same prediction as 25 at twice the scale. [Rows 24–26](#rows-24-26) |
 
 #### Rows 21 and 22: removing `DummyInterceptor`
 
@@ -1323,7 +1323,7 @@ changed draw.
 | dataset | `pilot-day-180` | `pilot-day-180` | **`pilot-day-180-5k`**, new | **`pilot-day-180-10k`**, new |
 | app | `m6g.xlarge`, 4 vCPU | `m6g.xlarge` | **`m6g.2xlarge`, 8 vCPU** | **`m6g.4xlarge`, 16 vCPU** |
 | database | `db.m6g.large`, 2 vCPU | `db.m6g.large` | **`db.m6g.2xlarge`, 8 vCPU** | **`db.m6g.4xlarge`, 16 vCPU** |
-| injector | `m6g.xlarge` | `m6g.xlarge` | `m6g.xlarge`, watched | **`m6g.2xlarge`** |
+| injector | `m6g.xlarge` | `m6g.xlarge` | `m6g.xlarge`, watched | `m6g.xlarge`, watched — **not resized, decided 23 Oct**: see below |
 | co-tenants | 792/h, push on | unchanged | unchanged | unchanged |
 
 **Unchanged throughout:** 8 files per encounter, `MEDIA_MODEL=pause`, co-tenants at production's
@@ -1421,8 +1421,13 @@ database time alone, from one 2 vCPU point, for a database whose tables are 3–
 
 **Watch during 25 and 26**, from the timeslices: heap peak against the 5,120 MB pin and G1 time
 (the first symptom of the 2 vCPU cliff was a full heap), `http-nio` thread counts against 200,
-and the injector's own CPU, which at 1,000 devices in flight could become the limit instead of the
-server.
+and the injector's own CPU. **The injector is not resized for 26** (decided 23 Oct 2026): CloudWatch
+puts it at a **4–5% mean** across every heavy run so far — case 13 B at ~16 rps, the media hour at
+~90 rps and ~375 devices in flight, row 23 at ~80 rps — with the ~20–26% peaks in each run's first
+five minutes, which is Gradle and the JVM starting, not load. Row 26's ~290 rps and ~1,100
+devices is about 3× the media hour, so a mean in the low teens on `m6g.xlarge`; Gatling's 1,024
+MB heap on a 16 GB host holds kilobytes per paused user. The watcher records it; if it climbs
+past ~50% the result is suspect and the resize is the answer then.
 
 **Order.** 24 ran on `pilot-day-180` on 23 Oct without the reset row 23 called for — on rows
 20–23's residue, the same lower-bound reading as 23. 25 and 26 each on a fresh load of their own
