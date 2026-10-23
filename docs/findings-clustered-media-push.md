@@ -221,6 +221,19 @@ server behaviour is still worth an issue of its own: one unreadable audit user t
 metadata endpoint into a 500, which on a real device would fail every full sync for that
 organisation.
 
+**Row 25 then failed `groupPrivilege` once, for org 24, with the same message** — the groups-only
+repoint had fixed one endpoint of many. A catalogue-driven diagnostic (every `public` table with
+`created_by_id`/`last_modified_by_id`, filtered to org 24 where the table has `organisation_id`)
+found the deleted user referenced from **27 tables, 15,801 rows**: `audit` 8,713, `concept_answer`
+2,447, `concept` 1,523, `location_location_mapping` 1,075, `form_element` 798, `group_privilege`
+557, and the rest of the bundle's metadata in the tens. The whole of org 24's bundle import had
+been audited to its bootstrap user. Repointed to `admin` in one transaction on 23 Oct, before row
+26 (the 10k load was running; a 15k-row update did not register on it). Every reference-data
+`search/lastModified` endpoint for an org 24 user then returned 200 — `groups`, `groupPrivilege`,
+`groupRole`, `groupDashboard`, `concept`, `form`, `formElement`, `formMapping`, `encounterType`,
+`program`, `subjectType`, `locationMapping`, `dashboard`, `organisationConfig`,
+`individualRelation`. Rows 20–25 all carry org 24's failures; row 26 is the first with none.
+
 The identifier generator also warned throughout — `No non-exhausted identifier assignments found`
 — for customer users whose pushed individuals had exhausted their ID pools. A push-model artefact
 of running the same users through many push runs, not a server fault, and worth knowing before
@@ -365,4 +378,4 @@ mattered to the 10k *load*, which the parallel path made fast enough without it.
   rendering of the customer's bundle. If the real device uploads concurrently, or the real bundle
   is lighter, the upload wait scales down proportionally; the server numbers do not change.
 - **Settled by row 23 and the backup:** `uploadUrl` is what drove the database to its ceiling — 26% fewer calls took the peak down 17 points — while the pulls are its floor. Per call it is about twelve statements of per-request overhead, 46% of everything the database executed in row 20 ([why](#why-uploadurl-loads-the-database)).
-- **Open:** org 24's groups endpoint — the cause is an unreadable audit user, 2100000117, and the query that settles which kind is above. Not the server's: the exhausted identifier pools of the load users.
+- **Closed 23 Oct:** org 24's groups and `groupPrivilege` endpoints — the cause was a deleted bootstrap user, 2100000117, referenced from 27 of the organisation's metadata tables; every reference repointed to `admin` ([above](#fixed-23-oct-2026)). Not the server's: the exhausted identifier pools of the load users.
