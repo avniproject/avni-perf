@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-23 11:26 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-23 15:48 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -58,6 +58,7 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788`](run-log-detail.md#2026-10-21t10-59-35z-case12-2vcpu-b-no-interceptor-f038788) | 2026-10-21 16:29 | case12 | steady | 1682 | 60min @ 1682/h | ~3.0 | ~36 | 33709 | 0.0% | 748 | 157.5 | 9.1 | 4,999 | 2.97 |
 | [`2026-10-21T12-27-12Z-case15-redrawn-m6g.xlarge-40f08e2`](run-log-detail.md#2026-10-21t12-27-12z-case15-redrawn-m6gxlarge-40f08e2) | 2026-10-21 17:57 | case15 | steady | 1500 | 60min @ 1500/h | ~6.1 | ~216 | 327307 | 0.0% | 426 | 1185.2 | 68.17 | 10,714 | 4.68 |
 | [`2026-10-23T04-39-55Z-case15-tenaday-m6g.xlarge-23a4e48`](run-log-detail.md#2026-10-23t04-39-55z-case15-tenaday-m6gxlarge-23a4e48) | 2026-10-23 10:09 | case15 | steady | 1500 | 60min @ 1500/h | ~5.2 | ~138 | 203439 | 0.0% | 446 | 538.7 | 47.69 | 9,284 | 4.05 |
+| [`2026-10-23T08-54-23Z-case15-5k-m6g.2xlarge-1aa819b`](run-log-detail.md#2026-10-23t08-54-23z-case15-5k-m6g2xlarge-1aa819b) | 2026-10-23 14:24 | case15 | steady | 5000 | 60min @ 5000/h | ~7.4 | ~402 | 573457 | 0.0% | 234 | 536.8 | 135.38 | 18,536 | 3.20 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 
@@ -72,6 +73,7 @@ Kept rather than deleted — these are the evidence for a finding of their own �
 | [`2026-10-06T04-55-47Z-case1-burst75-e7a130d`](run-log-detail.md#2026-10-06t04-55-47z-case1-burst75-e7a130d) | 2026-10-06 10:25 | 75s | 39.48 | 402 | the database credential had rotated and the app server held the old one, so every new pooled connection failed with HTTP 500 |
 | [`2026-10-07T08-38-32Z-case4-eb5e4b3`](run-log-detail.md#2026-10-07t08-38-32z-case4-eb5e4b3) | 2026-10-07 14:08 | 240min @ 47/h | 0.22 | 287 | the feeder listed all 501 field workers before the first supervisor at row 502, and `circular()` reached only 187 rows in four hours, so this sampled one role and re-measured case 2 rather than case 4's mix — 60.8 s mean and 10,838 records against case 2's 60.8 s and 10,831, serverMs 6% in both. Case 4 needs re-running against the proportionally ordered feeder |
 | [`2026-10-08T11-32-36Z-case5-d484f18`](run-log-detail.md#2026-10-08t11-32-36z-case5-d484f18) | 2026-10-08 17:02 | — | — | — | killed ~40s after launch and never reached archiveRun, so it has no metadata and no summary; superseded by the 17:34 run |
+| [`2026-10-23T08-29-29Z-case15-5k-m6g.2xlarge-23a4e48`](run-log-detail.md#2026-10-23t08-29-29z-case15-5k-m6g2xlarge-23a4e48) | 2026-10-23 13:59 | — | — | — | the launch crashed before injecting a user (feeder absent from the deployed harness); every file but gradle.log is the preceding warm-up burst's, archived by mistake |
 
 Each carries a `provenance-correction.json` in its own prefix with the evidence, the cause and what it was recorded as. The runs' own `run-metadata.json` is left exactly as written.
 

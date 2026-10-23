@@ -22,7 +22,7 @@
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
 | [**12**](#case-12) | Clustered — co-tenant data | 2 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 4 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
-| [**15**](#case-15) | Clustered — co-tenant load, media push | 3 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
+| [**15**](#case-15) | Clustered — co-tenant load, media push | 4 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
 
 <a id="case-1"></a>
@@ -249,6 +249,8 @@ Case 13's shape — clustered into one hour, co-tenants syncing — with push on
 | [`2026-10-21 06:58`](run-log-detail.md#2026-10-21t06-58-37z-media-hour-m6gxlarge-c2a0e76) | 1,500 over 1 h, push on, 8 files/encounter, co-tenants, 4 vCPU | pilot-day-180 | 2292 | 0.0% | 503 | 5.04 |
 | [`2026-10-21 12:27`](run-log-detail.md#2026-10-21t12-27-12z-case15-redrawn-m6gxlarge-40f08e2) | **re-drawn** (row 23): supervisors push nothing, `CUSTOMER_PUSH_DRAW=v2`; on row 20's residue. 2 KO = org 24's groups defect | pilot-day-180 | 2290 | 0.0% | 426 | 4.68 |
 | [`2026-10-23 04:39`](run-log-detail.md#2026-10-23t04-39-55z-case15-tenaday-m6gxlarge-23a4e48) | **ten a day** (row 24): row 23 with `CUSTOMER_PUSH_DRAW=v3`; on the residue | pilot-day-180 | 2292 | 0.0% | 446 | 4.05 |
+| [`2026-10-23 08:29`](run-log-detail.md#2026-10-23t08-29-29z-case15-5k-m6g2xlarge-23a4e48) | **crashed launch** — the feeder was not in the deployed harness; the report here is the preceding warm-up's | pilot-day-180-5k | — | — | — | **not a measurement** — the launch crashed before injecting a user (feeder absent from the deployed harness); every file but gradle.log is the preceding warm-up burst's, archived by mistake |
+| [`2026-10-23 08:54`](run-log-detail.md#2026-10-23t08-54-23z-case15-5k-m6g2xlarge-1aa819b) | **5,000 users** (row 25): `pilot-day-180-5k`, ten a day, `m6g.2xlarge` / `db.m6g.2xlarge` | pilot-day-180-5k | 5791 | 0.0% | 234 | 3.20 |
 
 **Findings:** [`findings-clustered-media-push.md`](findings-clustered-media-push.md)
 

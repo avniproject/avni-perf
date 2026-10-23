@@ -302,6 +302,56 @@ For rows 25 and 26 this corrects their database prediction: database load scales
 and the pull scales with users, not with media. The plan's ~22% and ~20% are scaled from database
 time and will read low.
 
+## Row 25: 5,000 users on 8 app and 8 database vCPU
+
+`2026-10-23T08-54-23Z-case15-5k-m6g.2xlarge` — the first scale-out: 5,000 users over the hour on
+`pilot-day-180-5k` (4,990 field workers, 5.0 M individuals, 9.0 M encounters at ten a day),
+`m6g.2xlarge` and `db.m6g.2xlarge`, the control jar, co-tenants at 792/h, 900 s warm-up after the
+resize. The injector stayed at `m6g.xlarge`.
+
+| | plan (an upper bound) | **row 25** | row 24 |
+|---|---|---|---|
+| requests | ~540,000, ~150 rps | **573,458, 159 rps** over the hour | 203,439 |
+| failures | | **1** — org 24's `groupPrivilege`, the same deleted-user defect on another endpoint | 0 |
+| request p50 / p95 / p99 | | **12 / 234 / 363 ms**; 99.99% under 800 | 34 / 447 / 782 |
+| wall time | ~1 h 15 m | **1 h 11 m** | 1 h 11 m |
+| media files, customer syncs | 4,468 workers × 80 | **357,736** — mean 80.1, p50 80, max 184 | 107,080 |
+| **app CPU s** | ~25,500 | **18,536** | 9,285 |
+| app CPU, injection hour | ~89% of 8 | **61.6% mean, 75.5% peak** | 61% of 4 |
+| RDS CPU, injection hour | ~22% of 8, marked low | **31.6% mean, 37.8% peak** | 62% of 2 |
+| RDS read IOPS | | 252 mean, 575 peak of a 3,000 baseline | |
+| database connections | | 24 mean, 35 peak of 100 | |
+| injector CPU | | 6.7% mean | 4.2% |
+| records per customer sync p50 | about half of row 24's | **8,402** | 13,903 |
+| per customer sync, CPU s, co-tenants out at 1.68 | ~4.8 | **~3.4** | ~5.3 |
+
+**3.3× the users cost 2× the CPU**, because each sync pulls 40% fewer records on the ten-a-day
+history, as the corrected plan said it would — the step from row 24 to row 25 is the workload per
+user, not only the scale. With that, the app had a quarter of its 8 vCPU in hand, the database a
+third used, the volume and the pool nowhere near a limit, and the request latencies the best of
+any run in the campaign.
+
+Per field-worker sync (4,468), from `sync-durations.csv` joined to the server's own `uploadUrl`
+counts:
+
+| | row 25 | row 24 | row 23 |
+|---|---|---|---|
+| duration p50 / p95 / max | **364 / 525 / 783 s** | 396 / 558 / 816 s | 722 / 1,047 / 1,536 s |
+| upload wait p50 | 320 s | 320 s | 640 s |
+| storage pause p50 | 39 s | 68 s | 68 s |
+| **server + queue p50 / p95** | **4.8 / 6.1 s** | 9.0 / 12.6 s | 13.3 / 19.7 s |
+| records pulled p50 | 8,402 | 13,903 | 13,844 |
+| share: upload / storage / server | 88% / 10% / **1.3%** | 81% / 17% / 2% | 89% / 9% / 2% |
+
+A field worker at 5,000 users waits six minutes, of which the server's part is under five
+seconds. A supervisor's sync is 94 s: a 16,869-record pull and its storage pause, no upload.
+
+**Not measured as planned: the volume at 12,000 IOPS.** The change planned correctly but the apply
+failed and the chain carried on — RDS allows provisioned IOPS and throughput on gp3 only from 400
+GiB, and this volume is 250 — so row 25 ran on the baseline, where it was never a factor (575
+peak read IOPS). Row 26 runs on it too, with its reads projected at ~1,150; the raise would have
+mattered to the 10k *load*, which the parallel path made fast enough without it.
+
 ## What this settles, and what it does not
 
 - **4 vCPU holds the hour** — 0 failures, p95 503 ms — and the application CPU landed inside the

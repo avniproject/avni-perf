@@ -644,5 +644,45 @@
    "2026-10-23T04:39:55Z",
    "2026-10-23T05:52:55Z"
   ]
+ },
+ "2026-10-23T08-29-29Z-case15-5k-m6g.2xlarge-23a4e48": {
+  "appCpuAvg": 1.9,
+  "appCpuMax": 4.7,
+  "appHeapCommittedMb": 2560.0,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 760.1,
+  "appHeapUsedMbMax": 1703.7,
+  "appPhysicalMemMb": 2861.9,
+  "cpuPerSync": 0.51,
+  "cpuSeconds": 51.1,
+  "rdsCpuAvg": 2.0,
+  "rdsCpuMax": 3.5,
+  "rdsFreeableMemMbMin": 21752.8,
+  "rdsSwapMbMax": 0.0,
+  "syncs": 100,
+  "window": [
+   "2026-10-23T08:29:29Z",
+   "2026-10-23T08:44:29Z"
+  ]
+ },
+ "2026-10-23T08-54-23Z-case15-5k-m6g.2xlarge-1aa819b": {
+  "appCpuAvg": 53.6,
+  "appCpuMax": 75.5,
+  "appHeapCommittedMb": 2560.0,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 1176.3,
+  "appHeapUsedMbMax": 2134.1,
+  "appPhysicalMemMb": 2882.3,
+  "cpuPerSync": 3.2,
+  "cpuSeconds": 18535.5,
+  "rdsCpuAvg": 27.2,
+  "rdsCpuMax": 37.8,
+  "rdsFreeableMemMbMin": 20600.6,
+  "rdsSwapMbMax": 0.0,
+  "syncs": 5791,
+  "window": [
+   "2026-10-23T08:54:23Z",
+   "2026-10-23T10:09:23Z"
+  ]
  }
 }
