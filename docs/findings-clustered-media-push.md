@@ -271,6 +271,37 @@ short-lived cache of the authenticated context per token would take an `uploadUr
 statements to about four, and every other request down by the same six. That is an avni-server
 question rather than a finding, and it is untested here.
 
+## Row 24: ten encounters a day on row 23's hardware
+
+`2026-10-23T04-39-55Z-case15-tenaday-m6g.xlarge` — row 23 with `CUSTOMER_PUSH_DRAW=v3`
+(5 / 10 / 15 / 23, mean 10) and nothing else changed: same `m6g.xlarge`, control jar, co-tenants,
+`pilot-day-180` (its twenty-a-day history, on rows 20–23's residue), 900 s warm-up after a resize.
+The bridge the plan asked for before rows 25 and 26 are sized.
+
+| | predicted | **row 24** | row 23 |
+|---|---|---|---|
+| media files, customer syncs | ~107,500 | **107,080** | 217,400 |
+| files per field-worker sync | p50 80, max 184 | **p50 80, mean 79.7, max 184** | p50 160, max 360 |
+| requests | ~190,000 | 203,439 (+7%) | 327,309 |
+| requests/min, steady | ~3,300 | 3,385 | 5,500 |
+| failures | | **0** — org 24's groups fixed that morning | 2 |
+| wall time | ~1 h 15 m | **1 h 11 m** | 1 h 20 m |
+| field-worker sync p50 | ~6.5 min | **6.6 min** (396 s): upload 320, storage 68, server+queue **9.0** | 12.0 min: 640 / 68 / 13.3 |
+| **app CPU s** | ~8,600 | **9,285** (window injection + 13 min) | 10,714 |
+| app CPU, injection hour | ~60% | **60.9% mean, 81% peak** | 62% / 89% |
+| **RDS, injection hour** | **~40%** | **62.4% mean, 79% peak**; 67% steady | ~72% / 81% |
+
+**The push model landed again** — files, wall time, sync duration and application CPU all within
+a few percent. **The database did not follow the media calls down, and that is the finding.**
+Halving `uploadUrl` took RDS from ~72% to ~67% in the steady state, not to 40%. It is what the
+row 23 timeslices said from the other direction: the media calls were the spike, **the pulls are
+the floor**, and the pulls are identical in rows 23 and 24. Per sync the server's own time fell
+13.3 → 9.0 s, and its share of a field worker's wait stayed at 2%.
+
+For rows 25 and 26 this corrects their database prediction: database load scales with the pull,
+and the pull scales with users, not with media. The plan's ~22% and ~20% are scaled from database
+time and will read low.
+
 ## What this settles, and what it does not
 
 - **4 vCPU holds the hour** — 0 failures, p95 503 ms — and the application CPU landed inside the

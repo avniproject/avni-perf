@@ -624,5 +624,25 @@
    "2026-10-21T12:27:12Z",
    "2026-10-21T13:52:12Z"
   ]
+ },
+ "2026-10-23T04-39-55Z-case15-tenaday-m6g.xlarge-23a4e48": {
+  "appCpuAvg": 52.9,
+  "appCpuMax": 81.3,
+  "appHeapCommittedMb": 2560.0,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 1078.7,
+  "appHeapUsedMbMax": 1896.0,
+  "appPhysicalMemMb": 2868.6,
+  "cpuPerSync": 4.05,
+  "cpuSeconds": 9284.5,
+  "rdsCpuAvg": 54.3,
+  "rdsCpuMax": 79.4,
+  "rdsFreeableMemMbMin": 3854.8,
+  "rdsSwapMbMax": 1.2,
+  "syncs": 2292,
+  "window": [
+   "2026-10-23T04:39:55Z",
+   "2026-10-23T05:52:55Z"
+  ]
  }
 }
