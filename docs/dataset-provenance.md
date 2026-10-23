@@ -231,3 +231,25 @@ and in `refs.json` on the next dump. Delete it or keep it deliberately.
 **Id space is already clear**: the co-tenants claim 301,000,000–311,490,596 against
 the pilots' 201,000,000–222,841,600, 78,158,400 apart. They are the one pair that
 shares a database, in Block B, and that separation is what makes it safe.
+
+## pilot-day-180-5k and pilot-day-180-10k (generated 23 Oct 2026, not loaded)
+
+Plan rows 25 and 26. `pilot-day-180.json` with every tenant's `field_workers` scaled by 10/3 and
+20/3 and `encounters_per_worker_per_day` at 10; village density, span 8.4 and beneficiaries per
+village unchanged, so one sync's catchment is today's size and what grows is the number of them.
+Generated locally from the customer's bundle (`~/Downloads/Tanuh.zip`, extracted to
+`~/avni-perf-bundles/tanuh`, 63 files) against `columns.json` and `refs-pilot-day-180.json`, with
+`--supervisor-push-scale 0.0`; generator at avni-perf `23a4e48`.
+
+| | workers | users | individuals | encounters | rows | generate | archive |
+|---|---|---|---|---|---|---|---|
+| `pilot-day-180-5k` | 4,990 | 5,590 | 4,992,000 | 8,982,000 | 13,991,190 | 7.4 min | `datasets/pilot-day-180-5k.tar.gz`, 1.0 GiB |
+| `pilot-day-180-10k` | 9,970 | 11,164 | 9,978,000 | 17,946,000 | 27,958,930 | 15 min | `datasets/pilot-day-180-10k.tar.gz`, 2.1 GiB |
+
+Ids top out at 219 M and 237 M, below the co-tenants' band at 301 M. Feeders
+`case5-users-pilot-5k-nosuppush.csv` and `case5-users-pilot-10k-nosuppush.csv` carry every user
+with supervisors at `pushScale` 0.0; the runs inject 5,000 and 10,000 of them. The per-tenant
+`summary.txt`, `manifest.json` and the unsplit `sync-users.csv` are kept at
+`~/avni-datasets/<name>.keep/`. **Neither is loaded**: that needs the database class and
+`db_allocated_storage` raised first, since the storage cannot be shrunk afterwards.
+
