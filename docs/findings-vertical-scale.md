@@ -121,7 +121,12 @@ of request wall time, **723,869 — 98% — were inside `AuthenticationFilter`**
 every request meets; on 4 vCPU the same filter took 1,710 seconds for more requests. **A filter wraps the controller, so this is only a finding because timeslice segment values are exclusive time** — the filter's own, not what it encloses; an inclusive measure would read ~100% on both runs, and 14% on 4 vCPU is the proof. A pooled-connection checkout is not a child segment, so a thread waiting for a connection inside the filter is charged to the filter. The filter
 resolves the user and switches role before the controller runs, which takes a pooled connection,
 and the thread states say what the queue was made of: the waits are the pool, the blocks are a
-monitor somewhere on that path. Every statement's wall time inflated ten to fifteen times at
+monitor somewhere on that path. **RDS's own `DatabaseConnections` confirms it** (added 23 Oct):
+the control held a **mean of 93 and a peak of 100** — the pool's maximum — for the hour, where the
+media hour at 98% database CPU peaked at 58, and rows 24 and 25 at 5,000 users run on 20–35. The
+pool was the queue: starved of CPU, requests held connections longer, the pool ran dry, and every
+new request waited in the filter for one. A larger pool would move that queue, not remove it.
+Every statement's wall time inflated ten to fifteen times at
 identical call counts while RDS sat at 31% — the database was not slow, the threads were not being
 scheduled. This is the first time the campaign has had a *place* for the cliff rather than a
 level, and it is the same filter whose role-switching `areas-to-investigate.md` already ranks as
