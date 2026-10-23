@@ -1,0 +1,141 @@
+{
+ "name": "pilot-day-180-5k",
+ "days": 180,
+ "reference_date": "2026-09-18",
+ "seed": 42,
+ "id_base": 201000000,
+ "profile": "production-2026-09",
+ "bundle_path": "<set to the implementation bundle for the run>",
+ "bundle_revision": null,
+ "bundle_fingerprint": {
+  "files": {},
+  "combined": null
+ },
+ "tenants": [
+  {
+   "name": "state-1",
+   "organisation_id": 10,
+   "field_workers": 1667,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 10,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8.4,
+   "total_encounters": null
+  },
+  {
+   "name": "state-2",
+   "organisation_id": 11,
+   "field_workers": 1667,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 10,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8.4,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-1",
+   "organisation_id": 12,
+   "field_workers": 207,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 10,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8.4,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-2",
+   "organisation_id": 13,
+   "field_workers": 207,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 10,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8.4,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-3",
+   "organisation_id": 14,
+   "field_workers": 207,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 10,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8.4,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-4",
+   "organisation_id": 15,
+   "field_workers": 207,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 10,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8.4,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-5",
+   "organisation_id": 16,
+   "field_workers": 207,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 10,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8.4,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-6",
+   "organisation_id": 17,
+   "field_workers": 207,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 10,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8.4,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-7",
+   "organisation_id": 18,
+   "field_workers": 207,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 10,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8.4,
+   "total_encounters": null
+  },
+  {
+   "name": "ngo-8",
+   "organisation_id": 19,
+   "field_workers": 207,
+   "field_workers_per_village": 3,
+   "beneficiaries_per_village": 3000,
+   "encounters_per_worker_per_day": 10,
+   "supervisor_level": "Taluka",
+   "bundle_path": null,
+   "workers_per_supervisor": 8.4,
+   "total_encounters": null
+  }
+ ],
+ "enrolment_rate": 0.22,
+ "program_encounter_share": 0.59,
+ "notes": "**Plan row 25: case 15 scaled out to 5,000 users at ten encounters a day (23 Oct 2026).** pilot-day-180 with every tenant's field_workers scaled by 10/3 -- states 500 -> 1667, NGOs 62 -> 207, 4,990 field workers in all -- and encounters_per_worker_per_day at 10, so the history matches the projection the pushes model (CUSTOMER_PUSH_DRAW=v3). Everything else is pilot-day-180's: three workers to a village, 3,000 beneficiaries a village, span 8.4 at Taluka, the same organisation ids and id_base. **A single sync's catchment is therefore the size it is today**; what grows is the number of catchments, and with them every table. The users figure counts field workers and supervisors together, as row 20's 1,500 did; the feeder carries a few more rows than the run injects. Generate the feeder with --supervisor-push-scale 0.0, as row 23's. An alternative for the same organisations as pilot-day-180, never loaded beside it. See docs/execution-plan.md, rows 24-26.\n\n--- pilot-day-180's notes follow ---\n\nE6 test case dataset. Two state tenants of 500 field workers, eight NGO tenants sharing 500, at day 180. Only encounter volume differs between the three; beneficiary population does not grow with programme activity. bundle_path and bundle_revision must be filled in before generating. A tenant may also carry its own bundle_path, which is how H1's 'cover the range of organisation size' is done -- config size drives the syncDetails row count -- without them this recipe cannot be reproduced. Organisation ids recorded 6 Oct 2026, after provisioning: state-1 and state-2 already existed at 10 and 11, and ngo-1 to ngo-8 were created with the server assigning 12 to 19 -- read back from GET /organisation rather than inferred from the sequence. They held 1-10 before, which named four live organisations; see docs/execution-plan.md. supervisor_level is Taluka, not the TenantSpec default of Sub-Centre: this bundle's hierarchy has no Sub-Centre, and truncated at the deepest permitted registration type the chain is State > District > Taluka > Village. **workers_per_supervisor is 8.4, Q13's measured establishment, giving 60 supervisors per state tenant and 7 per NGO -- the scenarios' own table.** It was null until 6 Oct 2026, and null is not the establishment: `hy.ESTABLISHMENT` supervises at Sub-Centre, which this hierarchy lacks, so supervision fell to Taluka and the span landed at 12.5 with 40 supervisors. The measured value has to be stated because the default cannot express it here.",
+ "schema_version": 1,
+ "tenant_bundle_fingerprints": {}
+}

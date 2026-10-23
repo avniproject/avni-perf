@@ -1337,18 +1337,23 @@ customer growing does not make them busier.
 
 ##### What has to exist first
 
-1. **The `v3` draw.** `PushProfiles.customerEncounters` gains `v3` → `new PushVolume("encounters",
+1. **The `v3` draw — done 23 Oct 2026.** `PushProfiles.customerEncounters` gains `v3` → `new PushVolume("encounters",
    1.0, 5, 10, 15, 23, 10.0)`: `v2` halved, with a 23 ceiling, so a heavy day sits at a little over
    twice the median as it does in `v2`. A unit test pins the sampled mean to 10, as `v2`'s pins 20.
    **Not `pushScale` 0.5 in the feeder**, which would get the same encounters but would also halve
    every other entity a worker pushes, and would not be recorded as `push.customerDraw`.
-2. **Two datasets.** The customer's recipe today has 1,496 field workers and 186 supervisors; 5,000
+2. **Two datasets — recipes committed 23 Oct 2026, not yet generated:**
+   [`pilot-day-180-5k.json`](../tools/data-generator/datasets/pilot-day-180-5k.json) and
+   [`pilot-day-180-10k.json`](../tools/data-generator/datasets/pilot-day-180-10k.json). The customer's recipe today has 1,496 field workers and 186 supervisors; 5,000
    and 10,000 users are not in it. `pilot-day-180-5k` and `pilot-day-180-10k` are `pilot-day-180.json`
    with every tenant's `field_workers` scaled by 10/3 and 20/3 — states 500 → 1,667 and 3,333, NGOs
    62 → 207 and 413 — and **`encounters_per_worker_per_day` at 10**, so the history matches the
    projection the pushes now model. Village density, span 8.4 and `beneficiaries_per_village` stay,
    so **a single sync's catchment is the same size as today's**: what grows is the number of
-   catchments, and with them the tables. Roughly **5 M and 10 M individuals** against 1.5 M.
+   catchments, and with them the tables. **4,990 and 9,970 field workers** — about 5,600 and 11,200
+   users with supervisors, of which the runs inject 5,000 and 10,000 — **5.0 M and 10.0 M
+   individuals** against 1.5 M, and 9.0 M and 17.9 M encounters against 5.4 M. Ids top out at 219 M
+   and 237 M, clear of the co-tenants' band at 301 M.
    Generate their feeders with `--supervisor-push-scale 0.0`, as row 23's.
 3. **The resizes**, through `app_instance_class`, `db_instance_class` and
    `injector_instance_class` (`avni-infra/provision/RESIZE.md`). **Budget for the AZ refusing the

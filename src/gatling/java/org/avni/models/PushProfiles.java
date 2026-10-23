@@ -109,6 +109,10 @@ public final class PushProfiles {
      * clustered media-push run. Comparing a new push run against any of them on `v2` mixes the change under test
      * with a fifth less push work.
      *
+     * **`v3`**: 5 / 10 / 15 / 23, mean 10 — `v2` halved, for the projection of ten encounters a day
+     * that plan rows 24–26 run at. Not the default: it is a different workload, not a better model
+     * of the same one, and a run that wants it says so.
+     *
      * An unknown name throws. Falling back to a default would let a typo run the wrong workload
      * and record it as the right one.
      */
@@ -119,10 +123,13 @@ public final class PushProfiles {
                 return new PushVolume("encounters", 1.0, 10, 20, 30, 45, 20.0);
             case "v1":
                 return new PushVolume("encounters", 1.0, 8, 20, 45, 150, 24.0);
+            case "v3":
+                return new PushVolume("encounters", 1.0, 5, 10, 15, 23, 10.0);
             default:
-                throw new IllegalArgumentException("CUSTOMER_PUSH_DRAW must be v1 or v2, got '"
+                throw new IllegalArgumentException("CUSTOMER_PUSH_DRAW must be v1, v2 or v3, got '"
                     + draw + "'. v2 (10/20/30/45, mean 20) is the default; v1 (8/20/45/150, mean"
-                    + " 24) reproduces push runs from before 21 Oct 2026.");
+                    + " 24) reproduces push runs from before 21 Oct 2026; v3 (5/10/15/23, mean 10)"
+                    + " is ten encounters a day.");
         }
     }
 

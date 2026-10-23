@@ -32,7 +32,7 @@ class PushVolumeTest {
             assertTrue(e.getValue().warnings.isEmpty(),
                 () -> "production profile " + e.getKey() + " warned: " + e.getValue().warnings);
         }
-        for (String draw : new String[]{"v1", "v2"}) {
+        for (String draw : new String[]{"v1", "v2", "v3"}) {
             for (boolean programModel : new boolean[]{true, false}) {
                 for (Map.Entry<String, PushVolume> e : PushProfiles.customer(programModel, draw).entrySet()) {
                     assertTrue(e.getValue().warnings.isEmpty(),
@@ -43,7 +43,7 @@ class PushVolumeTest {
     }
 
     @Test
-    @DisplayName("v2 is the default and the customer's spread; v1 reproduces the runs before it")
+    @DisplayName("v2 is the default and the customer's spread; v1 reproduces the runs before it; v3 is ten a day")
     void customerDrawsAreWhatTheySayTheyAre() {
         PushVolume v2 = PushProfiles.customerEncounters("v2");
         assertEquals(10, v2.min); assertEquals(20, v2.p50); assertEquals(30, v2.p95); assertEquals(45, v2.max);
@@ -52,6 +52,10 @@ class PushVolumeTest {
         PushVolume v1 = PushProfiles.customerEncounters("v1");
         assertEquals(8, v1.min); assertEquals(20, v1.p50); assertEquals(45, v1.p95); assertEquals(150, v1.max);
         assertEquals(24.0, sampledMean(v1), 0.3);
+
+        PushVolume v3 = PushProfiles.customerEncounters("v3");
+        assertEquals(5, v3.min); assertEquals(10, v3.p50); assertEquals(15, v3.p95); assertEquals(23, v3.max);
+        assertEquals(10.0, sampledMean(v3), 0.1, "v3 must average ten a day, not just median it");
 
         // The default must be v2, and the one-argument overload must mean the default.
         assertEquals("v2", PushProfiles.DEFAULT_CUSTOMER_DRAW);
@@ -64,9 +68,9 @@ class PushVolumeTest {
     @DisplayName("an unknown draw is refused rather than quietly running the default")
     void unknownDrawThrows() {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
-            () -> PushProfiles.customerEncounters("v3"));
-        assertTrue(e.getMessage().contains("v1 or v2"), e.getMessage());
-        assertTrue(e.getMessage().contains("'v3'"), e.getMessage());
+            () -> PushProfiles.customerEncounters("v4"));
+        assertTrue(e.getMessage().contains("v1, v2 or v3"), e.getMessage());
+        assertTrue(e.getMessage().contains("'v4'"), e.getMessage());
     }
 
     private static double sampledMean(PushVolume v) {

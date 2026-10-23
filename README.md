@@ -220,7 +220,7 @@ Can be overridden using `./gradlew gatlingRun -DBASE_URL=` etc.
 
 `PUSH_PROFILE` `customer` (default) or `production` — see below
 
-`CUSTOMER_PUSH_DRAW` `v2` (default) or `v1` — the spread of the customer's twenty a day. `v2` is 10/20/30/45, mean 20; `v1` is 8/20/45/150, mean 24, and reproduces every push run before 21 Oct 2026. Recorded as `push.customerDraw` in `run-metadata.json`
+`CUSTOMER_PUSH_DRAW` `v2` (default), `v1` or `v3` — the customer's encounters per sync. `v2` is 10/20/30/45, mean 20, the customer's twenty a day; `v1` is 8/20/45/150, mean 24, and reproduces every push run before 21 Oct 2026; `v3` is 5/10/15/23, mean 10, the ten a day plan rows 24–26 run at. Recorded as `push.customerDraw` in `run-metadata.json`
 
 `PUSH_ENCOUNTER_MODEL` `general` (default) or `program` — which table the customer's
 encounters land on. The programme design is out of scope for this exercise, so `general` matches

@@ -446,13 +446,15 @@ def test_a_location_type_uuid_absent_from_the_organisation_is_reported():
 
 # Datasets that are alternatives for the same slot, never in the database together: the growth
 # points swap in and out of Block C, span 20 reloads over span 8.4 in Block A', and
-# states-day-180 was what the pilot replaced. They may share an id_base, and sharing one is worth
+# states-day-180 was what the pilot replaced; the 5k and 10k scale-outs (plan rows 25 and 26)
+# fill the same ten organisations with more users. They may share an id_base, and sharing one is worth
 # more than separating them -- loading day 60 over an uncleared day 180 then dies on a primary key
 # within seconds, where disjoint bands would let the two merge silently into one database holding
 # a growth point that was never generated.
 MUTUALLY_EXCLUSIVE = {
     frozenset({"states-day-180.json", "pilot-day-60.json", "pilot-day-120.json",
-               "pilot-day-180.json", "pilot-day-365.json", "pilot-day-180-span20.json"}),
+               "pilot-day-180.json", "pilot-day-365.json", "pilot-day-180-span20.json",
+               "pilot-day-180-5k.json", "pilot-day-180-10k.json"}),
 }
 
 
