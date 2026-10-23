@@ -1376,7 +1376,16 @@ co-tenant share is taken out first, at case 7's 1.68 CPU s and 51.4 requests a s
 | app CPU s, without the interceptor | — | **~3.9**, row 22's −19% |
 
 The push-and-media remainder halves cleanly whatever its internal split, because both halves of it
-— encounters and the files they carry — halve together. The pull at 3.8 s does not move.
+— encounters and the files they carry — halve together. **The pull at 3.8 s does not move in row
+24**, which pulls from `pilot-day-180`'s twenty-a-day history. **It does move in 25 and 26.** Their
+datasets carry a ten-a-day history (`encounters_per_worker_per_day: 10`, so 1,800 encounters per
+worker against 3,600), and under `SYNC_MODE=realistic` a sync pulls what its catchment produced
+since the device last synced — so each sync's window holds half the encounters, and the pull,
+which is two-thirds of a sync's CPU and mostly encounters, falls with it. Bounded: 3.8 s if none of
+the pull were encounters, ~1.9 s if all of it were; the truth is between, nearer the low end. **The
+tables below keep the 3.8 s and are therefore upper bounds for 25 and 26.** Decided 23 Oct 2026:
+keep the history at ten a day, matching the pushes it models, and correct the predictions rather
+than the data.
 
 | | **24** | **25 — test 1** | **26 — test 2** |
 |---|---|---|---|
@@ -1388,10 +1397,15 @@ The push-and-media remainder halves cleanly whatever its internal split, because
 | devices in flight — ~6.5 min a sync | ~160 | ~540 | ~1,100 |
 | wall time | ~1 h 15 m — injection plus 184 files at 4 s | same | same |
 
+Every app and database figure for 25 and 26 in this table is an **upper bound**: it carries row
+24's pull against a history half as dense. Row 25's measurement replaces it.
+
 **The prediction that matters: on the current jar, both scale-out runs sit at the app's knee and
 the database idles.** Users grow 3.3× and 6.7× while app vCPU grows 2× and 4× from row 23's 4 — and
-halving the encounters makes a sync only a fifth cheaper, because the pull, which does not halve,
-is two-thirds of it. That leaves the app about as loaded as case 13 was when it broke. The database
+halving the encounters makes a sync only a fifth cheaper in row 24, because the pull, which does
+not halve there, is two-thirds of it. In 25 and 26 the pull's encounter share halves as well, so
+the saving is larger and the knee further off than the table says — but at 3.3× and 6.7× the users
+on 2× and 4× the vCPU, the app is still the tier under load. The database
 grows 4× and 8× against a load of 1.7× and 3×, so most of it would sit unused. If this holds, **the
 cheaper configuration is the interceptor fix and fewer database vCPU**, not 16 and 16 — and row 25
 on the fixed jar would be the run that shows it.
@@ -1399,7 +1413,9 @@ on the fixed jar would be the run that shows it.
 **Where the arithmetic is weakest.** Per-sync CPU is assumed flat from 4 to 16 vCPU; nothing here
 has measured past 4, and contention, GC and the 200 Tomcat threads and 100 pooled connections that
 avni-server runs on by default may not scale with cores. History at ten a day halves the encounters
-each sync pulls, which makes every app figure above an upper bound. And database CPU is scaled on
+each sync pulls, which makes every app figure above an upper bound — and it means **24 is not a
+clean bridge to 25**: they differ in history density as well as scale, so 25's per-sync cost is not
+24's at 3.3× users, and the step between them is a change of workload per user, not only of scale. And database CPU is scaled on
 database time alone, from one 2 vCPU point, for a database whose tables are 3–7 times larger. Row 24 settles the per-sync figure at ten a day;
 25 settles whether it holds at 8 vCPU before 26 doubles it.
 
@@ -1408,8 +1424,9 @@ database time alone, from one 2 vCPU point, for a database whose tables are 3–
 and the injector's own CPU, which at 1,000 devices in flight could become the limit instead of the
 server.
 
-**Order.** 24 on `pilot-day-180` after the reset row 23 called for, and reset after it. 25 and 26
-each on a fresh load of their own dataset, so neither carries residue.
+**Order.** 24 ran on `pilot-day-180` on 23 Oct without the reset row 23 called for — on rows
+20–23's residue, the same lower-bound reading as 23. 25 and 26 each on a fresh load of their own
+dataset, so neither carries residue.
 
 #### Standing task: back up New Relic weekly
 
