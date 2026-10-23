@@ -210,9 +210,16 @@ select id, name, created_by_id, last_modified_by_id from groups
  where organisation_id = 24 and 2100000117 in (created_by_id, last_modified_by_id);
 ```
 
-Either way the fix is to the data — repoint the audit columns at a user of org 24 — and the server
-behaviour is worth an issue of its own: one unreadable audit user turns a whole metadata endpoint
-into a 500, which on a real device would fail every full sync for that organisation.
+**Fixed 23 Oct 2026.** The queries answered it: user 2100000117 does not exist, and it was org
+24's bootstrap identity — every co-tenant's 18 bundle-imported user groups carry their own
+provisioning user as creator (528 such ids across the 513 organisations, all still present), and
+org 24's alone had been deleted. Nothing else referenced it: `user_group` carried no dangling ids,
+and across every organisation the only dangling audit references in `groups` were those 18 rows.
+Repointed to `admin` (user 1), which is what the three standard groups already carry;
+`groups/search/lastModified` as an org 24 user then returned 200 with 22 groups in 0.1 s. The
+server behaviour is still worth an issue of its own: one unreadable audit user turns a whole
+metadata endpoint into a 500, which on a real device would fail every full sync for that
+organisation.
 
 The identifier generator also warned throughout — `No non-exhausted identifier assignments found`
 — for customer users whose pushed individuals had exhausted their ID pools. A push-model artefact
