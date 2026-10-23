@@ -194,10 +194,45 @@ t=$(date +%s); say "5. drop the FK scaffolding indexes"
 sshapp "$PSQL -c 'DROP INDEX IF EXISTS tmp_sw_enc_filled_by;' -c 'DROP INDEX IF EXISTS tmp_sw_pe_filled_by;'" >/dev/null || exit 1
 phase index_drop $t
 
-t=$(date +%s); say "6. load $SET, per-tenant ANALYZE stripped, one at the end"
-sshapp "sed -i 's/^ANALYZE;\$/-- ANALYZE moved to the end of the driver/' /tmp/$SET/*/load.sql
-  { echo '\\timing on'; for d in \$(ls -d /tmp/$SET/*/ | sort); do echo \"\\\\echo === TENANT \$(basename \$d) ===\"; echo \"\\\\i \${d}load.sql\"; done; echo 'ANALYZE;'; } > /tmp/$TAG.load.sql"
-detached load "/tmp/$TAG.load.sql" || { echo "LOAD FAILED" >&2; sshapp "tail -12 /tmp/$TAG.load.log"; exit 1; }
+t=$(date +%s)
+if [ "${SWAP_PARALLEL:-0}" = 1 ]; then
+  # **One psql session per tenant, all at once.** The tenants are independent organisations
+  # with their own id bands, so their \copy streams share nothing but the tables, and Postgres
+  # takes concurrent COPY into one table and its btrees in its stride. A sequential load is
+  # bound on one backend (and, on the baseline gp3 volume, on IOPS -- see the plan's rows
+  # 25-26); the wall time here is the largest tenant's, about a third of the sum.
+  #
+  # **What each session must NOT run is the tail of its own load.sql.** Every tenant file ends
+  # with unconditional `SELECT setval(seq, MAX(id))` for the shared id sequences: two sessions
+  # finishing out of order would set a sequence BACK below ids the other had already loaded,
+  # and the server's next insert would collide. So a session runs only its SET and \copy
+  # lines, and the sequence fix-up -- the upward-only DO block from any one tenant file, which
+  # is idempotent -- and the single ANALYZE run once, after every session has finished.
+  say "6. load $SET, ${SWAP_PARALLEL:+parallel: }one session per tenant, sequences and ANALYZE once at the end"
+  sshapp "for d in \$(ls -d /tmp/$SET/*/ | sort); do n=\$(basename \$d);
+      { echo '\\timing on'; grep -E '^SET client_min_messages = warning;|^\\\\copy ' \${d}load.sql; } > /tmp/$TAG.load.\$n.sql; done
+    { echo 'SET client_min_messages = notice;'; awk '/^DO \\\$\\\$/,/^END \\\$\\\$;/' \$(ls /tmp/$SET/*/load.sql | head -1); echo 'ANALYZE;'; } > /tmp/$TAG.seqfix.sql
+    rm -f /tmp/$TAG.load.*.rc /tmp/$TAG.load.*.log
+    for d in \$(ls -d /tmp/$SET/*/ | sort); do n=\$(basename \$d);
+      setsid nohup bash -c \"$PSQL -f /tmp/$TAG.load.\$n.sql > /tmp/$TAG.load.\$n.log 2>&1; echo \\\$? > /tmp/$TAG.load.\$n.rc\" >/dev/null 2>&1 </dev/null &
+    done; sleep 2; echo \"     \$(ls /tmp/$TAG.load.*.sql | grep -vc seqfix) sessions started\""
+  t0=$(date +%s)
+  while :; do
+    DONE=$(sshapp "ls /tmp/$TAG.load.*.rc 2>/dev/null | wc -l"); ALL=$(sshapp "ls /tmp/$TAG.load.*.sql | grep -vc seqfix")
+    echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshapp "cat /tmp/$TAG.load.*.log 2>/dev/null | awk '/^COPY /{n+=\$2} END{print n+0}'") rows copied, ${DONE:-0}/${ALL:-?} tenants finished"
+    [ "${DONE:-0}" -ge "${ALL:-99}" ] && break
+    sleep 60
+  done
+  BAD=$(sshapp "grep -L '^0\$' /tmp/$TAG.load.*.rc 2>/dev/null | sed 's|.*load\.||; s|\.rc||' | tr '\n' ' '")
+  [ -z "$BAD" ] || { echo "LOAD FAILED for tenant(s): $BAD" >&2; for n in $BAD; do sshapp "echo \"--- $n ---\"; tail -6 /tmp/$TAG.load.$n.log"; done; exit 1; }
+  say "   all tenants loaded; sequences and ANALYZE"
+  detached seqfix "/tmp/$TAG.seqfix.sql" || { echo "SEQUENCE FIX-UP / ANALYZE FAILED" >&2; sshapp "tail -12 /tmp/$TAG.seqfix.log"; exit 1; }
+else
+  say "6. load $SET, per-tenant ANALYZE stripped, one at the end"
+  sshapp "sed -i 's/^ANALYZE;\$/-- ANALYZE moved to the end of the driver/' /tmp/$SET/*/load.sql
+    { echo '\\timing on'; for d in \$(ls -d /tmp/$SET/*/ | sort); do echo \"\\\\echo === TENANT \$(basename \$d) ===\"; echo \"\\\\i \${d}load.sql\"; done; echo 'ANALYZE;'; } > /tmp/$TAG.load.sql"
+  detached load "/tmp/$TAG.load.sql" || { echo "LOAD FAILED" >&2; sshapp "tail -12 /tmp/$TAG.load.log"; exit 1; }
+fi
 phase load $t
 
 t=$(date +%s); say "7. VACUUM ANALYZE"; sshapp "$PSQL -c 'VACUUM ANALYZE;'" >/dev/null; phase vacuum $t
