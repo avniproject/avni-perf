@@ -1174,6 +1174,9 @@ is binding; the calendar is not.
 | 21 | — | **`DummyInterceptor` removed — case 13 at 2 vCPU** | **done 2026-10-21 — off the cliff, without a reset by choice**: row 20's residue biases against the test jar, so the saving reads as a lower bound. Same box, same hour, one registration removed: **467 failures → 0**, p50 **38,782 → 295 ms**, under-800 ms **5% → 83%**, all 2,474 syncs recorded against the control's 2,007. The queue decided it at +15 min — the control's in-flight count climbed 64 → 338 and never recovered; the test arm's held at 34–49 all hour. **App CPU 8,403 → 6,358 s (−24%)**, 4.19 → 2.57 s per sync — more than the predicted ~3.7 because the control's figure carries saturation waste, which row 22 removes. **The old build's knee is bounded for the first time at 900–1,030 req/min on 2 vCPU.** The test arm runs at 84% mean / 99% peak, so the margin bought is what case 13 needed, not a large one. **Timeslices, 22 Oct:** on the same box the filter's own time fell from 98% to 10% of request time, blocked events 48,865 → 2,811, GC 555 → 53 s — busy, not drowning. [`findings-interceptor.md`](findings-interceptor.md) |
 | 22 | — | **`DummyInterceptor` removed — case 12 at 2 vCPU** | **done 2026-10-21 — the clean delta is 19%, not 12.6%.** Both arms healthy, 1,682 syncs each, 0 failed each, identical work (records p50 10,778 vs 10,872): **app CPU 6,152 → 4,999 s (−18.7%)**, 3.66 → 2.97 s per sync against a predicted ~3.2; app CPU 81% → 65% mean; `serverMs` p50 8.7 → 5.2 s; p95 1,707 → 746 ms, under-800 ms 70.6% → 96.1%. The 12.6% was the interceptor's share of *request wall time* under a profiler; its CPU cost, with the `@Transactional` boundary and the connection it takes, is larger. Control is row 16's 15 Oct run, not re-run — six days and a reload older than the case 13 control, and the result is not close enough for that to matter. Ran without a warm-up straight after row 21, `CACHE_POLICY=warm-from-preceding-run`. **Timeslices, 22 Oct — where the 18.7% went:** `Spring/HandlerInterceptor` is **11.7% of the control's request time** (the profiler's 12.6%, reproduced); the `gender` query is only **8% of that segment**, the `@Transactional` boundary around it the rest; every other statement then ran ~25% faster at equal call counts, which is why the CPU saving is half the segment's wall time. [`findings-interceptor.md`](findings-interceptor.md) |
 | 23 | — | **Clustered — co-tenant load, media push, re-drawn** — row 20 with supervisors pushing nothing and the customer's own spread (`CUSTOMER_PUSH_DRAW=v2`) | **done 2026-10-21 — RDS comes off its ceiling: 98.5% → 81.4% peak.** Run after 21 and 22 without a reset, as planned. Every prediction landed: **217,400 media files** (~215,000), 1,344 users pushing (the 156 supervisors none), **p50 160 / max 360 files per sync**, wall **1 h 20 m** (~1 h 25 m), **10,714 CPU s** (~10,400), app ~62% over the hour (~61%). RDS mean 62% → 52% and peak 98.5% → 81.4% for 26% fewer `uploadUrl` calls — the media calls were the spike, the pulls are the floor. No customer sync over 30 min (row 20: 63); server+queue p50 18 → 13 s. **Gatling says BUILD FAILED on 2 KO of 327,309**: org 24's `groups` endpoint, which has 500'd on every call today including two inside row 19 — a standing data defect, not load. [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
+| 24 | — | **Case 15 at ten encounters a day** — row 23 with the customer draw halved (`CUSTOMER_PUSH_DRAW=v3`, mean 10), on row 23's hardware | **pending — the bridge to 25 and 26.** One change from row 23, so the per-sync CPU and database cost at ten a day are measured before 25 and 26 are sized on them rather than extrapolated. [Rows 24–26](#rows-24-26) |
+| 25 | — | **Case 15 scaled out, test 1** — 5,000 users, ten encounters a day, 8 files each; app **8 vCPU**, database **8 vCPU** | **pending — needs a 5,000-user dataset and the `v3` draw.** Predicted at the app's knee on the current jar (~89%), with the database at ~22%. [Rows 24–26](#rows-24-26) |
+| 26 | — | **Case 15 scaled out, test 2** — 10,000 users, ten encounters a day, 8 files each; app **16 vCPU**, database **16 vCPU** | **pending — needs a 10,000-user dataset and a larger injector.** Same prediction as 25 at twice the scale. [Rows 24–26](#rows-24-26) |
 
 #### Rows 21 and 22: removing `DummyInterceptor`
 
@@ -1301,6 +1304,107 @@ the raw column overstates server time by the whole upload wait.
 > argument as rows 21 and 22. **Cross-check it**: records pulled per field-worker sync against row 20
 > should rise by roughly that +0.5%; much more would undercut the estimate, here and for 21 and 22.
 > **Reset after it** — it pushes again and roughly doubles the residue.
+
+<a id="rows-24-26"></a>
+#### Rows 24–26: case 15 at ten encounters a day, scaled out
+
+**Requested 23 Oct 2026**: the next tests take the customer to **ten encounters a day at 8 images
+each**, then scale users and both tiers together — **5,000 users on 8 app and 8 database vCPU**, and
+**10,000 on 16 and 16**. Row 24 is added in front of them: the same halving on row 23's hardware,
+so the two scale-out runs are sized on a measured per-sync cost rather than one carried across a
+changed draw.
+
+| | row 23, measured | **24** | **25 — test 1** | **26 — test 2** |
+|---|---|---|---|---|
+| customer users, over 1 h | 1,500 | 1,500 | **5,000** | **10,000** |
+| encounters per field-worker sync | `v2`: 10 / 20 / 30 / 45, mean 20 | **`v3`: 5 / 10 / 15 / 23, mean 10** | `v3` | `v3` |
+| media files per field-worker sync | p50 160, max 360 | **p50 80, max 184** | same as 24 | same as 24 |
+| supervisors | push nothing | push nothing | push nothing | push nothing |
+| dataset | `pilot-day-180` | `pilot-day-180` | **`pilot-day-180-5k`**, new | **`pilot-day-180-10k`**, new |
+| app | `m6g.xlarge`, 4 vCPU | `m6g.xlarge` | **`m6g.2xlarge`, 8 vCPU** | **`m6g.4xlarge`, 16 vCPU** |
+| database | `db.m6g.large`, 2 vCPU | `db.m6g.large` | **`db.m6g.2xlarge`, 8 vCPU** | **`db.m6g.4xlarge`, 16 vCPU** |
+| injector | `m6g.xlarge` | `m6g.xlarge` | `m6g.xlarge`, watched | **`m6g.2xlarge`** |
+| co-tenants | 792/h, push on | unchanged | unchanged | unchanged |
+
+**Unchanged throughout:** 8 files per encounter, `MEDIA_MODEL=pause`, co-tenants at production's
+busiest hour, New Relic on, no profiler, the 900 s warm-up burst, heap pinned at 5,120 MB, and the
+jar rows 20 and 23 ran — `2c0215679`, `DummyInterceptor` still in — unless the fix for
+avniproject/avni-server#1097 ships first. Record which in `SERVER_BUILD` either way; the predictions
+below say why it matters.
+
+**Co-tenants stay at 792/h.** They are the other organisations on the shared server, and the
+customer growing does not make them busier.
+
+##### What has to exist first
+
+1. **The `v3` draw.** `PushProfiles.customerEncounters` gains `v3` → `new PushVolume("encounters",
+   1.0, 5, 10, 15, 23, 10.0)`: `v2` halved, with a 23 ceiling, so a heavy day sits at a little over
+   twice the median as it does in `v2`. A unit test pins the sampled mean to 10, as `v2`'s pins 20.
+   **Not `pushScale` 0.5 in the feeder**, which would get the same encounters but would also halve
+   every other entity a worker pushes, and would not be recorded as `push.customerDraw`.
+2. **Two datasets.** The customer's recipe today has 1,496 field workers and 186 supervisors; 5,000
+   and 10,000 users are not in it. `pilot-day-180-5k` and `pilot-day-180-10k` are `pilot-day-180.json`
+   with every tenant's `field_workers` scaled by 10/3 and 20/3 — states 500 → 1,667 and 3,333, NGOs
+   62 → 207 and 413 — and **`encounters_per_worker_per_day` at 10**, so the history matches the
+   projection the pushes now model. Village density, span 8.4 and `beneficiaries_per_village` stay,
+   so **a single sync's catchment is the same size as today's**: what grows is the number of
+   catchments, and with them the tables. Roughly **5 M and 10 M individuals** against 1.5 M.
+   Generate their feeders with `--supervisor-push-scale 0.0`, as row 23's.
+3. **The resizes**, through `app_instance_class`, `db_instance_class` and
+   `injector_instance_class` (`avni-infra/provision/RESIZE.md`). **Budget for the AZ refusing the
+   database class** — it has, repeatedly, for smaller ones — and size `db_allocated_storage` for a
+   dataset 3–7 times today's before the load, since it cannot be shrunk afterwards.
+   `max_connections` is production's RAM-scaled expression and grows on its own.
+
+##### Predictions, written before the runs
+
+**Arithmetic over rows 13, 19 and 23, not a measurement — row 24 exists to replace its weakest
+line.** Row 23's 85-minute window carried 1,500 customer syncs and ~1,125 co-tenant syncs; the
+co-tenant share is taken out first, at case 7's 1.68 CPU s and 51.4 requests a sync.
+
+| per customer sync | row 23, 20 a day | **at 10 a day** |
+|---|---|---|
+| requests | ~180, of which ~145 `uploadUrl` | **~100**, of which ~73 `uploadUrl` |
+| database statements | ~2,950 — 12.1 per `uploadUrl`, ~34 per other request | **~1,800** |
+| database time | ~5.8 s | **~3.9 s** |
+| app CPU s, current jar | ~5.9 — of which the pull is ~3.8 (case 13 at 4 vCPU, net of co-tenants) | **~4.8** — the pull, plus half of row 23's push and `uploadUrl` |
+| app CPU s, without the interceptor | — | **~3.9**, row 22's −19% |
+
+The push-and-media remainder halves cleanly whatever its internal split, because both halves of it
+— encounters and the files they carry — halve together. The pull at 3.8 s does not move.
+
+| | **24** | **25 — test 1** | **26 — test 2** |
+|---|---|---|---|
+| requests per hour | ~190,000, ~55 rps | **~540,000, ~150 rps** | **~1.04 M, ~290 rps** |
+| app CPU s for the hour, co-tenants' ~1,330 included | ~8,600 | **~25,500** | **~49,700** |
+| **app CPU, current jar** | **~60%** of 4 vCPU | **~89%** of 8 | **~86%** of 16 |
+| app CPU, without the interceptor | ~49% | ~71% | ~70% |
+| database, mean — row 23's 52% scaled by database time | ~40% of 2 vCPU | **~22%** of 8 | **~20%** of 16 |
+| devices in flight — ~6.5 min a sync | ~160 | ~540 | ~1,100 |
+| wall time | ~1 h 15 m — injection plus 184 files at 4 s | same | same |
+
+**The prediction that matters: on the current jar, both scale-out runs sit at the app's knee and
+the database idles.** Users grow 3.3× and 6.7× while app vCPU grows 2× and 4× from row 23's 4 — and
+halving the encounters makes a sync only a fifth cheaper, because the pull, which does not halve,
+is two-thirds of it. That leaves the app about as loaded as case 13 was when it broke. The database
+grows 4× and 8× against a load of 1.7× and 3×, so most of it would sit unused. If this holds, **the
+cheaper configuration is the interceptor fix and fewer database vCPU**, not 16 and 16 — and row 25
+on the fixed jar would be the run that shows it.
+
+**Where the arithmetic is weakest.** Per-sync CPU is assumed flat from 4 to 16 vCPU; nothing here
+has measured past 4, and contention, GC and the 200 Tomcat threads and 100 pooled connections that
+avni-server runs on by default may not scale with cores. History at ten a day halves the encounters
+each sync pulls, which makes every app figure above an upper bound. And database CPU is scaled on
+database time alone, from one 2 vCPU point, for a database whose tables are 3–7 times larger. Row 24 settles the per-sync figure at ten a day;
+25 settles whether it holds at 8 vCPU before 26 doubles it.
+
+**Watch during 25 and 26**, from the timeslices: heap peak against the 5,120 MB pin and G1 time
+(the first symptom of the 2 vCPU cliff was a full heap), `http-nio` thread counts against 200,
+and the injector's own CPU, which at 1,000 devices in flight could become the limit instead of the
+server.
+
+**Order.** 24 on `pilot-day-180` after the reset row 23 called for, and reset after it. 25 and 26
+each on a fresh load of their own dataset, so neither carries residue.
 
 #### Standing task: back up New Relic weekly
 
