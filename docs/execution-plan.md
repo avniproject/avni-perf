@@ -1522,6 +1522,14 @@ sync and push hot paths**:
 If it does, the 17.3 findings carry over to 18.1 unchanged and row 28 is skipped; if not, row 28
 separates rig drift from code. Every fix jar in row 29 is built on `789092feb`.
 
+**The baseline jar is CircleCI's production build**, `avni-server-18.1.0-SNAPSHOT.jar`, sha256
+`87bf747b08a9d2a90f5fa3e9a91cd137a295643976fb6491ae433d550e5ba678`. It carries no commit metadata,
+so it was tied to `789092feb` by rebuilding that commit locally (JDK 21, `bootJar`) and comparing
+entry by entry, 26 Oct 2026: all 2,184 boot-jar entries and all 1,871 `-plain` entries identical in
+content, the only CRC difference being build timestamps inside the nested `avni-server-data` jar.
+**A local build of `789092feb` therefore reproduces production's jar**, so a row 29 fix jar built
+locally differs from the baseline by its fix and nothing else.
+
 #### Standing task: back up New Relic weekly
 
 **`Transaction` events are retained for 8 days and the boundary slides by the minute.** Everything
