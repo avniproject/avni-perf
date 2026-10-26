@@ -259,7 +259,7 @@ individuals are loaded one at a time during the request rather than with the pag
 scope query resolves them per row or something reaches through `getIndividual()` after the query
 returns. Worth chasing: it is 11% of the request and it is the shape of an N+1.
 
-> **Explained 26 Oct 2026** ([areas §9](areas-to-investigate.md#9-sync-responses-load-every-parent-row-to-print-its-uuid)):
+> **Explained 26 Oct 2026** ([areas §9](areas-to-investigate.md#9-sync-responses-load-each-parent-entity-in-full-to-link-a-record-to-its-parent)):
 > the second. `EncounterController.process` reads `encounter.getIndividual().getUuid()` for the
 > `individualUUID` link, and `Individual`'s `@BatchSize(size = 100)` turns that into one load per
 > hundred encounters — so nine is a batch count, not a row count.

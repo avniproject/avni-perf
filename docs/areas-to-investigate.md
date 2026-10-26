@@ -612,14 +612,16 @@ does not pay.** Leave it on the JVM.
 anything that shrinks a sync response reduces it without moving it: item 7, and any trimming of
 what the sync returns. That is the lever here, not relocation.
 
-## 9. Sync responses load every parent row to print its UUID
+## 9. Sync responses load each parent entity in full to link a record to its parent
 
 > **Tracked as avniproject/avni-server#1103**, raised 26 Oct 2026.
 
 **Added 26 Oct 2026.** [`findings-case9-12a.md`](findings-case9-12a.md) found "9 lazy `individual`
 selects" inside one `encounter (GET)` trace, at **11.18% of request time**, and left them
 unexplained: `Encounter` carries `@JsonIgnoreProperties({"individual"})`, so Jackson does not touch
-the association. **It is not Jackson. It is the HATEOAS link.**
+the association. **It is not Jackson. It is the HATEOAS link to the parent** — `individualUUID`,
+which the client needs to attach each encounter to its subject. The link is essential; the way it
+is built is not.
 
 `EncounterController.process`, run once per encounter in the page:
 
@@ -634,8 +636,9 @@ so Hibernate loads it and the next 99 uninitialised individuals in one statement
 `select … from individual where id = any (?)` that `SqlTrace` tags to `encounter (GET)` and
 `programEnrolment (GET)`, the two pulls whose parent is a subject. **A 1,000-encounter page touching ~700 distinct subjects makes ~7 of
 them.** Each loads the *whole* row — observations JSONB, registration location, subject location —
-and hydrates an `Individual`, parsing its observations through `ObservationCollectionUserType`, to
-read one string the row's own `encounter.individual_id` already identifies.
+and hydrates an `Individual`, parsing its observations through `ObservationCollectionUserType`. Of
+all that, the link uses only the parent's `uuid`, which the page query could carry directly through
+`encounter.individual_id`.
 
 ### What it costs, from the timeslices and request events
 
