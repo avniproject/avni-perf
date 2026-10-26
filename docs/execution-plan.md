@@ -1177,6 +1177,10 @@ is binding; the calendar is not.
 | 24 | — | **Case 15 at ten encounters a day** — row 23 with the customer draw halved (`CUSTOMER_PUSH_DRAW=v3`, mean 10), on row 23's hardware | **done 2026-10-23 — the push model landed; the database did not follow the media down.** 107,080 media files (~107,500 predicted), p50 80 / max 184 per sync, 203,439 requests, **0 failed**, wall 1 h 11 m (~1 h 15 m), field-worker sync p50 6.6 min (~6.5), **9,285 CPU s** (~8,600), app 61% mean over the hour (~60%). **RDS 62% mean / 79% peak against ~40% predicted**: halving `uploadUrl` moved it ~72% → ~67% steady — the pulls are the floor, as row 23's timeslices said. Rows 25–26's database figures are therefore low; database load scales with the pull, and the pull with users. [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | 25 | — | **Case 15 scaled out, test 1** — 5,000 users, ten encounters a day, 8 files each; app **8 vCPU**, database **8 vCPU** | **done 2026-10-23 — 3.3× the users cost 2× the CPU, and the app had a quarter in hand.** 573,458 requests at 159 rps, **1 failed** (org 24's `groupPrivilege`, the same deleted-user defect), p50 / p95 **12 / 234 ms**, 99.99% under 800, wall 1 h 11 m. **18,536 CPU s** against ~25,500 predicted; **app 61.6% mean / 75.5% peak of 8 vCPU** (~89% predicted), **RDS 31.6% / 37.8%** (~22%), read IOPS 575 peak of 3,000, pool 35 of 100, injector 6.7%. Records per sync 8,402 (−40% on row 24, the ten-a-day history), ~3.4 CPU s per customer sync against ~5.3. A field worker waits 6.1 min, 4.8 s of it the server. The planned 12,000 IOPS did not apply — gp3 provisioning needs ≥ 400 GiB, the volume is 250 — and was never needed for the run. [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | 26 | — | **Case 15 scaled out, test 2** — 10,000 users, ten encounters a day, 8 files each; app **16 vCPU**, database **16 vCPU** | **done 2026-10-23 — twice the users on twice the cores reproduced row 25: 1,107,301 requests at 307 rps, 0 failures, p95 231 ms; 35,564 CPU s (1.92× row 25 for 2× the syncs, ~3.4 per customer sync); app 58.9% mean of 16, RDS 27.4%, pool 44 peak, heap 1,220 MB, injector 11.5%; field-worker sync 364 / 525 / 783 s with the server's share 1.3%.** Dataset `pilot-day-180-10k` loaded with `SWAP_PARALLEL=1`, one psql session per tenant: 27,958,930 rows in 42 min (~11,100 rows/s) on the **baseline volume** — the planned 12,000 IOPS / 500 MB/s could not be applied (gp3 provisions IOPS and throughput only from 400 GiB; the volume is 250; `RESIZE.md` records it) and was not needed: the parallel load sat on the 125 MB/s *throughput* baseline, not IOPS, and the run peaked at 212 read IOPS. REINDEX took 9.5 min on `db.m6g.4xlarge`. Org 24's deleted bootstrap user was repointed in all 27 of its tables before the run — the first row with zero failures. The injector stayed at `m6g.xlarge` for the run and went to `m6g.large` with the end-of-day stop; `m6g.large` is the tofu default from 23 Oct. Predictions scored in [`findings-clustered-media-push.md`](findings-clustered-media-push.md#row-26-10000-users-on-16-app-and-16-database-vcpu): the upper bounds held (CPU s at 72% of predicted), the database's "~20%, low" did not (27%). [Rows 24–26](#rows-24-26)
+| 27 | V | **Re-baseline on the production build** — anchors A and B, each **twice**, on `v18.1.0` (`789092feb`), what production runs | **pending.** The 17.3 baseline (`2c0215679`) is not the control for a fix built on 18.x. Two runs per anchor give this rig's run-to-run spread, the threshold every fix is read against. [Validation phase](#validation-phase) |
+| 28 | V | **Drift check, only if row 27 does not reproduce 17.3** — anchor A once on the old jar `2c0215679` | **conditional.** 18.1 changes nothing on the sync and push hot paths, so row 27 should land within noise of rows 22 and 24. If it does not, this run says whether the rig or the code moved. [Validation phase](#validation-phase) |
+| 29 | V | **One fix per jar** — #1097, #1098, #1103, the #882 cache fix and #1057, each built on the production tag alone and run on A and B | **pending — each as its fix lands.** Each measured against row 27, not stacked on the previous fix, so every saving is attributable. [Validation phase](#validation-phase) |
+| 30 | V | **All fixes together** — the combined jar on A and B, then C (case 13, 2 vCPU) and D (5,000 users, 8 + 8) | **pending — after 29.** Fixes interact, so this is the number to quote for the release; C shows whether the knee moved, D whether the gain holds at scale. [Validation phase](#validation-phase) |
 
 #### Rows 21 and 22: removing `DummyInterceptor`
 
@@ -1432,6 +1436,91 @@ past ~50% the result is suspect and the resize is the answer then.
 **Order.** 24 ran on `pilot-day-180` on 23 Oct without the reset row 23 called for — on rows
 20–23's residue, the same lower-bound reading as 23. 25 and 26 each on a fresh load of their own
 dataset, so neither carries residue.
+
+<a id="validation-phase"></a>
+#### Rows 27–30: the validation phase — measuring each fix against a new baseline
+
+**Added 26 Oct 2026.** Production has moved off the 17.3 build every run so far was measured on
+(`2c0215679`), with no significant performance fix in between. The fixes this campaign raised
+will land on that newer base, so **the 17.3 numbers cannot be their control**. This phase rebuilds
+the baseline on the production build and measures each fix as a jar that differs from it by one
+change.
+
+##### The anchors
+
+Two cover every fix's code path. Two more are kept for the combined jar only.
+
+| anchor | scenario | hardware | dataset | as run before |
+|---|---|---|---|---|
+| **A** | case 12: 1,682 users over 1 h, `PUSH=off`, co-tenants present and idle | `m6g.large` app (2 vCPU), `db.m6g.large` | `pilot-day-180` | row 22's control — the interceptor's clean delta |
+| **B** | case 15 at ten a day: 1,500 users over 1 h, `CUSTOMER_PUSH_DRAW=v3`, `case5-users-pilot-nosuppush.csv`, 8 files per encounter, co-tenants at 792/h with push on | `m6g.xlarge` app (4 vCPU), `db.m6g.large` (2 vCPU) | `pilot-day-180` | row 24 |
+| C | case 13: case 12 plus co-tenants syncing at 792/h | `m6g.large`, `db.m6g.large` | `pilot-day-180` | rows 19 and 21 — the cliff |
+| D | case 15 scaled: 5,000 users | `m6g.2xlarge`, `db.m6g.2xlarge` | `pilot-day-180-5k` | row 25 |
+
+**A is the cleanest CPU delta**: healthy, pull-heavy, no push, so a fix's saving is not mixed with
+saturation waste. **B is the write and media path**, and its 2 vCPU database makes statement-count
+changes visible in RDS CPU.
+
+##### Two kinds of evidence per fix
+
+**A signature that proves the fix is live, from the timeslices.** Statement counts are exact, not
+sampled, so they confirm a fix took effect even when its CPU effect sits inside the noise.
+**A magnitude that sizes it**, read against row 27's spread: CPU seconds per sync
+(`tools/cpu-per-sync.py`), database time, RDS CPU, p95.
+
+| fix | signature: on the 17.3 baseline → expected | magnitude: expected | anchors |
+|---|---|---|---|
+| avniproject/avni-server#1097 — remove `DummyInterceptor` | `gender` selects per request **2.0 → ~0.1**; `sync_telemetry` UPDATE/INSERT **3.00 → 1.00** | app CPU **−19%** on A (row 22) | A, B |
+| #1098 — pin UTC in `JodaDateTimeConverter` | UPDATE/INSERT on `sync_telemetry` (A and B) and `encounter`, `program_*` (B) **drops by exactly 1** | database time; one `audit` row less per write | A, B |
+| #1103 — parent UUIDs via `@Formula` | `individual` selects per customer sync **down ~75%** (B: 148 on row 24) | app CPU **~−5%** — inside the noise, so the signature carries it | A, B |
+| the fix #882 recommends | `users` per request (A 2.2, B 1.48) and `catchment` (A 1.7, B 1.22) **toward 0** | database time — `users` alone was 22% on row 24 and 30% at 10k | A, B |
+| #1057 — `exists` for `syncDetails` | `count(individual)` gone from `syncDetails` in `SqlTrace` | `syncDetails` database time | A |
+| #1100 + avniproject/avni-client#2218 — batched upload URLs | `uploadUrl` requests per sync **÷ batch size** | RDS CPU, request count | B — **needs the harness to model it first** |
+| avniproject/avni-client#2096 — `Slice` endpoints | `COUNT` statements per page **→ 0** | pull database time | A — **needs the harness to model it first** |
+
+The last two change what the client sends, so they wait on a harness switch (`UPLOAD_URL_BATCH`,
+and a `/v2` pull mode) and are measured when both the server and client changes exist.
+
+##### Discipline the comparisons depend on
+
+- **Reset before every run**: `tools/reset-transactional.sql`, then the dataset's `reload.sql`.
+  Rows 21–24 ran on residue by choice and could only claim lower bounds; this phase wants
+  differences, so every run starts from the same rows.
+- **The same instance types, warm-up (900 s burst), draw, co-tenant rate and seed** for every run
+  on an anchor. Run all of one anchor's jars before resizing for the next.
+- **One fix per jar, built from the production tag**, bytecode-checked as the interceptor jar was,
+  and recorded in `SERVER_BUILD`. Row 29 measures each against row 27, never stacked; row 30 is the
+  only stacked run.
+- **Timeslices captured for every run, controls included** — row 16's control nearly aged out
+  before it was captured.
+- **A fix's magnitude is quoted only if it exceeds row 27's spread.** Below that, the signature
+  is the result and the magnitude is reported as "within noise".
+
+##### What it costs
+
+| | runs |
+|---|---|
+| row 27 — A ×2, B ×2 | 4 |
+| row 28 — A on the old jar, only if row 27 does not reproduce 17.3 | 0–1 |
+| row 29 — five server fixes × A and B (#1057 on A only) | 9 |
+| row 30 — combined on A, B, C, D | 4 |
+| **total** | **17–18 one-hour runs**, plus the two client-dependent fixes when the harness models them |
+
+**The production build is `v18.1.0`** (`789092feb`, also `origin/18.1`), deployed by 26 Oct 2026. It
+is the 17.3 baseline plus 72 commits — `2c0215679` is an ancestor — and **none of them touch the
+sync and push hot paths**:
+
+| changed | relevance |
+|---|---|
+| `DummyInterceptor`, `JodaDateTimeConverter`, `SetOrganisationJdbcInterceptor`, `AuthService`, `DbRoleRepository`, `AddressLevelCache`, the sync controllers | **untouched** |
+| build files, `application.properties`, `ehcache.xml`, migrations | **untouched** |
+| `EncounterRepository`, `ProgramEncounterRepository`, `EncounterService` | a visit-date sort for the Completed Visits search (#1015) — not on the sync path |
+| `MediaController.generateUploadUrl` | adds file-name checks for the reserved storage namespaces (#1049) — string matching, no database call, so `uploadUrl`'s ~12 statements stand |
+| the rest | CSV upload modes, export formatting, hidden concepts, fast-sync dump endpoints — none exercised by the harness |
+
+**So row 27 should reproduce rows 22 and 24 within noise**, and that is the first thing to check.
+If it does, the 17.3 findings carry over to 18.1 unchanged and row 28 is skipped; if not, row 28
+separates rig drift from code. Every fix jar in row 29 is built on `789092feb`.
 
 #### Standing task: back up New Relic weekly
 
