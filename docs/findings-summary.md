@@ -274,7 +274,7 @@ request that nothing downstream needs. Six of them, ranked, with evidence and fi
 `DummyInterceptor` at **12.6% of request time** — 96% of all interceptor time, and more than every
 database fix combined. **That one is now measured, not estimated** (§7): removing it saves 18.7% of
 application CPU on a healthy server and is the difference between 467 failures and none on the
-one that broke. Next are the N+1 lazy `individual` selects at **11.18%** and `AuthenticationFilter`
+one that broke. Next are the N+1 lazy `individual` selects at **11.18%** — explained 26 Oct: every sync response loads each parent row to print its UUID ([§9](areas-to-investigate.md#9-sync-responses-load-every-parent-row-to-print-its-uuid)) and `AuthenticationFilter`
 at **5.62%** — and the row 19 timeslices make the filter more than a per-call cost: **it is where a
 saturated server queues**, 98% of request time in its own code at 2 vCPU, so anything that lets it
 answer without a pooled connection moves the knee itself. **A supervisor pays all of them 38.6

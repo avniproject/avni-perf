@@ -9,9 +9,9 @@ request and found that **97% of that cost was the transaction wrapper, not the `
 runs**. That was an instance of a pattern rather than a one-off, and this is the search for the
 others: **work the server does on every request that nothing downstream needs.**
 
-All eight below are of that shape. None is an algorithmic improvement; each removes work.
+All nine below are of that shape. None is an algorithmic improvement; each removes work.
 
-**Items 1 to 6 and 8 are measured. Item 7 is read from the code.** Item 6 was the open question
+**Items 1 to 6 and 8 are measured. Item 7 is read from the code. Item 9's mechanism is read from the code and its count measured; its cost is estimated.** Item 6 was the open question
 and is now answered: it does **not** cost the read path anything, which is a result worth keeping
 rather than a line to delete.
 
@@ -612,6 +612,91 @@ does not pay.** Leave it on the JVM.
 anything that shrinks a sync response reduces it without moving it: item 7, and any trimming of
 what the sync returns. That is the lever here, not relocation.
 
+## 9. Sync responses load every parent row to print its UUID
+
+**Added 26 Oct 2026.** [`findings-case9-12a.md`](findings-case9-12a.md) found "9 lazy `individual`
+selects" inside one `encounter (GET)` trace, at **11.18% of request time**, and left them
+unexplained: `Encounter` carries `@JsonIgnoreProperties({"individual"})`, so Jackson does not touch
+the association. **It is not Jackson. It is the HATEOAS link.**
+
+`EncounterController.process`, run once per encounter in the page:
+
+```java
+resource.add(Link.of(encounter.getEncounterType().getUuid(), "encounterTypeUUID"));
+resource.add(Link.of(encounter.getIndividual().getUuid(), "individualUUID"));   // ← this
+```
+
+`individual` is `@ManyToOne(fetch = LAZY)`, so the page query returns a proxy holding only the id.
+`getUuid()` is not the id, so it initialises the proxy, and `Individual` is `@BatchSize(size = 100)`,
+so Hibernate loads it and the next 99 uninitialised individuals in one statement — the
+`select … from individual where id = any (?)` that `SqlTrace` tags to `encounter (GET)` and
+`programEnrolment (GET)`, the two pulls whose parent is a subject. **A 1,000-encounter page touching ~700 distinct subjects makes ~7 of
+them.** Each loads the *whole* row — observations JSONB, registration location, subject location —
+and hydrates an `Individual`, parsing its observations through `ObservationCollectionUserType`, to
+read one string the row's own `encounter.individual_id` already identifies.
+
+### What it costs, from the timeslices and request events
+
+| | row 24, 1,500 users | **row 26, 10,000 users** |
+|---|---|---|
+| `individual` selects in the hour | 266,448 | **972,757** |
+| of which these page loads (net of `individual (GET)`'s page and count, push lookups by UUID, `syncDetails`) | ~222,600 | **~752,900 — 77%** |
+| per encounter page, all pages / per customer sync | 6.8 / 148 | **5.0 / 75** |
+| `individual` selects' share of database time | 10.9% | **9.6%** |
+| rows read and hydrated per customer sync, at ≤100 a load | up to ~14,800 | **up to ~7,500** |
+
+The request events show the step: on row 26 an `encounter (GET)` page making 23 database calls —
+an empty or short page — takes 83 ms, and one making 30 takes 191 ms. That difference also holds
+serialising a full page, so it is not the loads' cost alone. **The one direct measurement is still
+case 9/12a's trace — 11.18% of an encounter request, about four-fifths of it outside the database**
+(1.03 s of database time in a 5.06 s segment). With `encounter (GET)` at 51% of request time on row
+26, that puts the fix at **roughly 5–6% of application request time and ~6% of database time** at
+10,000 users — ~7.4% removed, less ~150–300 s for the primary-key lookups `@Formula` adds — an
+estimate from one saturated trace, to be replaced by a measurement.
+
+### It is the shape of every transactional sync endpoint
+
+Every `process()` on the sync path dereferences a parent for its UUID:
+
+| endpoint | parent loaded per record | parent's size |
+|---|---|---|
+| `encounter` | `individual` | **transactional — this measurement** |
+| `programEnrolment` | `individual` | transactional — same `id = any (?)` in `SqlTrace` |
+| **`programEncounter`** | **`programEnrolment`** | transactional — **production's largest table**, untested here because the customer cohort has no program data (summary, suggestion 3) |
+| `checklist` / `checklistItem` | `programEnrolment` / `checklist` | transactional |
+| `subjectMigration`, `groupSubject`, `individualRelationship` | `individual` (two for the last) | transactional |
+| all of them | `encounterType`, `program`, `subjectType`, `gender`, `addressLevel`, audit `User`s | metadata: few distinct per page; `User` is second-level cached |
+
+The metadata parents are cheap — a handful of distinct rows per page. **The transactional parents
+are not**: one load per hundred records pulled, of a row as heavy as the record itself.
+`programEncounter` → `programEnrolment` is the instance that matters most in production and the
+one these runs cannot see.
+
+### Fix
+
+**Read the parent's UUID without loading the parent.** The client needs the string; nothing else
+of the parent is used.
+
+1. **`@Formula` on the child** — `@Formula("(select i.uuid from individual i where i.id =
+   individual_id)") private String individualUuid;` on `Encounter`, and `process()` reads it. The
+   UUID arrives with the page query as a primary-key lookup per row, no entity is hydrated, no
+   JSONB is parsed. Same for `ProgramEnrolment`, `ProgramEncounter` (`programEnrolmentUuid`),
+   `Checklist`, `ChecklistItem` and the rest. **Cost: the subselect runs on every load of the child,
+   not only on sync** — cheap by primary key, but a review point. There is no `@Formula` in
+   avni-server today.
+2. **A fetch join in the sync query** removes the extra round trips but still loads and hydrates
+   every parent row. Fewer statements, same work — a half-measure.
+3. **Denormalise** `individual_uuid` onto the child tables: the cheapest read, but a migration and
+   backfill across production's largest tables. Not proportionate to a ~6% saving.
+4. **Not**: removing `@BatchSize`. That turns ~7 statements a page into ~700.
+5. **Raising the batch size to the page size, 1,000**, is a one-line interim: one load per page
+   instead of ~7. It removes round trips and per-statement overhead, not the rows read or the
+   hydration — perhaps a fifth to a third of the cost. On the entity it also applies to every lazy
+   `Individual` load outside sync, so prefer setting it per query.
+
+**What to measure when fixed:** rows 25 or 26 on the fixed jar. `individual` selects should fall by
+about three-quarters, and the 23-versus-30-call gap in `encounter (GET)` should mostly close.
+
 ## Ranked
 
 **Ordered by share of request time**, which is the denominator that matters while application CPU
@@ -626,6 +711,7 @@ is the constraint — not share of database calls.
 | 2 | one-statement role set; drop `application_name` | one line | ~1.8% |
 | 7 | Blackbird + fix the Jackson version split | hours | ~1–2% |
 | 5 | demote INFO logs | one line | 5.62% precedent, sample uncertain |
+| 9 | parent UUIDs via `@Formula`, not by loading the parent | hours per entity | ~5–6% of request time, ~6% of database time at 10k users (estimate) |
 
 **Item 3 is the headline.** Path-scoping it is one line and waits on nothing. Removing it outright
 wants a spell disabled on prerelease, where the admin paths it might still guard actually get
