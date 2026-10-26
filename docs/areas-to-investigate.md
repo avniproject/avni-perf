@@ -614,6 +614,8 @@ what the sync returns. That is the lever here, not relocation.
 
 ## 9. Sync responses load every parent row to print its UUID
 
+> **Tracked as avniproject/avni-server#1103**, raised 26 Oct 2026.
+
 **Added 26 Oct 2026.** [`findings-case9-12a.md`](findings-case9-12a.md) found "9 lazy `individual`
 selects" inside one `encounter (GET)` trace, at **11.18% of request time**, and left them
 unexplained: `Encounter` carries `@JsonIgnoreProperties({"individual"})`, so Jackson does not touch
