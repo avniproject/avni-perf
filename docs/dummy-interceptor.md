@@ -105,6 +105,46 @@ tests — run twice with only the JVM default zone changed:
 No GET dirtied the session in either run, which is measurement 1 arriving from the other
 direction.
 
+> **Corrected 26 Oct 2026: the second row does not describe production.** The load tests and the
+> production JVM say otherwise. Production runs with `user.timezone=Etc/UTC` (`jcmd …
+> VM.system_properties`), and under Joda 2.10.10 that default zone has the ID `Etc/UTC`, which
+> `equals()` treats as a different chronology from Jackson's `UTC`:
+>
+> | JVM default zone | Joda default ID | Jackson `DateTime` `equals` converter `DateTime` |
+> |---|---|---|
+> | `UTC` | `UTC` | **true** |
+> | **`Etc/UTC`** — production, and the load-test server | `Etc/UTC` | **false** |
+> | `GMT` / `Etc/GMT` | `Etc/GMT` | false |
+> | `Asia/Kolkata` | `Asia/Kolkata` | false |
+>
+> **Re-run 26 Oct 2026 to settle it**, against the local `openchs_test`, with the zone pinned
+> in the Gradle test task (`systemProperty 'user.timezone'`) rather than inherited, and the counter
+> recording Joda's default with each result:
+>
+> | test JVM `user.timezone` | Joda default | invocations | dirty |
+> |---|---|---|---|
+> | `UTC` | `UTC` | 182 | **0** |
+> | **`Etc/UTC`** | `Etc/UTC` | 182 | **18** — 10 `POST /encounters`, 6 `/programEnrolments`, 2 `/programEncounters` |
+>
+> The same 18 POSTs the `Asia/Kolkata` row shows. The zero above came from a JVM whose default was
+> `UTC`, not `Etc/UTC`, and only that spelling avoids the defect. In both runs 2 invocations ran
+> with Joda's default at `+05:30`: `SubjectApiControllerIntegrationTest` calls
+> `DateTimeZone.setDefault` in its setup and never restores it, so whole-suite counts depend on test
+> order. On the servers, entities with a Joda `DateTime` are permanently dirty,
+> and the load tests measure the consequence directly. **UPDATEs per INSERT on `sync_telemetry`,
+> which every sync writes:**
+>
+> | run | `DummyInterceptor` | UPDATE / INSERT |
+> |---|---|---|
+> | case 12 control (15 Oct), row 19 at 2 and 4 vCPU, row 26 | registered (twice) | **3.00** in all four |
+> | rows 21 and 22 | removed | **1.00** in both |
+>
+> The push runs show the same 3.00 on `encounter`, `program_encounter` and `program_enrolment`, and
+> 0 on `individual`, which has no Joda `DateTime`. **One UPDATE is the controller's commit
+> rewriting the still-dirty entity, and two are the interceptor's two `@Transactional` commits.**
+> Production pays all three on every such write, and each fires `audit_table_trigger`. At row 26's
+> 10,000 users that is ~314,000 redundant full-row UPDATEs an hour.
+
 ### The 18 were a timezone bug, not the guard working
 
 `JodaDateTimeConverter.convertToEntityAttribute` returns `new DateTime(data.getTime())` — the **JVM
@@ -126,9 +166,11 @@ POST** — one redundant UPDATE per write, of a row whose values never changed. 
 disappears entirely.
 
 **Fix the converter regardless** — avniproject/avni-server#1098:
-`new DateTime(data.getTime(), DateTimeZone.UTC)`. One line. Not a
-production performance fix — production is already UTC — but it removes a latent correctness hazard
-and stops developer machines in IST behaving differently from servers. **It also explains the 2019
+`new DateTime(data.getTime(), DateTimeZone.UTC)`. One line. ~~Not a production performance fix —
+production is already UTC~~ — **it is a production performance fix** (corrected 26 Oct, above):
+production's `Etc/UTC` default zone triggers the defect, so it removes one redundant UPDATE and audit
+row per write there, and the interceptor's removal (#1097) takes away the other two. It also stops
+developer machines in IST behaving differently from servers. **It also explains the 2019
 origin**: a developer in IST would see entities permanently dirty and reasonably conclude flushing
 was broken.
 
