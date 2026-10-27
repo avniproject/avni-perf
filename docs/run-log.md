@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-27 16:26 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-27 20:58 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -63,6 +63,8 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-27T06-53-54Z-case12-anchorA-v18.1-r1-1806f72`](run-log-detail.md#2026-10-27t06-53-54z-case12-anchora-v181-r1-1806f72) | 2026-10-27 12:23 | case12 | steady | 1682 | 60min @ 1682/h | ~8.4 | ~39 | 31469 | 0.0% | 2433 | 268.6 | 8.53 | 6,654 | 3.96 |
 | [`2026-10-27T08-18-41Z-case12-anchorA-v18.1-r2-1806f72`](run-log-detail.md#2026-10-27t08-18-41z-case12-anchora-v181-r2-1806f72) | 2026-10-27 13:48 | case12 | steady | 1682 | 60min @ 1682/h | ~6.5 | ~37 | 31259 | 0.0% | 1905 | 271.7 | 8.48 | 6,449 | 3.83 |
 | [`2026-10-27T09-46-42Z-case12-anchorA-v17.3-drift-r1-1806f72`](run-log-detail.md#2026-10-27t09-46-42z-case12-anchora-v173-drift-r1-1806f72) | 2026-10-27 15:16 | case12 | steady | 1682 | 60min @ 1682/h | ~7.4 | ~38 | 31259 | 0.0% | 2219 | 278.5 | 8.47 | 6,592 | 3.92 |
+| [`2026-10-27T11-14-57Z-case15-tenaday-anchorB-v18.1-r1-1806f72`](run-log-detail.md#2026-10-27t11-14-57z-case15-tenaday-anchorb-v181-r1-1806f72) | 2026-10-27 16:44 | case15 | steady | 1500 | 60min @ 1500/h | ~5.4 | ~141 | 204123 | 0.0% | 449 | 538.9 | 48.35 | 9,821 | 4.28 |
+| [`2026-10-27T14-06-07Z-case15-tenaday-anchorB-v18.1-r2-1806f72`](run-log-detail.md#2026-10-27t14-06-07z-case15-tenaday-anchorb-v181-r2-1806f72) | 2026-10-27 19:36 | case15 | steady | 1500 | 60min @ 1500/h | ~5.1 | ~136 | 203771 | 0.0% | 449 | 531.5 | 47.13 | 9,735 | 4.25 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 
