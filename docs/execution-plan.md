@@ -1177,8 +1177,8 @@ is binding; the calendar is not.
 | 24 | — | **Case 15 at ten encounters a day** — row 23 with the customer draw halved (`CUSTOMER_PUSH_DRAW=v3`, mean 10), on row 23's hardware | **done 2026-10-23 — the push model landed; the database did not follow the media down.** 107,080 media files (~107,500 predicted), p50 80 / max 184 per sync, 203,439 requests, **0 failed**, wall 1 h 11 m (~1 h 15 m), field-worker sync p50 6.6 min (~6.5), **9,285 CPU s** (~8,600), app 61% mean over the hour (~60%). **RDS 62% mean / 79% peak against ~40% predicted**: halving `uploadUrl` moved it ~72% → ~67% steady — the pulls are the floor, as row 23's timeslices said. Rows 25–26's database figures are therefore low; database load scales with the pull, and the pull with users. [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | 25 | — | **Case 15 scaled out, test 1** — 5,000 users, ten encounters a day, 8 files each; app **8 vCPU**, database **8 vCPU** | **done 2026-10-23 — 3.3× the users cost 2× the CPU, and the app had a quarter in hand.** 573,458 requests at 159 rps, **1 failed** (org 24's `groupPrivilege`, the same deleted-user defect), p50 / p95 **12 / 234 ms**, 99.99% under 800, wall 1 h 11 m. **18,536 CPU s** against ~25,500 predicted; **app 61.6% mean / 75.5% peak of 8 vCPU** (~89% predicted), **RDS 31.6% / 37.8%** (~22%), read IOPS 575 peak of 3,000, pool 35 of 100, injector 6.7%. Records per sync 8,402 (−40% on row 24, the ten-a-day history), ~3.4 CPU s per customer sync against ~5.3. A field worker waits 6.1 min, 4.8 s of it the server. The planned 12,000 IOPS did not apply — gp3 provisioning needs ≥ 400 GiB, the volume is 250 — and was never needed for the run. [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | 26 | — | **Case 15 scaled out, test 2** — 10,000 users, ten encounters a day, 8 files each; app **16 vCPU**, database **16 vCPU** | **done 2026-10-23 — twice the users on twice the cores reproduced row 25: 1,107,301 requests at 307 rps, 0 failures, p95 231 ms; 35,564 CPU s (1.92× row 25 for 2× the syncs, ~3.4 per customer sync); app 58.9% mean of 16, RDS 27.4%, pool 44 peak, heap 1,220 MB, injector 11.5%; field-worker sync 364 / 525 / 783 s with the server's share 1.3%.** Dataset `pilot-day-180-10k` loaded with `SWAP_PARALLEL=1`, one psql session per tenant: 27,958,930 rows in 42 min (~11,100 rows/s) on the **baseline volume** — the planned 12,000 IOPS / 500 MB/s could not be applied (gp3 provisions IOPS and throughput only from 400 GiB; the volume is 250; `RESIZE.md` records it) and was not needed: the parallel load sat on the 125 MB/s *throughput* baseline, not IOPS, and the run peaked at 212 read IOPS. REINDEX took 9.5 min on `db.m6g.4xlarge`. Org 24's deleted bootstrap user was repointed in all 27 of its tables before the run — the first row with zero failures. The injector stayed at `m6g.xlarge` for the run and went to `m6g.large` with the end-of-day stop; `m6g.large` is the tofu default from 23 Oct. Predictions scored in [`findings-clustered-media-push.md`](findings-clustered-media-push.md#row-26-10000-users-on-16-app-and-16-database-vcpu): the upper bounds held (CPU s at 72% of predicted), the database's "~20%, low" did not (27%). [Rows 24–26](#rows-24-26)
-| 27 | V | **Re-baseline on the production build** — anchors A and B, each **twice**, on `v18.1.0` (`789092feb`), what production runs | **pending.** The 17.3 baseline (`2c0215679`) is not the control for a fix built on 18.x. Two runs per anchor give this rig's run-to-run spread, the threshold every fix is read against. [Validation phase](#validation-phase) |
-| 28 | V | **Drift check, only if row 27 does not reproduce 17.3** — anchor A once on the old jar `2c0215679` | **conditional.** 18.1 changes nothing on the sync and push hot paths, so row 27 should land within noise of rows 22 and 24. If it does not, this run says whether the rig or the code moved. [Validation phase](#validation-phase) |
+| 27 | V | **Re-baseline on the production build** — anchors A and B, each **twice**, on `v18.1.0` (`789092feb`), what production runs | **in progress 2026-10-27 — anchor A done, twice: 3.96 and 3.83 CPU s per sync, p95 2,433 and 1,905 ms, 0 failures, app 90% and 88% of 2 vCPU, RDS 27% and 26%.** Both sit 5–8% above the 15 Oct control (3.66), which row 28 settled as the rig, not the jar: the control for row 29 on A is **3.9 ± 0.07 CPU s per sync**. Statement counts match 17.3 to a fraction of a percent (the interceptor's `gender` query, the three `sync_telemetry` writes, 207k `individual` selects), so the signature baseline carries over unchanged. Anchor B runs the evening of 27 Oct. [Results](#rows-27-28-results)
+| 28 | V | **Drift check, only if row 27 does not reproduce 17.3** — anchor A once on the old jar `2c0215679` | **done 2026-10-27 — the rig moved, not the code.** Anchor A on `2c0215679`, same day, bed and classes as row 27's pair: **3.92 CPU s per sync, p95 2,219 ms**, app 89.7% — between the two 18.1 runs (3.96 / 3.83, p95 2,433 / 1,905) and within 1% of r1 on identical statement counts. The 15 Oct control (3.66, p95 1,709, app 84%) is therefore not comparable with anything measured now; what changed on the rig in twelve days is not identified — candidates are the fresh reindexed bed, the `audit` table's growth, and the instance landing on another host after the stop/start. [Results](#rows-27-28-results)
 | 29 | V | **One fix per jar** — #1097, #1098, #1103, the #882 cache fix and #1057, each built on the production tag alone and run on A and B | **pending — each as its fix lands.** Each measured against row 27, not stacked on the previous fix, so every saving is attributable. [Validation phase](#validation-phase) |
 | 30 | V | **All fixes together** — the combined jar on A and B, then C (case 13, 2 vCPU) and D (5,000 users, 8 + 8) | **pending — after 29.** Fixes interact, so this is the number to quote for the release; C shows whether the knee moved, D whether the gain holds at scale. [Validation phase](#validation-phase) |
 
@@ -1529,6 +1529,39 @@ entry by entry, 26 Oct 2026: all 2,184 boot-jar entries and all 1,871 `-plain` e
 content, the only CRC difference being build timestamps inside the nested `avni-server-data` jar.
 **A local build of `789092feb` therefore reproduces production's jar**, so a row 29 fix jar built
 locally differs from the baseline by its fix and nothing else.
+
+<a id="rows-27-28-results"></a>
+##### Rows 27–28, 27 Oct 2026: anchor A
+
+| anchor A, case 12 | 17.3 control, 15 Oct | **18.1 r1** | **18.1 r2** | **17.3 today, row 28** |
+|---|---|---|---|---|
+| requests / failures | 31,409 / 0 | 31,469 / 0 | 31,259 / 0 | 31,259 / 0 |
+| CPU s / per sync | 6,152 / 3.66 | 6,654 / **3.96** | 6,449 / **3.83** | 6,592 / **3.92** |
+| app CPU, injection hour | 84.2% | 90.4% | 87.9% | 89.7% |
+| RDS CPU / read IOPS | 24.5% / 135 | 26.8% / 117 | 26.0% / 58 | 26.0% / 121 |
+| p95 / under 800 ms | 1,709 ms / — | 2,433 / 49% | 1,905 / 60% | 2,219 / 55.5% |
+| `individual` selects (timeslices) | 207,252 | 207,264 | 188,012 | 207,217 |
+
+**18.1 reproduces 17.3.** Row 28 — the old jar on the same day, bed and classes — lands between
+the two 18.1 runs on every axis, and within 1% of r1 on identical statement counts. r2's lower
+figure is the full-sync draw (9% fewer pulls in its window), not the jar. **The rig is 6–8%
+dearer than on 15 Oct** and the old control is retired: **row 29's control on A is today's three
+runs, 3.9 ± 0.07 CPU s per sync, p95 1,900–2,450 ms at 88–90% of 2 vCPU** — and the spread
+reads as ±2% on CPU and ±12% on p95, which is what a fix's magnitude must exceed.
+
+**The signature baseline carries over unchanged.** Every statement's call count in the 18.1
+captures matches the 17.3 control to a fraction of a percent: `gender` 66,448 (the
+interceptor's), `users` 68,506, `address_level_type` 98,547, the three `sync_telemetry` writes.
+The signatures in the fix table above were read off 17.3 and stand for 18.1.
+
+**What this cost to learn, and what it changed in the tooling.** The 10k bed had to come out
+before the anchors: one session tearing it down on `db.m6g.large` was IO-bound at ~1.5k rows/s
+and had four NGO tenants down after 53 minutes with the two state tenants still to come. Aborted
+and redone with `SWAP_PARALLEL=1` on `db.m6g.4xlarge`, where `swap-dataset.sh` now tears down
+one session per organisation as it loads: **28.08 M rows in 24 minutes**, the eight NGOs in three;
+the whole swap — teardown, vacuum, load, reindex, verification — in 48 minutes. The resizes
+there and back cost 7 and 21 minutes. A reset on the pilot bed alone (7 M rows) is cheaper and
+stays on the small class.
 
 #### Standing task: back up New Relic weekly
 
