@@ -20,7 +20,7 @@
 | [**9**](#case-9) | Stress ramp | 4 | [`12a`](findings-case9-12a.md), [`12b`](findings-case9-12b.md), [`12c`](findings-case9-12c.md) |
 | [**10**](#case-10) | Soak | 1 | [`findings-case10.md`](findings-case10.md) |
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
-| [**12**](#case-12) | Clustered — co-tenant data | 2 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
+| [**12**](#case-12) | Clustered — co-tenant data | 5 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 4 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
 | [**15**](#case-15) | Clustered — co-tenant load, media push | 5 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
@@ -218,6 +218,9 @@ Case 6 compressed into one hour: ~6.6 devices in flight against 0.55.
 |---|---|---|---|---|---|---|
 | [`2026-10-15 04:01`](run-log-detail.md#2026-10-15t04-01-52z-case12-c2a0e76) | case 6 compressed to 1 h | pilot-day-180 | 1682 | 0.0% | 1709 | 3.66 |
 | [`2026-10-21 10:59`](run-log-detail.md#2026-10-21t10-59-35z-case12-2vcpu-b-no-interceptor-f038788) | **2 vCPU, `DummyInterceptor` removed** (row 22); on row 20's residue, so a lower bound | pilot-day-180 | 1682 | 0.0% | 748 | 2.97 |
+| [`2026-10-27 06:53`](run-log-detail.md#2026-10-27t06-53-54z-case12-anchora-v181-r1-1806f72) | **Row 27, anchor A r1**: case 12 on the production build `v18.1.0` (`789092feb`), fresh `pilot-day-180`, first run after the database restart | pilot-day-180 | 1682 | 0.0% | 2433 | 3.96 |
+| [`2026-10-27 08:18`](run-log-detail.md#2026-10-27t08-18-41z-case12-anchora-v181-r2-1806f72) | **Row 27, anchor A r2**: as r1, warm; fewer full syncs in the draw (~9% fewer pulls), which is the 3.83 | pilot-day-180 | 1682 | 0.0% | 1905 | 3.83 |
+| [`2026-10-27 09:46`](run-log-detail.md#2026-10-27t09-46-42z-case12-anchora-v173-drift-r1-1806f72) | **Row 28, drift check**: anchor A on the old 17.3 jar (`2c0215679`), same day and bed as r1/r2 — lands between them, so the gap to 15 Oct is the rig, not the code | pilot-day-180 | 1682 | 0.0% | 2219 | 3.92 |
 
 **Findings:** [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md)
 
