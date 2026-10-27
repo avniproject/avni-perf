@@ -174,13 +174,48 @@ t=$(date +%s); say "2. FK scaffolding indexes"
 sshapp "$PSQL -c 'CREATE INDEX IF NOT EXISTS tmp_sw_enc_filled_by ON encounter (filled_by_id);' -c 'CREATE INDEX IF NOT EXISTS tmp_sw_pe_filled_by ON program_encounter (filled_by_id);'" >/dev/null || exit 1
 phase index_create $t
 
-t=$(date +%s); say "3. teardown of organisations 10-19"
-( cd "$PERF/tools/data-generator" && python3 teardown_org.py \
-    --organisation 10 --organisation 11 --organisation 12 --organisation 13 --organisation 14 \
-    --organisation 15 --organisation 16 --organisation 17 --organisation 18 --organisation 19 \
-    --id-base 201000000 --scope data ) | sshapp "cat > /tmp/$TAG.td.sql"
-detached td "/tmp/$TAG.td.sql" || { echo "TEARDOWN FAILED" >&2; sshapp "tail -12 /tmp/$TAG.td.log"; exit 1; }
-sshapp "grep -a 'organisation(s)' /tmp/$TAG.td.log | tail -1" | sed 's/^/     /'
+t=$(date +%s)
+if [ "${SWAP_PARALLEL:-0}" = 1 ]; then
+  # **One psql session per organisation, all at once -- the load's pattern applied to the
+  # teardown.** Measured 27 Oct 2026: one session deleting the 10k bed on db.m6g.large was
+  # IO-bound at ~1.5k rows/s (450-1,100 read IOPS, queue depth 0, 42% of 2 vCPU) and had four
+  # NGO tenants down after 53 minutes with the two state tenants -- eight times an NGO -- still
+  # to come. The organisations' rows are disjoint, so ten deletes share nothing but the tables
+  # and their indexes, and each one overlaps the others' IO waits. On a small class the gain is
+  # capped by CPU at about 2.5 sessions' worth; on a large one the wall time is the biggest
+  # tenant's. Each organisation's file is still one transaction, so a failure leaves that
+  # organisation whole and the others done, which the rc files report per organisation.
+  say "3. teardown of organisations 10-19, parallel: one session per organisation"
+  for o in 10 11 12 13 14 15 16 17 18 19; do
+    ( cd "$PERF/tools/data-generator" && python3 teardown_org.py --organisation $o --id-base 201000000 --scope data ) | sshapp "cat > /tmp/$TAG.td.$o.sql"
+  done
+  sshapp "rm -f /tmp/$TAG.td.*.rc /tmp/$TAG.td.*.log
+    for o in 10 11 12 13 14 15 16 17 18 19; do
+      setsid nohup bash -c \"$PSQL -f /tmp/$TAG.td.\$o.sql > /tmp/$TAG.td.\$o.log 2>&1; echo \\\$? > /tmp/$TAG.td.\$o.rc\" >/dev/null 2>&1 </dev/null &
+    done; sleep 2; echo \"     \$(ls /tmp/$TAG.td.*.sql | wc -l) sessions started\""
+  # `pg_stat_activity.query` is cut at track_activity_query_size (1,024 chars), so a filter on text
+  # deep inside the DO block undercounts -- 27 Oct's first poll showed 1 of 10 sessions. The
+  # block's first bytes and psql's application_name are what survive the cut.
+  t0=$(date +%s)
+  while :; do
+    DONE=$(sshapp "ls /tmp/$TAG.td.*.rc 2>/dev/null | sed 's|.*td\.||; s|\.rc||' | sort -n | tr '\n' ' '")
+    N=$(echo $DONE | wc -w | tr -d ' ')
+    echo "     [$(( ($(date +%s)-t0)/60 ))m] $N/10 organisations finished${DONE:+ ($DONE)}; sessions: $(sshapp "$Q -c \"SELECT count(*) || ' active, ' || count(*) FILTER (WHERE wait_event_type = 'IO') || ' on IO, ' || count(*) FILTER (WHERE wait_event_type = 'Lock') || ' on a lock' FROM pg_stat_activity WHERE state = 'active' AND application_name = 'psql' AND query LIKE 'DO $$%';\"")"
+    [ "$N" -ge 10 ] && break
+    sleep 60
+  done
+  BAD=$(sshapp "grep -L '^0\$' /tmp/$TAG.td.*.rc 2>/dev/null | sed 's|.*td\.||; s|\.rc||' | tr '\n' ' '")
+  [ -z "$BAD" ] || { echo "TEARDOWN FAILED for organisation(s): $BAD" >&2; for o in $BAD; do sshapp "echo \"--- $o ---\"; tail -8 /tmp/$TAG.td.$o.log"; done; exit 1; }
+  sshapp "cat /tmp/$TAG.td.*.log | grep -a 'organisation(s)' | awk '{n+=\$(NF-4)} END{print \"     deleted \" n \" rows from 10 organisations\"}'"
+else
+  say "3. teardown of organisations 10-19"
+  ( cd "$PERF/tools/data-generator" && python3 teardown_org.py \
+      --organisation 10 --organisation 11 --organisation 12 --organisation 13 --organisation 14 \
+      --organisation 15 --organisation 16 --organisation 17 --organisation 18 --organisation 19 \
+      --id-base 201000000 --scope data ) | sshapp "cat > /tmp/$TAG.td.sql"
+  detached td "/tmp/$TAG.td.sql" || { echo "TEARDOWN FAILED" >&2; sshapp "tail -12 /tmp/$TAG.td.log"; exit 1; }
+  sshapp "grep -a 'organisation(s)' /tmp/$TAG.td.log | tail -1" | sed 's/^/     /'
+fi
 E=$(sshapp "$Q -c \"SELECT count(*) FROM individual WHERE organisation_id BETWEEN 10 AND 19;\"")
 [ "${E:-1}" = "0" ] || { echo "ABORT: pilot still has $E individuals after teardown" >&2; exit 1; }
 echo "     pilot individuals: 0"
