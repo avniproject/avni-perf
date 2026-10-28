@@ -1471,7 +1471,7 @@ sampled, so they confirm a fix took effect even when its CPU effect sits inside 
 | fix | signature: on the 17.3 baseline → expected | magnitude: expected | anchors |
 |---|---|---|---|
 | avniproject/avni-server#1097 — remove `DummyInterceptor` | `gender` selects per request **2.0 → ~0.1**; `sync_telemetry` UPDATE/INSERT **3.00 → 1.00** | app CPU **−19%** on A (row 22) | A, B |
-| #1098 — pin UTC in `JodaDateTimeConverter` | UPDATE/INSERT on `sync_telemetry` (A and B) and `encounter`, `program_*` (B) **drops by exactly 1** | database time; one `audit` row less per write | A, B |
+| #1098 — pin UTC in `JodaDateTimeConverter` | UPDATE on `sync_telemetry` (A and B) and `encounter`, `program_*` (B) **drops to 0** — measured 28 Oct on A: all three per-sync re-saves, not one | database time; one `audit` row less per write | A, B |
 | #1103 — parent UUIDs via `@Formula` | `individual` selects per customer sync **down ~75%** (B: 148 on row 24) | app CPU **~−5%** — inside the noise, so the signature carries it | A, B |
 | the fix #882 recommends | `users` per request (A 2.2, B 1.48) and `catchment` (A 1.7, B 1.22) **toward 0** | database time — `users` alone was 22% on row 24 and 30% at 10k | A, B |
 | #1057 — `exists` for `syncDetails` | `count(individual)` gone from `syncDetails` in `SqlTrace` | `syncDetails` database time | A |
@@ -1610,6 +1610,7 @@ stays on the small class.
 | fix / anchor | CPU s per sync (control) | p95 ms (control) | signature | verdict |
 |---|---|---|---|---|
 | **#1097 on A** — `DummyInterceptor` removed | **2.88** (3.90 ± 0.07) **−26%** | **715** (1,905–2,433) | `gender` selects 66,448 → 3,392; request wall time −67%; thread-blocked events −47%; RDS CPU 26% unchanged | **live, and larger than row 22's −19%**: the control was on the knee, so the fix also removes the queueing |
+| **#1098 on A** — `JodaDateTimeConverter` pinned to UTC | **3.90** (3.90 ± 0.07) **none** | 2,163 (1,905–2,433) | `sync_telemetry` updates **5,063 → 0** — every `UPDATE` in the run gone; selects unchanged; request wall time −14% | **live; signature larger than attributed.** The Joda round-trip is what makes the row dirty — the interceptor only multiplied the flushes (#1097 alone left one update, #1098 alone none). Magnitude is a B question: each pushed `encounter`/`program_*` save goes through the same converter |
 
 #### Standing task: back up New Relic weekly
 
