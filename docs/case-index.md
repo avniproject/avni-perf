@@ -22,7 +22,7 @@
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
 | [**12**](#case-12) | Clustered — co-tenant data | 7 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 4 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
-| [**15**](#case-15) | Clustered — co-tenant load, media push | 7 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
+| [**15**](#case-15) | Clustered — co-tenant load, media push | 8 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
 
 <a id="case-1"></a>
@@ -259,6 +259,7 @@ Case 13's shape — clustered into one hour, co-tenants syncing — with push on
 | [`2026-10-23 12:09`](run-log-detail.md#2026-10-23t12-09-02z-case15-10k-m6g4xlarge-1aa819b) | **10,000 users** (row 26): `pilot-day-180-10k`, ten a day, `m6g.4xlarge` / `db.m6g.4xlarge`; first run with zero failures | pilot-day-180-10k | 10792 | 0.0% | 231 | 3.30 |
 | [`2026-10-27 11:14`](run-log-detail.md#2026-10-27t11-14-57z-case15-tenaday-anchorb-v181-r1-1806f72) | **Row 27, anchor B r1**: case 15 at ten a day on the production build `v18.1.0` (`789092feb`), fresh `pilot-day-180`, `m6g.xlarge` / `db.m6g.large` | pilot-day-180 | 2292 | 0.0% | 449 | 4.28 |
 | [`2026-10-27 14:06`](run-log-detail.md#2026-10-27t14-06-07z-case15-tenaday-anchorb-v181-r2-1806f72) | **Row 27, anchor B r2**: as r1 after a reload of `pilot-day-180` — within 1% of r1, so B's spread is under 1% on CPU and 3 ms on p95 | pilot-day-180 | 2292 | 0.0% | 449 | 4.25 |
+| [`2026-10-28 08:54`](run-log-detail.md#2026-10-28t08-54-30z-case15-tenaday-anchorb-fix1097-r1-1806f72) | **Row 29, #1097 on B**: `DummyInterceptor` removed, built on 18.3 (`5ed93de7c`); −24% CPU per sync against row 27's B, p95 449 → 306 ms, RDS −6–9%; `gender` selects 418k → 9.6k and `encounter` updates 3 → 1 per insert | pilot-day-180 | 2292 | 0.0% | 306 | 3.24 |
 
 **Findings:** [`findings-clustered-media-push.md`](findings-clustered-media-push.md)
 

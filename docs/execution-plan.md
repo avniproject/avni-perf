@@ -1611,6 +1611,7 @@ stays on the small class.
 |---|---|---|---|---|
 | **#1097 on A** — `DummyInterceptor` removed | **2.88** (3.90 ± 0.07) **−26%** | **715** (1,905–2,433) | `gender` selects 66,448 → 3,392; request wall time −67%; thread-blocked events −47%; RDS CPU 26% unchanged | **live, and larger than row 22's −19%**: the control was on the knee, so the fix also removes the queueing |
 | **#1098 on A** — `JodaDateTimeConverter` pinned to UTC | **3.90** (3.90 ± 0.07) **none** | 2,163 (1,905–2,433) | `sync_telemetry` updates **5,063 → 0** — every `UPDATE` in the run gone; selects unchanged; request wall time −14% | **live; signature larger than attributed.** The Joda round-trip is what makes the row dirty — the interceptor only multiplied the flushes (#1097 alone left one update, #1098 alone none). Magnitude is a B question: each pushed `encounter`/`program_*` save goes through the same converter |
+| **#1097 on B** — `DummyInterceptor` removed | **3.24** (4.27 ± 0.02) **−24%** | **306** (449) | `gender` selects 417,999 → 9,627; `encounter` updates 44,772 → 15,122 (3 → 1 per insert), `program_encounter` 8,340 → 3,138, `sync_telemetry` 6,895 → 2,302; `HandlerInterceptor` −90%; app CPU 65 → 50% of 4, **RDS 62 → 56% of 2** | **live on the write path too**: the interceptor's re-saves were on every pushed entity, which is why the database moves here and not on A. The one update per insert left is the Joda one — #1098's |
 
 #### Standing task: back up New Relic weekly
 
