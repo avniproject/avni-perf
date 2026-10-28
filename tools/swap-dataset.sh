@@ -271,14 +271,14 @@ fi
 phase load $t
 
 t=$(date +%s); say "7. VACUUM ANALYZE"; sshapp "$PSQL -c 'VACUUM ANALYZE;'" >/dev/null; phase vacuum $t
-t=$(date +%s); say "8. REINDEX (maintenance_work_mem 1GB for the session)"
-# Measured 27 Oct 2026 on db.m6g.large: 42.5 min at the instance default maintenance_work_mem
-# (~134 MB on 8 GB), nineteen minutes of it at the volume's 3,000 IOPS in 4 KB reads, then at its
-# 125 MB/s cap -- against four minutes on db.m6g.4xlarge from cache. A btree build sorts in
-# maintenance_work_mem and spills to disk beyond it; 1 GB for one session on an otherwise idle
-# 8 GB instance is the cheap lever. Session-level, so nothing in the parameter group changes.
+t=$(date +%s); say "8. REINDEX"
+# Measured 27 Oct 2026 on db.m6g.large: 42.5 min, IO-bound on the volume -- nineteen minutes at
+# its 3,000 IOPS in 4 KB reads (queue 40-50, latency 15 ms), then at its 125 MB/s cap -- against
+# four minutes on db.m6g.4xlarge from cache. Tried 28 Oct: maintenance_work_mem 1 GB for the
+# session changed nothing (the random-read phase is heap pages, not sort spills), so it is not
+# set. The levers are the big class, or not rebuilding the co-tenants' share of these indexes.
 for tb in individual encounter program_encounter program_enrolment address_level catchment catchment_address_mapping users user_group groups; do
-  sshapp "$PSQL -c \"SET maintenance_work_mem = '1GB';\" -c 'REINDEX TABLE $tb;'" >/dev/null || { echo "REINDEX $tb failed" >&2; exit 1; }; done
+  sshapp "$PSQL -c 'REINDEX TABLE $tb;'" >/dev/null || { echo "REINDEX $tb failed" >&2; exit 1; }; done
 phase reindex $t
 
 say "9. verification"
