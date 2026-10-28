@@ -249,6 +249,8 @@ entity's distribution, as `probability:[min:]p50:p95:max:mean`
 
 `MEDIA_UPLOAD_KBPS` device upload bandwidth, default 125 (about 1 Mbps)
 
+`UPLOAD_URL_BATCH` how the device asks for upload URLs. `0` (default) is today's app, one `GET /media/uploadUrl/{fileName}` per file. `1`–`50` is the batched app of avniproject/avni-client#2218: one `POST /media/uploadUrls` per group of up to that many files, each group then uploaded file by file with the same pause. Above 50 is refused, matching the server's cap. Needs a server with avniproject/avni-server#1100 (not on 18.1). Recorded as `media.uploadUrlBatch` in `run-metadata.json`; in the Gatling report the request is `Media uploadUrls` rather than `Media uploadUrl`, and the server log says `getting N media upload urls` once per group, so count files from that line rather than from `uploadUrl` calls
+
 `PUSH_SEED_SIZE` rows harvested per entity when seeding a device, default 20
 
 `PUSH_ALLOW_UNSAFE_TARGET` `true` lifts the protected-host guard

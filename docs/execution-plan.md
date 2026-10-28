@@ -1475,11 +1475,16 @@ sampled, so they confirm a fix took effect even when its CPU effect sits inside 
 | #1103 — parent UUIDs via `@Formula` | `individual` selects per customer sync **down ~75%** (B: 148 on row 24) | app CPU **~−5%** — inside the noise, so the signature carries it | A, B |
 | the fix #882 recommends | `users` per request (A 2.2, B 1.48) and `catchment` (A 1.7, B 1.22) **toward 0** | database time — `users` alone was 22% on row 24 and 30% at 10k | A, B |
 | #1057 — `exists` for `syncDetails` | `count(individual)` gone from `syncDetails` in `SqlTrace` | `syncDetails` database time | A |
-| #1100 + avniproject/avni-client#2218 — batched upload URLs | `uploadUrl` requests per sync **÷ batch size** | RDS CPU, request count | B — **needs the harness to model it first** |
+| #1100 + avniproject/avni-client#2218 — batched upload URLs | `uploadUrl` requests per sync **÷ batch size** (80 → 2 at 50) | RDS CPU, request count | B with `UPLOAD_URL_BATCH=50` |
 | avniproject/avni-client#2096 — `Slice` endpoints | `COUNT` statements per page **→ 0** | pull database time | A — **needs the harness to model it first** |
 
-The last two change what the client sends, so they wait on a harness switch (`UPLOAD_URL_BATCH`,
-and a `/v2` pull mode) and are measured when both the server and client changes exist.
+The last two change what the client sends, so the harness has to model the new client first.
+**#1100's is in place** (28 Oct 2026): `UPLOAD_URL_BATCH=N` (1–50) makes each device fetch URLs
+through `POST /media/uploadUrls` in groups of N, as avniproject/avni-client#2218 specifies, and
+`0` keeps today's one `GET` per file. Its row 29 run is anchor B on the #1100 jar with
+`UPLOAD_URL_BATCH=50` against row 27's B — the jar alone changes nothing until the client asks
+for the new endpoint, so the flag is what turns the fix on. #2096's `/v2` pull mode is still to
+do.
 
 ##### Discipline the comparisons depend on
 

@@ -20,6 +20,7 @@ import org.avni.models.Rtt;
 import org.avni.models.StorageModel;
 import org.avni.models.PushVolume;
 import org.avni.models.SyncDetail;
+import org.avni.models.UploadUrlBatching;
 import org.avni.models.Workload;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -678,6 +679,16 @@ public class AvniSyncSimulation extends Simulation {
      */
     private static final int mediaUploadKbps = Integer.getInteger("MEDIA_UPLOAD_KBPS", 125);
 
+    /**
+     * How the device asks for presigned upload URLs: 0 (default) is today's client, one
+     * `GET /media/uploadUrl/{fileName}` per file; 1..50 is the batched client of
+     * avniproject/avni-client#2218, one `POST /media/uploadUrls` per group of up to that many files.
+     * The batched endpoint is avniproject/avni-server#1100 and is not on 18.1, so a run with this
+     * set needs a server built with it. See {@link UploadUrlBatching}.
+     */
+    private static final int uploadUrlBatch =
+        UploadUrlBatching.parse(System.getProperty("UPLOAD_URL_BATCH"));
+
     /** How many rows to harvest per entity when seeding a device. Enough to vary, cheap to fetch. */
     private static final int pushSeedSize = Integer.getInteger("PUSH_SEED_SIZE", 20);
 
@@ -1092,6 +1103,13 @@ public class AvniSyncSimulation extends Simulation {
                     mediaFiles, mediaPerEncounter, mediaFileKb,
                     mediaFiles * mediaFileKb / 1024.0, mediaUploadKbps,
                     mediaFiles * transferMs / 1000.0));
+                int files = (int) Math.round(mediaFiles);
+                out.println(uploadUrlBatch > 0
+                    ? String.format("  UPLOAD_URL_BATCH=%d - URLs via POST /media/uploadUrls, %d request(s) "
+                        + "per sync instead of %d (avniproject/avni-client#2218). Needs a server with "
+                        + "avniproject/avni-server#1100; a server without it answers 404.",
+                        uploadUrlBatch, UploadUrlBatching.requests(files, uploadUrlBatch), files)
+                    : "  UPLOAD_URL_BATCH=0 - one GET /media/uploadUrl per file, as the app does today.");
                 out.println(
                     "  PUSH_MEDIA_PER_ENCOUNTER assumes an encounter mix. The default is a "
                     + "uniform one; where the image-heavy encounter type is the common one the "
@@ -1397,6 +1415,10 @@ public class AvniSyncSimulation extends Simulation {
         media.put("model", mediaModel);
         media.put("fileKb", mediaFileKb);
         media.put("uploadKbps", mediaUploadKbps);
+        media.put("uploadUrlBatch", uploadUrlBatch);
+        media.put("uploadUrlEndpoint", uploadUrlBatch > 0
+            ? "POST /media/uploadUrls, up to " + uploadUrlBatch + " per request"
+            : "GET /media/uploadUrl/{fileName}, one per file");
         settings.put("media", media);
 
         Map<String, Object> co = new LinkedHashMap<>();
@@ -2537,6 +2559,10 @@ public class AvniSyncSimulation extends Simulation {
         if (workload.mediaPerEncounter <= 0) {
             return exec(session -> session);
         }
+        if (uploadUrlBatch > 0) {
+            return doIf(session -> session.getInt("mediaCalls") > 0)
+                .then(group(workload.request("Push Media")).on(batchedUploadUrls(workload)));
+        }
         return doIf(session -> session.getInt("mediaCalls") > 0)
             .then(group(workload.request("Push Media")).on(
                 repeat(session -> session.getInt("mediaCalls"), "mediaIndex")
@@ -2549,6 +2575,36 @@ public class AvniSyncSimulation extends Simulation {
                         // - but the device spends the time, and spending it here is what keeps the
                         // data push from arriving earlier than any real client could send it.
                         .pause(mediaTransfer()))));
+    }
+
+    /**
+     * The batched client: URLs for a group of files in one request, then the group uploaded one
+     * file at a time. The upload pause is the same per file as in the per-file chain, so a sync's
+     * duration changes only by the requests saved; the server sees one request where it saw N.
+     *
+     * The response is checked to carry one URL per name sent: a server that silently returned fewer
+     * would otherwise read as a cheaper endpoint.
+     */
+    private static ChainBuilder batchedUploadUrls(Workload workload) {
+        return exec(session -> session.set("mediaGroups",
+                UploadUrlBatching.groups(session.getInt("mediaCalls"), uploadUrlBatch)))
+            .foreach(session -> session.<List<Integer>>get("mediaGroups"), "mediaGroupSize")
+            .on(exec(http(workload.request("Media uploadUrls"))
+                    .post("/media/uploadUrls")
+                    .body(StringBody(AvniSyncSimulation::uploadUrlsBody)).asJson()
+                    .check(status().is(200))
+                    .check(jsonPath("$.*").count().is(session -> session.getInt("mediaGroupSize"))))
+                .pause(session -> mediaTransfer().multipliedBy(session.getInt("mediaGroupSize"))));
+    }
+
+    /** A JSON array of fresh file names, as many as this group holds. Bare names: #1100 rejects folders. */
+    private static String uploadUrlsBody(Session session) {
+        int size = session.getInt("mediaGroupSize");
+        StringJoiner names = new StringJoiner(",", "[", "]");
+        for (int i = 0; i < size; i++) {
+            names.add("\"" + UUID.randomUUID() + ".jpg\"");
+        }
+        return names.toString();
     }
 
     /**
