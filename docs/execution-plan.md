@@ -1179,8 +1179,8 @@ is binding; the calendar is not.
 | 26 | — | **Case 15 scaled out, test 2** — 10,000 users, ten encounters a day, 8 files each; app **16 vCPU**, database **16 vCPU** | **done 2026-10-23 — twice the users on twice the cores reproduced row 25: 1,107,301 requests at 307 rps, 0 failures, p95 231 ms; 35,564 CPU s (1.92× row 25 for 2× the syncs, ~3.4 per customer sync); app 58.9% mean of 16, RDS 27.4%, pool 44 peak, heap 1,220 MB, injector 11.5%; field-worker sync 364 / 525 / 783 s with the server's share 1.3%.** Dataset `pilot-day-180-10k` loaded with `SWAP_PARALLEL=1`, one psql session per tenant: 27,958,930 rows in 42 min (~11,100 rows/s) on the **baseline volume** — the planned 12,000 IOPS / 500 MB/s could not be applied (gp3 provisions IOPS and throughput only from 400 GiB; the volume is 250; `RESIZE.md` records it) and was not needed: the parallel load sat on the 125 MB/s *throughput* baseline, not IOPS, and the run peaked at 212 read IOPS. REINDEX took 9.5 min on `db.m6g.4xlarge`. Org 24's deleted bootstrap user was repointed in all 27 of its tables before the run — the first row with zero failures. The injector stayed at `m6g.xlarge` for the run and went to `m6g.large` with the end-of-day stop; `m6g.large` is the tofu default from 23 Oct. Predictions scored in [`findings-clustered-media-push.md`](findings-clustered-media-push.md#row-26-10000-users-on-16-app-and-16-database-vcpu): the upper bounds held (CPU s at 72% of predicted), the database's "~20%, low" did not (27%). [Rows 24–26](#rows-24-26)
 | 27 | V | **Re-baseline on the production build** — anchors A and B, each **twice**, on `v18.1.0` (`789092feb`), what production runs | **done 2026-10-27 — 18.1 reproduces 17.3 on both anchors; the rig is 5–8% dearer than when the 17.3 controls were measured, and today's runs replace them.** Anchor A twice: 3.96 and 3.83 CPU s per sync, p95 2,433 and 1,905 ms, app 90% and 88% of 2 vCPU (row 28 put the 17.3 jar at 3.92 / 2,219 the same day). Anchor B twice: 4.28 and 4.25 CPU s per sync, p95 449 and 449 ms, app 65% of 4 and RDS 60% of 2, against row 24's 4.05 / 446. 0 failures in all four. Statement counts match the 17.3 captures to a fraction of a percent on both anchors, so the signature table stands. **Row 29's controls: A 3.9 ± 0.07 CPU s/sync at ~89% of 2 vCPU, p95 1,900–2,450 ms; B 4.27 ± 0.02 at ~65% of 4, p95 ~447 ms.** [Results](#rows-27-28-results)
 | 28 | V | **Drift check, only if row 27 does not reproduce 17.3** — anchor A once on the old jar `2c0215679` | **done 2026-10-27 — the rig moved, not the code.** Anchor A on `2c0215679`, same day, bed and classes as row 27's pair: **3.92 CPU s per sync, p95 2,219 ms**, app 89.7% — between the two 18.1 runs (3.96 / 3.83, p95 2,433 / 1,905) and within 1% of r1 on identical statement counts. The 15 Oct control (3.66, p95 1,709, app 84%) is therefore not comparable with anything measured now; what changed on the rig in twelve days is not identified — candidates are the fresh reindexed bed, the `audit` table's growth, and the instance landing on another host after the stop/start. [Results](#rows-27-28-results)
-| 29 | V | **One fix per jar** — #1097, #1098, #1103, the #882 cache fix and #1057, each built on the production tag alone and run on A and B | **pending — each as its fix lands.** Each measured against row 27, not stacked on the previous fix, so every saving is attributable. [Validation phase](#validation-phase) |
-| 30 | V | **All fixes together** — the combined jar on A and B, then C (case 13, 2 vCPU) and D (5,000 users, 8 + 8) | **pending — after 29.** Fixes interact, so this is the number to quote for the release; C shows whether the knee moved, D whether the gain holds at scale. [Validation phase](#validation-phase) |
+| 29 | V | **One fix per jar** — #1097, #1098, #1103, the #882 cache fix and #1057, each built on 18.3 just before the fix plus that fix alone, run on A and B | **pending — each as its fix lands on 18.3.** Each measured against row 27, not stacked on the previous fix, so every saving is attributable. [Validation phase](#validation-phase) |
+| 30 | V | **All fixes together** — the 18.3 release candidate on A and B, then C (case 13, 2 vCPU) and D (5,000 users, 8 + 8) | **pending — after 29.** Fixes interact, so this is the number to quote for the release; C shows whether the knee moved, D whether the gain holds at scale. [Validation phase](#validation-phase) |
 
 #### Rows 21 and 22: removing `DummyInterceptor`
 
@@ -1520,7 +1520,22 @@ sync and push hot paths**:
 
 **So row 27 should reproduce rows 22 and 24 within noise**, and that is the first thing to check.
 If it does, the 17.3 findings carry over to 18.1 unchanged and row 28 is skipped; if not, row 28
-separates rig drift from code. Every fix jar in row 29 is built on `789092feb`.
+separates rig drift from code.
+
+**The fixes land on 18.3** (decided 28 Oct 2026), not on the 18.1 production line. On 28 Oct
+`origin/18.3` (`07db44703`) was `789092feb` plus six commits — merges, a Metabase change, and #1057
+committed then reverted — with **no change on the hot paths, build files, configuration or
+migrations**. So:
+
+- **Row 27's baseline stays the production 18.1 jar.** For everything these anchors measure it is
+  18.3-before-the-fixes, and it is what users run.
+- **Each row 29 jar is built on 18.3**: the commit just before the fix lands, plus that fix alone —
+  cherry-picked onto that base if fixes merge in another order — so each is still measured in
+  isolation.
+- **Before row 29, repeat the hot-path diff `789092feb..origin/18.3`.** If 18.3 has picked up
+  anything there by then, add a pre-fix 18.3 baseline on A and B (two runs) and read the fixes
+  against that instead.
+- **Row 30 is the 18.3 release candidate itself**, the combination that will actually ship.
 
 **The baseline jar is CircleCI's production build**, `avni-server-18.1.0-SNAPSHOT.jar`, sha256
 `87bf747b08a9d2a90f5fa3e9a91cd137a295643976fb6491ae433d550e5ba678`. It carries no commit metadata,
@@ -1528,7 +1543,8 @@ so it was tied to `789092feb` by rebuilding that commit locally (JDK 21, `bootJa
 entry by entry, 26 Oct 2026: all 2,184 boot-jar entries and all 1,871 `-plain` entries identical in
 content, the only CRC difference being build timestamps inside the nested `avni-server-data` jar.
 **A local build of `789092feb` therefore reproduces production's jar**, so a row 29 fix jar built
-locally differs from the baseline by its fix and nothing else.
+locally differs from the baseline by its fix and nothing else — provided 18.3's hot paths still
+match 18.1's, which the check above confirms.
 
 <a id="rows-27-28-results"></a>
 ##### Rows 27–28, 27 Oct 2026: anchor A
