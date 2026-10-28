@@ -1,6 +1,6 @@
 # Run log — detail
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-27 20:58 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-28 12:35 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script, as [`run-log.md`](run-log.md) is. That file is the index and carries the results table and any caveats; this one records what each run was configured with and what environment it met, which is what makes a number interpretable once the environment is gone.
 
@@ -1744,4 +1744,38 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T14-06-07Z-case1
 | sync duration p50 / mean / p95 s | 266.9 / 257.2 / 543.2 (2292 syncs) |
 | full syncs p50 / p95 s | 280.6 / 531.5 (25 of 2292, recorded) |
 | cache policy | warm-after-discarded-warmup-m6g.xlarge |
+| autovacuum | on |
+
+## `2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72/2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72/2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72.zip .`; unzip and open `index.html`.
+
+| | |
+|---|---|
+| requests (ok) | 31406 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 286 / 715 / 1380 / 3522 |
+| mean ms | 329 |
+| mean throughput rps | 8.52 |
+| app CPU seconds | 4,842 |
+| app CPU | 64% mean, peak 84% |
+| app heap | 985 MB mean, peak 1,767 of 5,120 MB max |
+| RDS CPU | 25% mean, peak 32% |
+| RDS memory | 4,244 MB freeable at its lowest, swap peak 1 MB |
+| app CPU s per sync | 2.88 |
+| harness commit | 1806f72f039a73b36a2b131bba675f05db415dbe (run id says `1806f72`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 5ed93de7c |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 2 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.3 / 0.85 |
+| est. sync overhead s | 0.09 |
+| injection | profile steady, 1682 users arriving over 60min @ 1682/h, ~2.8 requests in flight (rps x mean), ramp 33640 s |
+| sync | mode realistic, feeder case5-users-pilot.csv (1682 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 61.5 / 74.1 / 185.5 (1682 syncs) |
+| full syncs p50 / p95 s | 83.7 / 233.2 (19 of 1682, recorded) |
+| cache policy | warm-after-discarded-warmup-m6g.large |
 | autovacuum | on |
