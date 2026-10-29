@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-29 18:50 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-29 22:02 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -74,6 +74,7 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-29T05-47-37Z-case15-tenaday-anchorB-fix1103-r1-7205831`](run-log-detail.md#2026-10-29t05-47-37z-case15-tenaday-anchorb-fix1103-r1-7205831) | 2026-10-29 11:17 | case15 | steady | 1500 | 60min @ 1500/h | ~4.0 | ~143 | 204044 | 0.0% | 293 | 695.3 | 49.55 | 7,434 | 3.24 |
 | [`2026-10-29T09-21-16Z-case12-anchorA-fix1098b-r1-7205831`](run-log-detail.md#2026-10-29t09-21-16z-case12-anchora-fix1098b-r1-7205831) | 2026-10-29 14:51 | case12 | steady | 1682 | 60min @ 1682/h | ~7.0 | ~38 | 31289 | 0.0% | 2107 | 254.1 | 8.48 | 6,518 | 3.88 |
 | [`2026-10-29T12-03-22Z-case15-tenaday-anchorB-fix1098b-r1-7205831`](run-log-detail.md#2026-10-29t12-03-22z-case15-tenaday-anchorb-fix1098b-r1-7205831) | 2026-10-29 17:33 | case15 | steady | 1500 | 60min @ 1500/h | ~5.0 | ~141 | 202058 | 0.0% | 427 | 502.8 | 48.63 | 9,594 | 4.19 |
+| [`2026-10-29T15-07-09Z-case12-anchorA-rc18.3-r1-7205831`](run-log-detail.md#2026-10-29t15-07-09z-case12-anchora-rc183-r1-7205831) | 2026-10-29 20:37 | case12 | steady | 1682 | 60min @ 1682/h | ~1.5 | ~33 | 31265 | 0.0% | 332 | 224.4 | 8.49 | 3,270 | 1.94 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 
