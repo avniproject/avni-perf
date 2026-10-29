@@ -22,7 +22,7 @@
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
 | [**12**](#case-12) | Clustered — co-tenant data | 8 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 4 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
-| [**15**](#case-15) | Clustered — co-tenant load, media push | 10 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
+| [**15**](#case-15) | Clustered — co-tenant load, media push | 11 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
 
 <a id="case-1"></a>
@@ -263,6 +263,7 @@ Case 13's shape — clustered into one hour, co-tenants syncing — with push on
 | [`2026-10-28 08:54`](run-log-detail.md#2026-10-28t08-54-30z-case15-tenaday-anchorb-fix1097-r1-1806f72) | **Row 29, #1097 on B**: `DummyInterceptor` removed, built on 18.3 (`5ed93de7c`); −24% CPU per sync against row 27's B, p95 449 → 306 ms, RDS −6–9%; `gender` selects 418k → 9.6k and `encounter` updates 3 → 1 per insert | pilot-day-180 | 2292 | 0.0% | 306 | 3.24 |
 | [`2026-10-28 11:47`](run-log-detail.md#2026-10-28t11-47-36z-case15-tenaday-anchorb-fix1098-r1-1806f72) | **Row 29, #1098 on B**: `JodaDateTimeConverter` pinned to UTC, built on 18.3 (`3fb5046f7`); CPU per sync and p95 unchanged (4.25 / 445 ms), every re-save on pushed entities gone (`encounter` updates 44,772 → 0), write IOPS −33%, RDS CPU inside the control spread | pilot-day-180 | 2292 | 0.0% | 445 | 4.25 |
 | [`2026-10-28 14:38`](run-log-detail.md#2026-10-28t14-38-32z-case15-tenaday-anchorb-fix1100-batch50-r1-7205831) | **Row 29, #1100 on B with the batched client** (`UPLOAD_URL_BATCH=50`, harness `7205831`): `POST /media/uploadUrls` replaces 80 per-file GETs with 2 per sync — requests 204k → 97k, RDS CPU 62 → 55%, CPU per sync 4.27 → 4.00, p95 449 → 494 ms | pilot-day-180 | 2292 | 0.0% | 494 | 4.00 |
+| [`2026-10-29 05:47`](run-log-detail.md#2026-10-29t05-47-37z-case15-tenaday-anchorb-fix1103-r1-7205831) | **Row 29, #1103 on B**: parent UUIDs via `@Formula`, built on 18.3 (`b4c611977`); −24% CPU per sync against row 27's B, p95 449 → 293 ms, RDS 62 → 56%; `individual` selects 265k → 120k, `encounter` selects 53k → 5.8k | pilot-day-180 | 2292 | 0.0% | 293 | 3.24 |
 
 **Findings:** [`findings-clustered-media-push.md`](findings-clustered-media-push.md)
 
