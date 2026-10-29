@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-29 12:45 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-29 17:15 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -27,7 +27,7 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-06T05-38-32Z-case2-e7a130d`](run-log-detail.md#2026-10-06t05-38-32z-case2-e7a130d) | 2026-10-06 11:08 | case2 | steady | 500 | 240min @ 42/h | ~0.0 | ~0.7 | 2846 | 0.0% | 288 | 80.4 | 0.2 | 702 | 4.21 |
 | [`2026-10-06T09-50-36Z-case14-4c7b807`](run-log-detail.md#2026-10-06t09-50-36z-case14-4c7b807) | 2026-10-06 15:20 | case14 | steady | 501 | 90min @ 42/h | ~0.1 | ~0.9 | 2898 | 0.0% | 272 | 80.2 | 0.54 | 267 | 4.24 |
 | [`2026-10-07T06-15-54Z-case3-eb5e4b3`](run-log-detail.md#2026-10-07t06-15-54z-case3-eb5e4b3) | 2026-10-07 11:45 | case3 | steady | 60 | 120min @ 30/h | ~0.1 | ~1.4 | 2314 | 0.0% | 333 | 223.4 | 0.32 | 490 | 8.17 |
-| [`2026-10-08T06-17-46Z-case4-d484f18`](run-log-detail.md#2026-10-08t06-17-46z-case4-d484f18) | 2026-10-08 11:47 | case4 | steady | 561 | 240min @ 47/h | ~0.1 | ~1.0 | 3587 | 0.0% | 322 | 223.6 | 0.25 | 792 | 4.23 |
+| [`2026-10-08T06-17-46Z-case4-d484f18`](run-log-detail.md#2026-10-08t06-17-46z-case4-d484f18) | 2026-10-08 11:47 | case4 | steady | 561 | 240min @ 47/h | ~0.1 | — | 3587 | 0.0% | 322 | — | 0.25 | 792 | 4.23 |
 | [`2026-10-08T12-04-15Z-case5-d484f18`](run-log-detail.md#2026-10-08t12-04-15z-case5-d484f18) | 2026-10-08 17:34 | case5 | steady | 1682 | 120min @ 140/h | ~0.2 | ~2.8 | 5390 | 0.0% | 329 | 223.9 | 0.74 | 1,576 | 5.63 |
 | [`2026-10-08T14-05-56Z-case11-run1-d484f18`](run-log-detail.md#2026-10-08t14-05-56z-case11-run1-d484f18) | 2026-10-08 19:35 | case11 | steady | 1682 | 60min @ 1682/h | ~414 | ~435 | 143211 | 0.04% | 41912 | 3747.0 | 22.27 | 8,060 | 4.94 |
 | [`2026-10-09T04-28-45Z-case11-pairA-d484f18`](run-log-detail.md#2026-10-09t04-28-45z-case11-paira-d484f18) | 2026-10-09 09:58 | case11 | steady | 550 | 60min @ 550/h | ~1.0 | ~31 | 48408 | 0.0% | 342 | 455.5 | 12.14 | 2,194 | 3.99 |
@@ -72,6 +72,7 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-28T14-38-32Z-case15-tenaday-anchorB-fix1100-batch50-r1-7205831`](run-log-detail.md#2026-10-28t14-38-32z-case15-tenaday-anchorb-fix1100-batch50-r1-7205831) | 2026-10-28 20:08 | case15 | steady | 1500 | 60min @ 1500/h | ~4.6 | ~140 | 97189 | 0.0% | 494 | 532.8 | 23.7 | 9,167 | 4.00 |
 | [`2026-10-29T04-10-05Z-case12-anchorA-fix1103-r1-7205831`](run-log-detail.md#2026-10-29t04-10-05z-case12-anchora-fix1103-r1-7205831) | 2026-10-29 09:40 | case12 | steady | 1682 | 60min @ 1682/h | ~1.9 | ~33 | 31193 | 0.0% | 417 | 225.7 | 8.47 | 3,876 | 2.30 |
 | [`2026-10-29T05-47-37Z-case15-tenaday-anchorB-fix1103-r1-7205831`](run-log-detail.md#2026-10-29t05-47-37z-case15-tenaday-anchorb-fix1103-r1-7205831) | 2026-10-29 11:17 | case15 | steady | 1500 | 60min @ 1500/h | ~4.0 | ~143 | 204044 | 0.0% | 293 | 695.3 | 49.55 | 7,434 | 3.24 |
+| [`2026-10-29T09-21-16Z-case12-anchorA-fix1098b-r1-7205831`](run-log-detail.md#2026-10-29t09-21-16z-case12-anchora-fix1098b-r1-7205831) | 2026-10-29 14:51 | case12 | steady | 1682 | 60min @ 1682/h | ~7.0 | ~38 | 31289 | 0.0% | 2107 | 254.1 | 8.48 | 6,518 | 3.88 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 

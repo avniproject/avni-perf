@@ -20,7 +20,7 @@
 | [**9**](#case-9) | Stress ramp | 4 | [`12a`](findings-case9-12a.md), [`12b`](findings-case9-12b.md), [`12c`](findings-case9-12c.md) |
 | [**10**](#case-10) | Soak | 1 | [`findings-case10.md`](findings-case10.md) |
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
-| [**12**](#case-12) | Clustered — co-tenant data | 8 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
+| [**12**](#case-12) | Clustered — co-tenant data | 9 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 4 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
 | [**15**](#case-15) | Clustered — co-tenant load, media push | 11 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
@@ -224,6 +224,7 @@ Case 6 compressed into one hour: ~6.6 devices in flight against 0.55.
 | [`2026-10-28 05:55`](run-log-detail.md#2026-10-28t05-55-38z-case12-anchora-fix1097-r1-1806f72) | **Row 29, #1097 on A**: `DummyInterceptor` removed, built on 18.3 (`5ed93de7c`); −26% CPU per sync against row 27's A, `gender` selects 66,448 → 3,392, p95 2,433 → 715 ms | pilot-day-180 | 1682 | 0.0% | 715 | 2.88 |
 | [`2026-10-28 07:24`](run-log-detail.md#2026-10-28t07-24-38z-case12-anchora-fix1098-r1-1806f72) | **Row 29, #1098 on A**: `JodaDateTimeConverter` pinned to UTC, built on 18.3 (`3fb5046f7`); CPU per sync unchanged (3.90 against 3.9 ± 0.07) but `sync_telemetry` updates 5,063 → **0** — all three re-saves, not one | pilot-day-180 | 1682 | 0.0% | 2163 | 3.90 |
 | [`2026-10-29 04:10`](run-log-detail.md#2026-10-29t04-10-05z-case12-anchora-fix1103-r1-7205831) | **Row 29, #1103 on A**: parent UUIDs via `@Formula`, built on 18.3 (`b4c611977`); **−41% CPU per sync** (2.30 against 3.9 ± 0.07), p95 2,433 → 417 ms, `individual` selects 207k → 31k, RDS −18% — the largest single effect of the campaign | pilot-day-180 | 1682 | 0.0% | 417 | 2.30 |
+| [`2026-10-29 09:21`](run-log-detail.md#2026-10-29t09-21-16z-case12-anchora-fix1098b-r1-7205831) | **Row 29b, #1098 (instant equality, `041438efe`) on A**: the fix that ships — CPU per sync unchanged (3.88 against 3.9 ± 0.07), every `sync_telemetry` re-save gone (5,063 → 0), converter untouched; reproduces the withdrawn pinned-UTC run | pilot-day-180 | 1682 | 0.0% | 2107 | 3.88 |
 
 **Findings:** [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md)
 

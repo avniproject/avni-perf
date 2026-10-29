@@ -944,5 +944,25 @@
    "2026-10-29T05:47:37Z",
    "2026-10-29T07:00:37Z"
   ]
+ },
+ "2026-10-29T09-21-16Z-case12-anchorA-fix1098b-r1-7205831": {
+  "appCpuAvg": 72.5,
+  "appCpuMax": 98.9,
+  "appHeapCommittedMb": 2560.0,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 1096.0,
+  "appHeapUsedMbMax": 1814.6,
+  "appPhysicalMemMb": 2862.3,
+  "cpuPerSync": 3.88,
+  "cpuSeconds": 6518.5,
+  "rdsCpuAvg": 21.1,
+  "rdsCpuMax": 28.8,
+  "rdsFreeableMemMbMin": 4085.1,
+  "rdsSwapMbMax": 4.2,
+  "syncs": 1682,
+  "window": [
+   "2026-10-29T09:21:16Z",
+   "2026-10-29T10:33:16Z"
+  ]
  }
 }
