@@ -1182,6 +1182,8 @@ is binding; the calendar is not.
 | 29 | V | **One fix per jar** — #1097, #1098, #1103 and #1100 (with the batched client modelled), each built on 18.3 just before the fix plus that fix alone, run on A and B (#1100 on B) | **done 2026-10-29 — #1097 (A −26%, B −24%), #1098 (none; every re-save gone), #1100 on B (−6%, RDS −11%, requests halved), #1103 (A −41%, B −24%).** Row 29b re-runs #1098 with the fix that ships. **#1097 on A: −26% CPU per sync (2.88 against 3.9 ± 0.07), p95 2,433 → 715 ms, `gender` selects 66,448 → 3,392, database unchanged** — the signature and the magnitude both land, the magnitude larger than row 22's −19% because the control sat on the 2 vCPU knee and the fix takes the queueing waste with it. #1098 on A, then both on B, then #1100 on B with `UPLOAD_URL_BATCH=50`, follow the same day; **#1103's jar (`b4c611977`) arrived 28 Oct and runs 29 Oct, A then B on one reload.** Each measured against row 27, not stacked on the previous fix, so every saving is attributable. [Validation phase](#validation-phase) |
 | 29b | V | **#1098 re-run with the fix that ships** — `041438efe`: Joda `DateTime` compared by instant through a Hibernate `JodaDateTimeJavaType`, converter unchanged; A then B, B with `UPLOAD_URL_BATCH=0` as row 29's #1098 run | **done 2026-10-29 — A 3.88 and B 4.19 CPU s per sync (within noise), every re-save on telemetry and pushed entities gone on both: the same result as the withdrawn pinned-UTC runs, with the converter untouched.** Row 29's #1098 runs measured the pinned-UTC converter, which failed 7 tests and was withdrawn (avniproject/avni-server#1098, 29 Oct). Expected to reproduce them: every re-save gone, CPU within noise. [Row 29b](#row-29b) |
 | 30 | V | **All fixes together** — the 18.3 release candidate (the row 29 fixes that have landed; #882's and #1057 only if they are in it) on A and B, then C (case 13, 2 vCPU) and D (5,000 users, 8 + 8) | **pending — jar received 29 Oct**: `avni-server-18.3-1097-1098-1100-1103-946553685.jar` (`946553685`), sha256 `1315739b…ead085729`, bytecode-checked as exactly the union of the four row 29 fixes on 18.3 (`DummyInterceptor` gone, the `@Formula` entity set, `MediaController`, `JodaDateTimeJavaType` + contributor with the converter byte-identical to 18.1). Runs: **A then C the evening of 29 Oct** (both `m6g.large`, one reload; A writes nothing), **B then D on 30 Oct** (B on `m6g.xlarge`; D on 8 + 8 after the `pilot-day-180-5k` swap). **B and D run with `UPLOAD_URL_BATCH=50`** — the candidate ships with avni-client#2218, so that is what the release looks like; #1100's own row 29 run is the batched-vs-unbatched reference. Fixes interact, so this is the number to quote for the release; C shows whether the knee moved, D whether the gain holds at scale. [Validation phase](#validation-phase) |
+| 31 | V | **The break point with the fixes in** — the combined jar on row 26's 16 + 16, a stress ramp from 10,000 to 40,000 syncs an hour, then two steady hours bracketing the knee it finds | **pending — after row 30 validates the combined jar.** Predicted knee ~20,000–24,000 syncs an hour, on app CPU, with the database under half used. [Row 31](#row-31) |
+| 31b | V | *Optional:* **the same ramp on the 18.1 production jar** | **pending — only if the fixes' move of the break point needs to be measured rather than inferred.** Predicted knee ~14,000–16,000 an hour. [Row 31](#row-31) |
 
 #### Rows 21 and 22: removing `DummyInterceptor`
 
@@ -1511,7 +1513,8 @@ do.
 | row 29 — #1097, #1098, #1103 on A and B; #1100 on B | 7 |
 | row 29b — #1098's replacement fix on A and B | 2 |
 | row 30 — combined on A, B, C, D | 4 |
-| **total** | **17–18 one-hour runs**; #882's fix and #1057 are measured the same way if and when they land, outside this count |
+| row 31 — a two-hour ramp and two steady hours on 16 + 16 (31b's control ramp, two more hours, optional) | 4–6 hours |
+| **total** | **17–18 one-hour runs, plus row 31's 4–6 hours on the large classes**; #882's fix and #1057 are measured the same way if and when they land, outside this count |
 
 **The production build is `v18.1.0`** (`789092feb`, also `origin/18.1`), deployed by 26 Oct 2026. It
 is the 17.3 baseline plus 72 commits — `2c0215679` is an ancestor — and **none of them touch the
@@ -1680,6 +1683,109 @@ removed every re-save on these paths:
 | **#1103 on B** — parent UUIDs via `@Formula` | **3.24** (4.27 ± 0.02) **−24%** | **293** (449) | `individual` selects 264,622 → 119,863, `encounter` 53,373 → 5,750, `program_encounter` 15,401 → 664; GC young −40%; thread-blocked −47%; app 65 → 51% of 4; RDS 61.6 → 56.1% of 2; `gender` and `uploadUrl` unchanged | **live.** The same −24% as #1097 on B, from a different cost: the pull's share of a media-heavy sync is smaller than on A, so −41% there becomes −24% here. #1097 and #1103 both remove per-row work in the same request path — row 30 measures their overlap |
 | **#1098 instant equality (`041438efe`) on A** — row 29b | **3.88** (3.90 ± 0.07) **none** | 2,107 (1,905–2,433) | `sync_telemetry` updates 5,063 → **0**; every `UPDATE` in the run gone; selects unchanged; database wall time −18% | **live; reproduces the pinned-UTC run** with the converter untouched, as the row 29b plan expected. B follows |
 | **#1098 instant equality (`041438efe`) on B** — row 29b | **4.19** (4.27 ± 0.02) **−2%, at the edge of noise** | 427 (449) | `encounter` updates 44,772 → **0**, `program_encounter` 8,340 → 0, `program_enrolment` 4,956 → 0, `sync_telemetry` 6,895 → 0; write IOPS 46 → 30; database wall time −14% | **live; reproduces the pinned-UTC run on both anchors.** Row 29b settled: the fix that ships removes every re-save with the converter untouched |
+
+<a id="row-31"></a>
+##### Row 31: where the system breaks, with the fixes in, on 16 + 16
+
+**Added 29 Oct 2026.** Rows 25 and 26 established that 10,000 users fit on 16 app and 16 database
+vCPU, on the old jar, at 59% and 27%. Neither run went near a limit, so **the capacity of that
+configuration is still unknown**, and with the fixes in it moves again. This row finds it: the
+largest sustained sync rate the combined jar handles on 16 + 16, and the resource that sets it.
+
+**Prerequisite: row 30 on anchors A and B.** The combined jar has to be validated before its limit
+means anything.
+
+##### Configuration
+
+As row 26, except for the jar, the batched client and the injector:
+
+| | |
+|---|---|
+| jar | row 30's combined jar: 18.3 with #1097, #1098 (`041438efe`), #1100 and #1103 |
+| app / database | `m6g.4xlarge` / `db.m6g.4xlarge`, heap pinned at 5,120 MB |
+| dataset / feeder | `pilot-day-180-10k`, `case5-users-pilot-10k-nosuppush.csv` (11,164 rows) |
+| workload | case 15 at ten a day: `CUSTOMER_PUSH_DRAW=v3`, 8 files per encounter, `SYNC_MODE=realistic`, co-tenants at 792/h with push on |
+| client | **`UPLOAD_URL_BATCH=50`**: #1100 changes nothing unless the client uses it |
+| injector | **`m6g.2xlarge` with a larger Gatling heap**, not row 26's 4 vCPU and 1 GB. At 10,000 an hour it ran 11.5% mean and 21.9% peak CPU; a search that reaches 2.5–4× that rate, with 2,500+ devices in flight, must not let the harness become the limit |
+
+**Re-using users is sound here.** The feeder is circular, so above 11,164 syncs an hour some users
+sync twice in the hour. `SYNC_MODE=realistic` draws each sync's window from production's gap
+distribution rather than from the user's previous sync, so a second sync still pulls a realistic
+window. The pushes add a little more data than a distinct user would; the per-sync cost is what
+matters, and it does not change.
+
+##### Method
+
+1. **Ramp.** `PROFILE=stress`, `SYNCS_PER_HOUR=10000` → `STRESS_TO_SYNCS_PER_HOUR=40000` over
+   `DURATION_MINUTES=120`. Read minute by minute, against offered load:
+   - completed syncs and requests;
+   - p95;
+   - failures;
+   - app and RDS CPU;
+   - RDS connections;
+   - thread-blocked and thread-waited events;
+   - GC;
+   - injector CPU.
+2. **The knee** is the first sustained point where any of these happens:
+   - completed throughput stops tracking offered load;
+   - p95 passes 800 ms, the customer's threshold;
+   - failures pass the 0.05% budget.
+3. **Confirm with two steady hours,** at about 0.9× and 1.1× the ramp's knee, on a fresh reload
+   each. A ramp understates the knee, because queues build behind a moving rate. Case 1 needed its
+   bracket for the same reason, and cases 12 and 13 bracketed the last one.
+4. **Name the binding resource** from the steady pair: app CPU, database CPU, the connection pool
+   (100), the Tomcat threads (200), heap, or the injector. If it is the injector, the run measured
+   the harness, not the server, and is repeated larger.
+
+**Stop rule.** Abort the ramp once failures pass 1% for five consecutive minutes. Past collapse
+there is nothing to learn, and case 13 showed a collapsing server doing less work for more load.
+
+##### Predictions, written before the run
+
+From row 26 (old jar, 10,000 an hour: 3.4 CPU s per customer sync, app 59% of 16, RDS 27% of 16,
+pool peak 44, 307 rps) and row 29's per-fix savings (#1097 −24–26%, #1100 −6%, #1103 −41% on A,
+#1098 ~0). This is arithmetic, not a measurement:
+
+| | old jar (31b) | **combined jar (31)** |
+|---|---|---|
+| CPU s per customer sync | ~3.4 | **~2.0–2.4**; the fixes overlap, so less than the sum |
+| app CPU at 10,000 an hour | ~59% | **~35–42%** |
+| **knee, syncs an hour** (app at ~85–90%) | **~14,000–16,000** | **~20,000–24,000** |
+| requests per second at the knee | ~430–460 | **~300–370**: batched URLs halve requests per sync, ~150 a second per 10,000 an hour |
+| RDS CPU at the knee | ~40% | **~35–45%**: #1100 and #1103 both cut database work, so it should still not bind |
+| connection pool at the knee | ~60–70 of 100 | **~50–70 of 100** |
+
+> **Refresh these after row 30 D, before row 31 runs.** The CPU-per-sync line above is
+> arithmetic over the individual fixes. The fixes may combine for more than it assumes: #1103
+> alone measured −41% on A against a 5% estimate. Row 30 D (5,000 users on 8 + 8) is the only
+> combined run near this scale, and per-sync cost held flat from 8 to 16 vCPU in rows 25–26, so
+> its figure is the one to use. A and B run on 2 and 4 vCPU, where queueing distorts the cost.
+>
+> 1. **Replace "CPU s per customer sync"** with D's measured figure.
+> 2. **Recompute the knee:** 0.85–0.9 × 57,600 CPU s an hour (16 vCPU), less the co-tenants'
+>    ~1,330, divided by that figure.
+> 3. **Set `STRESS_TO_SYNCS_PER_HOUR`** to about 1.7× the new knee estimate. Raise it above
+>    40,000 only if the estimate passes ~24,000; keep `SYNCS_PER_HOUR=10000`.
+> 4. **Re-derive the request rate and RDS lines** from D's requests and RDS CPU per sync.
+> 5. **Keep this table alongside, struck through**, so the refresh can be compared too.
+>
+> These stay predictions: they only have to be written before row 31 runs, and tightening them
+> with row 30's measurements is better than scoring row 31 against figures already known to be
+> stale.
+
+**The prediction that matters: app CPU still binds first, at roughly twice row 26's load, and the
+database is under half used when it does.** Two outcomes would change the recommendation:
+- **The pool or threads binding before CPU.** Then the next lever is configuration, not code.
+- **The database binding first.** Then 16 database vCPU is not over-provisioned after all, contrary
+  to rows 25 and 26.
+
+**What it costs.** About 4–6 hours on the large classes:
+- the 10k load, about 48 minutes in parallel, if the bed is not already on it;
+- the resizes;
+- the two-hour ramp;
+- the two steady hours.
+
+31b adds two more hours for the control ramp.
 
 #### Standing task: back up New Relic weekly
 
