@@ -22,7 +22,7 @@
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
 | [**12**](#case-12) | Clustered — co-tenant data | 10 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 5 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
-| [**15**](#case-15) | Clustered — co-tenant load, media push | 13 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
+| [**15**](#case-15) | Clustered — co-tenant load, media push | 14 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
 
 <a id="case-1"></a>
@@ -269,6 +269,7 @@ Case 13's shape — clustered into one hour, co-tenants syncing — with push on
 | [`2026-10-29 05:47`](run-log-detail.md#2026-10-29t05-47-37z-case15-tenaday-anchorb-fix1103-r1-7205831) | **Row 29, #1103 on B**: parent UUIDs via `@Formula`, built on 18.3 (`b4c611977`); −24% CPU per sync against row 27's B, p95 449 → 293 ms, RDS 62 → 56%; `individual` selects 265k → 120k, `encounter` selects 53k → 5.8k | pilot-day-180 | 2292 | 0.0% | 293 | 3.24 |
 | [`2026-10-29 12:03`](run-log-detail.md#2026-10-29t12-03-22z-case15-tenaday-anchorb-fix1098b-r1-7205831) | **Row 29b, #1098 (instant equality, `041438efe`) on B**, `UPLOAD_URL_BATCH=0`: the fix that ships — CPU per sync 4.19 against 4.27 ± 0.02, every re-save on pushed entities gone (`encounter` updates 44,772 → 0), write IOPS 46 → 30; reproduces the withdrawn pinned-UTC run | pilot-day-180 | 2292 | 0.0% | 427 | 4.19 |
 | [`2026-10-29 19:03`](run-log-detail.md#2026-10-29t19-03-39z-case15-tenaday-anchorb-rc183-batch50-r1-7205831) | **Row 30, the 18.3 release candidate on B with the batched client** (`UPLOAD_URL_BATCH=50`): **2.28 CPU s per sync against 4.27 (−47%)**, p95 449 → 248 ms, requests 204k → 97k, app 65 → 35% of 4, RDS 62 → 46% of 2; every fix's signature present | pilot-day-180 | 2292 | 0.0% | 248 | 2.28 |
+| [`2026-10-29 21:16`](run-log-detail.md#2026-10-29t21-16-32z-case15-5k-anchord-rc183-batch50-r1-7205831) | **Row 30, the 18.3 release candidate on D** (5,000 users, `pilot-day-180-5k`, 8 + 8 vCPU, batched client): **1.81 CPU s per sync against row 25's 3.20 (−43%)**, p95 234 → 205 ms, requests 573k → 225k, app 63 → 36% of 8, RDS 32 → 24% of 8 | pilot-day-180-5k | 5792 | 0.0% | 205 | 1.81 |
 
 **Findings:** [`findings-clustered-media-push.md`](findings-clustered-media-push.md)
 
