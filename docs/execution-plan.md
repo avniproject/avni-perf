@@ -1180,6 +1180,7 @@ is binding; the calendar is not.
 | 27 | V | **Re-baseline on the production build** — anchors A and B, each **twice**, on `v18.1.0` (`789092feb`), what production runs | **done 2026-10-27 — 18.1 reproduces 17.3 on both anchors; the rig is 5–8% dearer than when the 17.3 controls were measured, and today's runs replace them.** Anchor A twice: 3.96 and 3.83 CPU s per sync, p95 2,433 and 1,905 ms, app 90% and 88% of 2 vCPU (row 28 put the 17.3 jar at 3.92 / 2,219 the same day). Anchor B twice: 4.28 and 4.25 CPU s per sync, p95 449 and 449 ms, app 65% of 4 and RDS 60% of 2, against row 24's 4.05 / 446. 0 failures in all four. Statement counts match the 17.3 captures to a fraction of a percent on both anchors, so the signature table stands. **Row 29's controls: A 3.9 ± 0.07 CPU s/sync at ~89% of 2 vCPU, p95 1,900–2,450 ms; B 4.27 ± 0.02 at ~65% of 4, p95 ~447 ms.** [Results](#rows-27-28-results)
 | 28 | V | **Drift check, only if row 27 does not reproduce 17.3** — anchor A once on the old jar `2c0215679` | **done 2026-10-27 — the rig moved, not the code.** Anchor A on `2c0215679`, same day, bed and classes as row 27's pair: **3.92 CPU s per sync, p95 2,219 ms**, app 89.7% — between the two 18.1 runs (3.96 / 3.83, p95 2,433 / 1,905) and within 1% of r1 on identical statement counts. The 15 Oct control (3.66, p95 1,709, app 84%) is therefore not comparable with anything measured now; what changed on the rig in twelve days is not identified — candidates are the fresh reindexed bed, the `audit` table's growth, and the instance landing on another host after the stop/start. [Results](#rows-27-28-results)
 | 29 | V | **One fix per jar** — #1097, #1098, #1103 and #1100 (with the batched client modelled), each built on 18.3 just before the fix plus that fix alone, run on A and B (#1100 on B) | **in progress — 28 Oct done: #1097 on A and B, #1098 on A and B, #1100 on B; #1103 on A and B on 29 Oct.** **#1097 on A: −26% CPU per sync (2.88 against 3.9 ± 0.07), p95 2,433 → 715 ms, `gender` selects 66,448 → 3,392, database unchanged** — the signature and the magnitude both land, the magnitude larger than row 22's −19% because the control sat on the 2 vCPU knee and the fix takes the queueing waste with it. #1098 on A, then both on B, then #1100 on B with `UPLOAD_URL_BATCH=50`, follow the same day; **#1103's jar (`b4c611977`) arrived 28 Oct and runs 29 Oct, A then B on one reload.** Each measured against row 27, not stacked on the previous fix, so every saving is attributable. [Validation phase](#validation-phase) |
+| 29b | V | **#1098 re-run with the fix that ships** — `041438efe`: Joda `DateTime` compared by instant through a Hibernate `JodaDateTimeJavaType`, converter unchanged; A then B, B with `UPLOAD_URL_BATCH=0` as row 29's #1098 run | **pending — jar received 29 Oct.** Row 29's #1098 runs measured the pinned-UTC converter, which failed 7 tests and was withdrawn (avniproject/avni-server#1098, 29 Oct). Expected to reproduce them: every re-save gone, CPU within noise. [Row 29b](#row-29b) |
 | 30 | V | **All fixes together** — the 18.3 release candidate (the row 29 fixes that have landed; #882's and #1057 only if they are in it) on A and B, then C (case 13, 2 vCPU) and D (5,000 users, 8 + 8) | **pending — after 29.** Fixes interact, so this is the number to quote for the release; C shows whether the knee moved, D whether the gain holds at scale. [Validation phase](#validation-phase) |
 
 #### Rows 21 and 22: removing `DummyInterceptor`
@@ -1471,7 +1472,7 @@ sampled, so they confirm a fix took effect even when its CPU effect sits inside 
 | fix | signature: on the 17.3 baseline → expected | magnitude: expected | anchors |
 |---|---|---|---|
 | avniproject/avni-server#1097 — remove `DummyInterceptor` | `gender` selects per request **2.0 → ~0.1**; `sync_telemetry` UPDATE/INSERT **3.00 → 1.00** | app CPU **−19%** on A (row 22) | A, B |
-| #1098 — pin UTC in `JodaDateTimeConverter` | UPDATE on `sync_telemetry` (A and B) and `encounter`, `program_*` (B) **drops to 0** — measured 28 Oct on A: all three per-sync re-saves, not one | database time; one `audit` row less per write | A, B |
+| #1098 — ~~pin UTC in `JodaDateTimeConverter`~~ **compare Joda `DateTime` by instant** (`041438efe`, replacing the pinned converter on 29 Oct — row 29b) | UPDATE on `sync_telemetry` (A and B) and `encounter`, `program_*` (B) **drops to 0** — measured 28 Oct on A: all three per-sync re-saves, not one | database time; one `audit` row less per write | A, B |
 | #1103 — parent UUIDs via `@Formula` | `individual` selects per customer sync **down ~75%** (B: 148 on row 24) — measured −85% on A | app CPU **~−5%** was the estimate; **measured −41% on A, 29 Oct** — the parent loads were entity hydration, not query time | A, B |
 | the fix #882 recommends — **not in row 29** (decided 28 Oct: a larger piece, no date) | `users` per request (A 2.2, B 1.48) and `catchment` (A 1.7, B 1.22) **toward 0** | database time — `users` alone was 22% on row 24 and 30% at 10k | A, B, when it exists |
 | #1057 — `exists` for `syncDetails` — **not in row 29** (decided 28 Oct: a larger piece, no date; the version in 18.3 was reverted) | `count(individual)` gone from `syncDetails` in `SqlTrace` | `syncDetails` database time | A, when it exists |
@@ -1508,8 +1509,9 @@ do.
 | row 27 — A ×2, B ×2 | 4 |
 | row 28 — A on the old jar, only if row 27 does not reproduce 17.3 | 0–1 |
 | row 29 — #1097, #1098, #1103 on A and B; #1100 on B | 7 |
+| row 29b — #1098's replacement fix on A and B | 2 |
 | row 30 — combined on A, B, C, D | 4 |
-| **total** | **15–16 one-hour runs**; #882's fix and #1057 are measured the same way if and when they land, outside this count |
+| **total** | **17–18 one-hour runs**; #882's fix and #1057 are measured the same way if and when they land, outside this count |
 
 **The production build is `v18.1.0`** (`789092feb`, also `origin/18.1`), deployed by 26 Oct 2026. It
 is the 17.3 baseline plus 72 commits — `2c0215679` is an ancestor — and **none of them touch the
@@ -1615,6 +1617,66 @@ stays on the small class.
 | **#1098 on B** — `JodaDateTimeConverter` pinned to UTC | **4.25** (4.27 ± 0.02) **none** | 445 (449) | `encounter` updates 44,772 → **0**, `program_encounter` 8,340 → 0, `program_enrolment` 4,956 → 0, `sync_telemetry` 6,895 → 0; write IOPS 46 → 31; database wall time −6.5%; RDS CPU 59.5% against 61.6 / 58.4 | **live, magnitude within noise**: ~65k fewer UPDATEs and `audit` rows an hour, but the database's floor on B is `uploadUrl`'s ~12 statements × 110k calls, so two points of RDS CPU is all the re-saves were worth. Correctness fix, not a capacity one |
 | **#1100 on B + avni-client#2218 modelled** (`UPLOAD_URL_BATCH=50`) | **4.00** (4.27 ± 0.02) **−6%** | 494 (449) | `uploadUrl` GETs 109,474 → **0**, `uploadUrls` POSTs 2,789 (≈2 per sync); requests 204k → **97k**; per-request statements `users` 301k → 185k, `gender` 418k → 204k, `organisation` 204k → 97k; database wall time −26%; **RDS CPU 61.6 → 55.0%** of 2; app 65 → 61% of 4; blocked events −63% | **live; the database fix of the three.** ~107k fewer requests an hour take their twelve-statement overhead with them. p95 +45 ms: one POST now does fifty presigns. Additive with #1097 on the other tier — row 30's combined jar is the number to quote |
 | **#1103 on A** — parent UUIDs via `@Formula` | **2.30** (3.90 ± 0.07) **−41%** | **417** (1,905–2,433) | `individual` selects 207,264 → **30,902** (−85%), `encounter` selects 28,072 → 3,915; GC young −79%; thread-blocked events −74%; database wall time −62%; **RDS 26.8 → 21.9%**; `gender` unchanged (interceptor still in) | **live, and five times the estimate.** The plan priced the fix as fewer selects; the cost was Hibernate hydrating a parent entity per child row — app CPU and GC, not database time. The largest single effect of the campaign; B follows the same day |
+
+<a id="row-29b"></a>
+##### Row 29b: #1098 again, with the fix that ships
+
+**Why a re-run.** Row 29's two #1098 runs measured the original proposal: `JodaDateTimeConverter`
+pinned to UTC (`new DateTime(data.getTime(), DateTimeZone.UTC)`). On 18.3's test suite that
+version failed seven tests, and the reason was structural rather than incidental. Hibernate 6
+snapshots a converted attribute by round-tripping it through the converter and compares with
+`DateTime.equals()`, which compares the zone. Pinning UTC cleaned values sent by a client, which
+Jackson builds in `UTC`, but dirtied values set on the server, which `DateTime.now()` builds in
+the JVM's zone. It moved the mismatch rather than removing it:
+
+- **3 failures in every zone.** The extra rewrites re-ran `AuditingEntityListener` over a native
+  update.
+- **4 failures on IST.** Timestamps read back in UTC moved derived dates back a day.
+
+**The fix that replaces it**, `041438efe` on branch `1098-instant-equality`, one commit on
+`07db44703` (the 18.3 base of every row 29 jar):
+
+- `JodaDateTimeJavaType` compares `getMillis()` with an immutable mutability plan;
+- `JodaDateTimeTypeContributor` registers it through `META-INF/services/org.hibernate.boot.model.TypeContributor`;
+- the converter is untouched.
+
+Server-set, client-sent and loaded values are then all clean when the instant matches. Details,
+and the measured `POST /encounters` UPDATE counts by zone, are on
+[avniproject/avni-server#1098](https://github.com/avniproject/avni-server/issues/1098).
+
+**The jar**, `avni-server-18.3-1098-041438efe.jar`, sha256 `a2496cf3…198e73ff`, checked 29 Oct
+against what the commit says it is:
+
+- the nested `avni-server-data` jar carries `JodaDateTimeJavaType`, `JodaDateTimeTypeContributor`
+  and the service file naming the contributor;
+- `JodaDateTimeConverter.class` is byte-identical to the production 18.1 jar's.
+
+**The runs.** Anchor A, then anchor B on one reload. B uses `UPLOAD_URL_BATCH=0`, as row 29's
+#1098 run did, so the two are comparable. Same classes, warm-up and controls as row 29: row 27's
+A 3.90 ± 0.07 and B 4.27 ± 0.02 CPU s per sync.
+
+**Expected — written before the run.** The same result as row 29's pinned-UTC runs, which already
+removed every re-save on these paths:
+
+| | row 27 control | row 29, pinned UTC | **row 29b, expected** |
+|---|---|---|---|
+| A: `sync_telemetry` updates | 5,063 | 0 | **0** |
+| B: `encounter` / `program_encounter` / `program_enrolment` / `sync_telemetry` updates | 44,772 / 8,340 / 4,956 / 6,895 | 0 / 0 / 0 / 0 | **0 / 0 / 0 / 0** |
+| CPU s per sync, A / B | 3.90 / 4.27 | 3.90 / 4.25 | **within noise** |
+| B: write IOPS | 46 | 31 | **~31** |
+| failures | 0 | 0 | **0** |
+
+- **What a difference from row 29 would mean.** Any UPDATEs at all on these tables means the
+  type contributor did not take effect in the deployed jar. Check the startup log for it, and
+  Hibernate `Statistics` per entity, before reading anything else.
+- **What this run cannot tell apart.** The two fixes differ on *server-set* timestamps: the pinned
+  converter dirtied them, the instant comparison does not. Row 29's pinned runs still reached 0
+  UPDATEs, so the harness's sync and push paths set no Joda timestamp on the server, and the
+  load test cannot see that difference. The test suite covers it
+  (`JodaDateTimeDirtyCheckIntegrationTest`).
+- **CPU and RDS should match row 29's #1098 runs.** The instant comparison is cheaper than the
+  pinned converter's round trip, if anything, and neither touches a query.
+- **Row 30's combined jar takes this fix, not the pinned one.**
 
 #### Standing task: back up New Relic weekly
 
