@@ -195,12 +195,13 @@ if [ "${SWAP_PARALLEL:-0}" = 1 ]; then
     done; sleep 2; echo \"     \$(ls /tmp/$TAG.td.*.sql | wc -l) sessions started\""
   # `pg_stat_activity.query` is cut at track_activity_query_size (1,024 chars), so a filter on text
   # deep inside the DO block undercounts -- 27 Oct's first poll showed 1 of 10 sessions. The
-  # block's first bytes and psql's application_name are what survive the cut.
+  # block's first bytes and psql's application_name are what survive the cut -- and psql sends the
+  # generator's header comment ahead of the DO, so match the generator's name, not 'DO $$' (29 Oct).
   t0=$(date +%s)
   while :; do
     DONE=$(sshapp "ls /tmp/$TAG.td.*.rc 2>/dev/null | sed 's|.*td\.||; s|\.rc||' | sort -n | tr '\n' ' '")
     N=$(echo $DONE | wc -w | tr -d ' ')
-    echo "     [$(( ($(date +%s)-t0)/60 ))m] $N/10 organisations finished${DONE:+ ($DONE)}; sessions: $(sshapp "$Q -c \"SELECT count(*) || ' active, ' || count(*) FILTER (WHERE wait_event_type = 'IO') || ' on IO, ' || count(*) FILTER (WHERE wait_event_type = 'Lock') || ' on a lock' FROM pg_stat_activity WHERE state = 'active' AND application_name = 'psql' AND query LIKE 'DO $$%';\"")"
+    echo "     [$(( ($(date +%s)-t0)/60 ))m] $N/10 organisations finished${DONE:+ ($DONE)}; sessions: $(sshapp "$Q -c \"SELECT count(*) || ' active, ' || count(*) FILTER (WHERE wait_event_type = 'IO') || ' on IO, ' || count(*) FILTER (WHERE wait_event_type = 'Lock') || ' on a lock' FROM pg_stat_activity WHERE state = 'active' AND application_name = 'psql' AND query LIKE '%teardown_org.py%';\"")"
     [ "$N" -ge 10 ] && break
     sleep 60
   done
