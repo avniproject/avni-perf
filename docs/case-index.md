@@ -21,7 +21,7 @@
 | [**10**](#case-10) | Soak | 1 | [`findings-case10.md`](findings-case10.md) |
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
 | [**12**](#case-12) | Clustered — co-tenant data | 10 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
-| [**13**](#case-13) | Clustered — co-tenant load | 4 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
+| [**13**](#case-13) | Clustered — co-tenant load | 5 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
 | [**15**](#case-15) | Clustered — co-tenant load, media push | 12 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
 
@@ -242,6 +242,7 @@ Case 7 compressed into one hour: ~9.7 in flight, three times production's peak. 
 | [`2026-10-21 04:10`](run-log-detail.md#2026-10-21t04-10-50z-case13-m6glarge-c2a0e76) | **2 vCPU** — sweep control | pilot-day-180 | 2007 | 0.91% | 56293 | 4.19 |
 | [`2026-10-21 05:43`](run-log-detail.md#2026-10-21t05-43-20z-case13-m6gxlarge-c2a0e76) | **4 vCPU** | pilot-day-180 | 2474 | 0.0% | 434 | 3.13 |
 | [`2026-10-21 09:56`](run-log-detail.md#2026-10-21t09-56-40z-case13-2vcpu-b-no-interceptor-f038788) | **2 vCPU, `DummyInterceptor` removed** (row 21); on row 20's residue by choice | pilot-day-180 | 2474 | 0.0% | 1440 | 2.57 |
+| [`2026-10-29 16:27`](run-log-detail.md#2026-10-29t16-27-09z-case13-anchorc-rc183-r1-7205831) | **Row 30, the 18.3 release candidate on C** (case 13, 2 + 2 vCPU — the cliff): 0 failures, p95 56,293 → 396 ms, **1.78 CPU s per sync against 4.19**, app ~65% against 94–99%; better than 17.3 on 4 vCPU (3.13, p95 434) | pilot-day-180 | 2474 | 0.0% | 396 | 1.78 |
 
 **Findings:** [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md)
 
