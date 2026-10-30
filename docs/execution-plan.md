@@ -1740,38 +1740,30 @@ matters, and it does not change.
 **Stop rule.** Abort the ramp once failures pass 1% for five consecutive minutes. Past collapse
 there is nothing to learn, and case 13 showed a collapsing server doing less work for more load.
 
-##### Predictions, written before the run
+##### Predictions, refreshed 30 Oct 2026 from row 30
 
-From row 26 (old jar, 10,000 an hour: 3.4 CPU s per customer sync, app 59% of 16, RDS 27% of 16,
-pool peak 44, 307 rps) and row 29's per-fix savings (#1097 −24–26%, #1100 −6%, #1103 −41% on A,
-#1098 ~0). This is arithmetic, not a measurement:
+The first version (29 Oct) was arithmetic over row 29's single-fix savings and assumed 2.0–2.4
+CPU s per customer sync. **Row 30 measured the combined jar directly**, and D is the anchor that
+matches this row's workload: case 15 at ten a day with the batched client and co-tenants, 5,000
+users on 8 + 8 — **1.81 CPU s per sync, app 35.8% of 8 vCPU, RDS 23.9% of 8, pool peak 19,
+~62 requests per second, p95 205 ms.** Per-sync cost was flat from 8 to 16 vCPU on the old jar
+(rows 25–26), so D scales to 16 + 16 by doubling both the rate and the cores:
 
-| | old jar (31b) | **combined jar (31)** |
+| | old jar (31b), from row 26 | **combined jar (31)**, from row 30 D |
 |---|---|---|
-| CPU s per customer sync | ~3.4 | **~2.0–2.4**; the fixes overlap, so less than the sum |
-| app CPU at 10,000 an hour | ~59% | **~35–42%** |
-| **knee, syncs an hour** (app at ~85–90%) | **~14,000–16,000** | **~20,000–24,000** |
-| requests per second at the knee | ~430–460 | **~300–370**: batched URLs halve requests per sync, ~150 a second per 10,000 an hour |
-| RDS CPU at the knee | ~40% | **~35–45%**: #1100 and #1103 both cut database work, so it should still not bind |
-| connection pool at the knee | ~60–70 of 100 | **~50–70 of 100** |
+| CPU s per sync | ~3.4 | **~1.8** |
+| app CPU at 10,000 an hour on 16 vCPU | 59% | **~36%** |
+| **knee, syncs an hour** (app at ~85–90%) | **~14,000–16,000** | **~23,000–25,000** if app CPU binds first |
+| requests per second at that rate | ~430–460 | **~290–310** — batched URLs: ~45 requests per sync against ~110 |
+| RDS CPU at that rate, 16 vCPU | ~40% | **~55–60%** — D's 23.9% scaled 2.4×; the database still should not bind, but it is the closest second |
+| connection pool at that rate | ~60–70 of 100 | **~45–55 of 100** (D peaked at 19 at 5,000) |
+| injector | `m6g.xlarge`, 1 GB heap | `m6g.2xlarge`, 8 GB heap: ~6,000 devices in flight at 25,000 an hour at a ~14-minute media-bound sync |
 
-> **Refresh these after row 30 D, before row 31 runs.** The CPU-per-sync line above is
-> arithmetic over the individual fixes. The fixes may combine for more than it assumes: #1103
-> alone measured −41% on A against a 5% estimate. Row 30 D (5,000 users on 8 + 8) is the only
-> combined run near this scale, and per-sync cost held flat from 8 to 16 vCPU in rows 25–26, so
-> its figure is the one to use. A and B run on 2 and 4 vCPU, where queueing distorts the cost.
->
-> 1. **Replace "CPU s per customer sync"** with D's measured figure.
-> 2. **Recompute the knee:** 0.85–0.9 × 57,600 CPU s an hour (16 vCPU), less the co-tenants'
->    ~1,330, divided by that figure.
-> 3. **Set `STRESS_TO_SYNCS_PER_HOUR`** to about 1.7× the new knee estimate. Raise it above
->    40,000 only if the estimate passes ~24,000; keep `SYNCS_PER_HOUR=10000`.
-> 4. **Re-derive the request rate and RDS lines** from D's requests and RDS CPU per sync.
-> 5. **Keep this table alongside, struck through**, so the refresh can be compared too.
->
-> These stay predictions: they only have to be written before row 31 runs, and tightening them
-> with row 30's measurements is better than scoring row 31 against figures already known to be
-> stale.
+**What would change the answer.** A knee well below ~23,000 with app CPU under 80% means a
+non-CPU limit — the pool, Tomcat's 200 threads, the heap, or lock contention on `audit` — and the
+steady pair names it. A ramp to 40,000 that never bends means the knee is above the range and
+the ramp is repeated higher. **The injector is the risk in this row**: at ~6,000 paused devices it
+holds more sessions than any earlier run, so its CPU and heap are read alongside the server's.
 
 **The prediction that matters: app CPU still binds first, at roughly twice row 26's load, and the
 database is under half used when it does.** Two outcomes would change the recommendation:
