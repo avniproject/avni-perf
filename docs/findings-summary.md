@@ -223,7 +223,11 @@ built on 18.3 alone and run against them; then all four together.
    per-request overhead it removes is a larger share of what is left.
 2. **The 2 vCPU knee is gone, not moved a little.** The scenario that defined the cliff runs at
    65% of 2 vCPU with a better p95 than 17.3 managed on 4. Every capacity figure in §1 and §7 was
-   measured on the old build and is now conservative by roughly half.
+   measured on the old build and is now conservative by roughly half. The comparison is against the 17.3 control,
+   not row 21's no-interceptor run: that one started 38 minutes after a push run and pulled its
+   residue — 4,404 `GET /individual` against 116–360 for the same scenario earlier that day — so
+   its CPU per sync (2.57) is inflated. **The request count of a pull is set by what was pushed
+   recently, not by the build**, which is why every run in this phase starts from a reload.
 3. **The gain holds at scale.** At 5,000 users on 8 + 8 the per-sync saving (−43%) matches the
    1,500-user anchors, and the pool never left 13–19 connections.
 4. **The write amplification was the Joda bug, not the interceptor.** #1098 alone took every
