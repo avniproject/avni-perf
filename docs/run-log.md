@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-30 04:05 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-30 16:41 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -78,6 +78,7 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-29T16-27-09Z-case13-anchorC-rc18.3-r1-7205831`](run-log-detail.md#2026-10-29t16-27-09z-case13-anchorc-rc183-r1-7205831) | 2026-10-29 21:57 | case13 | steady | 1682 | 60min @ 1682/h | ~2.8 | ~38 | 58912 | 0.0% | 396 | 83.7 | 16 | 4,412 | 1.78 |
 | [`2026-10-29T19-03-39Z-case15-tenaday-anchorB-rc18.3-batch50-r1-7205831`](run-log-detail.md#2026-10-29t19-03-39z-case15-tenaday-anchorb-rc183-batch50-r1-7205831) | 2026-10-30 00:33 | case15 | steady | 1500 | 60min @ 1500/h | ~2.6 | ~138 | 96803 | 0.0% | 248 | 529.2 | 23.42 | 5,219 | 2.28 |
 | [`2026-10-29T21-16-32Z-case15-5k-anchorD-rc18.3-batch50-r1-7205831`](run-log-detail.md#2026-10-29t21-16-32z-case15-5k-anchord-rc183-batch50-r1-7205831) | 2026-10-30 02:46 | case15 | steady | 5000 | 60min @ 5000/h | ~4.3 | ~400 | 224688 | 0.0% | 205 | 500.6 | 53.13 | 10,485 | 1.81 |
+| [`2026-10-30T08-36-26Z-case15-10k-row31-ramp-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-10-30t08-36-26z-case15-10k-row31-ramp-rc183-batch50-1ff23cc) | 2026-10-30 14:06 | case15 | stress | 11164 | 120min @ 10000/h | ~1441 | ~3444 | 1745651 | 0.02% | 23999 | 1600.4 | 214.69 | 97,323 | 1.90 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 
@@ -93,6 +94,8 @@ Kept rather than deleted — these are the evidence for a finding of their own �
 | [`2026-10-07T08-38-32Z-case4-eb5e4b3`](run-log-detail.md#2026-10-07t08-38-32z-case4-eb5e4b3) | 2026-10-07 14:08 | 240min @ 47/h | 0.22 | 287 | the feeder listed all 501 field workers before the first supervisor at row 502, and `circular()` reached only 187 rows in four hours, so this sampled one role and re-measured case 2 rather than case 4's mix — 60.8 s mean and 10,838 records against case 2's 60.8 s and 10,831, serverMs 6% in both. Case 4 needs re-running against the proportionally ordered feeder |
 | [`2026-10-08T11-32-36Z-case5-d484f18`](run-log-detail.md#2026-10-08t11-32-36z-case5-d484f18) | 2026-10-08 17:02 | — | — | — | killed ~40s after launch and never reached archiveRun, so it has no metadata and no summary; superseded by the 17:34 run |
 | [`2026-10-23T08-29-29Z-case15-5k-m6g.2xlarge-23a4e48`](run-log-detail.md#2026-10-23t08-29-29z-case15-5k-m6g2xlarge-23a4e48) | 2026-10-23 13:59 | — | — | — | the launch crashed before injecting a user (feeder absent from the deployed harness); every file but gradle.log is the preceding warm-up burst's, archived by mistake |
+| [`2026-10-30T08-09-42Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485`](run-log-detail.md#2026-10-30t08-09-42z-case15-10k-row31-ramp-rc183-batch50-a7c3485) | 2026-10-30 13:39 | — | — | — | the simulation crashed at start-up before injecting a user (harness a7c3485 dropped Gatling's --add-opens JVM flags) |
+| [`2026-10-30T08-17-48Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485`](run-log-detail.md#2026-10-30t08-17-48z-case15-10k-row31-ramp-rc183-batch50-a7c3485) | 2026-10-30 13:47 | — | — | — | the simulation crashed at start-up before injecting a user (harness a7c3485 dropped Gatling's --add-opens JVM flags) |
 
 Each carries a `provenance-correction.json` in its own prefix with the evidence, the cause and what it was recorded as. The runs' own `run-metadata.json` is left exactly as written.
 
