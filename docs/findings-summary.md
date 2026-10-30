@@ -237,6 +237,16 @@ built on 18.3 alone and run against them; then all four together.
    statement time and measured at −41%. Ranking by the profiler's request-time share, as
    `areas-to-investigate.md` does, is the better guide.
 
+**Where the release candidate breaks** ([row 31](execution-plan.md#row-31), 30 Oct). On 16 app + 16
+database vCPU, 10,000 users' worth of data and the customer's push pattern with batched upload
+URLs: **~22,500 syncs an hour is comfortable** (app ~75%, p95 222 ms, pool half used),
+**~27,500 is sustained at the edge** (app ~91%, p95 534.9 ms, no backlog, no failures), and above
+~29,000 the server queues — throughput flat at ~265–300 requests a second, p95 growing without
+bound, failures still under 0.1%. **App CPU binds; the database never passes 62%**; the connection
+pool fills only once CPU saturates. Per-sync cost holds at –~1.85 CPU s right up to the
+edge. **Plan on ~25,000 syncs an hour for 16 + 16** — about 1.7× what the old jar was predicted
+to manage on the same hardware.
+
 **Not measured:** #882's catchment/`users` lookups and #1057's `syncDetails` `exists` are larger
 pieces with no jar yet; a client-side `Slice` endpoint (avni-client#2096) needs a harness mode.
 
