@@ -17,6 +17,11 @@ and which parts are modelled rather than performed.
 pattern production actually has, neither matters.** What turns a comfortable system into a broken
 one is not volume, tenancy or history — it is **everybody syncing at once**.
 
+**And most of that app CPU was avoidable.** Four server fixes, measured one at a time and then
+together on the 18.3 release candidate (§9), take **43–50% off the CPU of every sync** on every
+anchor, a fifth to a quarter off the database, half the requests wherever media is pushed — and
+the case 13 load that broke 2 vCPU now runs there at 65% with no failures.
+
 ## 1. The constraint has a name, and it is app CPU
 
 Established independently five times — [case 1](findings-case1.md),
@@ -61,7 +66,9 @@ Per-sync cost is flat from 8 to 16 vCPU; the pool peaked at 44 of 100, the heap 
 its pin, the volume at 212 read IOPS. On these numbers **10,000 users at ten a day fit on 16
 application vCPU at 59% — 8 would run at ~100% — and on 8 database vCPU at ~55%**; the plan's
 "16 and 16" over-provisions the database, and the interceptor fix (−19%) is what would make 8
-application vCPU comfortable.
+application vCPU comfortable. **Measured since (§9):** the 18.3 release candidate runs 5,000 users
+on 8 + 8 at 36% app and 24% database CPU, −43% per sync — so 10,000 at ten a day fits on 8
+application vCPU with room to spare.
 
 **What the 2 vCPU saturation was made of** ([timeslices, 22 Oct](findings-vertical-scale.md)):
 the broken run collected garbage for **555 seconds against 18** on 4 vCPU, with old-generation
@@ -69,7 +76,9 @@ collections only on 2 vCPU and the heap at 5,096 of 5,120 MB — a quarter to a 
 → 3.13 CPU s per sync gap. And **98% of its request time was the authentication filter's own
 code** (exclusive time; 14% at 4 vCPU), with 48,865 monitor-blocked thread events against 571.
 Every request takes a pooled connection there before any controller runs. **The cliff has a
-place, not only a level.**
+place, not only a level** — and the release candidate removes it: case 13 on the same 2 vCPU
+spends 0.7 s per sync in that filter against 292.6, with 1,152 blocked-thread events against
+48,865 and no old-generation collections at all (§9).
 
 The knee sits between **57 and 72 requests per second** of demand. 100 devices arriving over 75
 seconds is workable; over 60 seconds is not.
@@ -160,6 +169,9 @@ the same syncs into one hour and concurrency rises twelvefold.
   segment at **11.7% of request time** — the profiler's 12.6% reproduced — with its `gender`
   query only 8% of that and the `@Transactional` boundary around it the rest. The old build's
   knee is bounded for the first time: **900–1,030 requests/min on 2 vCPU.**
+* [The 18.3 release candidate](execution-plan.md#row-30-results) — **case 13 on 2 vCPU with every
+  fix in**: 0 failures, p95 56,293 → **396 ms**, CPU 4.19 → **1.78 s per sync**, app 65%. Better than
+  17.3 managed on *4* vCPU (434 ms, 3.13 s). The knee has moved off this hardware altogether (§9).
 
 > **A ceiling measured on a saturated server is not the ceiling.** 12.85 Mrec/h was read as a limit;
 > it is what a *broken* server achieves. The healthy system is about **60% higher**. Capacity
@@ -176,6 +188,53 @@ while every single supervisor sync got slower** — 75,000 records against 32,00
 Splitting by role recovers the truth. The same trap is why case 4 re-measured case 2 before the
 feeder ordering was fixed, and why `devices in flight` was 3× high for a year of runs. **Read mixed
 cohorts by role, or do not read them.**
+
+## 9. The fixes, measured
+
+**Rows 27–30, 27–30 Oct 2026** ([execution plan](execution-plan.md#rows-27-28-results)). The
+production build moved to 18.1, so the baseline was re-run on it first: **18.1 reproduces 17.3**
+on both anchors with identical statement counts (row 28 ran the old jar the same day and landed
+between the two 18.1 runs), and the rig had drifted 5–8% dearer since mid-October, so the
+controls are the 27 Oct runs — A 3.90 ± 0.07, B 4.27 ± 0.02 CPU s per sync. Each fix was then
+built on 18.3 alone and run against them; then all four together.
+
+| fix | A — case 12, 2 + 2 vCPU | B — case 15 ten-a-day, 4 + 2 | what it removed |
+|---|---|---|---|
+| **#1097** `DummyInterceptor` gone | **−26%**, p95 2,433 → 715 ms | **−24%**, RDS −6 pts | two `gender` selects per request; the interceptor segment; two of three re-saves per write |
+| **#1103** parent UUIDs via `@Formula` | **−41%**, p95 → 417 ms | **−24%**, RDS −6 pts | a hydrated parent entity per child row — `individual` selects −85%, GC −79% |
+| **#1100** batched upload URLs (client at 50) | — | **−6%**, **RDS −11 pts**, requests 204k → 97k | 80 per-file `uploadUrl` calls per sync → 2, and their twelve statements each |
+| **#1098** Joda instant equality | none | none (write IOPS −33%) | **every** re-save of telemetry and pushed entities — a correctness fix, not a capacity one |
+
+**Together — the 18.3 release candidate:**
+
+| anchor | CPU s per sync | p95 | app / database CPU | failures |
+|---|---|---|---|---|
+| **A** case 12, 2 + 2 | 3.90 → **1.94 (−50%)** | 2,433 → **332 ms** | 90 → **46%** / 27 → **21%** | 0 |
+| **B** case 15, 4 + 2, batched | 4.27 → **2.28 (−47%)** | 449 → **248** | 65 → **35%** / 62 → **46%** | 0 |
+| **C** case 13 on 2 + 2 — the cliff | 4.19 → **1.78** | 56,293 → **396** | 94–99 → **65%** | 467 → **0** |
+| **D** 5,000 users, 8 + 8, batched | 3.20 → **1.81 (−43%)** | 234 → **205** | 63 → **36%** / 32 → **24%** | 0 |
+
+**What it settles.**
+
+1. **The fixes compose on different tiers, not by adding up.** #1097 and #1103 both strip
+   per-row work from the same request path, so the release candidate is "#1103 plus part of
+   #1097" — −50% on A, not the −67% the stand-alone figures sum to. #1100 adds on the database
+   tier, and on B it is worth more combined than alone: with the parent loads gone, the
+   per-request overhead it removes is a larger share of what is left.
+2. **The 2 vCPU knee is gone, not moved a little.** The scenario that defined the cliff runs at
+   65% of 2 vCPU with a better p95 than 17.3 managed on 4. Every capacity figure in §1 and §7 was
+   measured on the old build and is now conservative by roughly half.
+3. **The gain holds at scale.** At 5,000 users on 8 + 8 the per-sync saving (−43%) matches the
+   1,500-user anchors, and the pool never left 13–19 connections.
+4. **The write amplification was the Joda bug, not the interceptor.** #1098 alone took every
+   re-save to zero; #1097 alone left one per write. Its value is correctness and `audit`'s
+   growth, not CPU.
+5. **A fix's share of query time is not its share of CPU.** #1103 was ranked at ~5% from
+   statement time and measured at −41%. Ranking by the profiler's request-time share, as
+   `areas-to-investigate.md` does, is the better guide.
+
+**Not measured:** #882's catchment/`users` lookups and #1057's `syncDetails` `exists` are larger
+pieces with no jar yet; a client-side `Slice` endpoint (avni-client#2096) needs a harness mode.
 
 ## Suggestions for other runs
 
@@ -282,6 +341,11 @@ times per sync**, which is also the argument for raising `PAGE_SIZE` rather than
 
 Ranking by *database calls* misleads here: `syncDetails` owns 32% of them and 2.7% of request
 time.
+
+**Two of these are now fixed and measured** (§9): the interceptor (#1097) and the parent loads
+(#1103), which turned out to be the largest single item — **−41% of CPU per sync on its own**, five
+times the ~5% its share of query time suggested, because the cost was hydrating an entity per
+child row, not the select. `AuthenticationFilter` and `syncDetails` remain.
 
 > **None of this makes a sync faster.** Database time is ~15% of a request and `serverMs` is 6–7%
 > of a sync. These raise the saturation ceiling — which is where the system actually fails (§7).
