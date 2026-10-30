@@ -15,8 +15,12 @@ java {
 gatling {
   // The simulation JVM's heap: GATLING_HEAP (e.g. -DGATLING_HEAP=8G), default the plugin's own 1G so
   // every earlier run reproduces. Row 31's ramp holds ~6,000 paused devices, more than 1G carries.
-  jvmArgs = ['-server', "-Xmx${System.getProperty('GATLING_HEAP', '1G')}", '-XX:+UseG1GC',
-             '-XX:+HeapDumpOnOutOfMemoryError', '-XX:MaxInlineLevel=20', '-XX:MaxTrivialSize=12']
+  // Replace only -Xmx in the plugin's own defaults: they also carry --add-opens flags that Gatling
+  // needs on JDK 17, and replacing the whole list (30 Oct 2026) failed every run at start-up.
+  if (System.getProperty('GATLING_HEAP')) {
+    jvmArgs = jvmArgs.collect { it.startsWith('-Xmx') ? "-Xmx${System.getProperty('GATLING_HEAP')}" : it }
+  }
+  tasks.register('printGatlingJvmArgs') { doLast { println "gatling jvmArgs: ${gatling.jvmArgs}" } }
   // Logging is configured in src/gatling/resources/logback-test.xml. The plugin's logLevel and
   // logHttp options were removed after 3.9, and were already inert here anyway - they only applied
   // when no logback config was present.
