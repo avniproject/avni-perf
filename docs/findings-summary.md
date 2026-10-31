@@ -22,6 +22,10 @@ together on the 18.3 release candidate (§9), take **43–50% off the CPU of eve
 anchor, a fifth to a quarter off the database, half the requests wherever media is pushed — and
 the case 13 load that broke 2 vCPU now runs there at 65% with no failures.
 
+**And the capacity is now measured, not inferred** (§10): with the fixes in, 16 app + 16 database
+vCPU sustain **~27,500 syncs an hour at ~265–280 requests a second**, app CPU binding first and the
+database never past 62%. **Plan on ~25,000 syncs an hour** for that configuration.
+
 ## 1. The constraint has a name, and it is app CPU
 
 Established independently five times — [case 1](findings-case1.md),
@@ -68,7 +72,8 @@ application vCPU at 59% — 8 would run at ~100% — and on 8 database vCPU at ~
 "16 and 16" over-provisions the database, and the interceptor fix (−19%) is what would make 8
 application vCPU comfortable. **Measured since (§9):** the 18.3 release candidate runs 5,000 users
 on 8 + 8 at 36% app and 24% database CPU, −43% per sync — so 10,000 at ten a day fits on 8
-application vCPU with room to spare.
+application vCPU with room to spare. **And the limit of 16 + 16 is now measured** (§10): ~27,500
+syncs an hour at its edge, app CPU binding at ~91–97% while the database stays at 50–62%.
 
 **What the 2 vCPU saturation was made of** ([timeslices, 22 Oct](findings-vertical-scale.md)):
 the broken run collected garbage for **555 seconds against 18** on 4 vCPU, with old-generation
@@ -81,7 +86,9 @@ spends 0.7 s per sync in that filter against 292.6, with 1,152 blocked-thread ev
 48,865 and no old-generation collections at all (§9).
 
 The knee sits between **57 and 72 requests per second** of demand. 100 devices arriving over 75
-seconds is workable; over 60 seconds is not.
+seconds is workable; over 60 seconds is not. That is the old build on 2 vCPU; the release candidate
+on 16 vCPU knees at **~265–280 requests a second** (§10), and its signature is the same — CPU
+saturates first, the connection pool fills behind it.
 
 ## 2. Steady state is free. The herd is the problem
 
@@ -237,18 +244,47 @@ built on 18.3 alone and run against them; then all four together.
    statement time and measured at −41%. Ranking by the profiler's request-time share, as
    `areas-to-investigate.md` does, is the better guide.
 
-**Where the release candidate breaks** ([row 31](execution-plan.md#row-31), 30 Oct). On 16 app + 16
-database vCPU, 10,000 users' worth of data and the customer's push pattern with batched upload
-URLs: **~22,500 syncs an hour is comfortable** (app ~75%, p95 222 ms, pool half used),
-**~27,500 is sustained at the edge** (app ~91%, p95 420 ms, no backlog, no failures), and above
-that the server queues — throughput flat at ~265–280 requests a second, p95 growing without
-bound, failures still under 0.1%. **App CPU binds; the database never passes 62%**; the connection
-pool fills only once CPU saturates. Per-sync cost holds at 1.78–1.85 CPU s right up to the
-edge. **The knee is ~27,500–28,000 syncs an hour, ~265–280 requests a second; plan on ~25,000 syncs an hour for 16 + 16** — about 1.7× what the old jar was predicted
-to manage on the same hardware.
+**Where the release candidate breaks** is §10.
 
 **Not measured:** #882's catchment/`users` lookups and #1057's `syncDetails` `exists` are larger
 pieces with no jar yet; a client-side `Slice` endpoint (avni-client#2096) needs a harness mode.
+
+## 10. Where it breaks, with the fixes in
+
+**Row 31, 30 Oct 2026** ([execution plan](execution-plan.md#row-31-results)). The 18.3 release
+candidate on 16 app + 16 database vCPU (`m6g.4xlarge` / `db.m6g.4xlarge`), the 10,000-user
+dataset, the customer's ten-a-day push with batched upload URLs, co-tenants at 792 an hour: a
+ramp from 10,000 to 40,000 syncs an hour, then an hour each at 0.9× and 1.1× of the knee it found.
+
+| | offered, syncs an hour | completed | requests a second | app / database CPU | pool | p95 | in flight | failures |
+|---|---|---|---|---|---|---|---|---|
+| **steady 0.9×** | 22,500 | **22,577** | **222** | ~75% / ~46% | 37–50 | **222 ms** | flat, ~2,100 | 0 |
+| **steady 1.1×** | 27,500 | **27,482** | **265** | ~91% / ~54% | 55–100 | **420 ms** | flat, ~2,550 | 0 |
+| ramp, saturated | 29,000 → 40,000 | 25,163, flat | 268, flat | 97% / 55–58% | 100 | 2 → 21 s | 3,500 → 9,200 | 0.02% |
+
+**What it settles.**
+
+1. **The knee is ~27,500–28,000 syncs an hour, ~265–280 requests a second.** The 1.1× hour held
+   27,500 with a flat backlog and no failures; above it, the server stops at the same throughput
+   and every further sync becomes wait. **Plan on ~25,000 an hour** — ~10% under the knee, app
+   at ~85%. That is about **1.7× what the old jar was predicted to manage** on the same hardware
+   (14,000–16,000, row 31b, not run), and the prediction written from row 30 (23,000–25,000)
+   was conservative.
+2. **App CPU is still the constraint — §1 holds after the fixes.** The database peaked at 62%
+   while the app sat at 97%; the injector never passed 14%. The connection pool pins only once
+   CPU saturates (37–50 at 0.9×), so it is the symptom, not a second limit — the same shape as
+   the 2 vCPU cliff, at roughly four times the rate per vCPU.
+3. **Saturation is graceful.** Past the knee the server queued rather than failed — p95 grew
+   linearly to 24 s over 45 minutes of overload while failures stayed under 0.1%. The risk above
+   capacity is latency on devices, not errors.
+4. **Per-sync cost is flat to the edge**: 1.78 CPU s at 0.9×, 1.85 at 1.1×, 1.90 across the
+   ramp — so capacity scales with cores, as rows 25–26 showed for the old jar.
+5. **Batching is half the headroom in requests.** A sync at the knee costs ~35 requests against
+   ~110 unbatched (row 26); without avni-client#2218 the same CPU budget would be spent on
+   three times the per-request overhead.
+6. **A ramp understates the knee.** The ramp's saturated phase completed ~25,000 an hour at the
+   same request ceiling — it was pulling an hour of its own pushes back, with a backlog draining
+   behind it. The steady pair is what a capacity figure has to rest on.
 
 ## Suggestions for other runs
 
@@ -257,7 +293,9 @@ pieces with no jar yet; a client-side `Slice` endpoint (avni-client#2096) needs 
 **1. Locate the clustering knee.** [Cases 12](findings-case12.md) and [13](findings-case13.md)
 bracket it — 21.0 Mrec/h at 81% CPU, 13.0 at 95.5% — and neither sits on it. Bisect at roughly
 1.15×, 1.3× and 1.45× case 12's load. **Three hours, and it is the number capacity planning
-needs**; today the only two figures available are "fine" and "collapsed".
+needs**; today the only two figures available are "fine" and "collapsed". *For the release
+candidate on 16 + 16 this is done (§10); on the old build at 2 vCPU it remains open, and §9 makes
+it less pressing.*
 
 **2. Vertical scale sweep, 2 → 4 → 8 vCPU.** "App CPU is the constraint, more vCPU is the relief"
 is the most-repeated finding in the set (§1) and **has never been tested** — it is an inference
