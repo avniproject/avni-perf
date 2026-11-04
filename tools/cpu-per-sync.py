@@ -168,7 +168,8 @@ APP_MEMORY_TIMESLICES = {
 
 
 def app_memory(key, account, region, app, start, until):
-    """Average and peak heap over the run window, in MB."""
+    """Average and peak heap over the run window, in MB. With several app hosts both are
+    per-host figures: the mean over every host's samples and the highest any one host reached."""
     out = {}
     window = (f"SINCE '{start:%Y-%m-%d %H:%M:%S}+0000' "
               f"UNTIL '{until:%Y-%m-%d %H:%M:%S}+0000'")
@@ -201,13 +202,54 @@ def cloudwatch(namespace, metric, dim_name, dim_value, start, until, stat):
     return max(vals) if stat == "Maximum" else sum(vals) / len(vals)
 
 
-def infrastructure(app_instance, db_instance, start, until):
-    """CPU and memory for both tiers. Absent metrics are omitted rather than reported as zero."""
+def app_vcpus(instances):
+    """vCPU per app instance, read now. Only true for a run that just finished: a resize since
+    then changes it, which is why each run's entry records what was read at the time."""
+    import subprocess
+    r = subprocess.run(
+        ["aws", "ec2", "describe-instances", "--instance-ids", *instances, "--query",
+         "Reservations[].Instances[].[InstanceId,CpuOptions.CoreCount,CpuOptions.ThreadsPerCore]",
+         "--output", "text"], capture_output=True, text=True)
+    out = {}
+    for line in r.stdout.splitlines():
+        parts = line.split()
+        if len(parts) == 3:
+            out[parts[0]] = int(parts[1]) * int(parts[2])
+    return out
+
+
+def infrastructure(app_instances, db_instance, start, until):
+    """CPU and memory for both tiers. Absent metrics are omitted rather than reported as zero.
+
+    **Several app hosts (rows 32 onward) report as one tier plus a breakdown.** appCpuAvg is the
+    mean of the hosts' means and appCpuMax the highest peak on any host, so a single-host run
+    reads exactly as before; appCpuByInstance keeps each host's mean and peak, because an
+    uneven split across the load balancer is itself a finding. New Relic's usertime already
+    sums every host reporting as the one app name, so CPU seconds per sync needs no change.
+    """
     out = {}
     MB = 1024 * 1024
+    per = {}
+    for inst in list(app_instances):
+        avg = cloudwatch("AWS/EC2", "CPUUtilization", "InstanceId", inst, start, until, "Average")
+        peak = cloudwatch("AWS/EC2", "CPUUtilization", "InstanceId", inst, start, until, "Maximum")
+        if avg is not None:
+            per[inst] = {"avg": round(avg, 1), "max": round(peak, 1) if peak is not None else None}
+    if per:
+        out["appCpuAvg"] = round(sum(v["avg"] for v in per.values()) / len(per), 1)
+        peaks = [v["max"] for v in per.values() if v["max"] is not None]
+        if peaks:
+            out["appCpuMax"] = max(peaks)
+        if len(app_instances) > 1:
+            out["appCpuByInstance"] = per
+        # **CPU seconds from EC2, summed over the hosts** -- utilisation x vCPU x window -- as a
+        # cross-check on New Relic's usertime. It counts the whole host (OS, agent, GC threads),
+        # so it reads a little above usertime; a gap that widens between rows is the finding.
+        if isinstance(app_instances, dict) and all(app_instances.get(i) for i in per):
+            secs = (until - start).total_seconds()
+            out["appCpuSecondsEc2"] = round(
+                sum(v["avg"] / 100 * app_instances[i] * secs for i, v in per.items()), 1)
     pairs = [
-        ("appCpuAvg", "AWS/EC2", "CPUUtilization", "InstanceId", app_instance, "Average", 1),
-        ("appCpuMax", "AWS/EC2", "CPUUtilization", "InstanceId", app_instance, "Maximum", 1),
         ("rdsCpuAvg", "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", db_instance, "Average", 1),
         ("rdsCpuMax", "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", db_instance, "Maximum", 1),
         ("rdsFreeableMemMbMin", "AWS/RDS", "FreeableMemory", "DBInstanceIdentifier", db_instance, "Minimum", MB),
@@ -232,7 +274,8 @@ def main(argv=None) -> int:
                                        "split (each run a subdirectory with sync-durations.csv)")
     p.add_argument("--tail-min", type=int, default=20)
     p.add_argument("--app-instance", default=os.environ.get("AVNI_APP_INSTANCE", "i-044c88e15e8ea9e0f"),
-                   help="EC2 instance id for app CPU; AVNI_APP_INSTANCE overrides")
+                   help="EC2 instance id(s) for app CPU, comma-separated when the run had "
+                        "several app hosts; AVNI_APP_INSTANCE overrides")
     p.add_argument("--db-instance", default=os.environ.get("AVNI_DB_INSTANCE", "avni-loadtest"),
                    help="RDS identifier for database CPU and memory")
     p.add_argument("--no-infra", action="store_true",
@@ -279,8 +322,27 @@ def main(argv=None) -> int:
                     entry["cpuPerCustomerSync"] = round(cpu / len(customer), 2)
                 entry["distribution"] = distribute(cpu, rows)
             if not args.no_infra:
+                # **Which app hosts a run had is a fact about the run, not about today.** A run
+                # already in the cache with appInstances recorded keeps them, so re-processing
+                # every run after a resize or a scale-out does not read the wrong hosts or
+                # multiply by the wrong vCPU. A new run records what it was given, with vCPU
+                # read now -- right for a chain that runs this straight after the run.
+                # An older entry without the record keeps the one-instance default and gets
+                # no EC2 CPU seconds, since its vCPU then is not known.
+                prior = cache.get(run_id, {}).get("appInstances")
+                if prior:
+                    instances = prior
+                elif run_id not in cache:
+                    ids = [i for i in args.app_instance.split(",") if i]
+                    vcpus = app_vcpus(ids)
+                    instances = {i: vcpus.get(i) for i in ids}
+                    entry["appInstances"] = instances
+                else:
+                    instances = [i for i in args.app_instance.split(",") if i]
+                if isinstance(instances, dict):
+                    entry["appInstances"] = instances
                 entry.update(app_memory(key, args.account, args.region, args.app, start, until))
-                entry.update(infrastructure(args.app_instance, args.db_instance, start, until))
+                entry.update(infrastructure(instances, args.db_instance, start, until))
             cache[run_id] = entry
             extra = ""
             if entry.get("appCpuAvg") is not None and entry.get("rdsCpuAvg") is not None:

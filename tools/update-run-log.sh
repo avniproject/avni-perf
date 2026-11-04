@@ -614,6 +614,10 @@ for r, link, meta, stats, sha7, corr in details:
             # Whole-server CPU over the run's window divided by its syncs: an attribution, not a
             # per-sync measurement, and it carries whatever else ran on the box.
             D.append(f"| app CPU seconds | {entry['cpuSeconds']:,.0f} |")
+            if entry.get('appCpuSecondsEc2') is not None:
+                hosts = len(entry.get('appInstances') or {}) or 1
+                D.append(f"| app CPU seconds, EC2 ({hosts} host{'s' if hosts > 1 else ''}) | "
+                         f"{entry['appCpuSecondsEc2']:,.0f} |")
             # **Utilisation and memory for both tiers**, so a run can be read for headroom
             # rather than only for throughput. App CPU is EC2's and app heap is the agent's --
             # the app host has no CloudWatch agent, so EC2 publishes no memory at all. RDS
@@ -624,6 +628,9 @@ for r, link, meta, stats, sha7, corr in details:
                 peak = (f", peak {entry['appCpuMax']:.0f}%"
                         if entry.get('appCpuMax') is not None else "")
                 D.append(f"| app CPU | {entry['appCpuAvg']:.0f}% mean{peak} |")
+                for inst, v in sorted((entry.get('appCpuByInstance') or {}).items()):
+                    ipeak = f", peak {v['max']:.0f}%" if v.get('max') is not None else ""
+                    D.append(f"| app CPU, {inst} | {v['avg']:.0f}% mean{ipeak} |")
             if entry.get('appHeapUsedMb') is not None:
                 of = (f" of {entry['appHeapMaxMb']:,.0f} MB max"
                       if entry.get('appHeapMaxMb') is not None else "")
