@@ -11,8 +11,15 @@
 #
 # Environment: AVNI_INFRA overrides where the avni-infra checkout is found
 # (default: beside this repository). SWAP_LOG_DIR overrides where the phase
-# timings are written (default: $TMPDIR). The app host and the database address
-# are read from tofu's state, not configured here.
+# timings are written (default: $TMPDIR). SWAP_CLIENT picks the host that runs the
+# psql sessions: `injector` (default) or `app`, the first app host, as before Nov
+# 2026. The host and the database address are read from tofu's state, not
+# configured here.
+#
+# **The injector is the client so no app host has to run through a reload.** A
+# 10k reload is ~80 minutes in which the app JVMs only sat idle, and from row 33
+# on there are several of them on large classes. The injector is idle between
+# runs too, so this refuses while a simulation is running there.
 #
 # WRITTEN FROM WHAT WENT WRONG ON 15 OCT, and each guard is here because its
 # absence cost time:
@@ -86,32 +93,50 @@ PROXY="$PWD/configure/scripts/eice-ssh-proxy.sh"
 # variable form resolves to empty for anyone who runs this from a zsh prompt.
 tofu_out(){ tofu -chdir=provision/tofu/envs/loadtest output "$@" 2>/dev/null; }
 DB=$(tofu_out -raw db_endpoint); DB=${DB%:*}
-APP=$(tofu_out -json instance_ids \
-      | python3 -c 'import json,sys;print(json.load(sys.stdin)["avni-server"])' 2>/dev/null)
-[ -n "$DB" ] && [ -n "$APP" ] \
+case "${SWAP_CLIENT:-injector}" in
+  injector) CLIENT_KEY=injector ;;
+  app)      CLIENT_KEY=avni-server ;;
+  *) echo "SWAP_CLIENT must be injector or app, not '$SWAP_CLIENT'" >&2; exit 1 ;;
+esac
+CLIENT=$(tofu_out -json instance_ids \
+      | python3 -c "import json,sys;print(json.load(sys.stdin)['$CLIENT_KEY'])" 2>/dev/null)
+[ -n "$DB" ] && [ -n "$CLIENT" ] \
   || { echo "could not resolve db_endpoint and instance_ids from tofu -- refusing" >&2; exit 1; }
 # Phase timings land here. Not the repository: they are per-run facts, and the
 # ones worth keeping are quoted into execution-plan.md by hand.
 S="${SWAP_LOG_DIR:-${TMPDIR:-/tmp}}"
-sshapp(){ ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
-  -o ConnectTimeout=30 -o ServerAliveInterval=30 -o ProxyCommand="$PROXY %h" ubuntu@"$APP" "$@" 2>/dev/null; }
+sshc(){ ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  -o ConnectTimeout=30 -o ServerAliveInterval=30 -o ProxyCommand="$PROXY %h" ubuntu@"$CLIENT" "$@" 2>/dev/null; }
 say(){ echo "[$(TZ=Asia/Kolkata date +%H:%M:%S)] $*"; }
 : > $S/$TAG.timings; phase(){ echo "$1 $(( $(date +%s) - $2 ))s" >> $S/$TAG.timings; }
+
+# **Preflight on the client:** reachable, psql installed, nothing being measured on it,
+# and room for the archive and its extraction. The 10k extracts to 12 GB; the free-space
+# floor (SWAP_MIN_FREE_GB, default 25) leaves room for the archive beside it.
+PRE=$(sshc "command -v psql >/dev/null && echo psql=yes || echo psql=no
+  echo sims=\$(ps -eo args | grep -c '[A]vniSyncSimulation')
+  echo freegb=\$(df -BG --output=avail /tmp | tail -1 | tr -dc 0-9)")
+[ -n "$PRE" ] || { echo "cannot reach the client ($SWAP_CLIENT ${CLIENT}) over ssh -- refusing" >&2; exit 1; }
+echo "$PRE" | grep -q '^psql=yes' || { echo "no psql on the client ${CLIENT}: run the injector playbook (postgresql-client) -- refusing" >&2; exit 1; }
+echo "$PRE" | grep -q '^sims=0' || { echo "a simulation is running on ${CLIENT} -- refusing to reload under it" >&2; exit 1; }
+FREE=$(echo "$PRE" | sed -n 's/^freegb=//p')
+[ "${FREE:-0}" -ge "${SWAP_MIN_FREE_GB:-25}" ] || { echo "only ${FREE:-?} GB free on ${CLIENT}:/tmp, want ${SWAP_MIN_FREE_GB:-25} -- refusing" >&2; exit 1; }
+say "client: ${SWAP_CLIENT:-injector} ${CLIENT}, ${FREE} GB free"
 
 SECRET=$(tofu -chdir=provision/tofu/envs/loadtest output -raw db_master_secret_arn 2>/dev/null)
 aws secretsmanager get-secret-value --secret-id "$SECRET" --query SecretString --output text </dev/null \
 | python3 -c 'import json,sys;pw=json.load(sys.stdin)["password"];print(pw.replace("\\","\\\\").replace(":","\\:"))' \
-| sshapp "umask 077; IFS= read -r P; printf '%s:5432:openchs:openchs:%s' '$DB' \"\$P\" > /tmp/.pgpass_$TAG; chmod 600 /tmp/.pgpass_$TAG"
+| sshc "umask 077; IFS= read -r P; printf '%s:5432:openchs:openchs:%s' '$DB' \"\$P\" > /tmp/.pgpass_$TAG; chmod 600 /tmp/.pgpass_$TAG"
 PSQL="PGPASSFILE=/tmp/.pgpass_$TAG psql -h $DB -U openchs -d openchs -w -v ON_ERROR_STOP=1"
 Q="PGPASSFILE=/tmp/.pgpass_$TAG psql -h $DB -U openchs -d openchs -w -At"
 
 # run a long statement detached, poll its rc, return its exit status
 detached(){ # $1 label, $2 sql path
-  sshapp "rm -f /tmp/$TAG.$1.rc /tmp/$TAG.$1.log
+  sshc "rm -f /tmp/$TAG.$1.rc /tmp/$TAG.$1.log
     setsid nohup bash -c '$PSQL -f $2 > /tmp/$TAG.$1.log 2>&1; echo \$? > /tmp/$TAG.$1.rc' >/dev/null 2>&1 </dev/null & sleep 2"
   local t0=$(date +%s) rc=''
   while :; do
-    rc=$(sshapp "cat /tmp/$TAG.$1.rc 2>/dev/null"); [ -n "$rc" ] && break
+    rc=$(sshc "cat /tmp/$TAG.$1.rc 2>/dev/null"); [ -n "$rc" ] && break
     # **A teardown cannot report progress, and two attempts at one have now failed.**
     # "rows copied" showed nothing because a teardown emits no COPY lines.
     # `n_tup_del` then showed 0 for all 13 minutes of a delete of 12.4 M rows,
@@ -127,9 +152,9 @@ detached(){ # $1 label, $2 sql path
     # last one is the failure actually worth catching -- a teardown queued
     # behind an ACCESS EXCLUSIVE lock looks exactly like a slow one.
     if [ "$1" = "td" ]; then
-      echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshapp "$Q -c \"SELECT coalesce(state, '?') || coalesce(' waiting on ' || wait_event_type || ':' || wait_event, ', not waiting') || ', ' || date_trunc('second', now() - xact_start) || ' into the transaction' FROM pg_stat_activity WHERE application_name = 'psql' AND pid <> pg_backend_pid() AND xact_start IS NOT NULL ORDER BY xact_start LIMIT 1;\"")"
+      echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshc "$Q -c \"SELECT coalesce(state, '?') || coalesce(' waiting on ' || wait_event_type || ':' || wait_event, ', not waiting') || ', ' || date_trunc('second', now() - xact_start) || ' into the transaction' FROM pg_stat_activity WHERE application_name = 'psql' AND pid <> pg_backend_pid() AND xact_start IS NOT NULL ORDER BY xact_start LIMIT 1;\"")"
     else
-      echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshapp "awk '/^COPY /{n+=\$2} END{print n+0}' /tmp/$TAG.$1.log") rows copied"
+      echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshc "awk '/^COPY /{n+=\$2} END{print n+0}' /tmp/$TAG.$1.log") rows copied"
     fi
     sleep 60
   done
@@ -140,15 +165,15 @@ detached(){ # $1 label, $2 sql path
 t=$(date +%s); say "1. fetch $SET and prove it targets 10-19"
 B=$(tofu -chdir=provision/tofu/envs/loadtest output -raw bucket 2>/dev/null)
 URL=$(aws s3 presign "s3://$B/datasets/$SET.tar.gz" --expires-in 10800)
-sshapp "rm -rf /tmp/$SET; curl -sSf -o /tmp/$SET.tgz '$URL' && tar -C /tmp -xzf /tmp/$SET.tgz 2>/dev/null && rm -f /tmp/$SET.tgz && echo \"   extracted \$(du -sh /tmp/$SET | cut -f1)\""
+sshc "rm -rf /tmp/$SET; curl -sSf -o /tmp/$SET.tgz '$URL' && tar -C /tmp -xzf /tmp/$SET.tgz 2>/dev/null && rm -f /tmp/$SET.tgz && echo \"   extracted \$(du -sh /tmp/$SET | cut -f1)\""
 # **The archive's load.sql names its TSVs by the absolute path the generator was given.** The
 # earlier datasets were generated into /tmp/<name> and so matched this extraction root by luck;
 # pilot-day-180-5k was generated into ~/avni-datasets and its first load died in three seconds on
 # "/Users/joy/avni-datasets/pilot-day-180-5k/ngo-1/address_level_type.tsv: No such file or
 # directory" (23 Oct 2026) -- after the teardown had already emptied organisations 10-19. Whatever
 # the generator was given, the files are at /tmp/$SET here, so say so.
-sshapp "sed -i -E \"s|FROM '[^']*/$SET/|FROM '/tmp/$SET/|g\" /tmp/$SET/*/load.sql; echo \"   load.sql paths: \$(grep -ohE \"FROM '[^']*/$SET/\" /tmp/$SET/*/load.sql | sort -u | tr '\\n' ' ')\""
-sshapp "python3 -c \"
+sshc "sed -i -E \"s|FROM '[^']*/$SET/|FROM '/tmp/$SET/|g\" /tmp/$SET/*/load.sql; echo \"   load.sql paths: \$(grep -ohE \"FROM '[^']*/$SET/\" /tmp/$SET/*/load.sql | sort -u | tr '\\n' ' ')\""
+sshc "python3 -c \"
 import json,glob
 want={10,11,12,13,14,15,16,17,18,19}; got=set()
 for m in glob.glob('/tmp/$SET/*/manifest.json'): got|=set(json.load(open(m))['target']['organisations'])
@@ -161,7 +186,7 @@ print('   targets', sorted(got)); raise SystemExit(0 if got==want else 1)\"" \
 # range cut was removed because `id >= id_base` also took the bundle's own
 # bundleloader@ user. So --id-base below is inert, and this line exists so that
 # nobody reading the log infers otherwise.
-sshapp "python3 -c \"
+sshc "python3 -c \"
 import json,glob
 b=set()
 for m in glob.glob('/tmp/$SET/*/manifest.json'):
@@ -171,7 +196,7 @@ print('   incoming id_base', sorted(x for x in b if x is not None) or 'not in th
 phase fetch $t
 
 t=$(date +%s); say "2. FK scaffolding indexes"
-sshapp "$PSQL -c 'CREATE INDEX IF NOT EXISTS tmp_sw_enc_filled_by ON encounter (filled_by_id);' -c 'CREATE INDEX IF NOT EXISTS tmp_sw_pe_filled_by ON program_encounter (filled_by_id);'" >/dev/null || exit 1
+sshc "$PSQL -c 'CREATE INDEX IF NOT EXISTS tmp_sw_enc_filled_by ON encounter (filled_by_id);' -c 'CREATE INDEX IF NOT EXISTS tmp_sw_pe_filled_by ON program_encounter (filled_by_id);'" >/dev/null || exit 1
 phase index_create $t
 
 t=$(date +%s)
@@ -187,9 +212,9 @@ if [ "${SWAP_PARALLEL:-0}" = 1 ]; then
   # organisation whole and the others done, which the rc files report per organisation.
   say "3. teardown of organisations 10-19, parallel: one session per organisation"
   for o in 10 11 12 13 14 15 16 17 18 19; do
-    ( cd "$PERF/tools/data-generator" && python3 teardown_org.py --organisation $o --id-base 201000000 --scope data ) | sshapp "cat > /tmp/$TAG.td.$o.sql"
+    ( cd "$PERF/tools/data-generator" && python3 teardown_org.py --organisation $o --id-base 201000000 --scope data ) | sshc "cat > /tmp/$TAG.td.$o.sql"
   done
-  sshapp "rm -f /tmp/$TAG.td.*.rc /tmp/$TAG.td.*.log
+  sshc "rm -f /tmp/$TAG.td.*.rc /tmp/$TAG.td.*.log
     for o in 10 11 12 13 14 15 16 17 18 19; do
       setsid nohup bash -c \"$PSQL -f /tmp/$TAG.td.\$o.sql > /tmp/$TAG.td.\$o.log 2>&1; echo \\\$? > /tmp/$TAG.td.\$o.rc\" >/dev/null 2>&1 </dev/null &
     done; sleep 2; echo \"     \$(ls /tmp/$TAG.td.*.sql | wc -l) sessions started\""
@@ -199,35 +224,35 @@ if [ "${SWAP_PARALLEL:-0}" = 1 ]; then
   # generator's header comment ahead of the DO, so match the generator's name, not 'DO $$' (29 Oct).
   t0=$(date +%s)
   while :; do
-    DONE=$(sshapp "ls /tmp/$TAG.td.*.rc 2>/dev/null | sed 's|.*td\.||; s|\.rc||' | sort -n | tr '\n' ' '")
+    DONE=$(sshc "ls /tmp/$TAG.td.*.rc 2>/dev/null | sed 's|.*td\.||; s|\.rc||' | sort -n | tr '\n' ' '")
     N=$(echo $DONE | wc -w | tr -d ' ')
-    echo "     [$(( ($(date +%s)-t0)/60 ))m] $N/10 organisations finished${DONE:+ ($DONE)}; sessions: $(sshapp "$Q -c \"SELECT count(*) || ' active, ' || count(*) FILTER (WHERE wait_event_type = 'IO') || ' on IO, ' || count(*) FILTER (WHERE wait_event_type = 'Lock') || ' on a lock' FROM pg_stat_activity WHERE state = 'active' AND application_name = 'psql' AND query LIKE '%teardown_org.py%';\"")"
+    echo "     [$(( ($(date +%s)-t0)/60 ))m] $N/10 organisations finished${DONE:+ ($DONE)}; sessions: $(sshc "$Q -c \"SELECT count(*) || ' active, ' || count(*) FILTER (WHERE wait_event_type = 'IO') || ' on IO, ' || count(*) FILTER (WHERE wait_event_type = 'Lock') || ' on a lock' FROM pg_stat_activity WHERE state = 'active' AND application_name = 'psql' AND query LIKE '%teardown_org.py%';\"")"
     [ "$N" -ge 10 ] && break
     sleep 60
   done
-  BAD=$(sshapp "grep -L '^0\$' /tmp/$TAG.td.*.rc 2>/dev/null | sed 's|.*td\.||; s|\.rc||' | tr '\n' ' '")
-  [ -z "$BAD" ] || { echo "TEARDOWN FAILED for organisation(s): $BAD" >&2; for o in $BAD; do sshapp "echo \"--- $o ---\"; tail -8 /tmp/$TAG.td.$o.log"; done; exit 1; }
-  sshapp "cat /tmp/$TAG.td.*.log | grep -a 'organisation(s)' | awk '{n+=\$(NF-4)} END{print \"     deleted \" n \" rows from 10 organisations\"}'"
+  BAD=$(sshc "grep -L '^0\$' /tmp/$TAG.td.*.rc 2>/dev/null | sed 's|.*td\.||; s|\.rc||' | tr '\n' ' '")
+  [ -z "$BAD" ] || { echo "TEARDOWN FAILED for organisation(s): $BAD" >&2; for o in $BAD; do sshc "echo \"--- $o ---\"; tail -8 /tmp/$TAG.td.$o.log"; done; exit 1; }
+  sshc "cat /tmp/$TAG.td.*.log | grep -a 'organisation(s)' | awk '{n+=\$(NF-4)} END{print \"     deleted \" n \" rows from 10 organisations\"}'"
 else
   say "3. teardown of organisations 10-19"
   ( cd "$PERF/tools/data-generator" && python3 teardown_org.py \
       --organisation 10 --organisation 11 --organisation 12 --organisation 13 --organisation 14 \
       --organisation 15 --organisation 16 --organisation 17 --organisation 18 --organisation 19 \
-      --id-base 201000000 --scope data ) | sshapp "cat > /tmp/$TAG.td.sql"
-  detached td "/tmp/$TAG.td.sql" || { echo "TEARDOWN FAILED" >&2; sshapp "tail -12 /tmp/$TAG.td.log"; exit 1; }
-  sshapp "grep -a 'organisation(s)' /tmp/$TAG.td.log | tail -1" | sed 's/^/     /'
+      --id-base 201000000 --scope data ) | sshc "cat > /tmp/$TAG.td.sql"
+  detached td "/tmp/$TAG.td.sql" || { echo "TEARDOWN FAILED" >&2; sshc "tail -12 /tmp/$TAG.td.log"; exit 1; }
+  sshc "grep -a 'organisation(s)' /tmp/$TAG.td.log | tail -1" | sed 's/^/     /'
 fi
-E=$(sshapp "$Q -c \"SELECT count(*) FROM individual WHERE organisation_id BETWEEN 10 AND 19;\"")
+E=$(sshc "$Q -c \"SELECT count(*) FROM individual WHERE organisation_id BETWEEN 10 AND 19;\"")
 [ "${E:-1}" = "0" ] || { echo "ABORT: pilot still has $E individuals after teardown" >&2; exit 1; }
 echo "     pilot individuals: 0"
 phase teardown $t
 
 t=$(date +%s); say "4. VACUUM ANALYZE (before the load, and before the next teardown)"
-sshapp "$PSQL -c 'VACUUM ANALYZE;'" >/dev/null || exit 1
+sshc "$PSQL -c 'VACUUM ANALYZE;'" >/dev/null || exit 1
 phase vacuum_after_teardown $t
 
 t=$(date +%s); say "5. drop the FK scaffolding indexes"
-sshapp "$PSQL -c 'DROP INDEX IF EXISTS tmp_sw_enc_filled_by;' -c 'DROP INDEX IF EXISTS tmp_sw_pe_filled_by;'" >/dev/null || exit 1
+sshc "$PSQL -c 'DROP INDEX IF EXISTS tmp_sw_enc_filled_by;' -c 'DROP INDEX IF EXISTS tmp_sw_pe_filled_by;'" >/dev/null || exit 1
 phase index_drop $t
 
 t=$(date +%s)
@@ -245,7 +270,7 @@ if [ "${SWAP_PARALLEL:-0}" = 1 ]; then
   # lines, and the sequence fix-up -- the upward-only DO block from any one tenant file, which
   # is idempotent -- and the single ANALYZE run once, after every session has finished.
   say "6. load $SET, ${SWAP_PARALLEL:+parallel: }one session per tenant, sequences and ANALYZE once at the end"
-  sshapp "for d in \$(ls -d /tmp/$SET/*/ | sort); do n=\$(basename \$d);
+  sshc "for d in \$(ls -d /tmp/$SET/*/ | sort); do n=\$(basename \$d);
       { echo '\\timing on'; grep -E '^SET client_min_messages = warning;|^\\\\copy ' \${d}load.sql; } > /tmp/$TAG.load.\$n.sql; done
     { echo 'SET client_min_messages = notice;'; awk '/^DO \\\$\\\$/,/^END \\\$\\\$;/' \$(ls /tmp/$SET/*/load.sql | head -1); echo 'ANALYZE;'; } > /tmp/$TAG.seqfix.sql
     rm -f /tmp/$TAG.load.*.rc /tmp/$TAG.load.*.log
@@ -254,24 +279,24 @@ if [ "${SWAP_PARALLEL:-0}" = 1 ]; then
     done; sleep 2; echo \"     \$(ls /tmp/$TAG.load.*.sql | grep -vc seqfix) sessions started\""
   t0=$(date +%s)
   while :; do
-    DONE=$(sshapp "ls /tmp/$TAG.load.*.rc 2>/dev/null | wc -l"); ALL=$(sshapp "ls /tmp/$TAG.load.*.sql | grep -vc seqfix")
-    echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshapp "cat /tmp/$TAG.load.*.log 2>/dev/null | awk '/^COPY /{n+=\$2} END{print n+0}'") rows copied, ${DONE:-0}/${ALL:-?} tenants finished"
+    DONE=$(sshc "ls /tmp/$TAG.load.*.rc 2>/dev/null | wc -l"); ALL=$(sshc "ls /tmp/$TAG.load.*.sql | grep -vc seqfix")
+    echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshc "cat /tmp/$TAG.load.*.log 2>/dev/null | awk '/^COPY /{n+=\$2} END{print n+0}'") rows copied, ${DONE:-0}/${ALL:-?} tenants finished"
     [ "${DONE:-0}" -ge "${ALL:-99}" ] && break
     sleep 60
   done
-  BAD=$(sshapp "grep -L '^0\$' /tmp/$TAG.load.*.rc 2>/dev/null | sed 's|.*load\.||; s|\.rc||' | tr '\n' ' '")
-  [ -z "$BAD" ] || { echo "LOAD FAILED for tenant(s): $BAD" >&2; for n in $BAD; do sshapp "echo \"--- $n ---\"; tail -6 /tmp/$TAG.load.$n.log"; done; exit 1; }
+  BAD=$(sshc "grep -L '^0\$' /tmp/$TAG.load.*.rc 2>/dev/null | sed 's|.*load\.||; s|\.rc||' | tr '\n' ' '")
+  [ -z "$BAD" ] || { echo "LOAD FAILED for tenant(s): $BAD" >&2; for n in $BAD; do sshc "echo \"--- $n ---\"; tail -6 /tmp/$TAG.load.$n.log"; done; exit 1; }
   say "   all tenants loaded; sequences and ANALYZE"
-  detached seqfix "/tmp/$TAG.seqfix.sql" || { echo "SEQUENCE FIX-UP / ANALYZE FAILED" >&2; sshapp "tail -12 /tmp/$TAG.seqfix.log"; exit 1; }
+  detached seqfix "/tmp/$TAG.seqfix.sql" || { echo "SEQUENCE FIX-UP / ANALYZE FAILED" >&2; sshc "tail -12 /tmp/$TAG.seqfix.log"; exit 1; }
 else
   say "6. load $SET, per-tenant ANALYZE stripped, one at the end"
-  sshapp "sed -i 's/^ANALYZE;\$/-- ANALYZE moved to the end of the driver/' /tmp/$SET/*/load.sql
+  sshc "sed -i 's/^ANALYZE;\$/-- ANALYZE moved to the end of the driver/' /tmp/$SET/*/load.sql
     { echo '\\timing on'; for d in \$(ls -d /tmp/$SET/*/ | sort); do echo \"\\\\echo === TENANT \$(basename \$d) ===\"; echo \"\\\\i \${d}load.sql\"; done; echo 'ANALYZE;'; } > /tmp/$TAG.load.sql"
-  detached load "/tmp/$TAG.load.sql" || { echo "LOAD FAILED" >&2; sshapp "tail -12 /tmp/$TAG.load.log"; exit 1; }
+  detached load "/tmp/$TAG.load.sql" || { echo "LOAD FAILED" >&2; sshc "tail -12 /tmp/$TAG.load.log"; exit 1; }
 fi
 phase load $t
 
-t=$(date +%s); say "7. VACUUM ANALYZE"; sshapp "$PSQL -c 'VACUUM ANALYZE;'" >/dev/null; phase vacuum $t
+t=$(date +%s); say "7. VACUUM ANALYZE"; sshc "$PSQL -c 'VACUUM ANALYZE;'" >/dev/null; phase vacuum $t
 t=$(date +%s); say "8. REINDEX"
 # Measured 27 Oct 2026 on db.m6g.large: 42.5 min, IO-bound on the volume -- nineteen minutes at
 # its 3,000 IOPS in 4 KB reads (queue 40-50, latency 15 ms), then at its 125 MB/s cap -- against
@@ -279,11 +304,11 @@ t=$(date +%s); say "8. REINDEX"
 # session changed nothing (the random-read phase is heap pages, not sort spills), so it is not
 # set. The levers are the big class, or not rebuilding the co-tenants' share of these indexes.
 for tb in individual encounter program_encounter program_enrolment address_level catchment catchment_address_mapping users user_group groups; do
-  sshapp "$PSQL -c 'REINDEX TABLE $tb;'" >/dev/null || { echo "REINDEX $tb failed" >&2; exit 1; }; done
+  sshc "$PSQL -c 'REINDEX TABLE $tb;'" >/dev/null || { echo "REINDEX $tb failed" >&2; exit 1; }; done
 phase reindex $t
 
 say "9. verification"
-sshapp "$Q -F'|' -c \"
+sshc "$Q -F'|' -c \"
 SELECT 'pilot individuals', count(*) FROM individual WHERE organisation_id BETWEEN 10 AND 19
 UNION ALL SELECT 'pilot encounters', count(*) FROM encounter WHERE organisation_id BETWEEN 10 AND 19
 UNION ALL SELECT 'co-tenant rows (want 0)', count(*) FROM individual WHERE organisation_id >= 24
@@ -299,7 +324,7 @@ SELECT 'feeder rows', count(*) FROM feeder
 UNION ALL SELECT 'present', count(*) FROM feeder f JOIN users u ON u.username=f.username
 UNION ALL SELECT 'MISSING', count(*) FROM feeder f LEFT JOIN users u ON u.username=f.username WHERE u.id IS NULL
 UNION ALL SELECT 'without catchment', count(*) FROM feeder f JOIN users u ON u.username=f.username WHERE u.catchment_id IS NULL;''')
-" | sshapp "cat > /tmp/$TAG.fd.sql; $Q -F'|' -f /tmp/$TAG.fd.sql" | sed 's/^/     /'
+" | sshc "cat > /tmp/$TAG.fd.sql; $Q -F'|' -f /tmp/$TAG.fd.sql" | sed 's/^/     /'
 echo "=== phase timings ==="; cat $S/$TAG.timings | sed 's/^/     /'
-sshapp "rm -f /tmp/.pgpass_$TAG"
+sshc "rm -f /tmp/.pgpass_$TAG /tmp/$TAG.*; rm -rf /tmp/$SET"
 say "done -- $SET is loaded and verified"
