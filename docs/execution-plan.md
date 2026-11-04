@@ -1184,6 +1184,12 @@ is binding; the calendar is not.
 | 30 | V | **All fixes together** — the 18.3 release candidate (the row 29 fixes that have landed; #882's and #1057 only if they are in it) on A and B, then C (case 13, 2 vCPU) and D (5,000 users, 8 + 8) | **done 2026-10-30 — the release candidate (`946553685`) on all four anchors: A 1.94 CPU s per sync (−50%, p95 2,433 → 332 ms), B 2.28 (−47%, p95 449 → 248, requests halved, RDS −25%), C 1.78 on the 2 vCPU cliff with 0 failures (17.3: 467, p95 56 s), D 1.81 at 5,000 users (−43%, p95 205). The number to quote: −43 to −50% CPU per sync, database −20 to −25%, no failures anywhere, and the knee moved off 2 vCPU.** `avni-server-18.3-1097-1098-1100-1103-946553685.jar` (`946553685`), sha256 `1315739b…ead085729`, bytecode-checked as exactly the union of the four row 29 fixes on 18.3 (`DummyInterceptor` gone, the `@Formula` entity set, `MediaController`, `JodaDateTimeJavaType` + contributor with the converter byte-identical to 18.1). Runs: **A then C the evening of 29 Oct** (both `m6g.large`, one reload; A writes nothing), **B then D on 30 Oct** (B on `m6g.xlarge`; D on 8 + 8 after the `pilot-day-180-5k` swap). **B and D run with `UPLOAD_URL_BATCH=50`** — the candidate ships with avni-client#2218, so that is what the release looks like; #1100's own row 29 run is the batched-vs-unbatched reference. Fixes interact, so this is the number to quote for the release; C shows whether the knee moved, D whether the gain holds at scale. [Validation phase](#validation-phase) |
 | 31 | V | **The break point with the fixes in** — the combined jar on row 26's 16 + 16, a stress ramp from 10,000 to 40,000 syncs an hour, then two steady hours bracketing the knee it finds | **done 30 Oct — with the fixes in, 16 + 16 carries ~27,500 syncs an hour at its edge and ~22,500 comfortably; plan on ~25,000.** Ramp 10,000 → 40,000: queueing from ~25,000 an hour, throughput ceiling ~265–300 req/s, app CPU binding at 97% with the 100-connection pool pinned behind it, database ≤58%, injector ≤14%, 0.02% failures; p95 grew to 24 s above capacity. Steady **0.9× (22,500)**: 0 failures, p95 222 ms, 1.78 CPU s per sync, app ~75%, pool 37–50, in flight flat. Steady **1.1× (27,500)**: 0 failures, p95 420 ms, 1.85 CPU s per sync, app ~91%, pool touching 100, in flight flat at ~2,550 — the rate was sustained, so the knee is above it; the ramp understated it, as the method said it would (queues build behind a climbing rate, and by its saturation the bed carried an hour of the run's own pushes). The pool pins only when CPU saturates, so it is a symptom, not a second limit. Against the old jar's predicted ~14,000–16,000 (31b, not run) the fixes move the 16 + 16 knee up by roughly 1.7×. [Row 31](#row-31)
 | 31b | V | *Optional:* **the same ramp on the 18.1 production jar** | **pending — only if the fixes' move of the break point needs to be measured rather than inferred.** Predicted knee ~14,000–16,000 an hour. [Row 31](#row-31) |
+| 32 | S | **Prerequisites for more than one app server** — `app_instance_count` in avni-infra (N hosts, N load-balancer targets), and app CPU summed across instances in `cpu-per-sync.py` and the run log | **pending.** No run. The environment has one `avni-server` host and one target, and the tooling reads one instance id. [Rows 32–37](#rows-32-37) |
+| 33 | S | **Scale-out gate** — 2 × `m6g.4xlarge` behind the load balancer, `db.m6g.4xlarge`, steady 27,500 syncs an hour (row 31's 1.1×, now ~13,750 per copy) | **pending — after 32.** One hour. Checks the split is even, nothing fails, and CPU per sync matches one copy's 1.85 before any ramp leans on two. [Rows 32–37](#rows-32-37) |
+| 34 | S | **The database's limit on one 16-vCPU instance** — 2 × `m6g.4xlarge` (32 app vCPU), `db.m6g.4xlarge`, ramp 25,000 → 60,000 an hour, then steady at 0.9× and 1.1× of the knee | **pending — after 33.** Predicted knee ~47,000–50,000 with **the database binding first**, the first run of the campaign to make it bind. [Rows 32–37](#rows-32-37) |
+| 35 | S | **32 app vCPU three ways** — 1 × `m6g.8xlarge` and 4 × `m6g.2xlarge`, same database, each steady at row 34's 0.9× | **pending — after 34.** Two hours. Same load and app vCPU as row 34's steady hour on 2 × `m6g.4xlarge`, so one, two and four servers compare directly; the smaller instances are what make scaling out flexible. [Rows 32–37](#rows-32-37) |
+| 36 | S | **50,000 an hour** — the app shape that won 35, sized to ~48 vCPU, on `db.m6g.8xlarge` (32 vCPU): steady 50,000 for an hour, then a ramp to 70,000 | **pending — after 35.** The hardware recommendation for 50,000: the smallest configuration that holds it with app ≤85% and database ≤70%. [Rows 32–37](#rows-32-37) |
+| 37 | S | **50,000 on more distinct users** — row 36's steady hour on a 25,000-user dataset | **pending — after 36, and only if row 36's database sits above ~50%.** On the 10k dataset each user syncs ~4.5 times an hour, which keeps the database's working set warmer than 50,000 real users would. [Rows 32–37](#rows-32-37) |
 
 #### Rows 21 and 22: removing `DummyInterceptor`
 
@@ -1815,6 +1821,135 @@ syncs an hour** for 16 + 16: below the knee with ~10% to spare, at app ~85%.
 
 Requests per sync were ~35 at the steady rates (222 × 3,600 / 22,577; 265 × 3,600 / 27,482),
 which is the batched client: row 26's unbatched 10,000-user run made ~110.
+
+<a id="rows-32-37"></a>
+#### Rows 32–37: what 50,000 syncs an hour needs — vertical, horizontal, and the database's own limit
+
+**Added 4 Nov 2026.** Row 31 found 16 app + 16 database vCPU with the fixes in carry ~27,500 syncs
+an hour at the edge and ~25,000 comfortably. Two things have never been measured:
+- **Whether the app tier scales out** as well as it scales up: every run so far had one app server.
+- **Where one database instance stops.** It has never been the constraint.
+
+These rows answer both and size the hardware for **50,000 syncs an hour**.
+
+##### Why horizontal scaling can be tested here although production cannot use it yet
+
+`avni-product-ops` `context/avni-server-horizontal-scaling.md` (30 Oct 2026) lists what makes
+more than one avni-server unsafe today:
+- the second-level cache keeping stale users, catchments, locations and concepts after an admin edit;
+- start-up recovery of bulk uploads;
+- timed jobs (Glific, storage clean-up) running on every copy;
+- in-memory locks around Metabase setup, identifier ranges and user prefixes;
+- per-copy job queues;
+- a rules server expected on the same host.
+
+**None is exercised by a sync-only load test.** No admin edits a user or catchment mid-run, no
+upload, export or Metabase job runs, messaging is suppressed (F5.3), and the sync path does not
+call the rules server, so none is deployed beside the copies. Two practical points remain:
+
+- **Connections:** each copy has its own 100-connection pool. RDS's RAM-scaled `max_connections` on
+  these classes is far above 2–4 × 100, so nothing to change, but the pool is read per copy.
+- **Start the copies one at a time.** Each applies pending Flyway migrations at start-up; Flyway's
+  advisory lock should serialise them, but concurrent starts are untested.
+
+**So these rows measure what scaling out would buy once those blockers are fixed. They are not
+evidence that production can scale out today.**
+
+##### Row 32: prerequisites
+
+- **avni-infra:**
+  - an `app_instance_count` variable: N `avni-server-*` hosts in `local.hosts`, N
+    `aws_lb_target_group_attachment`s;
+  - New Relic on each under the same app name, so its timeslices aggregate;
+  - 1-minute CloudWatch on each, as now;
+  - load-balancer stickiness off. It is off today, and a sync burst should spread.
+- **Tooling:**
+  - `cpu-per-sync.py` and `update-run-log.sh` take a list of app instances, **sum** their
+    `CPUUtilization` × vCPU into CPU seconds, and report each instance's mean and peak. An uneven
+    split is itself a finding.
+  - New Relic's `apm.service.cpu.usertime` already sums across hosts.
+- **Injector:** `m6g.2xlarge` ran ≤14% at 27,500 an hour. At 50,000–70,000 that is ~25–40%, with
+  ~5,000–7,000 devices in flight. Raise `GATLING_HEAP` with it, and move to `m6g.4xlarge` if a ramp
+  takes it past 40%: the harness must not be the limit.
+- **Volume:** the database volume is gp3 at the 3,000 IOPS baseline. Row 26 peaked at 212 read and
+  261 write IOPS at 10,000 an hour, so ~1,300 writes are expected at 50,000. Watch it, and raise
+  provisioned IOPS (it needs a 400 GiB volume) only if `DiskQueueDepth` says so.
+
+##### What stays fixed across 33–37
+
+As row 31:
+- the 18.3 release candidate;
+- `pilot-day-180-10k` and its feeder (except row 37);
+- case 15 at ten a day with `UPLOAD_URL_BATCH=50`, `SYNC_MODE=realistic`;
+- co-tenants at 792/h;
+- heap pinned at 5,120 MB per copy.
+
+Reset and reload before each row. Capture timeslices per run. Read every knee with row 31's
+method: a ramp locates it, and two steady hours at ~0.9× and 1.1× confirm it. Stop a ramp at 1%
+failures sustained for five minutes.
+
+##### Predictions, written before the runs
+
+From row 31's steady pair. App: 1.78–1.85 CPU s per sync. Database on 16 vCPU: ~46% at 22,500 and
+~54% at 27,500 an hour, which is ~1.6 points per 1,000 syncs on a ~10% floor. Linear, and on the
+10k dataset:
+
+| configuration | app vCPU | database | app knee | database knee | **expected limit** |
+|---|---|---|---|---|---|
+| row 31 (measured) | 16 | 16 | ~27,500 | — | 27,500 on app CPU |
+| **33** 2 × 16, steady 27,500 | 32 | 16 | — | — | none: app ~45%, database ~54% |
+| **34** 2 × 16, ramp | 32 | 16 | ~53,000–56,000 | **~47,000–50,000** | **~47,000–50,000 on the database** |
+| **35** 1 × 32 and 4 × 8, each steady at 34's 0.9× | 32 | 16 | as 34 | as 34 | none: app CPU per sync within noise of 34's 2 × 16 if size and count are equivalent |
+| **36** ~48 app vCPU, `db.m6g.8xlarge` | ~48 | 32 | ~80,000 | ~95,000 | **50,000 held: app ~55–60%, database ~45%** |
+
+- **What would change the plan.**
+  - **CPU per sync higher on two copies than on one, past noise.** The copies are paying something
+    twice: their own cold caches, pools, JIT and GC. The answer then favours fewer, larger servers.
+  - **The database binding below ~45,000.** The working-set and connection costs grow faster than
+    linear. Row 37 matters more.
+  - **Something other than CPU binding the database:** IOPS, `DiskQueueDepth`, connections, or a
+    lock wait in `pg_stat_activity` (read from Performance Insights, not queried). Then a larger
+    class is not the fix.
+- **Four smaller copies (row 35) bring their own effects.** These are measured, not confounds:
+  - **Per-copy fixed overhead counts four times:** each copy has its own JVM, JIT, GC, agent and
+    caches to warm. If it matters, CPU per sync on 4 × 8 comes out above 1 × 32.
+  - **Up to 400 database backends against row 31's 100:** inside the RAM-scaled
+    `max_connections`, but each costs database memory. Read RDS connections and freeable memory.
+  - **Uneven load across copies:** a hot copy reaches its limit sooner. Report each instance's CPU,
+    and treat a wide spread as a finding.
+  - **Warm-up must reach every copy:** check each instance's CPU during the 900 s burst.
+
+  Row 25 already ran 8 vCPU cleanly, and per-sync cost was flat from 8 to 16.
+- **Why ~48 app vCPU for row 36, not 32.** 32 vCPU puts 50,000 at ~90% of the app's knee, which is
+  row 31's "at the edge", not its "comfortably". 48 can be one `m6g.12xlarge`, 3 × `m6g.4xlarge` or
+  6 × `m6g.2xlarge`, whichever row 35 favours.
+- **Why a 32-vCPU database.** 16 is expected to sit at its own knee at 50,000.
+
+**The answer these rows should give:**
+- the hardware for 50,000 an hour, both tiers;
+- whether to scale the app by size or by count;
+- the largest load one database instance carries.
+
+On these predictions: about 48 app vCPU in either shape, and a 32-vCPU database. One 16-vCPU
+database tops out at about 47,000–50,000 syncs an hour.
+
+**Row 37's dataset**, if it runs: `pilot-day-180-25k`, built from `pilot-day-180.json` the way the
+5k and 10k were, with field workers × 50/3 and ten encounters a day. That is 24,930 field workers,
+24.9 M individuals and 44.9 M encounters. **Its ids top out at 290.7 M against the co-tenants' 301 M
+— it fits, with ~10 M to spare**, so no larger recipe fits under that `id_base` without moving
+one of them.
+
+##### What it costs
+
+| row | hours on the large classes |
+|---|---|
+| 32 | none: infra and tooling work |
+| 33 | 1 |
+| 34 | 2-hour ramp + 2 steady |
+| 35 | 2 |
+| 36 | 1 steady + 1–2 ramp |
+| 37 | 1, plus generating and loading a 25k dataset (~2.5× the 10k's 28 M rows) |
+| **total** | **~10–11 hours of runs**, plus resizes and a reload per row |
 
 #### Standing task: back up New Relic weekly
 
