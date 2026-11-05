@@ -51,7 +51,7 @@ case "$SET" in pilot-day-*) ;; *) echo "usage: $(basename "$0") pilot-day-120|pi
 # pointed at the pilot feeder would complete and measure users that are not there.
 # The 5k and 10k sets (plan rows 25-26) have their own users entirely, generated with
 # supervisors at pushScale 0, so their feeders carry the -nosuppush suffix.
-case "$SET" in *-span20) FEEDVAR=span20 ;; *-5k) FEEDVAR=pilot-5k-nosuppush ;; *-10k) FEEDVAR=pilot-10k-nosuppush ;; *) FEEDVAR=pilot ;; esac
+case "$SET" in *-span20) FEEDVAR=span20 ;; *-5k) FEEDVAR=pilot-5k-nosuppush ;; *-10k) FEEDVAR=pilot-10k-nosuppush ;; *-25k) FEEDVAR=pilot-25k-nosuppush ;; *) FEEDVAR=pilot ;; esac
 # **Paths are derived rather than written in.** This script lived in a
 # scratchpad directory until a tmp clean emptied it, which is why it is tracked
 # now -- and tracked means it cannot assume one person's checkout. avni-infra is

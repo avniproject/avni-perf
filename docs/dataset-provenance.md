@@ -253,3 +253,23 @@ with supervisors at `pushScale` 0.0; the runs inject 5,000 and 10,000 of them. T
 `~/avni-datasets/<name>.keep/`. **Neither is loaded**: that needs the database class and
 `db_allocated_storage` raised first, since the storage cannot be shrunk afterwards.
 
+## pilot-day-180-25k (generated 5 Nov 2026, not loaded)
+
+Plan row 37, generated ahead of need. `pilot-day-180-25k.json`: `pilot-day-180.json` with every
+tenant's `field_workers` scaled by 50/3 and `encounters_per_worker_per_day` at 10, village density,
+span 8.4 and beneficiaries per village unchanged, as for the 5k and 10k. Generated locally from the
+customer's bundle (`~/avni-perf-bundles/tanuh`) against `columns.json` and `refs-pilot-day-180.json`,
+with `--supervisor-push-scale 0.0`; generator at avni-perf `1b5103d`.
+
+| | workers | users | individuals | encounters | rows | generate | archive |
+|---|---|---|---|---|---|---|---|
+| `pilot-day-180-25k` | 24,930 | 27,892 | 24,924,000 | 44,874,000 | 69,885,300 | 34 min | `datasets/pilot-day-180-25k.tar.gz`, 5.2 GiB |
+
+Exactly the recipe's numbers. Its own note puts the highest id at 290.7 M, under the co-tenants'
+band at 301 M. Feeders split with `--variant pilot-25k-nosuppush`: `case4-users-pilot-25k-nosuppush.csv`
+(9,326 users, what `swap-dataset.sh` verifies a load against) and `case5-users-pilot-25k-nosuppush.csv`
+(all 27,892) are in `src/gatling/resources`; the case 2 and 3 slices, the unsplit `sync-users.csv`
+and each tenant's `summary.txt` and `manifest.json` are kept at `~/avni-datasets/pilot-day-180-25k.keep/`.
+The 28 GB of TSVs extracted locally, against the 10k's 12 GB, so a load needs the injector's 80 GB
+volume. **Not loaded**: it is ~2.5x the 10k's 28 M rows, so check `db_allocated_storage` first.
+
