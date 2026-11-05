@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-10-30 22:35 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-11-04 15:40 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -81,6 +81,7 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-30T08-36-26Z-case15-10k-row31-ramp-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-10-30t08-36-26z-case15-10k-row31-ramp-rc183-batch50-1ff23cc) | 2026-10-30 14:06 | case15 | stress | 11164 | 120min @ 10000/h | ~1441 | ~3444 | 1745651 | 0.02% | 23999 | 1600.4 | 214.69 | 97,323 | 1.90 |
 | [`2026-10-30T12-50-40Z-case15-10k-row31-steady-0.9x-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-10-30t12-50-40z-case15-10k-row31-steady-09x-rc183-batch50-1ff23cc) | 2026-10-30 18:20 | case15 | steady | 22500 | 60min @ 22500/h | ~17.8 | ~1739 | 820006 | 0.0% | 222 | 533.1 | 189.16 | 41,533 | 1.78 |
 | [`2026-10-30T15-38-58Z-case15-10k-row31-steady-1.1x-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-10-30t15-38-58z-case15-10k-row31-steady-11x-rc183-batch50-1ff23cc) | 2026-10-30 21:08 | case15 | steady | 27500 | 60min @ 27500/h | ~35 | ~2131 | 985026 | 0.0% | 420 | 534.9 | 226.6 | 52,200 | 1.85 |
+| [`2026-11-04T08-46-25Z-case15-10k-row33-2x4xl-steady-1.1x-of-row31-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-11-04t08-46-25z-case15-10k-row33-2x4xl-steady-11x-of-row31-rc183-batch50-1ff23cc) | 2026-11-04 14:16 | case15 | steady | 27500 | 60min @ 27500/h | ~19.9 | ~2139 | 984401 | 0.0% | 208 | 532.7 | 228.51 | 49,720 | 1.76 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 

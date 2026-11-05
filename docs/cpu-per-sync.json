@@ -1162,5 +1162,40 @@
    "2026-10-30T15:38:58Z",
    "2026-10-30T16:53:58Z"
   ]
+ },
+ "2026-11-04T08-46-25Z-case15-10k-row33-2x4xl-steady-1.1x-of-row31-rc18.3-batch50-1ff23cc": {
+  "appCpuAvg": 35.9,
+  "appCpuByInstance": {
+   "i-02458041bc14680ea": {
+    "avg": 36.7,
+    "max": 49.5
+   },
+   "i-044c88e15e8ea9e0f": {
+    "avg": 35.0,
+    "max": 49.9
+   }
+  },
+  "appCpuMax": 49.9,
+  "appCpuSecondsEc2": 51624.0,
+  "appHeapCommittedMb": 2560.0,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 1249.7,
+  "appHeapUsedMbMax": 2386.1,
+  "appInstances": {
+   "i-02458041bc14680ea": 16,
+   "i-044c88e15e8ea9e0f": 16
+  },
+  "appPhysicalMemMb": 2871.7,
+  "cpuPerSync": 1.76,
+  "cpuSeconds": 49719.9,
+  "rdsCpuAvg": 44.6,
+  "rdsCpuMax": 63.9,
+  "rdsFreeableMemMbMin": 42206.2,
+  "rdsSwapMbMax": 0.0,
+  "syncs": 28292,
+  "window": [
+   "2026-11-04T08:46:25Z",
+   "2026-11-04T10:01:25Z"
+  ]
  }
 }

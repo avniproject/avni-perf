@@ -1185,7 +1185,7 @@ is binding; the calendar is not.
 | 31 | V | **The break point with the fixes in** — the combined jar on row 26's 16 + 16, a stress ramp from 10,000 to 40,000 syncs an hour, then two steady hours bracketing the knee it finds | **done 30 Oct — with the fixes in, 16 + 16 carries ~27,500 syncs an hour at its edge and ~22,500 comfortably; plan on ~25,000.** Ramp 10,000 → 40,000: queueing from ~25,000 an hour, throughput ceiling ~265–300 req/s, app CPU binding at 97% with the 100-connection pool pinned behind it, database ≤58%, injector ≤14%, 0.02% failures; p95 grew to 24 s above capacity. Steady **0.9× (22,500)**: 0 failures, p95 222 ms, 1.78 CPU s per sync, app ~75%, pool 37–50, in flight flat. Steady **1.1× (27,500)**: 0 failures, p95 420 ms, 1.85 CPU s per sync, app ~91%, pool touching 100, in flight flat at ~2,550 — the rate was sustained, so the knee is above it; the ramp understated it, as the method said it would (queues build behind a climbing rate, and by its saturation the bed carried an hour of the run's own pushes). The pool pins only when CPU saturates, so it is a symptom, not a second limit. Against the old jar's predicted ~14,000–16,000 (31b, not run) the fixes move the 16 + 16 knee up by roughly 1.7×. [Row 31](#row-31)
 | 31b | V | *Optional:* **the same ramp on the 18.1 production jar** | **pending — only if the fixes' move of the break point needs to be measured rather than inferred.** Predicted knee ~14,000–16,000 an hour. [Row 31](#row-31) |
 | 32 | S | **Prerequisites for more than one app server** — `app_instance_count` in avni-infra (N hosts, N load-balancer targets), and app CPU summed across instances in `cpu-per-sync.py` and the run log | **done 4 Nov 2026.** No run. avni-infra: `app_instance_count` adds `avni-server-2..N` (Role `avni-server`, 1-minute CloudWatch, New Relic as `avni-loadtest`) and one target each; the original host and target are untouched (plan at 1: 0 changes; at 2: 2 to add). Copies are configured one at a time (`serial: 1`). Tooling: `--app-instance` takes a comma-separated list; each run records its hosts and vCPU, and the run log shows each host's mean and peak and EC2-derived CPU seconds beside New Relic's. [Rows 32–37](#rows-32-37) |
-| 33 | S | **Scale-out gate** — 2 × `m6g.4xlarge` behind the load balancer, `db.m6g.4xlarge`, steady 27,500 syncs an hour (row 31's 1.1×, now ~13,750 per copy) | **pending — after 32.** One hour. Checks the split is even, nothing fails, and CPU per sync matches one copy's 1.85 before any ramp leans on two. [Rows 32–37](#rows-32-37) |
+| 33 | S | **Scale-out gate** — 2 × `m6g.4xlarge` behind the load balancer, `db.m6g.4xlarge`, steady 27,500 syncs an hour (row 31's 1.1×, now ~13,750 per copy) | **done 4 Nov — two copies cost nothing extra: the split is even, nothing failed, and CPU per sync is 1.76 against one copy's 1.85.** 27,500 an hour completed at 27,428 an hour and 267 req/s in the steady window, in flight flat at ~2,550, 0 failures in 984,401 requests. p95 halved, 420 → 208 ms. App CPU 35% and 37% mean per copy (peaks 50% and 50%) against row 31's ~91% on one; the database unchanged at 45% mean, 64% peak, as it should be with the same load. EC2's CPU seconds summed over both hosts (51,624) sit ~4% above New Relic's (49,720). [Row 33 results](#row-33-results) |
 | 34 | S | **The database's limit on one 16-vCPU instance** — 2 × `m6g.4xlarge` (32 app vCPU), `db.m6g.4xlarge`, ramp 25,000 → 60,000 an hour, then steady at 0.9× and 1.1× of the knee | **pending — after 33.** Predicted knee ~47,000–50,000 with **the database binding first**, the first run of the campaign to make it bind. [Rows 32–37](#rows-32-37) |
 | 35 | S | **32 app vCPU three ways** — 1 × `m6g.8xlarge` and 4 × `m6g.2xlarge`, same database, each steady at row 34's 0.9× | **pending — after 34.** Two hours. Same load and app vCPU as row 34's steady hour on 2 × `m6g.4xlarge`, so one, two and four servers compare directly; the smaller instances are what make scaling out flexible. [Rows 32–37](#rows-32-37) |
 | 36 | S | **50,000 an hour** — the app shape that won 35, sized to ~48 vCPU, on `db.m6g.8xlarge` (32 vCPU): steady 50,000 for an hour, then a ramp to 70,000 | **pending — after 35.** The hardware recommendation for 50,000: the smallest configuration that holds it with app ≤85% and database ≤70%. [Rows 32–37](#rows-32-37) |
@@ -1938,6 +1938,48 @@ database tops out at about 47,000–50,000 syncs an hour.
 24.9 M individuals and 44.9 M encounters. **Its ids top out at 290.7 M against the co-tenants' 301 M
 — it fits, with ~10 M to spare**, so no larger recipe fits under that `id_base` without moving
 one of them.
+
+<a id="row-33-results"></a>
+##### Row 33 results, 4 Nov 2026 — the scale-out gate
+
+2 × `m6g.4xlarge` behind the load balancer (round robin, no stickiness), `db.m6g.4xlarge`, injector
+`m6g.2xlarge`, the release candidate (`946553685`, sha `1315739b…` on both copies, heap 5,120 MB
+each, New Relic on each as `avni-loadtest`), `pilot-day-180-10k` reloaded fresh, steady 27,500
+syncs an hour for 60 minutes — row 31's 1.1× run, now spread over two copies. Run
+`2026-11-04T08-46-25Z-case15-10k-row33-2x4xl-steady-1.1x-of-row31-rc18.3-batch50-1ff23cc`.
+
+| | row 31 1.1×: 1 × 16 vCPU | **row 33: 2 × 16 vCPU** |
+|---|---|---|
+| completed, syncs an hour (steady window) | 27,482 | **27,428** |
+| requests a second | 265 | **267** |
+| in flight | 2,515–2,616, flat | **~2,500–2,600, flat** |
+| requests, failed | 985,026, 0 | **984,401, 0** |
+| p95 (run) | 420 ms | **208 ms** |
+| full sync p95 | 534.9 s | 532.7 s |
+| CPU s per sync (New Relic) | 1.85 | **1.76** |
+| app CPU, mean (peak) | ~91% at steady; 73% over the window (97%) | **35% and 37% (50% and 50%)** |
+| database CPU, mean (peak) | 45% (63%) | **45% (64%)** |
+| app heap | — | 1,250 MB mean, 2,386 MB peak of 5,120 |
+
+- **The split is even.** The copies' hour-long means differ by under two points, and their
+  15-minute readings were 44% and 46%. Round robin per request is enough when ~2,500 syncs are in
+  flight: the expensive requests average out.
+- **No per-copy penalty.** CPU per sync came out at 1.76, at the low end of row 31's 1.78–1.85, so
+  a second JVM's own caches, pool and GC cost nothing measurable at this load. The plan's first
+  "what would change the plan" condition did not occur.
+- **Latency halved at the same throughput**, because each copy now runs at ~40% instead of ~91%:
+  the queueing that row 31's 1.1× hour sat on the edge of is gone.
+- **The database did not notice.** Same 45% mean as row 31's 1.1×, so its load follows syncs, not
+  copies — which is what row 34 relies on to make it bind.
+- **EC2 and New Relic agree.** EC2's CPU seconds summed over both hosts (51,624) are ~4% above New
+  Relic's JVM usertime (49,720): the host's OS, agent and GC threads.
+
+**Provenance.** The chain aborted at its warm-up check, not on the environment: the check's 5% floor
+cannot be reached by a 100-device warm-up on 32 vCPU (both copies rose together to ~1%). The
+floor was removed — the check now compares the copies only — and the run launched at 14:16, two
+minutes after that warm-up ended, on the same 13:59 reload. Both copies were healthy targets with
+identical jars before launch. The second copy was created and configured by `app_instance_count`
+the same morning (row 32).
 
 ##### What it costs
 
