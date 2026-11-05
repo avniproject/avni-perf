@@ -1933,7 +1933,7 @@ From row 31's steady pair. App: 1.78–1.85 CPU s per sync. Database on 16 vCPU:
 On these predictions: about 48 app vCPU in either shape, and a 32-vCPU database. One 16-vCPU
 database tops out at about 47,000–50,000 syncs an hour.
 
-**Row 37's dataset**, if it runs: `pilot-day-180-25k`, built from `pilot-day-180.json` the way the
+**Row 37's dataset**, if it runs: [`pilot-day-180-25k`](../tools/data-generator/datasets/pilot-day-180-25k.json) (recipe written 5 Nov 2026, generated ahead of need so row 37 can follow row 36 the same day), built from `pilot-day-180.json` the way the
 5k and 10k were, with field workers × 50/3 and ten encounters a day. That is 24,930 field workers,
 24.9 M individuals and 44.9 M encounters. **Its ids top out at 290.7 M against the co-tenants' 301 M
 — it fits, with ~10 M to spare**, so no larger recipe fits under that `id_base` without moving
