@@ -1,8 +1,9 @@
 # What the load tests found
 
-**Complete as of 19 October 2026 — 42 runs, 18 findings documents, one page.** Each claim links to
-the case that carries the evidence; nothing here is new, and where a finding has been corrected the
-correction is what appears.
+**Complete as of 19 October 2026 — 42 runs, 18 findings documents, one page — and extended to 6
+November with the fixes measured (§9), the knee located (§10) and the scale-out to 50,000 syncs an hour
+(§11).** Each claim links to the case that carries the evidence; nothing here is new, and where a
+finding has been corrected the correction is what appears.
 
 **For which runs belong to which case**, and what each varied, see
 [`case-index.md`](case-index.md).
@@ -13,8 +14,8 @@ and which parts are modelled rather than performed.
 
 ## The one-line answer
 
-**The application server's CPU is the constraint, the database never is, and under the sync
-pattern production actually has, neither matters.** What turns a comfortable system into a broken
+**The application server's CPU is the constraint, the database is not until the app is scaled
+past it (§11), and under the sync pattern production actually has, neither matters.** What turns a comfortable system into a broken
 one is not volume, tenancy or history — it is **everybody syncing at once**.
 
 **And most of that app CPU was avoidable.** Four server fixes, measured one at a time and then
@@ -26,6 +27,12 @@ the case 13 load that broke 2 vCPU now runs there at 65% with no failures.
 vCPU sustain **~27,500 syncs an hour at ~265–280 requests a second**, app CPU binding first and the
 database never past 62%. **Plan on ~25,000 syncs an hour** for that configuration.
 
+**And the database binds only when the app is scaled past it** (§11). With the app tier spread across
+copies, one 16-vCPU database tops out at **~48,000–49,000 syncs an hour** — the first time in the
+campaign it was the limit. **50,000 an hour needs ~48 app vCPU and a 32-vCPU database**, which carry it
+at ~55% and ~47% and were still keeping up at 70,000. Two copies or four, one large server or several,
+cost the same per sync.
+
 ## 1. The constraint has a name, and it is app CPU
 
 Established independently five times — [case 1](findings-case1.md),
@@ -34,7 +41,9 @@ Established independently five times — [case 1](findings-case1.md),
 
 At 99% application CPU the database sits at **a fifth of its capacity**. The write path does not
 bind either ([12c](findings-case9-12c.md)); push costs the database about ten percentage points of
-CPU and nothing else. **More vCPU is the relief; a bigger database is not.**
+CPU and nothing else. **More vCPU is the relief; a bigger database is not** — until the app tier is
+scaled past the database, which §11 does: at 32 app vCPU on 16 database vCPU the database binds first,
+near 48,000 syncs an hour.
 
 **That is now tested rather than inferred** ([vertical scale sweep](findings-vertical-scale.md),
 21 Oct). Case 13 — the only run that ever broke — re-run on 4 vCPU instead of 2, nothing else
@@ -286,6 +295,65 @@ ramp from 10,000 to 40,000 syncs an hour, then an hour each at 0.9× and 1.1× o
    same request ceiling — it was pulling an hour of its own pushes back, with a backlog draining
    behind it. The steady pair is what a capacity figure has to rest on.
 
+## 11. Scaling out, and what 50,000 syncs an hour needs
+
+**Rows 33–36, 4–6 Nov 2026** ([execution plan](execution-plan.md#rows-32-37)). The 18.3 release
+candidate, the 10,000-user dataset reloaded fresh before every run, the customer's ten-a-day push with
+batched upload URLs, co-tenants at 792 an hour, heap pinned at 5,120 MB per copy, copies behind the load
+balancer with round robin and no stickiness.
+
+| row | app | database | load | completed, an hour | req/s | app CPU per copy | database CPU | p95 | CPU s / sync | failures |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 31 (§10) | 1 × 16 vCPU | 16 vCPU | steady 27,500 | 27,482 | 265 | ~91% | ~54% | 420 ms | 1.85 | 0 |
+| **33** | 2 × 16 | 16 | steady 27,500 | 27,428 | 267 | 35, 37% | 45% | **208 ms** | 1.76 | 0 |
+| **34** | 2 × 16 | 16 | steady 43,000 | 42,959 | 403 | 71, 72% | 78% | 241 ms | 1.83 | 0 |
+| **34** | 2 × 16 | 16 | ramp, saturated | **~49,000, flat** | **466** | 87–91% | **98–99%** | — | — | from ~56,000 |
+| **35** | 1 × 32 | 16 | steady 43,000 | 42,976 | 403 | 73% at 15 min | 82% | 257 ms | 1.87 | 0 |
+| **35** | 4 × 8 | 16 | steady 43,000 | 42,959 | 402 | 70–71% at 15 min | 83% | 260 ms | 1.81 | 0 |
+| **36** | 3 × 16 | **32** | **steady 50,000** | **49,960** | **464** | **55, 54, 54%** | **47%** | **212 ms** | **1.79** | **0** |
+| **36** | 3 × 16 | 32 | ramp to 70,000, top | ~66,300, tracking | 617 | 72–73% | 59% | 214 ms (run) | 1.81 | 0 |
+
+**What it settles.**
+
+1. **The app tier scales out as well as it scales up.** Two copies at row 31's 1.1× split the load
+   within two points and cost 1.76 CPU s per sync against one copy's 1.85; p95 halved. At 32 app vCPU,
+   one, two and four servers cost **1.87, 1.83 and 1.81** — inside the 1.76–1.87 one shape produced on
+   its own. A copy's fixed costs (its JVM, JIT, GC, agent and caches) are not visible at these loads.
+2. **One 16-vCPU database tops out at ~48,000–49,000 syncs an hour, ~470–490 requests a second** — the
+   first time in the campaign it was the constraint, and where the plan predicted (~47,000–50,000).
+   43,000 held for an hour with a flat backlog; 53,000 did not. At saturation the database ran 98–99%
+   with every connection of both pools taken, and app CPU *fell* as requests waited — the mirror of
+   row 31, where the app bound and the pool pinned behind it. **Disk was never the limit** (write IOPS
+   ≤1,023 of 3,000, queue under 1): a bigger instance is the relief, not provisioned IOPS.
+3. **Each tier's cost is linear in syncs and independent of instance size.** The database spends
+   **~0.30 vCPU per 1,000 syncs an hour** on either class; the app **~0.53**. CPU per sync stayed at
+   1.76–1.87 from 27,500 to 70,000 an hour. Sizing for a target rate is arithmetic plus headroom:
+   app vCPU ≈ 0.53 × rate in thousands ÷ target utilisation, database vCPU ≈ 0.30 × the same.
+4. **50,000 an hour: ~48 app vCPU and a 32-vCPU database** (3 × `m6g.4xlarge`, `db.m6g.8xlarge`),
+   at ~55% app and 47% database, 0 failures, p95 212 ms. The ramp to 70,000 found **no knee**:
+   completions tracked the offer to ~66,000 with app 73% and database 59%. On those slopes the app
+   binds first, near ~90,000; the database not until ~120,000.
+5. **Size or count is a choice about operations, not cost** — with one exception. A single large copy
+   carries all the concurrency in one 100-connection pool, which peaked at its cap at 43,000 an hour;
+   in one JVM at 48 vCPU it would bind before the CPU unless the pool grows with it. Several copies
+   also scale in finer steps and lose less when one fails.
+6. **Connections are not a constraint.** They follow copies × what each needs — ~84 on one or two
+   copies, ~109 on four, ~120–157 on three at 66,000 an hour — far below `max_connections`.
+7. **The injector was never the limit** — 31% at its peak, at 70,000 an hour.
+
+**What it does not say.** Every run here is sync-only. avni-server cannot run as several copies in
+production today: its second-level cache would serve stale users, catchments and concepts after an
+admin edit, timed and start-up jobs run on every copy, and several locks are in-memory
+([execution plan](execution-plan.md#rows-32-37)). None of those is exercised by sync, so these rows
+measure **what scaling out would buy once they are fixed** — not evidence that it is safe now. Until
+then the vertical figures apply: ~25,000 an hour on 16 + 16 (§10), and the app tier's cost scales the
+same way upward (row 35's single 32-vCPU copy held 43,000).
+
+**Row 37 was held** (6 Nov): 50,000 syncs an hour on 25,000 distinct users instead of 10,000, whose
+users each sync ~4.5 times an hour and keep the database's working set warmer than real ones would. Its
+condition was not met either — row 36's database sat at 47%, under the ~50% that would have made it
+matter — and the dataset is staged for another day.
+
 ## Suggestions for other runs
 
 **Work needing the environment**, ordered by what the findings leave open rather than by cost.
@@ -349,7 +417,9 @@ bounds held; its "the database idles" did not — the pulls set its floor at ~30
 
 * **A wider span sweep.** [Block A′](findings-span20.md) found simple proportionality at every
   point, so 8.4 → 20 interpolates rather than needing its own runs.
-* **Anything further on the database.** Four independent runs failed to make it bind.
+* **Anything further on the database** — as of 19 Oct, when four independent runs had failed to make
+  it bind. **Superseded by row 34** (§11), which made it bind by scaling the app tier past it; the
+  database's limit is now measured, not argued.
 * **A `MEDIA_UPLOAD_KBPS` sweep as a capacity test.** It is the largest lever on media-bearing sync
   duration — 26 s to 402 s across the documented range — but during the transfer the device asks
   avni-server for nothing. It belongs with [D7](findings-d7.md) as device experience, not here.
