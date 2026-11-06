@@ -1188,8 +1188,8 @@ is binding; the calendar is not.
 | 33 | S | **Scale-out gate** — 2 × `m6g.4xlarge` behind the load balancer, `db.m6g.4xlarge`, steady 27,500 syncs an hour (row 31's 1.1×, now ~13,750 per copy) | **done 4 Nov — two copies cost nothing extra: the split is even, nothing failed, and CPU per sync is 1.76 against one copy's 1.85.** 27,500 an hour completed at 27,428 an hour and 267 req/s in the steady window, in flight flat at ~2,550, 0 failures in 984,401 requests. p95 halved, 420 → 208 ms. App CPU 35% and 37% mean per copy (peaks 50% and 50%) against row 31's ~91% on one; the database unchanged at 45% mean, 64% peak, as it should be with the same load. EC2's CPU seconds summed over both hosts (51,624) sit ~4% above New Relic's (49,720). [Row 33 results](#row-33-results) |
 | 34 | S | **The database's limit on one 16-vCPU instance** — 2 × `m6g.4xlarge` (32 app vCPU), `db.m6g.4xlarge`, ramp 25,000 → 60,000 an hour, then steady at 0.9× and 1.1× of the knee | **done 5–6 Nov — one 16-vCPU database tops out at ~48,000–49,000 syncs an hour (~470–490 req/s), and it binds first, as predicted.** Ramp 25,000 → 60,000: completions flat at ~49,000 an hour and 466 req/s from ~13:30 with the database at 98–99% and all 200 connections in use, app 87–91%; failures from ~56,000 offered, stop rule at 14:03. Steady **0.9× (43,000)**: 42,959 an hour, 403 req/s, in flight flat, 0 failures, p95 241 ms, 1.83 CPU s per sync, database 78% (peak 89%). Steady **1.1× (53,000)** did not hold: in flight grew from the start, completions ~48,900 an hour, database 96–99% with 198–200 connections, failures above 1% after 30 minutes, stopped at 33 min. Disk was never a factor (≤1,023 write IOPS of 3,000, queue <1). [Row 34 results](#row-34-results) |
 | 35 | S | **32 app vCPU three ways** — 1 × `m6g.8xlarge` and 4 × `m6g.2xlarge`, same database, each steady at row 34's 0.9× | **done 5 Nov — size and count cost the same: 1.87, 1.83 and 1.81 CPU s per sync on one, two and four servers, within noise.** All three held 43,000 an hour at ~403 req/s with 0 failures and ~4,000 in flight; each copy's CPU within a point of the others (1 × 8xl 63%, 2 × 4xl 61/62%, 4 × 2xl 61% each over the hour). p95 236–260 ms, two copies lowest. Database 78–83% in all three; connections ~84 on one or two copies, ~109 on four. **One copy's 100-connection pool peaked at its cap** — the only shape to touch it at this load. [Row 35 results](#row-35-results) |
-| 36 | S | **50,000 an hour** — the app shape that won 35, sized to ~48 vCPU, on `db.m6g.8xlarge` (32 vCPU): steady 50,000 for an hour, then a ramp to 70,000 | **pending — after 35.** The hardware recommendation for 50,000: the smallest configuration that holds it with app ≤85% and database ≤70%. [Rows 32–37](#rows-32-37) |
-| 37 | S | **50,000 on more distinct users** — row 36's steady hour on a 25,000-user dataset | **pending — after 36, and only if row 36's database sits above ~50%.** On the 10k dataset each user syncs ~4.5 times an hour, which keeps the database's working set warmer than 50,000 real users would. [Rows 32–37](#rows-32-37) |
+| 36 | S | **50,000 an hour** — the app shape that won 35, sized to ~48 vCPU, on `db.m6g.8xlarge` (32 vCPU): steady 50,000 for an hour, then a ramp to 70,000 | **done 6 Nov — 3 × `m6g.4xlarge` (48 app vCPU) on `db.m6g.8xlarge` (32 vCPU) holds 50,000 syncs an hour with app ~55% and database 47%, and was still keeping up at 70,000.** Steady 50,000: 49,960 an hour, 464 req/s, in flight flat at ~4,600, 0 failures in 1.72 M requests, p95 212 ms, 1.79 CPU s per sync, copies within a point of each other. Ramp 50,000 → 70,000: 0 failures in 2.05 M requests, p95 214 ms; at the top ~66,000 completed an hour at 617 req/s, app 72–73%, database 59% (peak 61%), 119 connections, in flight still tracking the offer — **no knee below 70,000; the app would bind first, near ~90,000.** [Row 36 results](#row-36-results) |
+| 37 | S | **50,000 on more distinct users** — row 36's steady hour on a 25,000-user dataset | **held — not run 6 Nov; to run another day if required.** Its condition was not met either: row 36's database averaged 47% over the steady hour's minutes 12–56, against the ~50% threshold. The dataset is generated and staged (`datasets/pilot-day-180-25k.tar.gz`, 5.2 GiB; feeders `case4`/`case5-users-pilot-25k-nosuppush.csv`), and `chain-rows36-37.sh` carried the run before it was held. On the 10k dataset each user syncs ~4.5 times an hour, which keeps the database's working set warmer than 50,000 real users would. [Rows 32–37](#rows-32-37) |
 
 #### Rows 21 and 22: removing `DummyInterceptor`
 
@@ -2048,6 +2048,46 @@ to the end of injection (44 minutes each).
 the pool (one large copy pins it) and to flexibility (smaller copies scale in steps and survive the
 loss of one). Three `m6g.4xlarge` keeps the shape rows 33–34 measured; six `m6g.2xlarge` would do
 equally well on these numbers.
+
+<a id="row-36-results"></a>
+##### Row 36 results, 6 Nov 2026 — 50,000 syncs an hour
+
+3 × `m6g.4xlarge` (48 app vCPU) behind the load balancer, `db.m6g.8xlarge` (32 vCPU), injector
+`m6g.2xlarge` (`GATLING_HEAP=16G`), the release candidate, `pilot-day-180-10k` reloaded fresh before each
+run from the injector with the app hosts stopped. The database was resized from `db.m6g.4xlarge` in
+6.5 minutes; the third copy was created and configured alongside the first reload. Throughput from the
+chain's Gatling ticks; CloudWatch 1-minute means (peaks) over the same windows.
+
+| phase | offered, syncs an hour | **completed, syncs an hour** | **req/s** | in flight | app CPU per copy | database CPU / connections | failures |
+|---|---|---|---|---|---|---|---|
+| **steady 50,000** (09:31–10:15) | **50,000** | **49,960** | **464** | **4,583–4,640, flat** | **55, 54, 54%** | **47% (50%) / 83 (92)** | **0** |
+| ramp (12:25–12:44) | ~54,700–61,000 | 55,805 | 521 | 4,908 → 5,552 | 60, 60, 61% | 50% (55%) / 91 (105) | 0 |
+| ramp (12:44–12:56) | ~61,000–65,200 | 60,895 | 573 | 5,552 → 5,996 | 67, 67, 68% | 55% (58%) / 103 (116) | 0 |
+| ramp, top (13:00–13:09) | ~66,300–69,500 | **66,343** | **617** | 6,049 → 6,340 | **72, 73, 73%** | **59% (61%) / 119 (157)** | 0 |
+
+Whole runs: steady 1,721,297 requests, p95 212 ms, 1.79 CPU s per sync (EC2's sum over the three hosts
+2% above New Relic's); ramp 2,051,827 requests, p95 214 ms, 1.81 CPU s per sync; **0 failures in either**,
+and every request under 800 ms. Injector mean 20–24%, peak 31%.
+
+- **50,000 an hour holds with room on both tiers** — app ~55% and database 47%, inside the plan's
+  ≤85% and ≤70%. Latency is the campaign's lowest at this scale (p95 212 ms) because neither tier is
+  near its edge.
+- **No knee below 70,000.** In flight rose only with the offer and completions tracked it, with the
+  usual lag of a rising ramp. On the measured slopes — app ~1.1 points and database ~0.75 points per
+  1,000 syncs an hour — **the app binds first, near ~90,000**, and the database not until ~120,000.
+  The plan predicted ~80,000 on the app and ~95,000 on the database; the database scaled better.
+- **Both tiers' costs are linear in syncs, independent of size.** The database spends ~0.29–0.30 vCPU
+  per 1,000 syncs an hour on either class (16 × 0.78 / 43,000 in row 34; 32 × 0.47 / 50,000 here), and
+  the app ~0.53 (32 × 0.715 / 43,000; 48 × 0.55 / 50,000). CPU per sync is 1.79–1.81, inside rows
+  31–35's 1.76–1.87. Sizing is therefore arithmetic from these two figures plus headroom.
+- **The split stays even at three copies**, within a point throughout.
+- **Disk is not a factor at this size either:** write IOPS peaked at ~700 of 3,000.
+- **Row 37's condition was not met:** 47% over the steady hour's minutes 12–56, against ~50%. It is
+  held regardless (6 Nov) and can run another day.
+
+**The hardware for 50,000 syncs an hour: ~48 app vCPU (3 × `m6g.4xlarge`, or 6 × `m6g.2xlarge` on row
+35's evidence) and a 32-vCPU database (`db.m6g.8xlarge`)**, which carries it at ~55% / ~47% with the
+app's knee near 90,000. One 16-vCPU database tops out at ~48,000–49,000 (row 34).
 
 ##### What it costs
 

@@ -22,7 +22,7 @@
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
 | [**12**](#case-12) | Clustered — co-tenant data | 10 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 5 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
-| [**15**](#case-15) | Clustered — co-tenant load, media push | 23 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
+| [**15**](#case-15) | Clustered — co-tenant load, media push | 25 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
 
 <a id="case-1"></a>
@@ -281,6 +281,8 @@ Case 13's shape — clustered into one hour, co-tenants syncing — with push on
 | [`2026-11-05 13:38`](run-log-detail.md#2026-11-05t13-38-54z-case15-10k-row35-4x2xl-steady-row34-09x-rc183-batch50-1ff23cc) | *(new — describe the variation)* | pilot-day-180-10k | 43792 | 0.0% | 260 | 1.81 |
 | [`2026-11-05 16:44`](run-log-detail.md#2026-11-05t16-44-40z-case15-10k-row35-1x8xl-steady-row34-09x-rc183-batch50-1ff23cc) | *(new — describe the variation)* | pilot-day-180-10k | 43792 | 0.0% | 257 | 1.87 |
 | [`2026-11-05 19:53`](run-log-detail.md#2026-11-05t19-53-21z-case15-10k-row34-2x4xl-steady-11x-rc183-batch50-1ff23cc) | *(new — describe the variation)* | pilot-day-180-10k | 19521 | —% | — | 2.23 |
+| [`2026-11-06 03:47`](run-log-detail.md#2026-11-06t03-47-34z-case15-10k-row36-3x4xl-db8xl-steady-50k-rc183-batch50-1ff23cc) | *(new — describe the variation)* | pilot-day-180-10k | 50792 | 0.0% | 212 | 1.79 |
+| [`2026-11-06 06:41`](run-log-detail.md#2026-11-06t06-41-07z-case15-10k-row36-3x4xl-db8xl-ramp-50k-70k-rc183-batch50-1ff23cc) | *(new — describe the variation)* | pilot-day-180-10k | 60792 | 0.0% | 214 | 1.81 |
 
 **Findings:** [`findings-clustered-media-push.md`](findings-clustered-media-push.md)
 

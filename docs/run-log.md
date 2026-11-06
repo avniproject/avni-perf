@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-11-06 02:19 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-11-06 13:44 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -87,6 +87,8 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-11-05T13-38-54Z-case15-10k-row35-4x2xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-11-05t13-38-54z-case15-10k-row35-4x2xl-steady-row34-09x-rc183-batch50-1ff23cc) | 2026-11-05 19:08 | case15 | steady | 43000 | 60min @ 43000/h | ~40 | ~3360 | 1492171 | 0.0% | 260 | 535.0 | 347.34 | 79,451 | 1.81 |
 | [`2026-11-05T16-44-40Z-case15-10k-row35-1x8xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-11-05t16-44-40z-case15-10k-row35-1x8xl-steady-row34-09x-rc183-batch50-1ff23cc) | 2026-11-05 22:14 | case15 | steady | 43000 | 60min @ 43000/h | ~40 | ~3312 | 1495975 | 0.0% | 257 | 534.9 | 342.72 | 81,987 | 1.87 |
 | [`2026-11-05T19-53-21Z-case15-10k-row34-2x4xl-steady-1.1x-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-11-05t19-53-21z-case15-10k-row34-2x4xl-steady-11x-rc183-batch50-1ff23cc) | 2026-11-06 01:23 | case15 | steady | 53000 | 60min @ 53000/h | — | — | — | —% | — | 699.9 | — | 43,513 | 2.23 |
+| [`2026-11-06T03-47-34Z-case15-10k-row36-3x4xl-db8xl-steady-50k-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-11-06t03-47-34z-case15-10k-row36-3x4xl-db8xl-steady-50k-rc183-batch50-1ff23cc) | 2026-11-06 09:17 | case15 | steady | 50000 | 60min @ 50000/h | ~36 | ~3870 | 1721297 | 0.0% | 212 | 533.2 | 397.9 | 91,072 | 1.79 |
+| [`2026-11-06T06-41-07Z-case15-10k-row36-3x4xl-db8xl-ramp-50k-70k-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-11-06t06-41-07z-case15-10k-row36-3x4xl-db8xl-ramp-50k-70k-rc183-batch50-1ff23cc) | 2026-11-06 12:11 | case15 | stress | 11164 | 60min @ 50000/h | ~44 | ~4641 | 2051827 | 0.0% | 214 | 533.7 | 474.74 | 110,168 | 1.81 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 
