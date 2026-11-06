@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-11-04 15:40 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-11-06 02:19 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -82,6 +82,11 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-10-30T12-50-40Z-case15-10k-row31-steady-0.9x-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-10-30t12-50-40z-case15-10k-row31-steady-09x-rc183-batch50-1ff23cc) | 2026-10-30 18:20 | case15 | steady | 22500 | 60min @ 22500/h | ~17.8 | ~1739 | 820006 | 0.0% | 222 | 533.1 | 189.16 | 41,533 | 1.78 |
 | [`2026-10-30T15-38-58Z-case15-10k-row31-steady-1.1x-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-10-30t15-38-58z-case15-10k-row31-steady-11x-rc183-batch50-1ff23cc) | 2026-10-30 21:08 | case15 | steady | 27500 | 60min @ 27500/h | ~35 | ~2131 | 985026 | 0.0% | 420 | 534.9 | 226.6 | 52,200 | 1.85 |
 | [`2026-11-04T08-46-25Z-case15-10k-row33-2x4xl-steady-1.1x-of-row31-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-11-04t08-46-25z-case15-10k-row33-2x4xl-steady-11x-of-row31-rc183-batch50-1ff23cc) | 2026-11-04 14:16 | case15 | steady | 27500 | 60min @ 27500/h | ~19.9 | ~2139 | 984401 | 0.0% | 208 | 532.7 | 228.51 | 49,720 | 1.76 |
+| [`2026-11-05T06-35-45Z-case15-10k-row34-2x4xl-ramp-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-11-05t06-35-45z-case15-10k-row34-2x4xl-ramp-rc183-batch50-1ff23cc) | 2026-11-05 12:05 | case15 | stress | 11164 | 120min @ 25000/h | — | — | — | —% | — | 596.7 | — | 144,155 | 1.99 |
+| [`2026-11-05T10-24-58Z-case15-10k-row34-2x4xl-steady-0.9x-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-11-05t10-24-58z-case15-10k-row34-2x4xl-steady-09x-rc183-batch50-1ff23cc) | 2026-11-05 15:54 | case15 | steady | 43000 | 60min @ 43000/h | ~36 | ~3339 | 1494560 | 0.0% | 241 | 534.6 | 346.28 | 80,149 | 1.83 |
+| [`2026-11-05T13-38-54Z-case15-10k-row35-4x2xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-11-05t13-38-54z-case15-10k-row35-4x2xl-steady-row34-09x-rc183-batch50-1ff23cc) | 2026-11-05 19:08 | case15 | steady | 43000 | 60min @ 43000/h | ~40 | ~3360 | 1492171 | 0.0% | 260 | 535.0 | 347.34 | 79,451 | 1.81 |
+| [`2026-11-05T16-44-40Z-case15-10k-row35-1x8xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-11-05t16-44-40z-case15-10k-row35-1x8xl-steady-row34-09x-rc183-batch50-1ff23cc) | 2026-11-05 22:14 | case15 | steady | 43000 | 60min @ 43000/h | ~40 | ~3312 | 1495975 | 0.0% | 257 | 534.9 | 342.72 | 81,987 | 1.87 |
+| [`2026-11-05T19-53-21Z-case15-10k-row34-2x4xl-steady-1.1x-rc18.3-batch50-1ff23cc`](run-log-detail.md#2026-11-05t19-53-21z-case15-10k-row34-2x4xl-steady-11x-rc183-batch50-1ff23cc) | 2026-11-06 01:23 | case15 | steady | 53000 | 60min @ 53000/h | — | — | — | —% | — | 699.9 | — | 43,513 | 2.23 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 
@@ -113,3 +118,5 @@ Listed rather than left blank, because a blank column reads as a measurement and
 - `2026-10-12T04-55-23Z-case9-12b-rerun-cf77819` — **failed 0.24% of requests against its own `MAX_FAILED_PERCENT` gate of 0.05%** — Gatling asserted and failed at the time. Read its throughput and latency as a run that broke, not as a point on a curve
 - `2026-10-15T05-33-35Z-case13-c2a0e76` — **failed 1.22% of requests against its own `MAX_FAILED_PERCENT` gate of 0.05%** — Gatling asserted and failed at the time. Read its throughput and latency as a run that broke, not as a point on a curve
 - `2026-10-21T04-10-50Z-case13-m6g.large-c2a0e76` — **failed 0.91% of requests against its own `MAX_FAILED_PERCENT` gate of 0.05%** — Gatling asserted and failed at the time. Read its throughput and latency as a run that broke, not as a point on a curve
+- `2026-11-05T06-35-45Z-case15-10k-row34-2x4xl-ramp-rc18.3-batch50-1ff23cc` — no Global Information block in gradle.log — the simulation did not reach its summary
+- `2026-11-05T19-53-21Z-case15-10k-row34-2x4xl-steady-1.1x-rc18.3-batch50-1ff23cc` — no Global Information block in gradle.log — the simulation did not reach its summary

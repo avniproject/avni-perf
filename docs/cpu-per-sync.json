@@ -1197,5 +1197,179 @@
    "2026-11-04T08:46:25Z",
    "2026-11-04T10:01:25Z"
   ]
+ },
+ "2026-11-05T06-35-45Z-case15-10k-row34-2x4xl-ramp-rc18.3-batch50-1ff23cc": {
+  "appCpuAvg": 59.5,
+  "appCpuByInstance": {
+   "i-02458041bc14680ea": {
+    "avg": 60.2,
+    "max": 96.2
+   },
+   "i-044c88e15e8ea9e0f": {
+    "avg": 58.9,
+    "max": 95.8
+   }
+  },
+  "appCpuMax": 96.2,
+  "appCpuSecondsEc2": 208091.5,
+  "appHeapCommittedMb": 3036.7,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 1644.9,
+  "appHeapUsedMbMax": 4054.0,
+  "appInstances": {
+   "i-02458041bc14680ea": 16,
+   "i-044c88e15e8ea9e0f": 16
+  },
+  "appPhysicalMemMb": 3353.5,
+  "cpuPerSync": 1.99,
+  "cpuSeconds": 144154.8,
+  "rdsCpuAvg": 67.7,
+  "rdsCpuMax": 99.3,
+  "rdsFreeableMemMbMin": 39646.2,
+  "rdsSwapMbMax": 2.0,
+  "syncs": 72337,
+  "window": [
+   "2026-11-05T06:35:45Z",
+   "2026-11-05T09:37:45Z"
+  ]
+ },
+ "2026-11-05T10-24-58Z-case15-10k-row34-2x4xl-steady-0.9x-rc18.3-batch50-1ff23cc": {
+  "appCpuAvg": 47.8,
+  "appCpuByInstance": {
+   "i-02458041bc14680ea": {
+    "avg": 48.2,
+    "max": 77.7
+   },
+   "i-044c88e15e8ea9e0f": {
+    "avg": 47.3,
+    "max": 76.0
+   }
+  },
+  "appCpuMax": 77.7,
+  "appCpuSecondsEc2": 78844.8,
+  "appHeapCommittedMb": 2560.0,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 1335.1,
+  "appHeapUsedMbMax": 2332.0,
+  "appInstances": {
+   "i-02458041bc14680ea": 16,
+   "i-044c88e15e8ea9e0f": 16
+  },
+  "appPhysicalMemMb": 2876.8,
+  "cpuPerSync": 1.83,
+  "cpuSeconds": 80148.7,
+  "rdsCpuAvg": 53.2,
+  "rdsCpuMax": 91.2,
+  "rdsFreeableMemMbMin": 41155.3,
+  "rdsSwapMbMax": 2.0,
+  "syncs": 43792,
+  "window": [
+   "2026-11-05T10:24:58Z",
+   "2026-11-05T11:50:58Z"
+  ]
+ },
+ "2026-11-05T13-38-54Z-case15-10k-row35-4x2xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc": {
+  "appCpuAvg": 47.6,
+  "appCpuByInstance": {
+   "i-02458041bc14680ea": {
+    "avg": 47.5,
+    "max": 75.6
+   },
+   "i-042295ec82017e958": {
+    "avg": 47.9,
+    "max": 75.6
+   },
+   "i-044c88e15e8ea9e0f": {
+    "avg": 47.5,
+    "max": 75.1
+   },
+   "i-0de5b00e98a30ffe5": {
+    "avg": 47.5,
+    "max": 74.0
+   }
+  },
+  "appCpuMax": 75.6,
+  "appCpuSecondsEc2": 82252.8,
+  "appHeapCommittedMb": 2560.0,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 1283.9,
+  "appHeapUsedMbMax": 2400.9,
+  "appInstances": {
+   "i-02458041bc14680ea": 8,
+   "i-042295ec82017e958": 8,
+   "i-044c88e15e8ea9e0f": 8,
+   "i-0de5b00e98a30ffe5": 8
+  },
+  "appPhysicalMemMb": 2871.2,
+  "cpuPerSync": 1.81,
+  "cpuSeconds": 79451.2,
+  "rdsCpuAvg": 56.4,
+  "rdsCpuMax": 94.2,
+  "rdsFreeableMemMbMin": 40285.1,
+  "rdsSwapMbMax": 2.0,
+  "syncs": 43792,
+  "window": [
+   "2026-11-05T13:38:54Z",
+   "2026-11-05T15:08:54Z"
+  ]
+ },
+ "2026-11-05T16-44-40Z-case15-10k-row35-1x8xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc": {
+  "appCpuAvg": 51.5,
+  "appCpuMax": 77.4,
+  "appCpuSecondsEc2": 84048.0,
+  "appHeapCommittedMb": 2762.6,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 1317.2,
+  "appHeapUsedMbMax": 2620.6,
+  "appInstances": {
+   "i-044c88e15e8ea9e0f": 32
+  },
+  "appPhysicalMemMb": 3087.6,
+  "cpuPerSync": 1.87,
+  "cpuSeconds": 81987.3,
+  "rdsCpuAvg": 59.3,
+  "rdsCpuMax": 91.4,
+  "rdsFreeableMemMbMin": 41135.0,
+  "rdsSwapMbMax": 2.0,
+  "syncs": 43792,
+  "window": [
+   "2026-11-05T16:44:40Z",
+   "2026-11-05T18:09:40Z"
+  ]
+ },
+ "2026-11-05T19-53-21Z-case15-10k-row34-2x4xl-steady-1.1x-rc18.3-batch50-1ff23cc": {
+  "appCpuAvg": 41.8,
+  "appCpuByInstance": {
+   "i-044c88e15e8ea9e0f": {
+    "avg": 40.9,
+    "max": 95.2
+   },
+   "i-0e3665d36ccb39f65": {
+    "avg": 42.8,
+    "max": 96.4
+   }
+  },
+  "appCpuMax": 96.4,
+  "appCpuSecondsEc2": 68299.2,
+  "appHeapCommittedMb": 3684.2,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 1788.8,
+  "appHeapUsedMbMax": 3859.7,
+  "appInstances": {
+   "i-044c88e15e8ea9e0f": 16,
+   "i-0e3665d36ccb39f65": 16
+  },
+  "appPhysicalMemMb": 3996.2,
+  "cpuPerSync": 2.23,
+  "cpuSeconds": 43512.9,
+  "rdsCpuAvg": 46.8,
+  "rdsCpuMax": 99.4,
+  "rdsFreeableMemMbMin": 38879.7,
+  "rdsSwapMbMax": 2.0,
+  "syncs": 19521,
+  "window": [
+   "2026-11-05T19:53:21Z",
+   "2026-11-05T21:18:21Z"
+  ]
  }
 }

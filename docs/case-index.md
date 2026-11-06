@@ -22,7 +22,7 @@
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
 | [**12**](#case-12) | Clustered — co-tenant data | 10 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 5 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
-| [**15**](#case-15) | Clustered — co-tenant load, media push | 18 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
+| [**15**](#case-15) | Clustered — co-tenant load, media push | 23 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
 
 <a id="case-1"></a>
@@ -276,6 +276,11 @@ Case 13's shape — clustered into one hour, co-tenants syncing — with push on
 | [`2026-10-30 12:50`](run-log-detail.md#2026-10-30t12-50-40z-case15-10k-row31-steady-09x-rc183-batch50-1ff23cc) | **Row 31 steady, 0.9× = 22,500 syncs an hour**: 820,006 requests, 0 failures, p95 222 ms,  CPU s per sync; app ~75%, database ~46%, pool 37–50, in flight flat at ~2,100 — comfortable | pilot-day-180-10k | 23292 | 0.0% | 222 | 1.78 |
 | [`2026-10-30 15:38`](run-log-detail.md#2026-10-30t15-38-58z-case15-10k-row31-steady-11x-rc183-batch50-1ff23cc) | **Row 31 steady, 1.1× = 27,500 syncs an hour**: 0.0% requests, 0 failures, p95 534.9 ms, ~1.85 CPU s per sync; app ~91%, pool touching 100, in flight flat at ~2,550 — sustained at the edge | pilot-day-180-10k | 28292 | 0.0% | 420 | 1.85 |
 | [`2026-11-04 08:46`](run-log-detail.md#2026-11-04t08-46-25z-case15-10k-row33-2x4xl-steady-11x-of-row31-rc183-batch50-1ff23cc) | *(new — describe the variation)* | pilot-day-180-10k | 28292 | 0.0% | 208 | 1.76 |
+| [`2026-11-05 06:35`](run-log-detail.md#2026-11-05t06-35-45z-case15-10k-row34-2x4xl-ramp-rc183-batch50-1ff23cc) | *(new — describe the variation)* | pilot-day-180-10k | 72337 | —% | — | 1.99 |
+| [`2026-11-05 10:24`](run-log-detail.md#2026-11-05t10-24-58z-case15-10k-row34-2x4xl-steady-09x-rc183-batch50-1ff23cc) | *(new — describe the variation)* | pilot-day-180-10k | 43792 | 0.0% | 241 | 1.83 |
+| [`2026-11-05 13:38`](run-log-detail.md#2026-11-05t13-38-54z-case15-10k-row35-4x2xl-steady-row34-09x-rc183-batch50-1ff23cc) | *(new — describe the variation)* | pilot-day-180-10k | 43792 | 0.0% | 260 | 1.81 |
+| [`2026-11-05 16:44`](run-log-detail.md#2026-11-05t16-44-40z-case15-10k-row35-1x8xl-steady-row34-09x-rc183-batch50-1ff23cc) | *(new — describe the variation)* | pilot-day-180-10k | 43792 | 0.0% | 257 | 1.87 |
+| [`2026-11-05 19:53`](run-log-detail.md#2026-11-05t19-53-21z-case15-10k-row34-2x4xl-steady-11x-rc183-batch50-1ff23cc) | *(new — describe the variation)* | pilot-day-180-10k | 19521 | —% | — | 2.23 |
 
 **Findings:** [`findings-clustered-media-push.md`](findings-clustered-media-push.md)
 

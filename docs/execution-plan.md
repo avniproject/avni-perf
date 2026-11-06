@@ -1186,8 +1186,8 @@ is binding; the calendar is not.
 | 31b | V | *Optional:* **the same ramp on the 18.1 production jar** | **pending — only if the fixes' move of the break point needs to be measured rather than inferred.** Predicted knee ~14,000–16,000 an hour. [Row 31](#row-31) |
 | 32 | S | **Prerequisites for more than one app server** — `app_instance_count` in avni-infra (N hosts, N load-balancer targets), and app CPU summed across instances in `cpu-per-sync.py` and the run log | **done 4 Nov 2026.** No run. avni-infra: `app_instance_count` adds `avni-server-2..N` (Role `avni-server`, 1-minute CloudWatch, New Relic as `avni-loadtest`) and one target each; the original host and target are untouched (plan at 1: 0 changes; at 2: 2 to add). Copies are configured one at a time (`serial: 1`). Tooling: `--app-instance` takes a comma-separated list; each run records its hosts and vCPU, and the run log shows each host's mean and peak and EC2-derived CPU seconds beside New Relic's. [Rows 32–37](#rows-32-37) |
 | 33 | S | **Scale-out gate** — 2 × `m6g.4xlarge` behind the load balancer, `db.m6g.4xlarge`, steady 27,500 syncs an hour (row 31's 1.1×, now ~13,750 per copy) | **done 4 Nov — two copies cost nothing extra: the split is even, nothing failed, and CPU per sync is 1.76 against one copy's 1.85.** 27,500 an hour completed at 27,428 an hour and 267 req/s in the steady window, in flight flat at ~2,550, 0 failures in 984,401 requests. p95 halved, 420 → 208 ms. App CPU 35% and 37% mean per copy (peaks 50% and 50%) against row 31's ~91% on one; the database unchanged at 45% mean, 64% peak, as it should be with the same load. EC2's CPU seconds summed over both hosts (51,624) sit ~4% above New Relic's (49,720). [Row 33 results](#row-33-results) |
-| 34 | S | **The database's limit on one 16-vCPU instance** — 2 × `m6g.4xlarge` (32 app vCPU), `db.m6g.4xlarge`, ramp 25,000 → 60,000 an hour, then steady at 0.9× and 1.1× of the knee | **pending — after 33.** Predicted knee ~47,000–50,000 with **the database binding first**, the first run of the campaign to make it bind. [Rows 32–37](#rows-32-37) |
-| 35 | S | **32 app vCPU three ways** — 1 × `m6g.8xlarge` and 4 × `m6g.2xlarge`, same database, each steady at row 34's 0.9× | **pending — after 34.** Two hours. Same load and app vCPU as row 34's steady hour on 2 × `m6g.4xlarge`, so one, two and four servers compare directly; the smaller instances are what make scaling out flexible. [Rows 32–37](#rows-32-37) |
+| 34 | S | **The database's limit on one 16-vCPU instance** — 2 × `m6g.4xlarge` (32 app vCPU), `db.m6g.4xlarge`, ramp 25,000 → 60,000 an hour, then steady at 0.9× and 1.1× of the knee | **done 5–6 Nov — one 16-vCPU database tops out at ~48,000–49,000 syncs an hour (~470–490 req/s), and it binds first, as predicted.** Ramp 25,000 → 60,000: completions flat at ~49,000 an hour and 466 req/s from ~13:30 with the database at 98–99% and all 200 connections in use, app 87–91%; failures from ~56,000 offered, stop rule at 14:03. Steady **0.9× (43,000)**: 42,959 an hour, 403 req/s, in flight flat, 0 failures, p95 241 ms, 1.83 CPU s per sync, database 78% (peak 89%). Steady **1.1× (53,000)** did not hold: in flight grew from the start, completions ~48,900 an hour, database 96–99% with 198–200 connections, failures above 1% after 30 minutes, stopped at 33 min. Disk was never a factor (≤1,023 write IOPS of 3,000, queue <1). [Row 34 results](#row-34-results) |
+| 35 | S | **32 app vCPU three ways** — 1 × `m6g.8xlarge` and 4 × `m6g.2xlarge`, same database, each steady at row 34's 0.9× | **done 5 Nov — size and count cost the same: 1.87, 1.83 and 1.81 CPU s per sync on one, two and four servers, within noise.** All three held 43,000 an hour at ~403 req/s with 0 failures and ~4,000 in flight; each copy's CPU within a point of the others (1 × 8xl 63%, 2 × 4xl 61/62%, 4 × 2xl 61% each over the hour). p95 236–260 ms, two copies lowest. Database 78–83% in all three; connections ~84 on one or two copies, ~109 on four. **One copy's 100-connection pool peaked at its cap** — the only shape to touch it at this load. [Row 35 results](#row-35-results) |
 | 36 | S | **50,000 an hour** — the app shape that won 35, sized to ~48 vCPU, on `db.m6g.8xlarge` (32 vCPU): steady 50,000 for an hour, then a ramp to 70,000 | **pending — after 35.** The hardware recommendation for 50,000: the smallest configuration that holds it with app ≤85% and database ≤70%. [Rows 32–37](#rows-32-37) |
 | 37 | S | **50,000 on more distinct users** — row 36's steady hour on a 25,000-user dataset | **pending — after 36, and only if row 36's database sits above ~50%.** On the 10k dataset each user syncs ~4.5 times an hour, which keeps the database's working set warmer than 50,000 real users would. [Rows 32–37](#rows-32-37) |
 
@@ -1980,6 +1980,74 @@ floor was removed — the check now compares the copies only — and the run lau
 minutes after that warm-up ended, on the same 13:59 reload. Both copies were healthy targets with
 identical jars before launch. The second copy was created and configured by `app_instance_count`
 the same morning (row 32).
+
+<a id="row-34-results"></a>
+##### Row 34 results, 5–6 Nov 2026 — the database's limit on one 16-vCPU instance
+
+2 × `m6g.4xlarge` (32 app vCPU), `db.m6g.4xlarge`, injector `m6g.2xlarge` (`GATLING_HEAP=16G`), the
+release candidate, `pilot-day-180-10k` reloaded fresh before each run **from the injector with the
+app hosts stopped** (the first rows run that way; see avni-infra `env-teardown.sh start-apps`).
+Throughput from the chains' Gatling ticks; database figures are CloudWatch 1-minute means (peaks) over
+the same windows.
+
+| phase | offered, syncs an hour | **completed, syncs an hour** | **req/s** | in flight | database CPU / connections | app CPU | failures |
+|---|---|---|---|---|---|---|---|
+| ramp, below the knee (12:20–13:04) | ~27,000–40,000, rising | 33,853 (tracking) | 328 | 2,606 → 3,850 | 62 → 77% / 52 → 73 | 50 → 70% | 0 |
+| **steady 0.9×** (16:09–16:53) | **43,000** | **42,959** | **403** | **3,949–4,045, flat** | **78% (89%) / 84 (102)** | **71–72%** | **0** |
+| ramp, at the knee (13:07–13:29) | ~41,000–47,000 | 44,188 | 417 | 3,890 → 4,593, growing | 75 → 97% / 80 → 200 | 70 → 87% | 0 |
+| ramp, saturated (13:32–13:51) | ~48,000–52,000 | **49,141, flat** | **466** | 4,805 → 6,002 | **98% (99%) / 195 (200)** | 87–91% | 3 |
+| steady 1.1× (01:34–01:47) | 53,000 | ~48,900 | 479 | 5,418 → 6,291, growing | 96% (99%) / 198 (200) | 83% | 26 |
+| ramp, failing (13:54–14:03) | ~56,000–59,000 | 44,199 | 362 | 6,655 → 8,808 | 99 → 68% / 200 | 56–63% | 4,147 |
+
+**The knee: ~48,000–49,000 syncs an hour, ~470–490 requests a second, with the database binding.**
+43,000 held for the hour with a flat backlog; 53,000 did not — its backlog grew from the first tick,
+completions capped at the ramp's ~49,000, and failures crossed 1% after half an hour (stop rule at 33
+minutes). Both throughput readings agree. The prediction was ~47,000–50,000 with the database first.
+
+- **The database binds, and the pools pin behind it.** At saturation the database ran 98–99% with
+  every one of the 2 × 100 connections taken, while app CPU stayed at 83–91% and then *fell* to
+  56–63% as requests queued for connections and timed out (database CPU falling with it, 99 → 68%,
+  every connection still held). That is the reverse of row 31, where the
+  app bound and the pool pinned behind it.
+- **Not disk.** Write IOPS peaked at 1,023 against the 3,000 baseline and the queue stayed under 1,
+  so provisioned IOPS would not help: the limit is the database's CPU.
+- **Requests per sync ~34**, unchanged from row 31 (403 × 3,600 / 42,959).
+- **CPU per sync at 0.9×: 1.83**, as on one copy in rows 31 and 33 (1.76–1.85). The 1.1× hour's 2.23
+  and the ramp's 1.99 include the overload backlog and are not comparable.
+- **Injector:** mean 17–18%, peak 24–25% in every run; never the limit.
+
+**Plan on ~43,000 syncs an hour per 16-vCPU database** — 0.9× of the knee, with the database at ~80%.
+
+<a id="row-35-results"></a>
+##### Row 35 results, 5 Nov 2026 — 32 app vCPU three ways
+
+Each at row 34's 0.9× rate, 43,000 syncs an hour for 60 minutes, `db.m6g.4xlarge`, on its own fresh
+reload, with the same jar, heap (5,120 MB per copy) and client. Steady windows 12 minutes after launch
+to the end of injection (44 minutes each).
+
+| shape | completed, syncs an hour | req/s | in flight | failures | p95 | **CPU s per sync** | app CPU per copy, hour mean | database CPU / connections |
+|---|---|---|---|---|---|---|---|---|
+| 1 × `m6g.8xlarge` | 42,976 | 403 | 3,952–4,064 | 0 | 257 ms | **1.87** | 63% | 82% (91%) / 84 (**100**) |
+| 2 × `m6g.4xlarge` (row 34's 0.9×) | 42,959 | 403 | 3,949–4,045 | 0 | 241 ms | **1.83** | 61%, 62% | 78% (89%) / 84 (102) |
+| 4 × `m6g.2xlarge` | 42,959 | 402 | 3,933–4,050 | 0 | 260 ms | **1.81** | 61%, 61%, 61%, 62% | 83% (91%) / 109 (132) |
+
+- **Size and count cost the same.** CPU per sync spans 1.81–1.87, inside the 1.76–1.85 that one
+  shape alone produced across rows 31 and 33. Four copies' fixed costs (their own JVM, JIT, GC, agent
+  and caches) are not visible at this load; neither is any gain from one large heap.
+- **The split is even at every count.** Round robin per request kept the copies within a point of
+  each other, as in row 33.
+- **Latency is flat too:** p95 241–260 ms, two copies lowest by ~20 ms.
+- **The database does not care how many copies there are** — 78–83% in all three, inside run-to-run
+  noise, and its connections follow copies × what each needs (~84 on one or two, ~109 on four), far
+  below `max_connections`.
+- **One finding against a single large server: its pool.** One copy carries all the concurrency, and
+  its 100-connection pool peaked at the cap at 43,000 an hour (mean 84) — the only shape to touch it.
+  At 48 app vCPU in one JVM it would bind before the CPU does, unless the pool is raised with it.
+
+**For row 36: 3 × `m6g.4xlarge`.** Count and size are equivalent on cost, so the choice comes down to
+the pool (one large copy pins it) and to flexibility (smaller copies scale in steps and survive the
+loss of one). Three `m6g.4xlarge` keeps the shape rows 33–34 measured; six `m6g.2xlarge` would do
+equally well on these numbers.
 
 ##### What it costs
 
