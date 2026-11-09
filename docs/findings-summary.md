@@ -297,7 +297,9 @@ ramp from 10,000 to 40,000 syncs an hour, then an hour each at 0.9× and 1.1× o
 
 ## 11. Scaling out, and what 50,000 syncs an hour needs
 
-**Rows 33–36, 4–6 Nov 2026** ([execution plan](execution-plan.md#rows-32-37)). The 18.3 release
+**Rows 33–36, 4–6 Nov 2026** ([execution plan](execution-plan.md#rows-32-37); the horizontal-scaling
+detail — per-copy split, cost per copy, latency, pools, the two CPU measures, and what running copies
+took — is in [`findings-horizontal-scale.md`](findings-horizontal-scale.md)). The 18.3 release
 candidate, the 10,000-user dataset reloaded fresh before every run, the customer's ten-a-day push with
 batched upload URLs, co-tenants at 792 an hour, heap pinned at 5,120 MB per copy, copies behind the load
 balancer with round robin and no stickiness.
@@ -318,7 +320,8 @@ balancer with round robin and no stickiness.
 1. **The app tier scales out as well as it scales up.** Two copies at row 31's 1.1× split the load
    within two points and cost 1.76 CPU s per sync against one copy's 1.85; p95 halved. At 32 app vCPU,
    one, two and four servers cost **1.87, 1.83 and 1.81** — inside the 1.76–1.87 one shape produced on
-   its own. A copy's fixed costs (its JVM, JIT, GC, agent and caches) are not visible at these loads.
+   its own. A copy's fixed costs (its JVM, JIT, GC, agent and caches) are not visible at these loads
+   ([horizontal scale](findings-horizontal-scale.md)).
 2. **One 16-vCPU database tops out at ~48,000–49,000 syncs an hour, ~470–490 requests a second** — the
    first time in the campaign it was the constraint, and where the plan predicted (~47,000–50,000).
    43,000 held for an hour with a flat backlog; 53,000 did not. At saturation the database ran 98–99%

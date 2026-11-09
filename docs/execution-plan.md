@@ -1825,6 +1825,9 @@ which is the batched client: row 26's unbatched 10,000-user run made ~110.
 <a id="rows-32-37"></a>
 #### Rows 32–37: what 50,000 syncs an hour needs — vertical, horizontal, and the database's own limit
 
+**Findings: [`findings-horizontal-scale.md`](findings-horizontal-scale.md)** (copies, cost, latency, pools,
+operations) and [`findings-summary.md` §11](findings-summary.md#11-scaling-out-and-what-50000-syncs-an-hour-needs).
+
 **Added 4 Nov 2026.** Row 31 found 16 app + 16 database vCPU with the fixes in carry ~27,500 syncs
 an hour at the edge and ~25,000 comfortably. Two things have never been measured:
 - **Whether the app tier scales out** as well as it scales up: every run so far had one app server.
