@@ -5,6 +5,9 @@ November with the fixes measured (§9), the knee located (§10) and the scale-ou
 (§11).** Each claim links to the case that carries the evidence; nothing here is new, and where a
 finding has been corrected the correction is what appears.
 
+**For a plain-language summary** — assumptions, sync times on the phone and syncs an hour by
+server size, for readers outside the campaign — see [`load-test-summary.md`](load-test-summary.md).
+
 **For which runs belong to which case**, and what each varied, see
 [`case-index.md`](case-index.md).
 
