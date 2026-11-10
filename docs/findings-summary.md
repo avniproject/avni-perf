@@ -477,6 +477,13 @@ child row, not the select. `AuthenticationFilter` and `syncDetails` remain.
 
 ## What is not measured
 
+> **Daily syncs in these runs downloaded whole histories** (found 10 Nov 2026,
+> [`harness-pull-window.md`](harness-pull-window.md)). The simulation honoured each daily sync's
+> window when asking what changed, but downloaded every changed record type from 1900, so a field
+> worker's daily sync pulled the whole catchment, ~8,400 records. Comparisons between runs stand;
+> **absolute capacity figures are cautious**, and "an incremental sync pulls 69% of a full one" (§4)
+> and history scaling for daily syncs (§6) are artefacts of it. Plan row 38 fixes and re-measures.
+
 Limits on the numbers above. Each is closed by a run in the section above, by number.
 
 * **No program data in the measured cohort** — `program_enrolment` and `program_encounter` are

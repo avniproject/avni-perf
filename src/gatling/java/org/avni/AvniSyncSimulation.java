@@ -1818,6 +1818,7 @@ public class AvniSyncSimulation extends Simulation {
             .on(group(workload.request(RESET_SYNC)).on(
                 exec(http(workload.request(RESET_SYNC))
                     .get(session -> "/" + resetSync.path
+                        // KNOWN ISSUE: the feeder's 1900, as the entity pulls - docs/harness-pull-window.md
                         + "?lastModifiedDateTime=" + session.getString("lastModifiedDateTime")
                         + "&now=" + java.time.Instant.now()
                         + "&size=" + pageSize
@@ -2366,6 +2367,11 @@ public class AvniSyncSimulation extends Simulation {
                 sb.append(param.getKey()).append("=").append(value).append("&");
             }
         }
+        // KNOWN ISSUE (docs/harness-pull-window.md): this is the feeder's value, 1900 for every
+        // committed feeder, not the per-entity window syncStatusBody sent. The app pulls from that
+        // entity's own loadedSince, so every realistic/incremental daily sync here downloads whole
+        // histories. Fix: loadedSinceFor(session, entity.entityName), together with the data change
+        // the doc describes. Left as is so existing runs stay comparable until plan row 38.
         sb.append("lastModifiedDateTime=").append(session.getString("lastModifiedDateTime"))
           .append("&now=").append(windowEndFor(entity, session))
           .append("&size=").append(pageSize)
