@@ -1,6 +1,10 @@
 # Load Tests for Avni Sync
 `./gradlew gatlingRun`
 
+**Just want the results?** [docs/load-test-summary.md](docs/load-test-summary.md) gives the
+assumptions, how long a sync takes on the phone, and how many syncs an hour each server size
+handles, in plain language.
+
 **New to this?** [docs/what-a-simulated-sync-does.md](docs/what-a-simulated-sync-does.md) walks one
 virtual user from feeder row to telemetry POST — the request sequence, what is modelled rather
 than performed, and the things people most often get wrong about it. The sections below document
