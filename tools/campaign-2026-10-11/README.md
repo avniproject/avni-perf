@@ -21,6 +21,7 @@ Local state they read and write lives beside them in `~/avni-campaign/` and is *
 | `deploy-jar.sh` | Put a jar on every app host, one at a time, with sha checks before and after. |
 | `run-anchor.sh`, `run-anchor-30.sh`, `swap-jar.sh` | Anchor runs A–D for rows 27–30. |
 | `generate-25k.sh` | Row 37's dataset: generate, split into feeders, stream to S3. |
+| `db-small-and-stop.sh` | After the campaign (12 Nov): start the stopped database, resize it through tofu to `db.m6g.large` with every other variable at its current value (refusing any other change), and stop it — resetting AWS's 7-day auto-start so the next one comes up small. |
 
 ## The chains, by row
 
