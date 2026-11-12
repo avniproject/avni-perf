@@ -1181,7 +1181,9 @@ is binding; the calendar is not.
 | 28 | V | **Drift check, only if row 27 does not reproduce 17.3** — anchor A once on the old jar `2c0215679` | **done 2026-10-27 — the rig moved, not the code.** Anchor A on `2c0215679`, same day, bed and classes as row 27's pair: **3.92 CPU s per sync, p95 2,219 ms**, app 89.7% — between the two 18.1 runs (3.96 / 3.83, p95 2,433 / 1,905) and within 1% of r1 on identical statement counts. The 15 Oct control (3.66, p95 1,709, app 84%) is therefore not comparable with anything measured now; what changed on the rig in twelve days is not identified — candidates are the fresh reindexed bed, the `audit` table's growth, and the instance landing on another host after the stop/start. [Results](#rows-27-28-results)
 | 29 | V | **One fix per jar** — #1097, #1098, #1103 and #1100 (with the batched client modelled), each built on 18.3 just before the fix plus that fix alone, run on A and B (#1100 on B) | **done 2026-10-29 — #1097 (A −26%, B −24%), #1098 (none; every re-save gone), #1100 on B (−6%, RDS −11%, requests halved), #1103 (A −41%, B −24%).** Row 29b re-runs #1098 with the fix that ships. **#1097 on A: −26% CPU per sync (2.88 against 3.9 ± 0.07), p95 2,433 → 715 ms, `gender` selects 66,448 → 3,392, database unchanged** — the signature and the magnitude both land, the magnitude larger than row 22's −19% because the control sat on the 2 vCPU knee and the fix takes the queueing waste with it. #1098 on A, then both on B, then #1100 on B with `UPLOAD_URL_BATCH=50`, follow the same day; **#1103's jar (`b4c611977`) arrived 28 Oct and runs 29 Oct, A then B on one reload.** Each measured against row 27, not stacked on the previous fix, so every saving is attributable. [Validation phase](#validation-phase) |
 | 29b | V | **#1098 re-run with the fix that ships** — `041438efe`: Joda `DateTime` compared by instant through a Hibernate `JodaDateTimeJavaType`, converter unchanged; A then B, B with `UPLOAD_URL_BATCH=0` as row 29's #1098 run | **done 2026-10-29 — A 3.88 and B 4.19 CPU s per sync (within noise), every re-save on telemetry and pushed entities gone on both: the same result as the withdrawn pinned-UTC runs, with the converter untouched.** Row 29's #1098 runs measured the pinned-UTC converter, which failed 7 tests and was withdrawn (avniproject/avni-server#1098, 29 Oct). Expected to reproduce them: every re-save gone, CPU within noise. [Row 29b](#row-29b) |
+| 29c | V | **#1103 again, with the reviewed fix** — the per-page parent lookup, `1103-parent-uuid-formula` at `b7ee734d2` (on 18.3's `07db44703`, as row 29's jars), alone on A and B | **pending — review completed 12 Nov with no findings; jar to build from `b7ee734d2`.** The review replaced the `@Formula` measured in row 29 with one `id = any(?)` query per parent table per page. Expected close to row 29's −41% on A and −24% on B. [Rows 29c, 30b, 39](#rows-29c-30b-39) |
 | 30 | V | **All fixes together** — the 18.3 release candidate (the row 29 fixes that have landed; #882's and #1057 only if they are in it) on A and B, then C (case 13, 2 vCPU) and D (5,000 users, 8 + 8) | **done 2026-10-30 — the release candidate (`946553685`) on all four anchors: A 1.94 CPU s per sync (−50%, p95 2,433 → 332 ms), B 2.28 (−47%, p95 449 → 248, requests halved, RDS −25%), C 1.78 on the 2 vCPU cliff with 0 failures (17.3: 467, p95 56 s), D 1.81 at 5,000 users (−43%, p95 205). The number to quote: −43 to −50% CPU per sync, database −20 to −25%, no failures anywhere, and the knee moved off 2 vCPU.** `avni-server-18.3-1097-1098-1100-1103-946553685.jar` (`946553685`), sha256 `1315739b…ead085729`, bytecode-checked as exactly the union of the four row 29 fixes on 18.3 (`DummyInterceptor` gone, the `@Formula` entity set, `MediaController`, `JodaDateTimeJavaType` + contributor with the converter byte-identical to 18.1). Runs: **A then C the evening of 29 Oct** (both `m6g.large`, one reload; A writes nothing), **B then D on 30 Oct** (B on `m6g.xlarge`; D on 8 + 8 after the `pilot-day-180-5k` swap). **B and D run with `UPLOAD_URL_BATCH=50`** — the candidate ships with avni-client#2218, so that is what the release looks like; #1100's own row 29 run is the batched-vs-unbatched reference. Fixes interact, so this is the number to quote for the release; C shows whether the knee moved, D whether the gain holds at scale. [Validation phase](#validation-phase) |
+| 30b | V | **The combined jar with the reviewed #1103** — 18.3 after `1103-parent-uuid-formula` (`b7ee734d2`) is merged into it (in progress 12 Nov; 18.3 was `7ac1fdd26` before), which already carries #1097, #1098 and #1100, on B and D | **pending — after 29c.** Rows 30–36 rest on the old fix; if B and D land within noise of row 30's, they carry over, otherwise row 31's steady pair is repeated. [Rows 29c, 30b, 39](#rows-29c-30b-39) |
 | 31 | V | **The break point with the fixes in** — the combined jar on row 26's 16 + 16, a stress ramp from 10,000 to 40,000 syncs an hour, then two steady hours bracketing the knee it finds | **done 30 Oct — with the fixes in, 16 + 16 carries ~27,500 syncs an hour at its edge and ~22,500 comfortably; plan on ~25,000.** Ramp 10,000 → 40,000: queueing from ~25,000 an hour, throughput ceiling ~265–300 req/s, app CPU binding at 97% with the 100-connection pool pinned behind it, database ≤58%, injector ≤14%, 0.02% failures; p95 grew to 24 s above capacity. Steady **0.9× (22,500)**: 0 failures, p95 222 ms, 1.78 CPU s per sync, app ~75%, pool 37–50, in flight flat. Steady **1.1× (27,500)**: 0 failures, p95 420 ms, 1.85 CPU s per sync, app ~91%, pool touching 100, in flight flat at ~2,550 — the rate was sustained, so the knee is above it; the ramp understated it, as the method said it would (queues build behind a climbing rate, and by its saturation the bed carried an hour of the run's own pushes). The pool pins only when CPU saturates, so it is a symptom, not a second limit. Against the old jar's predicted ~14,000–16,000 (31b, not run) the fixes move the 16 + 16 knee up by roughly 1.7×. [Row 31](#row-31)
 | 31b | V | *Optional:* **the same ramp on the 18.1 production jar** | **pending — only if the fixes' move of the break point needs to be measured rather than inferred.** Predicted knee ~14,000–16,000 an hour. [Row 31](#row-31) |
 | 32 | S | **Prerequisites for more than one app server** — `app_instance_count` in avni-infra (N hosts, N load-balancer targets), and app CPU summed across instances in `cpu-per-sync.py` and the run log | **done 4 Nov 2026.** No run. avni-infra: `app_instance_count` adds `avni-server-2..N` (Role `avni-server`, 1-minute CloudWatch, New Relic as `avni-loadtest`) and one target each; the original host and target are untouched (plan at 1: 0 changes; at 2: 2 to add). Copies are configured one at a time (`serial: 1`). Tooling: `--app-instance` takes a comma-separated list; each run records its hosts and vCPU, and the run log shows each host's mean and peak and EC2-derived CPU seconds beside New Relic's. [Rows 32–37](#rows-32-37) |
@@ -1191,6 +1193,7 @@ is binding; the calendar is not.
 | 36 | S | **50,000 an hour** — the app shape that won 35, sized to ~48 vCPU, on `db.m6g.8xlarge` (32 vCPU): steady 50,000 for an hour, then a ramp to 70,000 | **done 6 Nov — 3 × `m6g.4xlarge` (48 app vCPU) on `db.m6g.8xlarge` (32 vCPU) holds 50,000 syncs an hour with app ~55% and database 47%, and was still keeping up at 70,000.** Steady 50,000: 49,960 an hour, 464 req/s, in flight flat at ~4,600, 0 failures in 1.72 M requests, p95 212 ms, 1.79 CPU s per sync, copies within a point of each other. Ramp 50,000 → 70,000: 0 failures in 2.05 M requests, p95 214 ms; at the top ~66,000 completed an hour at 617 req/s, app 72–73%, database 59% (peak 61%), 119 connections, in flight still tracking the offer — **no knee below 70,000; the app would bind first, near ~90,000.** [Row 36 results](#row-36-results) |
 | 37 | S | **50,000 on more distinct users** — row 36's steady hour on a 25,000-user dataset | **held — not run 6 Nov; to run another day if required.** Its condition was not met either: row 36's database averaged 47% over the steady hour's minutes 12–56, against the ~50% threshold. The dataset is generated and staged (`datasets/pilot-day-180-25k.tar.gz`, 5.2 GiB; feeders `case4`/`case5-users-pilot-25k-nosuppush.csv`), and `chain-rows36-37.sh` carried the run before it was held. On the 10k dataset each user syncs ~4.5 times an hour, which keeps the database's working set warmer than 50,000 real users would. [Rows 32–37](#rows-32-37) |
 | 38 | — | **Fix the pull window, then re-measure one capacity point** — daily syncs download only what changed, as the app does; data regenerated with its reference date at the run date; row 31's steady pair or row 36's 50,000 hour repeated | **pending — do this before any new run that quotes absolute capacity or sync times.** Every realistic run so far downloaded each changed record type from 1900, so daily syncs pulled whole catchments (~8,400 records per field worker) and the capacity figures are cautious by an unknown margin. [`harness-pull-window.md`](harness-pull-window.md) |
+| 39 | — | **Deep pages on a heavy device** — fresh syncs of one user whose catchment holds 100,000+ records of one type, time per page against page number, on no fix, the `@Formula` fix and the reviewed fix | **pending — needs a high-scope user provisioned on the bed.** The case the review found and the anchors cannot reach: offset paging made the formula's lookup grow with page depth. [Rows 29c, 30b, 39](#rows-29c-30b-39) |
 
 #### Rows 21 and 22: removing `DummyInterceptor`
 
@@ -2104,6 +2107,79 @@ app's knee near 90,000. One 16-vCPU database tops out at ~48,000–49,000 (row 3
 | 36 | 1 steady + 1–2 ramp |
 | 37 | 1, plus generating and loading a 25k dataset (~2.5× the 10k's 28 M rows) |
 | **total** | **~10–11 hours of runs**, plus resizes and a reload per row |
+
+<a id="rows-29c-30b-39"></a>
+#### Rows 29c, 30b and 39: re-testing #1103 after its review
+
+**Added 12 Nov 2026.** avniproject/avni-server#1103's revised fix completed code review on 12 Nov
+with no findings, at `b7ee734d2`.
+
+**What changed.** Row 29's #1103 jar (`b4c611977`) selected each sync record's parent UUID with a
+`@Formula` subselect in the page query. Review (12 Nov) found it costs more on deep pages. Sync
+pages by offset, so page *k* skips the k × 1,000 rows before it, and the subselect ran for every
+skipped row as well as every returned one. A stream of N records of one type then costs about
+N² / 2,000 lookups:
+- the gain is overtaken somewhere above 5,000–10,000 records of one type;
+- on a real organisation's data, page 100 of one programme encounter type went from 2.6 s to
+  3.2–3.7 s, the lookup running 101,001 times to return 1,001 rows;
+- at the p99 device, that is roughly 55–120 s of extra database time over one fresh sync.
+
+The reviewed fix (`3757ccf75`, with tests in `b6fb0d89b` and `b7ee734d2`, on
+`1103-parent-uuid-formula`) replaces each `@Formula` with a transient field. It is filled in `wrap()`
+before `process()` runs, with one `select id, uuid … where id = any(?)` per parent table per page,
+so the lookup no longer depends on page depth and no longer runs on non-sync loads.
+
+##### Row 29c: the reviewed fix alone
+
+- **Jar:** `1103-parent-uuid-formula` at `b7ee734d2`, which branches from 18.3's `07db44703`, the base
+  of every row 29 jar. It carries both #1103 versions, the `@Formula` commits and their replacement,
+  so it is the reviewed fix alone. Build and bytecode-check it as row 29's jars were: no `@Formula`
+  on the nine entities, the transient parent-UUID fields in their place.
+- **Runs:** anchor A, then B, against row 27's controls (A 3.90 ± 0.07, B 4.27 ± 0.02 CPU s per
+  sync). B with `UPLOAD_URL_BATCH=0`, as row 29's #1103 run.
+- **Expected:** close to row 29's #1103 result, A 2.30 (−41%) and B 3.24 (−24%). One query per page
+  instead of one per row may be slightly cheaper.
+- **Signature:** `individual` and `program_enrolment` parent loads gone, as in row 29. The formula's
+  subselects are no longer in the page query; instead one `id = any(?)` per parent table per page
+  appears.
+
+##### Row 30b: the combined jar with the reviewed fix
+
+- **Jar:** 18.3 once `1103-parent-uuid-formula` is merged into it (merge in progress 12 Nov; 18.3 was
+  `7ac1fdd26` just before). Record the merge commit as the build. 18.3 already carries #1097
+  (`ea663e0b0`), the instant-equality #1098 (`8dc434e3c`) and #1100 (`bd06c18d9`, `e6b645c70`), so
+  this is the release as it will ship, not a hand-assembled union like row 30's `946553685`.
+  Bytecode-check it as row 30's was.
+- **What else 18.3 brings since row 29's base**, 40 commits, checked 12 Nov: on the hot paths only
+  a 404 for an unknown subject's profile (#1079), App Designer list filters, and Search All
+  (#1104). None is on the sync path.
+- **Runs:** anchor B with `UPLOAD_URL_BATCH=50`, then D (5,000 users on 8 + 8), against row 30's
+  B 2.28 and D 1.81 CPU s per sync.
+- **Reading it:** within noise, and rows 31–36's capacity figures carry over unchanged. Beyond
+  noise, repeat row 31's steady pair on 16 + 16 to re-anchor them before quoting.
+
+##### Row 39: deep pages on a heavy device
+
+The anchors cannot show the case the review found. In our data a supervisor's largest record type
+is about 15 pages, near the crossover; the review's case is page 100 and beyond. (The pull-window
+flaw, [`harness-pull-window.md`](harness-pull-window.md), means the anchors already page through
+full histories, so 29c and 30b see some of the difference, but not at this depth.)
+
+- **Setup:**
+  - one user whose catchment holds 100,000+ records of one type: a district- or state-level user
+    on a state tenant of `pilot-day-180`, where one state holds 1.8 M encounters;
+  - provisioned on the bed, with a one-row feeder;
+  - `SYNC_MODE=full`, a handful of syncs, no co-tenant load.
+- **Jars:** the 18.1 control, row 29's `@Formula` jar, and row 29c's reviewed jar.
+- **Measure:** time per page against page number for the largest record type, from the harness's
+  per-request timings and the database's own per-statement time.
+- **Expected:**
+  - **control:** time per page rises with depth from offset paging alone;
+  - **`@Formula` jar:** rises faster, the review's 2.6 → 3.2–3.7 s at page 100;
+  - **reviewed jar:** tracks the control, minus the parent-load saving, with a flat per-page lookup
+    cost.
+- **Also worth knowing from it:** how much offset paging itself costs a heavy device on every build.
+  avniproject/avni-client#2096's slice endpoints remove the `COUNT` per page, but not the offset.
 
 #### Standing task: back up New Relic weekly
 
