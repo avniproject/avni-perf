@@ -22,14 +22,23 @@ cd /Users/joy/projects/samanvay/avni/avni-infra
 export AWS_REGION=ap-south-1
 say(){ echo "[$(TZ=Asia/Kolkata date +%H:%M:%S)] $*"; }
 PROXY="$PWD/configure/scripts/eice-ssh-proxy.sh"; INJ=i-041afc7c6e0761195; APP=i-044c88e15e8ea9e0f
-sshinj(){ ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=30 -o ServerAliveInterval=30 -o ProxyCommand="$PROXY %h" ubuntu@$INJ "$@" 2>/dev/null; }
+# **Credentials before every connection** (14 Nov 2026). The chain holds the credentials it sourced; a refresh
+# lands in the CLI cache, not in a running process. On 13 Nov a wait loop with no session check kept polling
+# with credentials that had expired at 19:27, never saw the run end, and hung for 2.5 hours. creds_fresh is a
+# date comparison, no network call; when the credentials are within 5 minutes of lapsing, ensure_session
+# re-reads them, and waits for an MFA refresh if there is none yet.
+creds_fresh(){ local e="${AWS_CREDENTIAL_EXPIRATION:-}" t; [ -n "$e" ] || return 0
+  t=$(date -u -j -f '%Y-%m-%dT%H:%M:%S' "${e:0:19}" +%s 2>/dev/null) || return 0; [ "$(date -u +%s)" -lt $(( t - 300 )) ]; }
+sshinj(){ creds_fresh || refresh >&2; ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=30 -o ServerAliveInterval=30 -o ProxyCommand="$PROXY %h" ubuntu@$INJ "$@" 2>/dev/null; }
 . $C/app-hosts.sh
-sshapp(){ ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=30 -o ProxyCommand="$PROXY %h" ubuntu@$APP "$@" 2>/dev/null; }
+sshapp(){ creds_fresh || refresh >&2; ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=30 -o ProxyCommand="$PROXY %h" ubuntu@$APP "$@" 2>/dev/null; }
 session_ok(){ [ "$(aws sts get-caller-identity --query Account --output text 2>/dev/null)" = "936573213727" ]; }
-postrun(){  # <label substring> <log>  -- run log, CPU over the run's whole life, run log again
-  local run="$1" L="$2" id start now tail
-  session_ok || { say "ABORT: AWS session expired before $run's write-up"; exit 1; }
-  id=$(sshinj "grep -m1 '^run ' $L | awk '{print \$2}'")
+postrun(){  # <label substring> <log> [run id]  -- run log, CPU over the run's whole life, run log again
+  # The run id is passed in when the caller recorded it at launch (run_id_of), so the write-up does not need the
+  # injector and the environment can stop before it finishes. Without one it is read from the injector, as before.
+  local run="$1" L="$2" id="${3:-}" start now tail
+  ensure_session
+  [ -n "$id" ] || id=$(sshinj "grep -m1 '^run ' $L | awk '{print \$2}'")
   start=$(date -u -j -f '%Y-%m-%dT%H-%M-%SZ' "${id:0:20}" +%s 2>/dev/null || echo 0)
   now=$(date +%s); tail=$(( (now - start) / 60 - 60 + 1 ))
   { [ "$start" -gt 0 ] && [ "$tail" -ge 3 ] && [ "$tail" -le 120 ]; } || tail=25
@@ -52,7 +61,7 @@ watch(){  # <log path>
   while :; do D=$(sshinj "grep -c 'BUILD SUCCESSFUL\|BUILD FAILED' $L"); [ "${D:-0}" -ge 1 ] && break
     sshinj "grep 'waiting:' $L | tail -1 | sed 's/^/  [$(TZ=Asia/Kolkata date +%H:%M:%S)] /'; grep '> Global' $L | tail -1 | sed -E 's/ +/ /g; s/^/           /'"; sleep 180; done
   sshinj "grep -A 14 'Global Information' $L | grep -E 'request count|95th|t < 800' | sed -E 's/ +/ /g'; grep 'BUILD' $L | tail -1"
-  until sshinj "grep -q 'published. exit' $L"; do sleep 30; done; say "published"
+  until sshinj "grep -q 'published. exit' $L"; do ensure_session; sleep 30; done; say "published"
 }
 timeslices(){  # <label> <log>  -- the per-segment tree for the run's window: launch to +80 min
   local label="$1" L="$2" id from to
@@ -85,11 +94,12 @@ watch_stress(){  # <log>  -- ticks every 3 min; stop rule: interval failures > 1
     sleep 180
   done
   sshinj "grep -A 14 'Global Information' $L | grep -E 'request count|95th|t < 800' | sed -E 's/ +/ /g'; grep 'BUILD' $L | tail -1"
-  until sshinj "grep -q 'published. exit' $L"; do sleep 30; done; say "published"
+  until sshinj "grep -q 'published. exit' $L"; do ensure_session; sleep 30; done; say "published"
 }
-ts_window(){  # <label> <log> <minutes>  -- timeslices from launch to launch + minutes
-  local label="$1" L="$2" mins="$3" id from to
-  id=$(sshinj "grep -m1 '^run ' $L | awk '{print \$2}'"); from=$(echo "${id:0:20}" | sed -E 's/T([0-9]{2})-([0-9]{2})-([0-9]{2})Z/T\1:\2:\3Z/')
+ts_window(){  # <label> <log> <minutes> [run id]  -- timeslices from launch to launch + minutes
+  local label="$1" L="$2" mins="$3" id="${4:-}" from to
+  ensure_session
+  [ -n "$id" ] || id=$(sshinj "grep -m1 '^run ' $L | awk '{print \$2}'"); from=$(echo "${id:0:20}" | sed -E 's/T([0-9]{2})-([0-9]{2})-([0-9]{2})Z/T\1:\2:\3Z/')
   to=$(date -u -j -v+${mins}M -f '%Y-%m-%dT%H:%M:%SZ' "$from" +%Y-%m-%dT%H:%M:%SZ)
   export NEW_RELIC_API_KEY=$(aws ssm get-parameter --name /avni/loadtest/newrelic-user-key --with-decryption --query Parameter.Value --output text)
   ( cd $PERF && python3 tools/newrelic-export.py --account 8563864 --region eu --out nr-backup --timeslices --label "$label" --from "$from" --to "$to" 2>&1 | grep -v NRAK | tail -2 | sed 's/^/     /' )
@@ -98,6 +108,12 @@ ts_window(){  # <label> <log> <minutes>  -- timeslices from launch to launch + m
 
 
 WRITEUP_PID=""
+# **Record a run's id the moment it launches.** $C/runids/<name> holds it for the write-up.
+run_id_of(){  # <run name> -- read the id from the injector's log (three tries) and record it; echoes it
+  local id="" i; mkdir -p $C/runids
+  for i in 1 2 3 4 5 6; do id=$(sshinj "grep -m1 '^run ' /opt/avni-perf/$1.log 2>/dev/null | awk '{print \$2}'"); [ -n "$id" ] && break; sleep 10; done
+  [ -n "$id" ] && echo "$id" > $C/runids/$1; echo "$id"
+}
 wait_writeup(){ [ -n "$WRITEUP_PID" ] && { say "   waiting for the previous write-up"; wait $WRITEUP_PID; grep -hE 'CPU s|recorded|captured|finished' $C/writeup-$ROW-*.log 2>/dev/null | tail -n 4 | sed 's/^/   /'; WRITEUP_PID=""; }; return 0; }
 
 app_cpu_last(){  # <minutes>  -- each app host's mean CPU over the last N minutes, "id pct" per line
@@ -208,9 +224,10 @@ warm_up(){  # 900 s through the load balancer, then the copies' spread (relative
   check_spread "warm-up CPU" 14
 }
 
-writeup_bg(){  # <run name> <log> <timeslice minutes>
+writeup_bg(){  # <run name> <log> <timeslice minutes> [run id]
   wait_writeup
-  ( postrun "$1" "$2"; ts_window "$1" "$2" "$3"; say "   write-up of $1 finished" ) > $C/writeup-$ROW-$1.log 2>&1 & WRITEUP_PID=$!
+  local id="${4:-$(cat $C/runids/$1 2>/dev/null)}"
+  ( postrun "$1" "$2" "$id"; ts_window "$1" "$2" "$3" "$id"; say "   write-up of $1 finished" ) > $C/writeup-$ROW-$1.log 2>&1 & WRITEUP_PID=$!
 }
 
 # ---- shared from rows 34-35 on (moved here 6 Nov 2026) -------------------------------------------
@@ -246,27 +263,7 @@ watch_run(){  # watch_stress with a session check every tick
     sleep 180
   done
   sshinj "grep -A 14 'Global Information' $L | grep -E 'request count|95th|t < 800' | sed -E 's/ +/ /g'; grep 'BUILD' $L | tail -1"
-  until sshinj "grep -q 'published. exit' $L"; do sleep 30; done; say "published"
-}
-
-watch_run(){  # watch_stress with a session check every tick
-  local L="$1" prev_t=0 prev_k=0 bad=0 line tot ko dt dk D
-  sleep 60
-  while :; do
-    ensure_session
-    D=$(sshinj "grep -c 'BUILD SUCCESSFUL\|BUILD FAILED' $L"); [ "${D:-0}" -ge 1 ] && break
-    line=$(sshinj "grep '> Global' $L | tail -1"); tot=$(echo "$line" | awk -F'|' '{gsub(/[ ,]/,"",$2); print $2+0}'); ko=$(echo "$line" | awk -F'|' '{gsub(/[ ,]/,"",$4); print $4+0}')
-    sshinj "grep 'waiting:' $L | tail -1" | sed "s/^/  [$(TZ=Asia/Kolkata date +%H:%M:%S)] /"
-    if [ "${tot:-0}" -gt "$prev_t" ]; then dt=$((tot-prev_t)); dk=$((ko-prev_k))
-      echo "           > Global | ${tot} | KO ${ko} | interval ${dt} req, ${dk} KO ($(awk -v a=$dk -v b=$dt 'BEGIN{printf "%.2f", 100*a/b}')%)"
-      if awk -v a=$dk -v b=$dt 'BEGIN{exit !(b>0 && a/b>0.01)}'; then bad=$((bad+1)); else bad=0; fi
-      prev_t=$tot; prev_k=$ko
-      if [ $bad -ge 2 ]; then say "STOP RULE: interval failures above 1% for two consecutive ticks -- stopping the simulation"; sshinj "pkill -f AvniSyncSimulation"; fi
-    fi
-    sleep 180
-  done
-  sshinj "grep -A 14 'Global Information' $L | grep -E 'request count|95th|t < 800' | sed -E 's/ +/ /g'; grep 'BUILD' $L | tail -1"
-  until sshinj "grep -q 'published. exit' $L"; do sleep 30; done; say "published"
+  until sshinj "grep -q 'published. exit' $L"; do ensure_session; sleep 30; done; say "published"
 }
 
 inj_cpu(){

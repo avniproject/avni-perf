@@ -15,7 +15,7 @@ Local state they read and write lives beside them in `~/avni-campaign/` and is *
 
 | file | what it does |
 |---|---|
-| `lib-chain.sh` | Sourced by chains from row 34 on. Session handling that **waits** for an MFA refresh instead of aborting; `prepare_bed` (start without app hosts, resize database and injector, reload from the injector); `bring_up_apps` (resize or create copies, start them one at a time, jar, per-copy checks); `warm_up` with a relative spread check; `watch_run` with the 1%-for-two-ticks stop rule; `archive_logs` (only files new since the last archive); `launch_and_watch`; background write-ups. |
+| `lib-chain.sh` | Sourced by chains from row 34 on. **From 14 Nov:** every connection re-reads credentials when they are within 5 minutes of lapsing, every wait loop checks the session, and each run's id is recorded at launch (`run_id_of`) for its write-up. Session handling that **waits** for an MFA refresh instead of aborting; `prepare_bed` (start without app hosts, resize database and injector, reload from the injector); `bring_up_apps` (resize or create copies, start them one at a time, jar, per-copy checks); `warm_up` with a relative spread check; `watch_run` with the 1%-for-two-ticks stop rule; `archive_logs` (only files new since the last archive); `launch_and_watch`; background write-ups. |
 | `app-hosts.sh` | The app hosts the environment has now (`app_instance_count`, row 32), and ssh helpers with retries. |
 | `resize-env.sh` | Resize app, database and injector **through tofu**, with an optional app count; refuses a plan that would replace any host or destroy an original; configures new copies; `keep` leaves the app class alone. |
 | `deploy-jar.sh` | Put a jar on every app host, one at a time, with sha checks before and after. |
@@ -35,6 +35,8 @@ Local state they read and write lives beside them in `~/avni-campaign/` and is *
 | 34 (steady pair), 35 | `chain-rows34-35.sh` — order chosen so row 35 finished the same day | in the chain |
 | 36 (37 held) | `chain-rows36-37.sh` — third copy created alongside the first reload | in the chain |
 | 29c, 30b, 39 (with the 18.1 control re-run) | `chain-rows-29c-30b-39.sh`; row 39's user is `row39-user.sql` (district 1 of `state-1`, generator-shaped uuids so a reload removes it), applied only when `row39-sql.approved` holds its sha256 | in the chain |
+| 29c, 39 (13 Nov, as run) | `chain-rows-29c-30b-39-resume.sh` (row 39 with the feeder path fixed), `-deep.sh` (deep pages first: `row39-merge-types.sql` merges three of District 1's encounter types into one 123-page stream, gated on `row39-merge.approved`), `-resume3.sh` (after the 19:27 credential expiry hung the deep chain) | in the chain |
+| 29c B, 30b (Monday 16 Nov) | `chain-monday-29cB-30b.sh` — stops the environment as soon as the last run's logs are archived; run ids recorded at launch, so write-ups do not need the injector | in the chain |
 
 **Every `-resume` exists because its chain stopped part-way,** and the execution plan's provenance notes
 say why. The chains were never edited while running: bash reads a script by offset, so a running file is
