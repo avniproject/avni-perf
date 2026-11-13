@@ -34,6 +34,7 @@ Local state they read and write lives beside them in `~/avni-campaign/` and is *
 | 34 (ramp) | `chain-row34-ramp.sh`, then `chain-row34-ramp-resume.sh` (the local jar had left `~/Downloads`) | — |
 | 34 (steady pair), 35 | `chain-rows34-35.sh` — order chosen so row 35 finished the same day | in the chain |
 | 36 (37 held) | `chain-rows36-37.sh` — third copy created alongside the first reload | in the chain |
+| 29c, 30b, 39 (with the 18.1 control re-run) | `chain-rows-29c-30b-39.sh`; row 39's user is `row39-user.sql` (district 1 of `state-1`, generator-shaped uuids so a reload removes it), applied only when `row39-sql.approved` holds its sha256 | in the chain |
 
 **Every `-resume` exists because its chain stopped part-way,** and the execution plan's provenance notes
 say why. The chains were never edited while running: bash reads a script by offset, so a running file is
