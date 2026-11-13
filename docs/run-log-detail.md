@@ -1,12 +1,12 @@
 # Run log — detail
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-11-06 13:44 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-11-13 22:40 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script, as [`run-log.md`](run-log.md) is. That file is the index and carries the results table and any caveats; this one records what each run was configured with and what environment it met, which is what makes a number interpretable once the environment is gone.
 
 ## `2026-10-05T08-38-47Z-case1-f76d110`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T08-38-47Z-case1-f76d110/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-05T08-38-47Z-case1-f76d110/2026-10-05T08-38-47Z-case1-f76d110.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-05T08-38-47Z-case1-f76d110/2026-10-05T08-38-47Z-case1-f76d110.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T08-38-47Z-case1-f76d110/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-05T08-38-47Z-case1-f76d110` makes one.
 
 | | |
 |---|---|
@@ -34,7 +34,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T08-38-47Z-case1
 
 ## `2026-10-05T09-43-14Z-case1-e47afd5`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-43-14Z-case1-e47afd5/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-05T09-43-14Z-case1-e47afd5/2026-10-05T09-43-14Z-case1-e47afd5.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-43-14Z-case1-e47afd5/2026-10-05T09-43-14Z-case1-e47afd5.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-43-14Z-case1-e47afd5/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-05T09-43-14Z-case1-e47afd5` makes one.
 
 | | |
 |---|---|
@@ -62,7 +62,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-43-14Z-case1
 
 ## `2026-10-05T09-53-13Z-case1-burst15-e47afd5`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-53-13Z-case1-burst15-e47afd5/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-05T09-53-13Z-case1-burst15-e47afd5/2026-10-05T09-53-13Z-case1-burst15-e47afd5.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-53-13Z-case1-burst15-e47afd5/2026-10-05T09-53-13Z-case1-burst15-e47afd5.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-53-13Z-case1-burst15-e47afd5/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-05T09-53-13Z-case1-burst15-e47afd5` makes one.
 
 | | |
 |---|---|
@@ -90,7 +90,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T09-53-13Z-case1
 
 ## `2026-10-05T10-28-06Z-case1-burst90-d9eac3e`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-28-06Z-case1-burst90-d9eac3e/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-05T10-28-06Z-case1-burst90-d9eac3e/2026-10-05T10-28-06Z-case1-burst90-d9eac3e.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-28-06Z-case1-burst90-d9eac3e/2026-10-05T10-28-06Z-case1-burst90-d9eac3e.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-28-06Z-case1-burst90-d9eac3e/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-05T10-28-06Z-case1-burst90-d9eac3e` makes one.
 
 | | |
 |---|---|
@@ -120,7 +120,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-28-06Z-case1
 
 ## `2026-10-05T10-30-01Z-case1-burst120-d9eac3e`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-30-01Z-case1-burst120-d9eac3e/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-05T10-30-01Z-case1-burst120-d9eac3e/2026-10-05T10-30-01Z-case1-burst120-d9eac3e.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-30-01Z-case1-burst120-d9eac3e/2026-10-05T10-30-01Z-case1-burst120-d9eac3e.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-30-01Z-case1-burst120-d9eac3e/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-05T10-30-01Z-case1-burst120-d9eac3e` makes one.
 
 | | |
 |---|---|
@@ -150,7 +150,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-30-01Z-case1
 
 ## `2026-10-05T10-32-25Z-case1-burst180-d9eac3e`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-32-25Z-case1-burst180-d9eac3e/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-05T10-32-25Z-case1-burst180-d9eac3e/2026-10-05T10-32-25Z-case1-burst180-d9eac3e.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-32-25Z-case1-burst180-d9eac3e/2026-10-05T10-32-25Z-case1-burst180-d9eac3e.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-32-25Z-case1-burst180-d9eac3e/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-05T10-32-25Z-case1-burst180-d9eac3e` makes one.
 
 | | |
 |---|---|
@@ -180,7 +180,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T10-32-25Z-case1
 
 ## `2026-10-05T11-37-03Z-case1-burst60-d9eac3e`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-37-03Z-case1-burst60-d9eac3e/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-05T11-37-03Z-case1-burst60-d9eac3e/2026-10-05T11-37-03Z-case1-burst60-d9eac3e.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-37-03Z-case1-burst60-d9eac3e/2026-10-05T11-37-03Z-case1-burst60-d9eac3e.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-37-03Z-case1-burst60-d9eac3e/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-05T11-37-03Z-case1-burst60-d9eac3e` makes one.
 
 | | |
 |---|---|
@@ -210,7 +210,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-37-03Z-case1
 
 ## `2026-10-05T11-41-10Z-case1-burst15-d9eac3e`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-41-10Z-case1-burst15-d9eac3e/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-05T11-41-10Z-case1-burst15-d9eac3e/2026-10-05T11-41-10Z-case1-burst15-d9eac3e.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-41-10Z-case1-burst15-d9eac3e/2026-10-05T11-41-10Z-case1-burst15-d9eac3e.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-41-10Z-case1-burst15-d9eac3e/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-05T11-41-10Z-case1-burst15-d9eac3e` makes one.
 
 | | |
 |---|---|
@@ -240,7 +240,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T11-41-10Z-case1
 
 ## `2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e/2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e/2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-05T12-01-03Z-case1-burst60-warm-d9eac3e` makes one.
 
 | | |
 |---|---|
@@ -270,7 +270,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-01-03Z-case1
 
 ## `2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e/2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e/2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-05T12-02-47Z-case1-burst15-warm-d9eac3e` makes one.
 
 | | |
 |---|---|
@@ -300,7 +300,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-05T12-02-47Z-case1
 
 ## `2026-10-06T04-40-26Z-case1-burst900-e7a130d`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-40-26Z-case1-burst900-e7a130d/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-06T04-40-26Z-case1-burst900-e7a130d/2026-10-06T04-40-26Z-case1-burst900-e7a130d.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-40-26Z-case1-burst900-e7a130d/2026-10-06T04-40-26Z-case1-burst900-e7a130d.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-40-26Z-case1-burst900-e7a130d/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-06T04-40-26Z-case1-burst900-e7a130d` makes one.
 
 | | |
 |---|---|
@@ -330,7 +330,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-40-26Z-case1
 
 ## `2026-10-06T04-55-47Z-case1-burst75-e7a130d`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-55-47Z-case1-burst75-e7a130d/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-06T04-55-47Z-case1-burst75-e7a130d/2026-10-06T04-55-47Z-case1-burst75-e7a130d.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-55-47Z-case1-burst75-e7a130d/2026-10-06T04-55-47Z-case1-burst75-e7a130d.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-55-47Z-case1-burst75-e7a130d/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-06T04-55-47Z-case1-burst75-e7a130d` makes one.
 
 | | |
 |---|---|
@@ -360,7 +360,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T04-55-47Z-case1
 
 ## `2026-10-06T05-16-44Z-case1-burst75-e7a130d`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-16-44Z-case1-burst75-e7a130d/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-06T05-16-44Z-case1-burst75-e7a130d/2026-10-06T05-16-44Z-case1-burst75-e7a130d.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-16-44Z-case1-burst75-e7a130d/2026-10-06T05-16-44Z-case1-burst75-e7a130d.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-16-44Z-case1-burst75-e7a130d/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-06T05-16-44Z-case1-burst75-e7a130d` makes one.
 
 | | |
 |---|---|
@@ -390,7 +390,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-16-44Z-case1
 
 ## `2026-10-06T05-38-32Z-case2-e7a130d`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-38-32Z-case2-e7a130d/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-06T05-38-32Z-case2-e7a130d/2026-10-06T05-38-32Z-case2-e7a130d.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-38-32Z-case2-e7a130d/2026-10-06T05-38-32Z-case2-e7a130d.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-38-32Z-case2-e7a130d/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-06T05-38-32Z-case2-e7a130d` makes one.
 
 | | |
 |---|---|
@@ -420,7 +420,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T05-38-32Z-case2
 
 ## `2026-10-06T09-50-36Z-case14-4c7b807`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T09-50-36Z-case14-4c7b807/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-06T09-50-36Z-case14-4c7b807/2026-10-06T09-50-36Z-case14-4c7b807.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-06T09-50-36Z-case14-4c7b807/2026-10-06T09-50-36Z-case14-4c7b807.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T09-50-36Z-case14-4c7b807/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-06T09-50-36Z-case14-4c7b807` makes one.
 
 | | |
 |---|---|
@@ -450,7 +450,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-06T09-50-36Z-case1
 
 ## `2026-10-07T06-15-54Z-case3-eb5e4b3`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-07T06-15-54Z-case3-eb5e4b3/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-07T06-15-54Z-case3-eb5e4b3/2026-10-07T06-15-54Z-case3-eb5e4b3.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-07T06-15-54Z-case3-eb5e4b3/2026-10-07T06-15-54Z-case3-eb5e4b3.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-07T06-15-54Z-case3-eb5e4b3/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-07T06-15-54Z-case3-eb5e4b3` makes one.
 
 | | |
 |---|---|
@@ -480,7 +480,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-07T06-15-54Z-case3
 
 ## `2026-10-07T08-38-32Z-case4-eb5e4b3`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-07T08-38-32Z-case4-eb5e4b3/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-07T08-38-32Z-case4-eb5e4b3/2026-10-07T08-38-32Z-case4-eb5e4b3.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-07T08-38-32Z-case4-eb5e4b3/2026-10-07T08-38-32Z-case4-eb5e4b3.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-07T08-38-32Z-case4-eb5e4b3/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-07T08-38-32Z-case4-eb5e4b3` makes one.
 
 | | |
 |---|---|
@@ -510,7 +510,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-07T08-38-32Z-case4
 
 ## `2026-10-08T06-17-46Z-case4-d484f18`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T06-17-46Z-case4-d484f18/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-08T06-17-46Z-case4-d484f18/2026-10-08T06-17-46Z-case4-d484f18.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-08T06-17-46Z-case4-d484f18/2026-10-08T06-17-46Z-case4-d484f18.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T06-17-46Z-case4-d484f18/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-08T06-17-46Z-case4-d484f18` makes one.
 
 | | |
 |---|---|
@@ -540,14 +540,14 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T06-17-46Z-case4
 
 ## `2026-10-08T11-32-36Z-case5-d484f18`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T11-32-36Z-case5-d484f18/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-08T11-32-36Z-case5-d484f18/2026-10-08T11-32-36Z-case5-d484f18.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-08T11-32-36Z-case5-d484f18/2026-10-08T11-32-36Z-case5-d484f18.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T11-32-36Z-case5-d484f18/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-08T11-32-36Z-case5-d484f18` makes one.
 
 | | |
 |---|---|
 
 ## `2026-10-08T12-04-15Z-case5-d484f18`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T12-04-15Z-case5-d484f18/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-08T12-04-15Z-case5-d484f18/2026-10-08T12-04-15Z-case5-d484f18.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-08T12-04-15Z-case5-d484f18/2026-10-08T12-04-15Z-case5-d484f18.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T12-04-15Z-case5-d484f18/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-08T12-04-15Z-case5-d484f18` makes one.
 
 | | |
 |---|---|
@@ -577,7 +577,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T12-04-15Z-case5
 
 ## `2026-10-08T14-05-56Z-case11-run1-d484f18`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T14-05-56Z-case11-run1-d484f18/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-08T14-05-56Z-case11-run1-d484f18/2026-10-08T14-05-56Z-case11-run1-d484f18.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-08T14-05-56Z-case11-run1-d484f18/2026-10-08T14-05-56Z-case11-run1-d484f18.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T14-05-56Z-case11-run1-d484f18/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-08T14-05-56Z-case11-run1-d484f18` makes one.
 
 | | |
 |---|---|
@@ -607,7 +607,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-08T14-05-56Z-case1
 
 ## `2026-10-09T04-28-45Z-case11-pairA-d484f18`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T04-28-45Z-case11-pairA-d484f18/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-09T04-28-45Z-case11-pairA-d484f18/2026-10-09T04-28-45Z-case11-pairA-d484f18.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-09T04-28-45Z-case11-pairA-d484f18/2026-10-09T04-28-45Z-case11-pairA-d484f18.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T04-28-45Z-case11-pairA-d484f18/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-09T04-28-45Z-case11-pairA-d484f18` makes one.
 
 | | |
 |---|---|
@@ -637,7 +637,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T04-28-45Z-case1
 
 ## `2026-10-09T05-37-25Z-case11-pairB-d484f18`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T05-37-25Z-case11-pairB-d484f18/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-09T05-37-25Z-case11-pairB-d484f18/2026-10-09T05-37-25Z-case11-pairB-d484f18.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-09T05-37-25Z-case11-pairB-d484f18/2026-10-09T05-37-25Z-case11-pairB-d484f18.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T05-37-25Z-case11-pairB-d484f18/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-09T05-37-25Z-case11-pairB-d484f18` makes one.
 
 | | |
 |---|---|
@@ -667,7 +667,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T05-37-25Z-case1
 
 ## `2026-10-09T06-55-55Z-case11-pairC-cf77819`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T06-55-55Z-case11-pairC-cf77819/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-09T06-55-55Z-case11-pairC-cf77819/2026-10-09T06-55-55Z-case11-pairC-cf77819.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-09T06-55-55Z-case11-pairC-cf77819/2026-10-09T06-55-55Z-case11-pairC-cf77819.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T06-55-55Z-case11-pairC-cf77819/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-09T06-55-55Z-case11-pairC-cf77819` makes one.
 
 | | |
 |---|---|
@@ -697,7 +697,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T06-55-55Z-case1
 
 ## `2026-10-09T08-00-22Z-case11-pairD-cf77819`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T08-00-22Z-case11-pairD-cf77819/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-09T08-00-22Z-case11-pairD-cf77819/2026-10-09T08-00-22Z-case11-pairD-cf77819.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-09T08-00-22Z-case11-pairD-cf77819/2026-10-09T08-00-22Z-case11-pairD-cf77819.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T08-00-22Z-case11-pairD-cf77819/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-09T08-00-22Z-case11-pairD-cf77819` makes one.
 
 | | |
 |---|---|
@@ -727,7 +727,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T08-00-22Z-case1
 
 ## `2026-10-09T09-17-04Z-case11-pairE-cf77819`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T09-17-04Z-case11-pairE-cf77819/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-09T09-17-04Z-case11-pairE-cf77819/2026-10-09T09-17-04Z-case11-pairE-cf77819.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-09T09-17-04Z-case11-pairE-cf77819/2026-10-09T09-17-04Z-case11-pairE-cf77819.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T09-17-04Z-case11-pairE-cf77819/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-09T09-17-04Z-case11-pairE-cf77819` makes one.
 
 | | |
 |---|---|
@@ -757,7 +757,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T09-17-04Z-case1
 
 ## `2026-10-09T11-27-35Z-case11-burst15-400-cf77819`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T11-27-35Z-case11-burst15-400-cf77819/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-09T11-27-35Z-case11-burst15-400-cf77819/2026-10-09T11-27-35Z-case11-burst15-400-cf77819.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-09T11-27-35Z-case11-burst15-400-cf77819/2026-10-09T11-27-35Z-case11-burst15-400-cf77819.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T11-27-35Z-case11-burst15-400-cf77819/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-09T11-27-35Z-case11-burst15-400-cf77819` makes one.
 
 | | |
 |---|---|
@@ -787,7 +787,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T11-27-35Z-case1
 
 ## `2026-10-09T14-21-29Z-case10-soak-cf77819`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T14-21-29Z-case10-soak-cf77819/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-09T14-21-29Z-case10-soak-cf77819/2026-10-09T14-21-29Z-case10-soak-cf77819.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-09T14-21-29Z-case10-soak-cf77819/2026-10-09T14-21-29Z-case10-soak-cf77819.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T14-21-29Z-case10-soak-cf77819/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-09T14-21-29Z-case10-soak-cf77819` makes one.
 
 | | |
 |---|---|
@@ -817,7 +817,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-09T14-21-29Z-case1
 
 ## `2026-10-12T02-07-36Z-case9-12a-cf77819`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T02-07-36Z-case9-12a-cf77819/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-12T02-07-36Z-case9-12a-cf77819/2026-10-12T02-07-36Z-case9-12a-cf77819.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-12T02-07-36Z-case9-12a-cf77819/2026-10-12T02-07-36Z-case9-12a-cf77819.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T02-07-36Z-case9-12a-cf77819/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-12T02-07-36Z-case9-12a-cf77819` makes one.
 
 | | |
 |---|---|
@@ -847,7 +847,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T02-07-36Z-case9
 
 ## `2026-10-12T03-43-44Z-case9-12b-cf77819`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T03-43-44Z-case9-12b-cf77819/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-12T03-43-44Z-case9-12b-cf77819/2026-10-12T03-43-44Z-case9-12b-cf77819.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-12T03-43-44Z-case9-12b-cf77819/2026-10-12T03-43-44Z-case9-12b-cf77819.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T03-43-44Z-case9-12b-cf77819/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-12T03-43-44Z-case9-12b-cf77819` makes one.
 
 | | |
 |---|---|
@@ -877,7 +877,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T03-43-44Z-case9
 
 ## `2026-10-12T04-55-23Z-case9-12b-rerun-cf77819`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T04-55-23Z-case9-12b-rerun-cf77819/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-12T04-55-23Z-case9-12b-rerun-cf77819/2026-10-12T04-55-23Z-case9-12b-rerun-cf77819.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-12T04-55-23Z-case9-12b-rerun-cf77819/2026-10-12T04-55-23Z-case9-12b-rerun-cf77819.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T04-55-23Z-case9-12b-rerun-cf77819/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-12T04-55-23Z-case9-12b-rerun-cf77819` makes one.
 
 | | |
 |---|---|
@@ -907,7 +907,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T04-55-23Z-case9
 
 ## `2026-10-12T06-01-23Z-case9-12c-cf77819`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T06-01-23Z-case9-12c-cf77819/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-12T06-01-23Z-case9-12c-cf77819/2026-10-12T06-01-23Z-case9-12c-cf77819.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-12T06-01-23Z-case9-12c-cf77819/2026-10-12T06-01-23Z-case9-12c-cf77819.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T06-01-23Z-case9-12c-cf77819/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-12T06-01-23Z-case9-12c-cf77819` makes one.
 
 | | |
 |---|---|
@@ -937,7 +937,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-12T06-01-23Z-case9
 
 ## `2026-10-14T04-26-19Z-case6-cf77819`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-14T04-26-19Z-case6-cf77819/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-14T04-26-19Z-case6-cf77819/2026-10-14T04-26-19Z-case6-cf77819.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-14T04-26-19Z-case6-cf77819/2026-10-14T04-26-19Z-case6-cf77819.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-14T04-26-19Z-case6-cf77819/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-14T04-26-19Z-case6-cf77819` makes one.
 
 | | |
 |---|---|
@@ -967,7 +967,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-14T04-26-19Z-case6
 
 ## `2026-10-14T09-19-33Z-case7-33396d9`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-14T09-19-33Z-case7-33396d9/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-14T09-19-33Z-case7-33396d9/2026-10-14T09-19-33Z-case7-33396d9.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-14T09-19-33Z-case7-33396d9/2026-10-14T09-19-33Z-case7-33396d9.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-14T09-19-33Z-case7-33396d9/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-14T09-19-33Z-case7-33396d9` makes one.
 
 | | |
 |---|---|
@@ -997,7 +997,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-14T09-19-33Z-case7
 
 ## `2026-10-15T04-01-52Z-case12-c2a0e76`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T04-01-52Z-case12-c2a0e76/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-15T04-01-52Z-case12-c2a0e76/2026-10-15T04-01-52Z-case12-c2a0e76.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-15T04-01-52Z-case12-c2a0e76/2026-10-15T04-01-52Z-case12-c2a0e76.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T04-01-52Z-case12-c2a0e76/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-15T04-01-52Z-case12-c2a0e76` makes one.
 
 | | |
 |---|---|
@@ -1027,7 +1027,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T04-01-52Z-case1
 
 ## `2026-10-15T05-33-35Z-case13-c2a0e76`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T05-33-35Z-case13-c2a0e76/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-15T05-33-35Z-case13-c2a0e76/2026-10-15T05-33-35Z-case13-c2a0e76.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-15T05-33-35Z-case13-c2a0e76/2026-10-15T05-33-35Z-case13-c2a0e76.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T05-33-35Z-case13-c2a0e76/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-15T05-33-35Z-case13-c2a0e76` makes one.
 
 | | |
 |---|---|
@@ -1057,7 +1057,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T05-33-35Z-case1
 
 ## `2026-10-15T09-47-54Z-case8-day60-c2a0e76`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T09-47-54Z-case8-day60-c2a0e76/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-15T09-47-54Z-case8-day60-c2a0e76/2026-10-15T09-47-54Z-case8-day60-c2a0e76.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-15T09-47-54Z-case8-day60-c2a0e76/2026-10-15T09-47-54Z-case8-day60-c2a0e76.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T09-47-54Z-case8-day60-c2a0e76/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-15T09-47-54Z-case8-day60-c2a0e76` makes one.
 
 | | |
 |---|---|
@@ -1087,7 +1087,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-15T09-47-54Z-case8
 
 ## `2026-10-16T04-54-41Z-case8-day-120-c2a0e76`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-16T04-54-41Z-case8-day-120-c2a0e76/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-16T04-54-41Z-case8-day-120-c2a0e76/2026-10-16T04-54-41Z-case8-day-120-c2a0e76.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-16T04-54-41Z-case8-day-120-c2a0e76/2026-10-16T04-54-41Z-case8-day-120-c2a0e76.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-16T04-54-41Z-case8-day-120-c2a0e76/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-16T04-54-41Z-case8-day-120-c2a0e76` makes one.
 
 | | |
 |---|---|
@@ -1117,7 +1117,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-16T04-54-41Z-case8
 
 ## `2026-10-16T09-06-38Z-case8-day-365-c2a0e76`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-16T09-06-38Z-case8-day-365-c2a0e76/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-16T09-06-38Z-case8-day-365-c2a0e76/2026-10-16T09-06-38Z-case8-day-365-c2a0e76.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-16T09-06-38Z-case8-day-365-c2a0e76/2026-10-16T09-06-38Z-case8-day-365-c2a0e76.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-16T09-06-38Z-case8-day-365-c2a0e76/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-16T09-06-38Z-case8-day-365-c2a0e76` makes one.
 
 | | |
 |---|---|
@@ -1147,7 +1147,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-16T09-06-38Z-case8
 
 ## `2026-10-19T05-06-40Z-case3-span20-c2a0e76`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T05-06-40Z-case3-span20-c2a0e76/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-19T05-06-40Z-case3-span20-c2a0e76/2026-10-19T05-06-40Z-case3-span20-c2a0e76.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-19T05-06-40Z-case3-span20-c2a0e76/2026-10-19T05-06-40Z-case3-span20-c2a0e76.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T05-06-40Z-case3-span20-c2a0e76/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-19T05-06-40Z-case3-span20-c2a0e76` makes one.
 
 | | |
 |---|---|
@@ -1177,7 +1177,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T05-06-40Z-case3
 
 ## `2026-10-19T07-14-41Z-case4-span20-c2a0e76`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T07-14-41Z-case4-span20-c2a0e76/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-19T07-14-41Z-case4-span20-c2a0e76/2026-10-19T07-14-41Z-case4-span20-c2a0e76.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-19T07-14-41Z-case4-span20-c2a0e76/2026-10-19T07-14-41Z-case4-span20-c2a0e76.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T07-14-41Z-case4-span20-c2a0e76/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-19T07-14-41Z-case4-span20-c2a0e76` makes one.
 
 | | |
 |---|---|
@@ -1207,7 +1207,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T07-14-41Z-case4
 
 ## `2026-10-19T11-15-25Z-case5-span20-c2a0e76`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T11-15-25Z-case5-span20-c2a0e76/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-19T11-15-25Z-case5-span20-c2a0e76/2026-10-19T11-15-25Z-case5-span20-c2a0e76.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-19T11-15-25Z-case5-span20-c2a0e76/2026-10-19T11-15-25Z-case5-span20-c2a0e76.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T11-15-25Z-case5-span20-c2a0e76/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-19T11-15-25Z-case5-span20-c2a0e76` makes one.
 
 | | |
 |---|---|
@@ -1237,7 +1237,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-19T11-15-25Z-case5
 
 ## `2026-10-21T04-10-50Z-case13-m6g.large-c2a0e76`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T04-10-50Z-case13-m6g.large-c2a0e76/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-21T04-10-50Z-case13-m6g.large-c2a0e76/2026-10-21T04-10-50Z-case13-m6g.large-c2a0e76.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-21T04-10-50Z-case13-m6g.large-c2a0e76/2026-10-21T04-10-50Z-case13-m6g.large-c2a0e76.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T04-10-50Z-case13-m6g.large-c2a0e76/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-21T04-10-50Z-case13-m6g.large-c2a0e76` makes one.
 
 | | |
 |---|---|
@@ -1271,7 +1271,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T04-10-50Z-case1
 
 ## `2026-10-21T05-43-20Z-case13-m6g.xlarge-c2a0e76`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T05-43-20Z-case13-m6g.xlarge-c2a0e76/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-21T05-43-20Z-case13-m6g.xlarge-c2a0e76/2026-10-21T05-43-20Z-case13-m6g.xlarge-c2a0e76.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-21T05-43-20Z-case13-m6g.xlarge-c2a0e76/2026-10-21T05-43-20Z-case13-m6g.xlarge-c2a0e76.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T05-43-20Z-case13-m6g.xlarge-c2a0e76/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-21T05-43-20Z-case13-m6g.xlarge-c2a0e76` makes one.
 
 | | |
 |---|---|
@@ -1305,7 +1305,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T05-43-20Z-case1
 
 ## `2026-10-21T06-58-37Z-media-hour-m6g.xlarge-c2a0e76`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T06-58-37Z-media-hour-m6g.xlarge-c2a0e76/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-21T06-58-37Z-media-hour-m6g.xlarge-c2a0e76/2026-10-21T06-58-37Z-media-hour-m6g.xlarge-c2a0e76.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-21T06-58-37Z-media-hour-m6g.xlarge-c2a0e76/2026-10-21T06-58-37Z-media-hour-m6g.xlarge-c2a0e76.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T06-58-37Z-media-hour-m6g.xlarge-c2a0e76/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-21T06-58-37Z-media-hour-m6g.xlarge-c2a0e76` makes one.
 
 | | |
 |---|---|
@@ -1342,7 +1342,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T06-58-37Z-media
 
 ## `2026-10-21T09-56-40Z-case13-2vcpu-B-no-interceptor-f038788`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T09-56-40Z-case13-2vcpu-B-no-interceptor-f038788/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-21T09-56-40Z-case13-2vcpu-B-no-interceptor-f038788/2026-10-21T09-56-40Z-case13-2vcpu-B-no-interceptor-f038788.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-21T09-56-40Z-case13-2vcpu-B-no-interceptor-f038788/2026-10-21T09-56-40Z-case13-2vcpu-B-no-interceptor-f038788.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T09-56-40Z-case13-2vcpu-B-no-interceptor-f038788/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-21T09-56-40Z-case13-2vcpu-B-no-interceptor-f038788` makes one.
 
 | | |
 |---|---|
@@ -1379,7 +1379,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T09-56-40Z-case1
 
 ## `2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788/2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788/2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-21T10-59-35Z-case12-2vcpu-B-no-interceptor-f038788` makes one.
 
 | | |
 |---|---|
@@ -1416,7 +1416,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T10-59-35Z-case1
 
 ## `2026-10-21T12-27-12Z-case15-redrawn-m6g.xlarge-40f08e2`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T12-27-12Z-case15-redrawn-m6g.xlarge-40f08e2/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-21T12-27-12Z-case15-redrawn-m6g.xlarge-40f08e2/2026-10-21T12-27-12Z-case15-redrawn-m6g.xlarge-40f08e2.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-21T12-27-12Z-case15-redrawn-m6g.xlarge-40f08e2/2026-10-21T12-27-12Z-case15-redrawn-m6g.xlarge-40f08e2.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T12-27-12Z-case15-redrawn-m6g.xlarge-40f08e2/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-21T12-27-12Z-case15-redrawn-m6g.xlarge-40f08e2` makes one.
 
 | | |
 |---|---|
@@ -1453,7 +1453,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-21T12-27-12Z-case1
 
 ## `2026-10-23T04-39-55Z-case15-tenaday-m6g.xlarge-23a4e48`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-23T04-39-55Z-case15-tenaday-m6g.xlarge-23a4e48/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-23T04-39-55Z-case15-tenaday-m6g.xlarge-23a4e48/2026-10-23T04-39-55Z-case15-tenaday-m6g.xlarge-23a4e48.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-23T04-39-55Z-case15-tenaday-m6g.xlarge-23a4e48/2026-10-23T04-39-55Z-case15-tenaday-m6g.xlarge-23a4e48.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-23T04-39-55Z-case15-tenaday-m6g.xlarge-23a4e48/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-23T04-39-55Z-case15-tenaday-m6g.xlarge-23a4e48` makes one.
 
 | | |
 |---|---|
@@ -1487,7 +1487,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-23T04-39-55Z-case1
 
 ## `2026-10-23T08-29-29Z-case15-5k-m6g.2xlarge-23a4e48`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-23T08-29-29Z-case15-5k-m6g.2xlarge-23a4e48/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-23T08-29-29Z-case15-5k-m6g.2xlarge-23a4e48/2026-10-23T08-29-29Z-case15-5k-m6g.2xlarge-23a4e48.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-23T08-29-29Z-case15-5k-m6g.2xlarge-23a4e48/2026-10-23T08-29-29Z-case15-5k-m6g.2xlarge-23a4e48.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-23T08-29-29Z-case15-5k-m6g.2xlarge-23a4e48/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-23T08-29-29Z-case15-5k-m6g.2xlarge-23a4e48` makes one.
 
 | | |
 |---|---|
@@ -1510,7 +1510,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-23T08-29-29Z-case1
 
 ## `2026-10-23T08-54-23Z-case15-5k-m6g.2xlarge-1aa819b`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-23T08-54-23Z-case15-5k-m6g.2xlarge-1aa819b/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-23T08-54-23Z-case15-5k-m6g.2xlarge-1aa819b/2026-10-23T08-54-23Z-case15-5k-m6g.2xlarge-1aa819b.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-23T08-54-23Z-case15-5k-m6g.2xlarge-1aa819b/2026-10-23T08-54-23Z-case15-5k-m6g.2xlarge-1aa819b.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-23T08-54-23Z-case15-5k-m6g.2xlarge-1aa819b/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-23T08-54-23Z-case15-5k-m6g.2xlarge-1aa819b` makes one.
 
 | | |
 |---|---|
@@ -1544,7 +1544,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-23T08-54-23Z-case1
 
 ## `2026-10-23T12-09-02Z-case15-10k-m6g.4xlarge-1aa819b`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-23T12-09-02Z-case15-10k-m6g.4xlarge-1aa819b/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-23T12-09-02Z-case15-10k-m6g.4xlarge-1aa819b/2026-10-23T12-09-02Z-case15-10k-m6g.4xlarge-1aa819b.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-23T12-09-02Z-case15-10k-m6g.4xlarge-1aa819b/2026-10-23T12-09-02Z-case15-10k-m6g.4xlarge-1aa819b.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-23T12-09-02Z-case15-10k-m6g.4xlarge-1aa819b/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-23T12-09-02Z-case15-10k-m6g.4xlarge-1aa819b` makes one.
 
 | | |
 |---|---|
@@ -1578,7 +1578,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-23T12-09-02Z-case1
 
 ## `2026-10-27T06-53-54Z-case12-anchorA-v18.1-r1-1806f72`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T06-53-54Z-case12-anchorA-v18.1-r1-1806f72/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-27T06-53-54Z-case12-anchorA-v18.1-r1-1806f72/2026-10-27T06-53-54Z-case12-anchorA-v18.1-r1-1806f72.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-27T06-53-54Z-case12-anchorA-v18.1-r1-1806f72/2026-10-27T06-53-54Z-case12-anchorA-v18.1-r1-1806f72.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T06-53-54Z-case12-anchorA-v18.1-r1-1806f72/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-27T06-53-54Z-case12-anchorA-v18.1-r1-1806f72` makes one.
 
 | | |
 |---|---|
@@ -1612,7 +1612,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T06-53-54Z-case1
 
 ## `2026-10-27T08-18-41Z-case12-anchorA-v18.1-r2-1806f72`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T08-18-41Z-case12-anchorA-v18.1-r2-1806f72/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-27T08-18-41Z-case12-anchorA-v18.1-r2-1806f72/2026-10-27T08-18-41Z-case12-anchorA-v18.1-r2-1806f72.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-27T08-18-41Z-case12-anchorA-v18.1-r2-1806f72/2026-10-27T08-18-41Z-case12-anchorA-v18.1-r2-1806f72.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T08-18-41Z-case12-anchorA-v18.1-r2-1806f72/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-27T08-18-41Z-case12-anchorA-v18.1-r2-1806f72` makes one.
 
 | | |
 |---|---|
@@ -1646,7 +1646,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T08-18-41Z-case1
 
 ## `2026-10-27T09-46-42Z-case12-anchorA-v17.3-drift-r1-1806f72`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T09-46-42Z-case12-anchorA-v17.3-drift-r1-1806f72/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-27T09-46-42Z-case12-anchorA-v17.3-drift-r1-1806f72/2026-10-27T09-46-42Z-case12-anchorA-v17.3-drift-r1-1806f72.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-27T09-46-42Z-case12-anchorA-v17.3-drift-r1-1806f72/2026-10-27T09-46-42Z-case12-anchorA-v17.3-drift-r1-1806f72.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T09-46-42Z-case12-anchorA-v17.3-drift-r1-1806f72/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-27T09-46-42Z-case12-anchorA-v17.3-drift-r1-1806f72` makes one.
 
 | | |
 |---|---|
@@ -1680,7 +1680,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T09-46-42Z-case1
 
 ## `2026-10-27T11-14-57Z-case15-tenaday-anchorB-v18.1-r1-1806f72`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T11-14-57Z-case15-tenaday-anchorB-v18.1-r1-1806f72/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-27T11-14-57Z-case15-tenaday-anchorB-v18.1-r1-1806f72/2026-10-27T11-14-57Z-case15-tenaday-anchorB-v18.1-r1-1806f72.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-27T11-14-57Z-case15-tenaday-anchorB-v18.1-r1-1806f72/2026-10-27T11-14-57Z-case15-tenaday-anchorB-v18.1-r1-1806f72.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T11-14-57Z-case15-tenaday-anchorB-v18.1-r1-1806f72/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-27T11-14-57Z-case15-tenaday-anchorB-v18.1-r1-1806f72` makes one.
 
 | | |
 |---|---|
@@ -1714,7 +1714,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T11-14-57Z-case1
 
 ## `2026-10-27T14-06-07Z-case15-tenaday-anchorB-v18.1-r2-1806f72`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T14-06-07Z-case15-tenaday-anchorB-v18.1-r2-1806f72/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-27T14-06-07Z-case15-tenaday-anchorB-v18.1-r2-1806f72/2026-10-27T14-06-07Z-case15-tenaday-anchorB-v18.1-r2-1806f72.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-27T14-06-07Z-case15-tenaday-anchorB-v18.1-r2-1806f72/2026-10-27T14-06-07Z-case15-tenaday-anchorB-v18.1-r2-1806f72.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T14-06-07Z-case15-tenaday-anchorB-v18.1-r2-1806f72/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-27T14-06-07Z-case15-tenaday-anchorB-v18.1-r2-1806f72` makes one.
 
 | | |
 |---|---|
@@ -1748,7 +1748,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-27T14-06-07Z-case1
 
 ## `2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72/2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72/2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-28T05-55-38Z-case12-anchorA-fix1097-r1-1806f72` makes one.
 
 | | |
 |---|---|
@@ -1782,7 +1782,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T05-55-38Z-case1
 
 ## `2026-10-28T07-24-38Z-case12-anchorA-fix1098-r1-1806f72`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T07-24-38Z-case12-anchorA-fix1098-r1-1806f72/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-28T07-24-38Z-case12-anchorA-fix1098-r1-1806f72/2026-10-28T07-24-38Z-case12-anchorA-fix1098-r1-1806f72.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-28T07-24-38Z-case12-anchorA-fix1098-r1-1806f72/2026-10-28T07-24-38Z-case12-anchorA-fix1098-r1-1806f72.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T07-24-38Z-case12-anchorA-fix1098-r1-1806f72/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-28T07-24-38Z-case12-anchorA-fix1098-r1-1806f72` makes one.
 
 | | |
 |---|---|
@@ -1816,7 +1816,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T07-24-38Z-case1
 
 ## `2026-10-28T08-54-30Z-case15-tenaday-anchorB-fix1097-r1-1806f72`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T08-54-30Z-case15-tenaday-anchorB-fix1097-r1-1806f72/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-28T08-54-30Z-case15-tenaday-anchorB-fix1097-r1-1806f72/2026-10-28T08-54-30Z-case15-tenaday-anchorB-fix1097-r1-1806f72.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-28T08-54-30Z-case15-tenaday-anchorB-fix1097-r1-1806f72/2026-10-28T08-54-30Z-case15-tenaday-anchorB-fix1097-r1-1806f72.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T08-54-30Z-case15-tenaday-anchorB-fix1097-r1-1806f72/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-28T08-54-30Z-case15-tenaday-anchorB-fix1097-r1-1806f72` makes one.
 
 | | |
 |---|---|
@@ -1850,7 +1850,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T08-54-30Z-case1
 
 ## `2026-10-28T11-47-36Z-case15-tenaday-anchorB-fix1098-r1-1806f72`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T11-47-36Z-case15-tenaday-anchorB-fix1098-r1-1806f72/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-28T11-47-36Z-case15-tenaday-anchorB-fix1098-r1-1806f72/2026-10-28T11-47-36Z-case15-tenaday-anchorB-fix1098-r1-1806f72.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-28T11-47-36Z-case15-tenaday-anchorB-fix1098-r1-1806f72/2026-10-28T11-47-36Z-case15-tenaday-anchorB-fix1098-r1-1806f72.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T11-47-36Z-case15-tenaday-anchorB-fix1098-r1-1806f72/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-28T11-47-36Z-case15-tenaday-anchorB-fix1098-r1-1806f72` makes one.
 
 | | |
 |---|---|
@@ -1884,7 +1884,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T11-47-36Z-case1
 
 ## `2026-10-28T14-38-32Z-case15-tenaday-anchorB-fix1100-batch50-r1-7205831`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T14-38-32Z-case15-tenaday-anchorB-fix1100-batch50-r1-7205831/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-28T14-38-32Z-case15-tenaday-anchorB-fix1100-batch50-r1-7205831/2026-10-28T14-38-32Z-case15-tenaday-anchorB-fix1100-batch50-r1-7205831.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-28T14-38-32Z-case15-tenaday-anchorB-fix1100-batch50-r1-7205831/2026-10-28T14-38-32Z-case15-tenaday-anchorB-fix1100-batch50-r1-7205831.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T14-38-32Z-case15-tenaday-anchorB-fix1100-batch50-r1-7205831/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-28T14-38-32Z-case15-tenaday-anchorB-fix1100-batch50-r1-7205831` makes one.
 
 | | |
 |---|---|
@@ -1918,7 +1918,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-28T14-38-32Z-case1
 
 ## `2026-10-29T04-10-05Z-case12-anchorA-fix1103-r1-7205831`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T04-10-05Z-case12-anchorA-fix1103-r1-7205831/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-29T04-10-05Z-case12-anchorA-fix1103-r1-7205831/2026-10-29T04-10-05Z-case12-anchorA-fix1103-r1-7205831.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-29T04-10-05Z-case12-anchorA-fix1103-r1-7205831/2026-10-29T04-10-05Z-case12-anchorA-fix1103-r1-7205831.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T04-10-05Z-case12-anchorA-fix1103-r1-7205831/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-29T04-10-05Z-case12-anchorA-fix1103-r1-7205831` makes one.
 
 | | |
 |---|---|
@@ -1952,7 +1952,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T04-10-05Z-case1
 
 ## `2026-10-29T05-47-37Z-case15-tenaday-anchorB-fix1103-r1-7205831`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T05-47-37Z-case15-tenaday-anchorB-fix1103-r1-7205831/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-29T05-47-37Z-case15-tenaday-anchorB-fix1103-r1-7205831/2026-10-29T05-47-37Z-case15-tenaday-anchorB-fix1103-r1-7205831.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-29T05-47-37Z-case15-tenaday-anchorB-fix1103-r1-7205831/2026-10-29T05-47-37Z-case15-tenaday-anchorB-fix1103-r1-7205831.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T05-47-37Z-case15-tenaday-anchorB-fix1103-r1-7205831/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-29T05-47-37Z-case15-tenaday-anchorB-fix1103-r1-7205831` makes one.
 
 | | |
 |---|---|
@@ -1986,7 +1986,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T05-47-37Z-case1
 
 ## `2026-10-29T09-21-16Z-case12-anchorA-fix1098b-r1-7205831`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T09-21-16Z-case12-anchorA-fix1098b-r1-7205831/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-29T09-21-16Z-case12-anchorA-fix1098b-r1-7205831/2026-10-29T09-21-16Z-case12-anchorA-fix1098b-r1-7205831.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-29T09-21-16Z-case12-anchorA-fix1098b-r1-7205831/2026-10-29T09-21-16Z-case12-anchorA-fix1098b-r1-7205831.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T09-21-16Z-case12-anchorA-fix1098b-r1-7205831/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-29T09-21-16Z-case12-anchorA-fix1098b-r1-7205831` makes one.
 
 | | |
 |---|---|
@@ -2020,7 +2020,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T09-21-16Z-case1
 
 ## `2026-10-29T12-03-22Z-case15-tenaday-anchorB-fix1098b-r1-7205831`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T12-03-22Z-case15-tenaday-anchorB-fix1098b-r1-7205831/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-29T12-03-22Z-case15-tenaday-anchorB-fix1098b-r1-7205831/2026-10-29T12-03-22Z-case15-tenaday-anchorB-fix1098b-r1-7205831.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-29T12-03-22Z-case15-tenaday-anchorB-fix1098b-r1-7205831/2026-10-29T12-03-22Z-case15-tenaday-anchorB-fix1098b-r1-7205831.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T12-03-22Z-case15-tenaday-anchorB-fix1098b-r1-7205831/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-29T12-03-22Z-case15-tenaday-anchorB-fix1098b-r1-7205831` makes one.
 
 | | |
 |---|---|
@@ -2054,7 +2054,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T12-03-22Z-case1
 
 ## `2026-10-29T15-07-09Z-case12-anchorA-rc18.3-r1-7205831`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T15-07-09Z-case12-anchorA-rc18.3-r1-7205831/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-29T15-07-09Z-case12-anchorA-rc18.3-r1-7205831/2026-10-29T15-07-09Z-case12-anchorA-rc18.3-r1-7205831.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-29T15-07-09Z-case12-anchorA-rc18.3-r1-7205831/2026-10-29T15-07-09Z-case12-anchorA-rc18.3-r1-7205831.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T15-07-09Z-case12-anchorA-rc18.3-r1-7205831/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-29T15-07-09Z-case12-anchorA-rc18.3-r1-7205831` makes one.
 
 | | |
 |---|---|
@@ -2088,7 +2088,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T15-07-09Z-case1
 
 ## `2026-10-29T16-27-09Z-case13-anchorC-rc18.3-r1-7205831`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T16-27-09Z-case13-anchorC-rc18.3-r1-7205831/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-29T16-27-09Z-case13-anchorC-rc18.3-r1-7205831/2026-10-29T16-27-09Z-case13-anchorC-rc18.3-r1-7205831.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-29T16-27-09Z-case13-anchorC-rc18.3-r1-7205831/2026-10-29T16-27-09Z-case13-anchorC-rc18.3-r1-7205831.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T16-27-09Z-case13-anchorC-rc18.3-r1-7205831/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-29T16-27-09Z-case13-anchorC-rc18.3-r1-7205831` makes one.
 
 | | |
 |---|---|
@@ -2122,7 +2122,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T16-27-09Z-case1
 
 ## `2026-10-29T19-03-39Z-case15-tenaday-anchorB-rc18.3-batch50-r1-7205831`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T19-03-39Z-case15-tenaday-anchorB-rc18.3-batch50-r1-7205831/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-29T19-03-39Z-case15-tenaday-anchorB-rc18.3-batch50-r1-7205831/2026-10-29T19-03-39Z-case15-tenaday-anchorB-rc18.3-batch50-r1-7205831.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-29T19-03-39Z-case15-tenaday-anchorB-rc18.3-batch50-r1-7205831/2026-10-29T19-03-39Z-case15-tenaday-anchorB-rc18.3-batch50-r1-7205831.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T19-03-39Z-case15-tenaday-anchorB-rc18.3-batch50-r1-7205831/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-29T19-03-39Z-case15-tenaday-anchorB-rc18.3-batch50-r1-7205831` makes one.
 
 | | |
 |---|---|
@@ -2156,7 +2156,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T19-03-39Z-case1
 
 ## `2026-10-29T21-16-32Z-case15-5k-anchorD-rc18.3-batch50-r1-7205831`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T21-16-32Z-case15-5k-anchorD-rc18.3-batch50-r1-7205831/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-29T21-16-32Z-case15-5k-anchorD-rc18.3-batch50-r1-7205831/2026-10-29T21-16-32Z-case15-5k-anchorD-rc18.3-batch50-r1-7205831.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-29T21-16-32Z-case15-5k-anchorD-rc18.3-batch50-r1-7205831/2026-10-29T21-16-32Z-case15-5k-anchorD-rc18.3-batch50-r1-7205831.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T21-16-32Z-case15-5k-anchorD-rc18.3-batch50-r1-7205831/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-29T21-16-32Z-case15-5k-anchorD-rc18.3-batch50-r1-7205831` makes one.
 
 | | |
 |---|---|
@@ -2190,21 +2190,21 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-29T21-16-32Z-case1
 
 ## `2026-10-30T08-09-42Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T08-09-42Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-30T08-09-42Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485/2026-10-30T08-09-42Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-30T08-09-42Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485/2026-10-30T08-09-42Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T08-09-42Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-30T08-09-42Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485` makes one.
 
 | | |
 |---|---|
 
 ## `2026-10-30T08-17-48Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T08-17-48Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-30T08-17-48Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485/2026-10-30T08-17-48Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-30T08-17-48Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485/2026-10-30T08-17-48Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T08-17-48Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-30T08-17-48Z-case15-10k-row31-ramp-rc18.3-batch50-a7c3485` makes one.
 
 | | |
 |---|---|
 
 ## `2026-10-30T08-36-26Z-case15-10k-row31-ramp-rc18.3-batch50-1ff23cc`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T08-36-26Z-case15-10k-row31-ramp-rc18.3-batch50-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-30T08-36-26Z-case15-10k-row31-ramp-rc18.3-batch50-1ff23cc/2026-10-30T08-36-26Z-case15-10k-row31-ramp-rc18.3-batch50-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-30T08-36-26Z-case15-10k-row31-ramp-rc18.3-batch50-1ff23cc/2026-10-30T08-36-26Z-case15-10k-row31-ramp-rc18.3-batch50-1ff23cc.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T08-36-26Z-case15-10k-row31-ramp-rc18.3-batch50-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-30T08-36-26Z-case15-10k-row31-ramp-rc18.3-batch50-1ff23cc` makes one.
 
 | | |
 |---|---|
@@ -2238,7 +2238,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T08-36-26Z-case1
 
 ## `2026-10-30T12-50-40Z-case15-10k-row31-steady-0.9x-rc18.3-batch50-1ff23cc`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T12-50-40Z-case15-10k-row31-steady-0.9x-rc18.3-batch50-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-30T12-50-40Z-case15-10k-row31-steady-0.9x-rc18.3-batch50-1ff23cc/2026-10-30T12-50-40Z-case15-10k-row31-steady-0.9x-rc18.3-batch50-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-30T12-50-40Z-case15-10k-row31-steady-0.9x-rc18.3-batch50-1ff23cc/2026-10-30T12-50-40Z-case15-10k-row31-steady-0.9x-rc18.3-batch50-1ff23cc.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T12-50-40Z-case15-10k-row31-steady-0.9x-rc18.3-batch50-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-30T12-50-40Z-case15-10k-row31-steady-0.9x-rc18.3-batch50-1ff23cc` makes one.
 
 | | |
 |---|---|
@@ -2272,7 +2272,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T12-50-40Z-case1
 
 ## `2026-10-30T15-38-58Z-case15-10k-row31-steady-1.1x-rc18.3-batch50-1ff23cc`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T15-38-58Z-case15-10k-row31-steady-1.1x-rc18.3-batch50-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-10-30T15-38-58Z-case15-10k-row31-steady-1.1x-rc18.3-batch50-1ff23cc/2026-10-30T15-38-58Z-case15-10k-row31-steady-1.1x-rc18.3-batch50-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-10-30T15-38-58Z-case15-10k-row31-steady-1.1x-rc18.3-batch50-1ff23cc/2026-10-30T15-38-58Z-case15-10k-row31-steady-1.1x-rc18.3-batch50-1ff23cc.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T15-38-58Z-case15-10k-row31-steady-1.1x-rc18.3-batch50-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-10-30T15-38-58Z-case15-10k-row31-steady-1.1x-rc18.3-batch50-1ff23cc` makes one.
 
 | | |
 |---|---|
@@ -2306,7 +2306,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-10-30T15-38-58Z-case1
 
 ## `2026-11-04T08-46-25Z-case15-10k-row33-2x4xl-steady-1.1x-of-row31-rc18.3-batch50-1ff23cc`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-04T08-46-25Z-case15-10k-row33-2x4xl-steady-1.1x-of-row31-rc18.3-batch50-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-04T08-46-25Z-case15-10k-row33-2x4xl-steady-1.1x-of-row31-rc18.3-batch50-1ff23cc/2026-11-04T08-46-25Z-case15-10k-row33-2x4xl-steady-1.1x-of-row31-rc18.3-batch50-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-04T08-46-25Z-case15-10k-row33-2x4xl-steady-1.1x-of-row31-rc18.3-batch50-1ff23cc/2026-11-04T08-46-25Z-case15-10k-row33-2x4xl-steady-1.1x-of-row31-rc18.3-batch50-1ff23cc.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-04T08-46-25Z-case15-10k-row33-2x4xl-steady-1.1x-of-row31-rc18.3-batch50-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-04T08-46-25Z-case15-10k-row33-2x4xl-steady-1.1x-of-row31-rc18.3-batch50-1ff23cc` makes one.
 
 | | |
 |---|---|
@@ -2343,7 +2343,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-04T08-46-25Z-case1
 
 ## `2026-11-05T06-35-45Z-case15-10k-row34-2x4xl-ramp-rc18.3-batch50-1ff23cc`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T06-35-45Z-case15-10k-row34-2x4xl-ramp-rc18.3-batch50-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-05T06-35-45Z-case15-10k-row34-2x4xl-ramp-rc18.3-batch50-1ff23cc/2026-11-05T06-35-45Z-case15-10k-row34-2x4xl-ramp-rc18.3-batch50-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-05T06-35-45Z-case15-10k-row34-2x4xl-ramp-rc18.3-batch50-1ff23cc/2026-11-05T06-35-45Z-case15-10k-row34-2x4xl-ramp-rc18.3-batch50-1ff23cc.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T06-35-45Z-case15-10k-row34-2x4xl-ramp-rc18.3-batch50-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-05T06-35-45Z-case15-10k-row34-2x4xl-ramp-rc18.3-batch50-1ff23cc` makes one.
 
 | | |
 |---|---|
@@ -2366,7 +2366,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T06-35-45Z-case1
 
 ## `2026-11-05T10-24-58Z-case15-10k-row34-2x4xl-steady-0.9x-rc18.3-batch50-1ff23cc`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T10-24-58Z-case15-10k-row34-2x4xl-steady-0.9x-rc18.3-batch50-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-05T10-24-58Z-case15-10k-row34-2x4xl-steady-0.9x-rc18.3-batch50-1ff23cc/2026-11-05T10-24-58Z-case15-10k-row34-2x4xl-steady-0.9x-rc18.3-batch50-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-05T10-24-58Z-case15-10k-row34-2x4xl-steady-0.9x-rc18.3-batch50-1ff23cc/2026-11-05T10-24-58Z-case15-10k-row34-2x4xl-steady-0.9x-rc18.3-batch50-1ff23cc.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T10-24-58Z-case15-10k-row34-2x4xl-steady-0.9x-rc18.3-batch50-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-05T10-24-58Z-case15-10k-row34-2x4xl-steady-0.9x-rc18.3-batch50-1ff23cc` makes one.
 
 | | |
 |---|---|
@@ -2403,7 +2403,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T10-24-58Z-case1
 
 ## `2026-11-05T13-38-54Z-case15-10k-row35-4x2xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T13-38-54Z-case15-10k-row35-4x2xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-05T13-38-54Z-case15-10k-row35-4x2xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc/2026-11-05T13-38-54Z-case15-10k-row35-4x2xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-05T13-38-54Z-case15-10k-row35-4x2xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc/2026-11-05T13-38-54Z-case15-10k-row35-4x2xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T13-38-54Z-case15-10k-row35-4x2xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-05T13-38-54Z-case15-10k-row35-4x2xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc` makes one.
 
 | | |
 |---|---|
@@ -2442,7 +2442,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T13-38-54Z-case1
 
 ## `2026-11-05T16-44-40Z-case15-10k-row35-1x8xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T16-44-40Z-case15-10k-row35-1x8xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-05T16-44-40Z-case15-10k-row35-1x8xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc/2026-11-05T16-44-40Z-case15-10k-row35-1x8xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-05T16-44-40Z-case15-10k-row35-1x8xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc/2026-11-05T16-44-40Z-case15-10k-row35-1x8xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T16-44-40Z-case15-10k-row35-1x8xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-05T16-44-40Z-case15-10k-row35-1x8xl-steady-row34-0.9x-rc18.3-batch50-1ff23cc` makes one.
 
 | | |
 |---|---|
@@ -2477,7 +2477,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T16-44-40Z-case1
 
 ## `2026-11-05T19-53-21Z-case15-10k-row34-2x4xl-steady-1.1x-rc18.3-batch50-1ff23cc`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T19-53-21Z-case15-10k-row34-2x4xl-steady-1.1x-rc18.3-batch50-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-05T19-53-21Z-case15-10k-row34-2x4xl-steady-1.1x-rc18.3-batch50-1ff23cc/2026-11-05T19-53-21Z-case15-10k-row34-2x4xl-steady-1.1x-rc18.3-batch50-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-05T19-53-21Z-case15-10k-row34-2x4xl-steady-1.1x-rc18.3-batch50-1ff23cc/2026-11-05T19-53-21Z-case15-10k-row34-2x4xl-steady-1.1x-rc18.3-batch50-1ff23cc.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T19-53-21Z-case15-10k-row34-2x4xl-steady-1.1x-rc18.3-batch50-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-05T19-53-21Z-case15-10k-row34-2x4xl-steady-1.1x-rc18.3-batch50-1ff23cc` makes one.
 
 | | |
 |---|---|
@@ -2500,7 +2500,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-05T19-53-21Z-case1
 
 ## `2026-11-06T03-47-34Z-case15-10k-row36-3x4xl-db8xl-steady-50k-rc18.3-batch50-1ff23cc`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-06T03-47-34Z-case15-10k-row36-3x4xl-db8xl-steady-50k-rc18.3-batch50-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-06T03-47-34Z-case15-10k-row36-3x4xl-db8xl-steady-50k-rc18.3-batch50-1ff23cc/2026-11-06T03-47-34Z-case15-10k-row36-3x4xl-db8xl-steady-50k-rc18.3-batch50-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-06T03-47-34Z-case15-10k-row36-3x4xl-db8xl-steady-50k-rc18.3-batch50-1ff23cc/2026-11-06T03-47-34Z-case15-10k-row36-3x4xl-db8xl-steady-50k-rc18.3-batch50-1ff23cc.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-06T03-47-34Z-case15-10k-row36-3x4xl-db8xl-steady-50k-rc18.3-batch50-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-06T03-47-34Z-case15-10k-row36-3x4xl-db8xl-steady-50k-rc18.3-batch50-1ff23cc` makes one.
 
 | | |
 |---|---|
@@ -2538,7 +2538,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-06T03-47-34Z-case1
 
 ## `2026-11-06T06-41-07Z-case15-10k-row36-3x4xl-db8xl-ramp-50k-70k-rc18.3-batch50-1ff23cc`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-06T06-41-07Z-case15-10k-row36-3x4xl-db8xl-ramp-50k-70k-rc18.3-batch50-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-06T06-41-07Z-case15-10k-row36-3x4xl-db8xl-ramp-50k-70k-rc18.3-batch50-1ff23cc/2026-11-06T06-41-07Z-case15-10k-row36-3x4xl-db8xl-ramp-50k-70k-rc18.3-batch50-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-06T06-41-07Z-case15-10k-row36-3x4xl-db8xl-ramp-50k-70k-rc18.3-batch50-1ff23cc/2026-11-06T06-41-07Z-case15-10k-row36-3x4xl-db8xl-ramp-50k-70k-rc18.3-batch50-1ff23cc.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-06T06-41-07Z-case15-10k-row36-3x4xl-db8xl-ramp-50k-70k-rc18.3-batch50-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-06T06-41-07Z-case15-10k-row36-3x4xl-db8xl-ramp-50k-70k-rc18.3-batch50-1ff23cc` makes one.
 
 | | |
 |---|---|
@@ -2572,4 +2572,334 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-06T06-41-07Z-case1
 | sync duration p50 / mean / p95 s | 330.9 / 329.9 / 523.1 (60792 syncs) |
 | full syncs p50 / p95 s | 341.5 / 533.7 (639 of 60792, recorded) |
 | cache policy | warm-after-discarded-warmup-3x-m6g.4xlarge |
+| autovacuum | on |
+
+## `2026-11-13T05-07-57Z-case12-anchorA-v18.1-r3-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T05-07-57Z-case12-anchorA-v18.1-r3-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-13T05-07-57Z-case12-anchorA-v18.1-r3-1ff23cc` makes one.
+
+| | |
+|---|---|
+| requests (ok) | 31415 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 687 / 2063 / 2621 / 3706 |
+| mean ms | 834 |
+| mean throughput rps | 8.52 |
+| app CPU seconds | 6,523 |
+| app CPU seconds, EC2 (1 host) | 6,154 |
+| app CPU | 78% mean, peak 99% |
+| app heap | 970 MB mean, peak 1,801 of 5,120 MB max |
+| RDS CPU | 23% mean, peak 30% |
+| RDS memory | 4,004 MB freeable at its lowest, swap peak 3 MB |
+| app CPU s per sync | 3.88 |
+| harness commit | 1ff23cc5168d1414ae3f885e2b89a2793bcb68b9 (run id says `1ff23cc`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 789092feb |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 2 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.27 / 0.34 |
+| est. sync overhead s | 0.04 |
+| injection | profile steady, 1682 users arriving over 60min @ 1682/h, ~7.1 requests in flight (rps x mean), ramp 33640 s |
+| sync | mode realistic, feeder case5-users-pilot.csv (1682 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 67.9 / 83.3 / 211.1 (1682 syncs) |
+| full syncs p50 / p95 s | 99.0 / 257.5 (19 of 1682, recorded) |
+| cache policy | warm-after-discarded-warmup-m6g.large |
+| autovacuum | on |
+
+## `2026-11-13T06-31-53Z-case12-anchorA-fix1103b-r1-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T06-31-53Z-case12-anchorA-fix1103b-r1-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-13T06-31-53Z-case12-anchorA-fix1103b-r1-1ff23cc/2026-11-13T06-31-53Z-case12-anchorA-fix1103b-r1-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-13T06-31-53Z-case12-anchorA-fix1103b-r1-1ff23cc/2026-11-13T06-31-53Z-case12-anchorA-fix1103b-r1-1ff23cc.zip .`; unzip and open `index.html`.
+
+| | |
+|---|---|
+| requests (ok) | 31217 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 210 / 396 / 536 / 1557 |
+| mean ms | 218 |
+| mean throughput rps | 8.48 |
+| app CPU seconds | 3,807 |
+| app CPU seconds, EC2 (1 host) | 3,667 |
+| app CPU | 46% mean, peak 66% |
+| app heap | 1,013 MB mean, peak 1,741 of 5,120 MB max |
+| RDS CPU | 20% mean, peak 27% |
+| RDS memory | 4,348 MB freeable at its lowest, swap peak 4 MB |
+| app CPU s per sync | 2.26 |
+| harness commit | 1ff23cc5168d1414ae3f885e2b89a2793bcb68b9 (run id says `1ff23cc`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | b7ee734d2 |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 2 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.6 / 0.71 |
+| est. sync overhead s | 0.08 |
+| injection | profile steady, 1682 users arriving over 60min @ 1682/h, ~1.8 requests in flight (rps x mean), ramp 33640 s |
+| sync | mode realistic, feeder case5-users-pilot.csv (1682 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 60.2 / 71.9 / 180.3 (1682 syncs) |
+| full syncs p50 / p95 s | 81.9 / 84.2 (13 of 1682, recorded) |
+| cache policy | warm-after-discarded-warmup-m6g.large |
+| autovacuum | on |
+
+## `2026-11-13T07-44-08Z-row39-deeppages-district1-v18.1-s1-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T07-44-08Z-row39-deeppages-district1-v18.1-s1-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-13T07-44-08Z-row39-deeppages-district1-v18.1-s1-1ff23cc` makes one.
+
+| | |
+|---|---|
+
+## `2026-11-13T07-51-13Z-row39-deeppages-district1-v18.1-s2-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T07-51-13Z-row39-deeppages-district1-v18.1-s2-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-13T07-51-13Z-row39-deeppages-district1-v18.1-s2-1ff23cc` makes one.
+
+| | |
+|---|---|
+
+## `2026-11-13T08-09-47Z-row39-deeppages-district1-fix1103b-s1-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T08-09-47Z-row39-deeppages-district1-fix1103b-s1-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-13T08-09-47Z-row39-deeppages-district1-fix1103b-s1-1ff23cc` makes one.
+
+| | |
+|---|---|
+
+## `2026-11-13T08-16-51Z-row39-deeppages-district1-fix1103b-s2-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T08-16-51Z-row39-deeppages-district1-fix1103b-s2-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-13T08-16-51Z-row39-deeppages-district1-fix1103b-s2-1ff23cc/2026-11-13T08-16-51Z-row39-deeppages-district1-fix1103b-s2-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-13T08-16-51Z-row39-deeppages-district1-fix1103b-s2-1ff23cc/2026-11-13T08-16-51Z-row39-deeppages-district1-fix1103b-s2-1ff23cc.zip .`; unzip and open `index.html`.
+
+| | |
+|---|---|
+
+## `2026-11-13T08-30-21Z-row39-deeppages-district1-v18.1-s1-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T08-30-21Z-row39-deeppages-district1-v18.1-s1-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-13T08-30-21Z-row39-deeppages-district1-v18.1-s1-1ff23cc` makes one.
+
+| | |
+|---|---|
+| harness commit | 1ff23cc5168d1414ae3f885e2b89a2793bcb68b9 (run id says `1ff23cc`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 789092feb |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 2 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.63 / 0.68 |
+| est. sync overhead s | 0.07 |
+| injection | profile smoke, 1 users arriving over —, ~— requests in flight (rps x mean), ramp 20 s |
+| sync | mode full, feeder row39-users-district1.csv (1 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration | not archived — predates sync-durations.csv (5 Oct 2026) |
+| cache policy | warm-after-300s-warmup-m6g.large |
+| autovacuum | on |
+
+## `2026-11-13T09-06-31Z-row39-deep-district1-merged-v18.1-s1-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T09-06-31Z-row39-deep-district1-merged-v18.1-s1-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-13T09-06-31Z-row39-deep-district1-merged-v18.1-s1-1ff23cc` makes one.
+
+| | |
+|---|---|
+| requests (ok) | 507 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 526 / 815 / 1024 / 1121 |
+| mean ms | 550 |
+| mean throughput rps | 0.2 |
+| app CPU seconds | 179 |
+| app CPU seconds, EC2 (1 host) | 223 |
+| app CPU | 2% mean, peak 5% |
+| app heap | 968 MB mean, peak 1,720 of 5,120 MB max |
+| RDS CPU | 7% mean, peak 18% |
+| RDS memory | 4,547 MB freeable at its lowest, swap peak 4 MB |
+| app CPU s per sync | 179.20 |
+| harness commit | 1ff23cc5168d1414ae3f885e2b89a2793bcb68b9 (run id says `1ff23cc`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 789092feb |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 2 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.62 / 0.66 |
+| est. sync overhead s | 0.07 |
+| injection | profile smoke, 1 users arriving over —, ~0.1 requests in flight (rps x mean), ramp 20 s |
+| sync | mode full, feeder row39-users-district1.csv (1 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 2575.0 / 2575.0 / 2575.0 (1 syncs) |
+| full syncs p50 / p95 s | 2575.0 / 2575.0 (1 of 1, recorded) |
+| cache policy | warm-after-300s-warmup-m6g.large |
+| autovacuum | on |
+
+## `2026-11-13T09-50-41Z-row39-deep-district1-merged-v18.1-s2-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T09-50-41Z-row39-deep-district1-merged-v18.1-s2-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-13T09-50-41Z-row39-deep-district1-merged-v18.1-s2-1ff23cc/2026-11-13T09-50-41Z-row39-deep-district1-merged-v18.1-s2-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-13T09-50-41Z-row39-deep-district1-merged-v18.1-s2-1ff23cc/2026-11-13T09-50-41Z-row39-deep-district1-merged-v18.1-s2-1ff23cc.zip .`; unzip and open `index.html`.
+
+| | |
+|---|---|
+| requests (ok) | 507 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 480 / 802 / 843 / 1046 |
+| mean ms | 530 |
+| mean throughput rps | 0.2 |
+| app CPU seconds | 137 |
+| app CPU seconds, EC2 (1 host) | 194 |
+| app CPU | 2% mean, peak 4% |
+| app heap | 976 MB mean, peak 1,726 of 5,120 MB max |
+| RDS CPU | 6% mean, peak 10% |
+| RDS memory | 4,534 MB freeable at its lowest, swap peak 4 MB |
+| app CPU s per sync | 137.25 |
+| harness commit | 1ff23cc5168d1414ae3f885e2b89a2793bcb68b9 (run id says `1ff23cc`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 789092feb |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 2 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.25 / 0.29 |
+| est. sync overhead s | 0.03 |
+| injection | profile smoke, 1 users arriving over —, ~0.1 requests in flight (rps x mean), ramp 20 s |
+| sync | mode full, feeder row39-users-district1.csv (1 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 2565.2 / 2565.2 / 2565.2 (1 syncs) |
+| full syncs p50 / p95 s | 2565.2 / 2565.2 (1 of 1, recorded) |
+| cache policy | warm-after-300s-warmup-m6g.large |
+| autovacuum | on |
+
+## `2026-11-13T10-41-39Z-row39-deep-district1-merged-fix1103b-s1-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T10-41-39Z-row39-deep-district1-merged-fix1103b-s1-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-13T10-41-39Z-row39-deep-district1-merged-fix1103b-s1-1ff23cc/2026-11-13T10-41-39Z-row39-deep-district1-merged-fix1103b-s1-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-13T10-41-39Z-row39-deep-district1-merged-fix1103b-s1-1ff23cc/2026-11-13T10-41-39Z-row39-deep-district1-merged-fix1103b-s1-1ff23cc.zip .`; unzip and open `index.html`.
+
+| | |
+|---|---|
+| requests (ok) | 507 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 403 / 700 / 740 / 812 |
+| mean ms | 452 |
+| mean throughput rps | 0.2 |
+| app CPU seconds | 107 |
+| app CPU seconds, EC2 (1 host) | 155 |
+| app CPU | 2% mean, peak 10% |
+| app heap | 968 MB mean, peak 1,722 of 5,120 MB max |
+| RDS CPU | 7% mean, peak 21% |
+| RDS memory | 4,492 MB freeable at its lowest, swap peak 4 MB |
+| app CPU s per sync | 107.43 |
+| harness commit | 1ff23cc5168d1414ae3f885e2b89a2793bcb68b9 (run id says `1ff23cc`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | b7ee734d2 |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 2 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.22 / 0.28 |
+| est. sync overhead s | 0.03 |
+| injection | profile smoke, 1 users arriving over —, ~0.1 requests in flight (rps x mean), ramp 20 s |
+| sync | mode full, feeder row39-users-district1.csv (1 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 2525.4 / 2525.4 / 2525.4 (1 syncs) |
+| full syncs p50 / p95 s | 2525.4 / 2525.4 (1 of 1, recorded) |
+| cache policy | warm-after-300s-warmup-m6g.large |
+| autovacuum | on |
+
+## `2026-11-13T11-24-35Z-row39-deep-district1-merged-fix1103b-s2-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T11-24-35Z-row39-deep-district1-merged-fix1103b-s2-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-13T11-24-35Z-row39-deep-district1-merged-fix1103b-s2-1ff23cc/2026-11-13T11-24-35Z-row39-deep-district1-merged-fix1103b-s2-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-13T11-24-35Z-row39-deep-district1-merged-fix1103b-s2-1ff23cc/2026-11-13T11-24-35Z-row39-deep-district1-merged-fix1103b-s2-1ff23cc.zip .`; unzip and open `index.html`.
+
+| | |
+|---|---|
+| requests (ok) | 507 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 354 / 697 / 715 / 991 |
+| mean ms | 426 |
+| mean throughput rps | 0.2 |
+| app CPU seconds | 92 |
+| app CPU seconds, EC2 (1 host) | 130 |
+| app CPU | 1% mean, peak 3% |
+| app heap | 937 MB mean, peak 1,730 of 5,120 MB max |
+| RDS CPU | 6% mean, peak 9% |
+| RDS memory | 4,492 MB freeable at its lowest, swap peak 4 MB |
+| app CPU s per sync | 91.84 |
+| harness commit | 1ff23cc5168d1414ae3f885e2b89a2793bcb68b9 (run id says `1ff23cc`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | b7ee734d2 |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 2 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.27 / 0.32 |
+| est. sync overhead s | 0.04 |
+| injection | profile smoke, 1 users arriving over —, ~0.1 requests in flight (rps x mean), ramp 20 s |
+| sync | mode full, feeder row39-users-district1.csv (1 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 2512.3 / 2512.3 / 2512.3 (1 syncs) |
+| full syncs p50 / p95 s | 2512.3 / 2512.3 (1 of 1, recorded) |
+| cache policy | warm-after-300s-warmup-m6g.large |
+| autovacuum | on |
+
+## `2026-11-13T12-32-32Z-row39-deep-district1-merged-formula1103-s1-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T12-32-32Z-row39-deep-district1-merged-formula1103-s1-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-13T12-32-32Z-row39-deep-district1-merged-formula1103-s1-1ff23cc/2026-11-13T12-32-32Z-row39-deep-district1-merged-formula1103-s1-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-13T12-32-32Z-row39-deep-district1-merged-formula1103-s1-1ff23cc/2026-11-13T12-32-32Z-row39-deep-district1-merged-formula1103-s1-1ff23cc.zip .`; unzip and open `index.html`.
+
+| | |
+|---|---|
+| requests (ok) | 507 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 440 / 1042 / 1127 / 1166 |
+| mean ms | 509 |
+| mean throughput rps | 0.2 |
+| app CPU seconds | 97 |
+| app CPU seconds, EC2 (1 host) | 169 |
+| app CPU | 2% mean, peak 7% |
+| app heap | 967 MB mean, peak 1,723 of 5,120 MB max |
+| RDS CPU | 7% mean, peak 18% |
+| RDS memory | 4,575 MB freeable at its lowest, swap peak 4 MB |
+| app CPU s per sync | 96.88 |
+| harness commit | 1ff23cc5168d1414ae3f885e2b89a2793bcb68b9 (run id says `1ff23cc`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | b4c611977 |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 2 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.24 / 0.29 |
+| est. sync overhead s | 0.03 |
+| injection | profile smoke, 1 users arriving over —, ~0.1 requests in flight (rps x mean), ramp 20 s |
+| sync | mode full, feeder row39-users-district1.csv (1 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 2554.5 / 2554.5 / 2554.5 (1 syncs) |
+| full syncs p50 / p95 s | 2554.5 / 2554.5 (1 of 1, recorded) |
+| cache policy | warm-after-300s-warmup-m6g.large |
+| autovacuum | on |
+
+## `2026-11-13T13-16-28Z-row39-deep-district1-merged-formula1103-s2-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-13T13-16-28Z-row39-deep-district1-merged-formula1103-s2-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-13T13-16-28Z-row39-deep-district1-merged-formula1103-s2-1ff23cc/2026-11-13T13-16-28Z-row39-deep-district1-merged-formula1103-s2-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-13T13-16-28Z-row39-deep-district1-merged-formula1103-s2-1ff23cc/2026-11-13T13-16-28Z-row39-deep-district1-merged-formula1103-s2-1ff23cc.zip .`; unzip and open `index.html`.
+
+| | |
+|---|---|
+| requests (ok) | 507 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 431 / 1051 / 1135 / 1359 |
+| mean ms | 509 |
+| mean throughput rps | 0.2 |
+| app CPU seconds | 88 |
+| app CPU seconds, EC2 (1 host) | 140 |
+| app CPU | 1% mean, peak 3% |
+| app heap | 964 MB mean, peak 1,727 of 5,120 MB max |
+| RDS CPU | 7% mean, peak 12% |
+| RDS memory | 4,575 MB freeable at its lowest, swap peak 4 MB |
+| app CPU s per sync | 88.18 |
+| harness commit | 1ff23cc5168d1414ae3f885e2b89a2793bcb68b9 (run id says `1ff23cc`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | b4c611977 |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.20.1, 2 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.56 / 0.64 |
+| est. sync overhead s | 0.07 |
+| injection | profile smoke, 1 users arriving over —, ~0.1 requests in flight (rps x mean), ramp 20 s |
+| sync | mode full, feeder row39-users-district1.csv (1 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | False / False |
+| sync duration p50 / mean / p95 s | 2553.9 / 2553.9 / 2553.9 (1 syncs) |
+| full syncs p50 / p95 s | 2553.9 / 2553.9 (1 of 1, recorded) |
+| cache policy | warm-after-300s-warmup-m6g.large |
 | autovacuum | on |

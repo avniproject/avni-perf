@@ -46,38 +46,38 @@ if [ -z "$BUCKET" ]; then
   BUCKET="avni-loadtest-${ACCT}"
 fi
 
-WORK=$(mktemp -d "${TMPDIR:-/tmp}/runlog.XXXXXX")
-trap 'rm -rf "$WORK"' EXIT
+# **A persistent cache, filled by one sync.** Until 13 Nov 2026 this fetched five objects per run with
+# five separate CLI calls -- run-metadata.json, gradle.log, the correction, sync-durations.csv and a
+# head-object for the zip -- about 1,000 process starts for 200 runs, ~20 minutes, every time, for
+# files that never change once a run is published. Now one `aws s3 sync` copies only what is new or
+# changed (a correction added or edited later included, and with --delete one removed later goes too),
+# and one listing says which runs have an archive. Repeat runs take seconds.
+# RUN_LOG_CACHE moves it; deleting the directory forces a full fetch.
+WORK="${RUN_LOG_CACHE:-$HOME/.cache/avni-perf/run-log}/$BUCKET/$PREFIX"
+mkdir -p "$WORK"
 
 echo "reading s3://$BUCKET/$PREFIX/ ..." >&2
-RUNS=$(aws s3api list-objects-v2 --bucket "$BUCKET" --prefix "${PREFIX}/" --delimiter / \
-         --query 'CommonPrefixes[].Prefix' --output text 2>/dev/null | tr '\t' '\n' \
-       | sed "s#^${PREFIX}/##; s#/\$##" | grep -v '^$' | sort || true)
+LISTING=$(aws s3 ls "s3://$BUCKET/$PREFIX/" --recursive 2>/dev/null | awk '{print $4}' || true)
+RUNS=$(echo "$LISTING" | sed -n "s#^${PREFIX}/\([^/]*\)/.*#\1#p" | sort -u)
 
 [ -n "$RUNS" ] || { echo "no runs under s3://$BUCKET/$PREFIX/" >&2; exit 1; }
 echo "$RUNS" | sed 's/^/  /' >&2
 
+# run-metadata.json is small. gradle.log is ~1 MB and only its tail is needed, but it is fetched once
+# and cached. provenance-correction.json carries additive corrections: a completed run's own
+# run-metadata.json is never rewritten, so a field found wrong afterwards is corrected alongside it.
+# sync-durations.csv is one row per completed sync, archived from runs after 5 Oct 2026; absent for
+# earlier runs, where the columns read as absent rather than being invented.
+aws s3 sync "s3://$BUCKET/$PREFIX/" "$WORK/" --only-show-errors --delete --exclude '*' \
+  --include '*/run-metadata.json' --include '*/gradle.log' \
+  --include '*/provenance-correction.json' --include '*/sync-durations.csv' >&2
+
+# The one-file archive: written by the run script since 21 Oct 2026, back-filled by
+# tools/archive-runs.sh. Its presence decides whether the detail page offers a download or says there
+# is none -- a link to a missing object helps nobody. Read from the listing, refreshed every time.
 for r in $RUNS; do
   mkdir -p "$WORK/$r"
-  # run-metadata.json is small. gradle.log is ~1 MB, and only its tail is needed,
-  # but S3 range requests on a text file whose length is unknown are more trouble
-  # than the megabyte is worth.
-  aws s3 cp --only-show-errors "s3://$BUCKET/$PREFIX/$r/run-metadata.json" "$WORK/$r/" 2>/dev/null || true
-  aws s3 cp --only-show-errors "s3://$BUCKET/$PREFIX/$r/gradle.log"        "$WORK/$r/" 2>/dev/null || true
-  # Additive corrections. A completed run's own run-metadata.json is never
-  # rewritten -- editing it to say something it did not say would falsify the
-  # record -- so a field found to be wrong afterwards is corrected alongside it.
-  aws s3 cp --only-show-errors "s3://$BUCKET/$PREFIX/$r/provenance-correction.json" "$WORK/$r/" 2>/dev/null || true
-  # One row per completed sync, archived from runs after 5 Oct 2026. It is what makes
-  # device concurrency and the per-sync spread measured rather than derived; absent
-  # for earlier runs, and the columns read as absent rather than being invented.
-  aws s3 cp --only-show-errors "s3://$BUCKET/$PREFIX/$r/sync-durations.csv" "$WORK/$r/" 2>/dev/null || true
-  # The one-file archive: written by the run script since 21 Oct 2026, back-filled
-  # by tools/archive-runs.sh. Its presence decides whether the detail page offers
-  # a download or says there is none -- a link to a missing object helps nobody.
-  if aws s3api head-object --bucket "$BUCKET" --key "$PREFIX/$r/$r.zip" >/dev/null 2>&1; then
-    touch "$WORK/$r/.has-archive"
-  fi
+  if echo "$LISTING" | grep -qxF "$PREFIX/$r/$r.zip"; then touch "$WORK/$r/.has-archive"; else rm -f "$WORK/$r/.has-archive"; fi
 done
 
 RUNS="$RUNS" WORK="$WORK" BUCKET="$BUCKET" PREFIX="$PREFIX" REGION="$REGION" OUT="$OUT" python3 - <<'PY'
