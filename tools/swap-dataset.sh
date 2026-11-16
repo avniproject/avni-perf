@@ -153,6 +153,8 @@ detached(){ # $1 label, $2 sql path
     # behind an ACCESS EXCLUSIVE lock looks exactly like a slow one.
     if [ "$1" = "td" ]; then
       echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshc "$Q -c \"SELECT coalesce(state, '?') || coalesce(' waiting on ' || wait_event_type || ':' || wait_event, ', not waiting') || ', ' || date_trunc('second', now() - xact_start) || ' into the transaction' FROM pg_stat_activity WHERE application_name = 'psql' AND pid <> pg_backend_pid() AND xact_start IS NOT NULL ORDER BY xact_start LIMIT 1;\"")"
+    elif [ "$1" = "rx" ]; then
+      echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshc "grep -c '^REINDEX' /tmp/$TAG.$1.log 2>/dev/null || echo 0")/10 tables reindexed"
     else
       echo "     [$(( ($(date +%s)-t0)/60 ))m] $(sshc "awk '/^COPY /{n+=\$2} END{print n+0}' /tmp/$TAG.$1.log") rows copied"
     fi
@@ -303,8 +305,13 @@ t=$(date +%s); say "8. REINDEX"
 # four minutes on db.m6g.4xlarge from cache. Tried 28 Oct: maintenance_work_mem 1 GB for the
 # session changed nothing (the random-read phase is heap pages, not sort spills), so it is not
 # set. The levers are the big class, or not rebuilding the co-tenants' share of these indexes.
-for tb in individual encounter program_encounter program_enrolment address_level catchment catchment_address_mapping users user_group groups; do
-  sshc "$PSQL -c 'REINDEX TABLE $tb;'" >/dev/null || { echo "REINDEX $tb failed" >&2; exit 1; }; done
+#
+# **Detached, like every other long phase** (16 Nov 2026). It ran one ssh session per table, held open for the
+# whole statement -- 21-22 minutes for individual and encounter on the large class. On 16 Nov one of those
+# sessions dropped six minutes into encounter; the database finished the REINDEX at its own pace (its log shows
+# it completing, no error), but the script read the dropped session as a failure and aborted the chain.
+sshc "printf 'REINDEX TABLE %s;\\n' individual encounter program_encounter program_enrolment address_level catchment catchment_address_mapping users user_group groups > /tmp/$TAG.rx.sql; cat /tmp/$TAG.rx.sql | tr '\\n' ' '"; echo
+detached rx "/tmp/$TAG.rx.sql" || { echo "REINDEX failed" >&2; sshc "tail -6 /tmp/$TAG.rx.log"; exit 1; }
 phase reindex $t
 
 say "9. verification"
