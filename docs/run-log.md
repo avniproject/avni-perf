@@ -1,6 +1,6 @@
 # Run log
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-11-13 22:40 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-11-16 19:25 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script. The artefacts prefix is append-only by IAM, so S3 is the source of truth and this is a view of it. An edit here is lost on the next refresh; a run missing from this table means its upload did not happen, not that the log is stale.
 
@@ -97,6 +97,9 @@ Findings drawn from these runs are written up separately, by hand, in `findings-
 | [`2026-11-13T11-24-35Z-row39-deep-district1-merged-fix1103b-s2-1ff23cc`](run-log-detail.md#2026-11-13t11-24-35z-row39-deep-district1-merged-fix1103b-s2-1ff23cc) | 2026-11-13 16:54 | row39-deep-district1-merged-fix1103b-s2 | smoke | 1 | — | ~0.1 | ~1.0 | 507 | 0.0% | 697 | 2512.3 | 0.2 | 92 | 91.84 |
 | [`2026-11-13T12-32-32Z-row39-deep-district1-merged-formula1103-s1-1ff23cc`](run-log-detail.md#2026-11-13t12-32-32z-row39-deep-district1-merged-formula1103-s1-1ff23cc) | 2026-11-13 18:02 | row39-deep-district1-merged-formula1103-s1 | smoke | 1 | — | ~0.1 | ~1.0 | 507 | 0.0% | 1042 | 2554.5 | 0.2 | 97 | 96.88 |
 | [`2026-11-13T13-16-28Z-row39-deep-district1-merged-formula1103-s2-1ff23cc`](run-log-detail.md#2026-11-13t13-16-28z-row39-deep-district1-merged-formula1103-s2-1ff23cc) | 2026-11-13 18:46 | row39-deep-district1-merged-formula1103-s2 | smoke | 1 | — | ~0.1 | ~1.0 | 507 | 0.0% | 1051 | 2553.9 | 0.2 | 88 | 88.18 |
+| [`2026-11-16T07-32-04Z-case15-tenaday-anchorB-fix1103b-r1-1ff23cc`](run-log-detail.md#2026-11-16t07-32-04z-case15-tenaday-anchorb-fix1103b-r1-1ff23cc) | 2026-11-16 13:02 | case15 | steady | 1500 | 60min @ 1500/h | ~4.1 | ~141 | 202062 | 0.0% | 301 | 497.9 | 48.78 | 7,268 | 3.17 |
+| [`2026-11-16T10-23-52Z-case15-tenaday-anchorB-rc18.3b-batch50-r1-1ff23cc`](run-log-detail.md#2026-11-16t10-23-52z-case15-tenaday-anchorb-rc183b-batch50-r1-1ff23cc) | 2026-11-16 15:53 | case15 | steady | 1500 | 60min @ 1500/h | ~2.9 | ~141 | 97791 | 0.0% | 280 | 595.8 | 23.47 | 5,865 | 2.56 |
+| [`2026-11-16T12-42-19Z-case15-5k-anchorD-rc18.3b-batch50-r1-1ff23cc`](run-log-detail.md#2026-11-16t12-42-19z-case15-5k-anchord-rc183b-batch50-r1-1ff23cc) | 2026-11-16 18:12 | case15 | steady | 5000 | 60min @ 5000/h | ~4.3 | ~409 | 224073 | 0.0% | 199 | 500.3 | 54.36 | 10,132 | 1.75 |
 
 Per-run settings and environment are in [`run-log-detail.md`](run-log-detail.md), linked from each run id in the table.
 

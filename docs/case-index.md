@@ -22,7 +22,7 @@
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
 | [**12**](#case-12) | Clustered — co-tenant data | 12 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 5 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
-| [**15**](#case-15) | Clustered — co-tenant load, media push | 25 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
+| [**15**](#case-15) | Clustered — co-tenant load, media push | 28 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
 
 <a id="case-1"></a>
@@ -285,6 +285,9 @@ Case 13's shape — clustered into one hour, co-tenants syncing — with push on
 | [`2026-11-05 19:53`](run-log-detail.md#2026-11-05t19-53-21z-case15-10k-row34-2x4xl-steady-11x-rc183-batch50-1ff23cc) | **Row 34 steady, 1.1× = 53,000 syncs an hour** on 2 × `m6g.4xlarge`, `db.m6g.4xlarge`: **did not hold** — in flight grew from the start, completions capped at ~48,900 an hour, database 96–99% with 198–200 connections; failures above 1% after 30 min, stop rule at 33 min. Its 2.23 CPU s per sync includes the overload backlog | pilot-day-180-10k | 19521 | —% | — | 2.23 |
 | [`2026-11-06 03:47`](run-log-detail.md#2026-11-06t03-47-34z-case15-10k-row36-3x4xl-db8xl-steady-50k-rc183-batch50-1ff23cc) | **Row 36 steady, 50,000 syncs an hour** on **3 × `m6g.4xlarge` (48 app vCPU), `db.m6g.8xlarge` (32 vCPU)**: 49,960 an hour, 464 req/s, 0 failures, p95 212 ms, 1.79 CPU s per sync; app ~55% per copy, database 47% — the hardware for 50,000 | pilot-day-180-10k | 50792 | 0.0% | 212 | 1.79 |
 | [`2026-11-06 06:41`](run-log-detail.md#2026-11-06t06-41-07z-case15-10k-row36-3x4xl-db8xl-ramp-50k-70k-rc183-batch50-1ff23cc) | **Row 36 ramp**, same shape, 50,000 → 70,000 syncs an hour over 60 min: **no knee** — ~66,000 completed an hour at 617 req/s with app 73% and database 59%, in flight tracking the offer, 0 failures in 2.05 M requests, p95 214 ms | pilot-day-180-10k | 60792 | 0.0% | 214 | 1.81 |
+| [`2026-11-16 07:32`](run-log-detail.md#2026-11-16t07-32-04z-case15-tenaday-anchorb-fix1103b-r1-1ff23cc) | **Row 29c, the reviewed #1103 (`b7ee734d2`) on B**, `UPLOAD_URL_BATCH=0`: 3.17 CPU s per sync against row 27's 4.27 (−26%; row 29's `@Formula` jar 3.24), p95 301 ms, 0 failures | pilot-day-180 | 2292 | 0.0% | 301 | 3.17 |
+| [`2026-11-16 10:23`](run-log-detail.md#2026-11-16t10-23-52z-case15-tenaday-anchorb-rc183b-batch50-r1-1ff23cc) | **Row 30b, 18.3 at `27e22ee0a` on B** with the batched client: 2.56 CPU s per sync against row 30's 2.28 (+12%, beyond B's noise; −40% against 18.1), p95 279 ms, 97,791 requests, 0 failures — single run, to be repeated | pilot-day-180 | 2292 | 0.0% | 280 | 2.56 |
+| [`2026-11-16 12:42`](run-log-detail.md#2026-11-16t12-42-19z-case15-5k-anchord-rc183b-batch50-r1-1ff23cc) | **Row 30b, 18.3 at `27e22ee0a` on D** (5,000 users, 8 + 8): 1.75 CPU s per sync against row 30's 1.81 — within noise; p95 199 ms, 224,073 requests, 0 failures | pilot-day-180-5k | 5792 | 0.0% | 199 | 1.75 |
 
 **Findings:** [`findings-clustered-media-push.md`](findings-clustered-media-push.md)
 
