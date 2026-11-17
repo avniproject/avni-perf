@@ -1,8 +1,8 @@
 # What the load tests found
 
-**Complete as of 19 October 2026 — 42 runs, 18 findings documents, one page — and extended to 6
-November with the fixes measured (§9), the knee located (§10) and the scale-out to 50,000 syncs an hour
-(§11).** Each claim links to the case that carries the evidence; nothing here is new, and where a
+**Complete as of 19 October 2026 — 42 runs, 18 findings documents, one page — and extended to 17
+November with the fixes measured and confirmed in the release as it ships (§9), the knee located (§10)
+and the scale-out to 50,000 syncs an hour (§11).** Each claim links to the case that carries the evidence; nothing here is new, and where a
 finding has been corrected the correction is what appears.
 
 **For a plain-language summary** — assumptions, sync times on the phone and syncs an hour by
@@ -22,8 +22,8 @@ past it (§11), and under the sync pattern production actually has, neither matt
 one is not volume, tenancy or history — it is **everybody syncing at once**.
 
 **And most of that app CPU was avoidable.** Four server fixes, measured one at a time and then
-together on the 18.3 release candidate (§9), take **43–50% off the CPU of every sync** on every
-anchor, a fifth to a quarter off the database, half the requests wherever media is pushed — and
+together on the 18.3 release candidate (§9) — and confirmed after review and in 18.3 as it ships —
+take **43–50% off the CPU of every sync** on every anchor, a fifth to a quarter off the database, half the requests wherever media is pushed — and
 the case 13 load that broke 2 vCPU now runs there at 65% with no failures.
 
 **And the capacity is now measured, not inferred** (§10): with the fixes in, 16 app + 16 database
@@ -220,7 +220,7 @@ built on 18.3 alone and run against them; then all four together.
 | fix | A — case 12, 2 + 2 vCPU | B — case 15 ten-a-day, 4 + 2 | what it removed |
 |---|---|---|---|
 | **#1097** `DummyInterceptor` gone | **−26%**, p95 2,433 → 715 ms | **−24%**, RDS −6 pts | two `gender` selects per request; the interceptor segment; two of three re-saves per write |
-| **#1103** parent UUIDs via `@Formula` | **−41%**, p95 → 417 ms | **−24%**, RDS −6 pts | a hydrated parent entity per child row — `individual` selects −85%, GC −79% |
+| **#1103** parent UUIDs via `@Formula` (since replaced, below) | **−41%**, p95 → 417 ms | **−24%**, RDS −6 pts | a hydrated parent entity per child row — `individual` selects −85%, GC −79% |
 | **#1100** batched upload URLs (client at 50) | — | **−6%**, **RDS −11 pts**, requests 204k → 97k | 80 per-file `uploadUrl` calls per sync → 2, and their twelve statements each |
 | **#1098** Joda instant equality | none | none (write IOPS −33%) | **every** re-save of telemetry and pushed entities — a correctness fix, not a capacity one |
 
@@ -255,6 +255,36 @@ built on 18.3 alone and run against them; then all four together.
 5. **A fix's share of query time is not its share of CPU.** #1103 was ranked at ~5% from
    statement time and measured at −41%. Ranking by the profiler's request-time share, as
    `areas-to-investigate.md` does, is the better guide.
+
+**After review, and as it ships (rows 29c, 30b and 39, 13–17 Nov 2026)**
+([execution plan](execution-plan.md#rows-29c-39-results)). Review of #1103 found the `@Formula` above costs
+more on deep pages. Sync pages by offset, so the subselect ran for every skipped row as well as every
+returned one. The reviewed fix replaces it with one `id = any(?)` query per parent table per page. Three
+questions followed: does the gain survive, is the deep-page cost real, and does the release as it will
+ship match the candidate the capacity rows were measured on.
+
+| | 18.1, no fix | `@Formula` #1103 | **reviewed #1103** |
+|---|---|---|---|
+| anchor A, CPU s per sync | 3.88 (same-day control) | 2.30 | **2.26 (−42%)** |
+| anchor B, CPU s per sync | 4.27 | 3.24 | **3.17 (−26%)** |
+| row 39: one user, a **123-page** stream, server time per page | 802 ms | **902 ms (+12%)** | **684 ms (−15%)** |
+| row 39: the same user's 31-page streams | 496 ms | 397 ms (−20%) | **349 ms (−30%)** |
+
+6. **The reviewed fix keeps the whole gain.** On both anchors it lands at or just below the `@Formula`
+   version. A same-day 18.1 control (3.88 against 3.90 ± 0.07 on 27 Oct) ruled out drift on A.
+7. **The review's finding is real, and the reviewed fix removes it.** One district-level user, with
+   three of its encounter types merged into a 122,964-record stream, synced in full twice per jar. By
+   ~123 pages the `@Formula` version is **slower than no fix at all**: its cost per page grows with
+   depth faster than offset paging's own (deep ÷ shallow 1.62 on 18.1, 2.27 on `@Formula`). The
+   reviewed fix is faster than no fix at every depth measured. Offset paging still costs on every
+   build — a deep page is 1.6× a shallow one on 18.1 — which avni-client#2096's slices would not change.
+8. **The release as it ships matches the candidate.** 18.3 at `27e22ee0a` (the four fixes merged, the
+   reviewed #1103 rebased on, 40 other commits): **D 1.75 against the candidate's 1.81**; on B, 18.3
+   measured 2.40 and 2.56 and **the candidate itself, re-run the same day, 2.45**. So §10–§11's capacity
+   figures, measured on the candidate, hold for the release. The candidate's own B figure has moved
+   from 2.28 (29 Oct) to 2.45 and B has become noisier (spread ~0.16 against ± 0.02), across a harness
+   change that has not been ruled out; D did not move. Comparisons on B now need runs paired on the
+   same day and harness.
 
 **Where the release candidate breaks** is §10.
 
