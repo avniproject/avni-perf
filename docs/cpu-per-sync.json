@@ -1761,5 +1761,29 @@
    "2026-11-16T12:42:19Z",
    "2026-11-16T13:54:19Z"
   ]
+ },
+ "2026-11-17T06-02-06Z-case15-tenaday-anchorB-rc18.3b-batch50-r2-1ff23cc": {
+  "appCpuAvg": 32.0,
+  "appCpuMax": 51.3,
+  "appCpuSecondsEc2": 5529.6,
+  "appHeapCommittedMb": 2560.0,
+  "appHeapMaxMb": 5120.0,
+  "appHeapUsedMb": 1043.0,
+  "appHeapUsedMbMax": 1868.9,
+  "appInstances": {
+   "i-044c88e15e8ea9e0f": 4
+  },
+  "appPhysicalMemMb": 2868.0,
+  "cpuPerSync": 2.4,
+  "cpuSeconds": 5495.7,
+  "rdsCpuAvg": 41.0,
+  "rdsCpuMax": 62.8,
+  "rdsFreeableMemMbMin": 4179.8,
+  "rdsSwapMbMax": 3.1,
+  "syncs": 2292,
+  "window": [
+   "2026-11-17T06:02:06Z",
+   "2026-11-17T07:14:06Z"
+  ]
  }
 }

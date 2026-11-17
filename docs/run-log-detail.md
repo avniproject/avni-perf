@@ -1,6 +1,6 @@
 # Run log — detail
 
-Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-11-16 19:25 IST.
+Generated from `s3://avni-loadtest-936573213727/artefacts/` by `tools/update-run-log.sh` (`make run_log`) — last refreshed 2026-11-17 12:44 IST.
 
 **Do not edit by hand.** Rewritten wholesale on every run of that script, as [`run-log.md`](run-log.md) is. That file is the index and carries the results table and any caveats; this one records what each run was configured with and what environment it met, which is what makes a number interpretable once the environment is gone.
 
@@ -2941,7 +2941,7 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-16T07-32-04Z-case1
 
 ## `2026-11-16T10-23-52Z-case15-tenaday-anchorB-rc18.3b-batch50-r1-1ff23cc`
 
-Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-16T10-23-52Z-case15-tenaday-anchorB-rc18.3b-batch50-r1-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-16T10-23-52Z-case15-tenaday-anchorB-rc18.3b-batch50-r1-1ff23cc/2026-11-16T10-23-52Z-case15-tenaday-anchorB-rc18.3b-batch50-r1-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-16T10-23-52Z-case15-tenaday-anchorB-rc18.3b-batch50-r1-1ff23cc/2026-11-16T10-23-52Z-case15-tenaday-anchorB-rc18.3b-batch50-r1-1ff23cc.zip .`; unzip and open `index.html`.
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-16T10-23-52Z-case15-tenaday-anchorB-rc18.3b-batch50-r1-1ff23cc/` — no one-file archive yet; `tools/archive-runs.sh --only 2026-11-16T10-23-52Z-case15-tenaday-anchorB-rc18.3b-batch50-r1-1ff23cc` makes one.
 
 | | |
 |---|---|
@@ -3007,4 +3007,39 @@ Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-16T12-42-19Z-case1
 | sync duration p50 / mean / p95 s | 298.0 / 290.7 / 522.2 (5792 syncs) |
 | full syncs p50 / p95 s | 275.6 / 500.3 (63 of 5792, recorded) |
 | cache policy | warm-after-discarded-warmup-m6g.2xlarge |
+| autovacuum | on |
+
+## `2026-11-17T06-02-06Z-case15-tenaday-anchorB-rc18.3b-batch50-r2-1ff23cc`
+
+Artefacts: `s3://avni-loadtest-936573213727/artefacts/2026-11-17T06-02-06Z-case15-tenaday-anchorB-rc18.3b-batch50-r2-1ff23cc/` — [download the run as one zip](https://ap-south-1.console.aws.amazon.com/s3/object/avni-loadtest-936573213727?region=ap-south-1&prefix=artefacts/2026-11-17T06-02-06Z-case15-tenaday-anchorB-rc18.3b-batch50-r2-1ff23cc/2026-11-17T06-02-06Z-case15-tenaday-anchorB-rc18.3b-batch50-r2-1ff23cc.zip) from the AWS console (load-test account), or `aws s3 cp s3://avni-loadtest-936573213727/artefacts/2026-11-17T06-02-06Z-case15-tenaday-anchorB-rc18.3b-batch50-r2-1ff23cc/2026-11-17T06-02-06Z-case15-tenaday-anchorB-rc18.3b-batch50-r2-1ff23cc.zip .`; unzip and open `index.html`.
+
+| | |
+|---|---|
+| requests (ok) | 97696 |
+| failed | 0 (0.0%) |
+| response time p50 / p95 / p99 / max ms | 83 / 259 / 412 / 7776 |
+| mean ms | 115 |
+| mean throughput rps | 23.22 |
+| app CPU seconds | 5,496 |
+| app CPU seconds, EC2 (1 host) | 5,530 |
+| app CPU | 32% mean, peak 51% |
+| app heap | 1,043 MB mean, peak 1,869 of 5,120 MB max |
+| RDS CPU | 41% mean, peak 63% |
+| RDS memory | 4,180 MB freeable at its lowest, swap peak 3 MB |
+| app CPU s per sync | 2.40 |
+| harness commit | 1ff23cc5168d1414ae3f885e2b89a2793bcb68b9 (run id says `1ff23cc`) |
+| tree dirty | False |
+| target | https://loadtest.avniproject.org |
+| server build | 27e22ee0a |
+| dataset | pilot-day-180 |
+| injector | i-041afc7c6e0761195 (Linux aarch64, java 17.0.21.0.3, 2 cpu, heap 1024 MB) |
+| injector RTT min / median ms | 0.26 / 0.39 |
+| est. sync overhead s | 0.04 |
+| injection | profile steady, 1500 users arriving over 60min @ 1500/h, ~2.7 requests in flight (rps x mean), ramp 33640 s |
+| sync | mode realistic, feeder case5-users-pilot-nosuppush.csv (1682 rows), auth none, page 1000 |
+| entities | 75 pulled of 79 (openchs-models@1.33.81) |
+| push / co-tenants | True / True |
+| sync duration p50 / mean / p95 s | 262.8 / 254.7 / 540.3 (2292 syncs) |
+| full syncs p50 / p95 s | 273.3 / 561.4 (32 of 2292, recorded) |
+| cache policy | warm-after-discarded-warmup-m6g.xlarge |
 | autovacuum | on |
