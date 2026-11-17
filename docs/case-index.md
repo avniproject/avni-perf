@@ -22,7 +22,7 @@
 | [**11**](#case-11) | Clustered — separate | 7 | [`pair`](findings-case11-pair.md), [`15-min burst`](findings-case11-burst.md); run 1 has none |
 | [**12**](#case-12) | Clustered — co-tenant data | 12 | [`findings-case12.md`](findings-case12.md); row 22 → [`findings-interceptor.md`](findings-interceptor.md) |
 | [**13**](#case-13) | Clustered — co-tenant load | 5 | [`findings-case13.md`](findings-case13.md), [`findings-vertical-scale.md`](findings-vertical-scale.md), [`findings-interceptor.md`](findings-interceptor.md) |
-| [**15**](#case-15) | Clustered — co-tenant load, media push | 29 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
+| [**15**](#case-15) | Clustered — co-tenant load, media push | 30 | [`findings-clustered-media-push.md`](findings-clustered-media-push.md) |
 | — | D7: client storage, on a real device | 4 device syncs, no server run | [`findings-d7.md`](findings-d7.md) |
 
 <a id="case-1"></a>
@@ -289,6 +289,7 @@ Case 13's shape — clustered into one hour, co-tenants syncing — with push on
 | [`2026-11-16 10:23`](run-log-detail.md#2026-11-16t10-23-52z-case15-tenaday-anchorb-rc183b-batch50-r1-1ff23cc) | **Row 30b, 18.3 at `27e22ee0a` on B** with the batched client: 2.56 CPU s per sync against row 30's 2.28 (+12%, beyond B's noise; −40% against 18.1), p95 279 ms, 97,791 requests, 0 failures — single run, to be repeated | pilot-day-180 | 2292 | 0.0% | 280 | 2.56 |
 | [`2026-11-16 12:42`](run-log-detail.md#2026-11-16t12-42-19z-case15-5k-anchord-rc183b-batch50-r1-1ff23cc) | **Row 30b, 18.3 at `27e22ee0a` on D** (5,000 users, 8 + 8): 1.75 CPU s per sync against row 30's 1.81 — within noise; p95 199 ms, 224,073 requests, 0 failures | pilot-day-180-5k | 5792 | 0.0% | 199 | 1.75 |
 | [`2026-11-17 06:02`](run-log-detail.md#2026-11-17t06-02-06z-case15-tenaday-anchorb-rc183b-batch50-r2-1ff23cc) | **Row 30b, 18.3 at `27e22ee0a` on B, run 2** (repeat of 16 Nov's run 1): 2.40 CPU s per sync against run 1's 2.56 and row 30's 2.28 — between the two; p95 259 ms, 97,696 requests, 0 failures | pilot-day-180 | 2292 | 0.0% | 259 | 2.40 |
+| [`2026-11-17 10:18`](run-log-detail.md#2026-11-17t10-18-14z-case15-tenaday-anchorb-rc183-batch50-r2-1ff23cc) | **Row 30's candidate (`946553685`) on B again, 17 Nov**, the same day as 30b's run 2: 2.45 CPU s per sync against its own 2.28 of 29 Oct — the same jar now costs 7% more on B, and 18.3 (2.40, 2.56) is equal to it on the same day; p95 269 ms, 96,786 requests, 0 failures | pilot-day-180 | 2292 | 0.0% | 269 | 2.45 |
 
 **Findings:** [`findings-clustered-media-push.md`](findings-clustered-media-push.md)
 
