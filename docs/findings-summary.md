@@ -273,18 +273,20 @@ ship match the candidate the capacity rows were measured on.
 6. **The reviewed fix keeps the whole gain.** On both anchors it lands at or just below the `@Formula`
    version. A same-day 18.1 control (3.88 against 3.90 ± 0.07 on 27 Oct) ruled out drift on A.
 7. **The review's finding is real, and the reviewed fix removes it.** One district-level user, with
-   three of its encounter types merged into a 122,964-record stream, synced in full twice per jar. By
-   ~123 pages the `@Formula` version is **slower than no fix at all**: its cost per page grows with
-   depth faster than offset paging's own (deep ÷ shallow 1.62 on 18.1, 2.27 on `@Formula`). The
-   reviewed fix is faster than no fix at every depth measured. Offset paging still costs on every
-   build — a deep page is 1.6× a shallow one on 18.1 — which avni-client#2096's slices would not change.
+   three of its encounter types merged into a 122,964-record stream, synced in full twice per jar.
+   Page by page, the `@Formula` version's time grows **4.1 ms per page of depth, all of it database**,
+   and **crosses above no fix near page 40** (~40,000 records of one type); by page ~120 it is 1,084 ms
+   against 18.1's 793. The reviewed fix and 18.1 are both flat with depth, the reviewed fix ~130 ms
+   below. A big stream does cost more per page than a small one on every build (1.6× on 18.1) — at
+   every depth, so it scales with the stream's size, not the page's position.
 8. **The release as it ships matches the candidate.** 18.3 at `27e22ee0a` (the four fixes merged, the
    reviewed #1103 rebased on, 40 other commits): **D 1.75 against the candidate's 1.81**; on B, 18.3
    measured 2.40 and 2.56 and **the candidate itself, re-run the same day, 2.45**. So §10–§11's capacity
    figures, measured on the candidate, hold for the release. The candidate's own B figure has moved
-   from 2.28 (29 Oct) to 2.45 and B has become noisier (spread ~0.16 against ± 0.02), across a harness
-   change that has not been ruled out; D did not move. Comparisons on B now need runs paired on the
-   same day and harness.
+   from 2.28 (29 Oct) to 2.45 and B's runs spread ~0.16 — **traced to the co-tenants' push volume**,
+   which the harness draws unseeded: CPU per sync follows program-encounter pushes (2,538 → 3,207) in
+   all four B runs whichever jar ran, while every run pulled the same. Comparing jars on B needs several
+   runs or a seeded push draw.
 
 **Where the release candidate breaks** is §10.
 

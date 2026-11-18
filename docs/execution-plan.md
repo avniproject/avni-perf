@@ -1193,7 +1193,7 @@ is binding; the calendar is not.
 | 36 | S | **50,000 an hour** — the app shape that won 35, sized to ~48 vCPU, on `db.m6g.8xlarge` (32 vCPU): steady 50,000 for an hour, then a ramp to 70,000 | **done 6 Nov — 3 × `m6g.4xlarge` (48 app vCPU) on `db.m6g.8xlarge` (32 vCPU) holds 50,000 syncs an hour with app ~55% and database 47%, and was still keeping up at 70,000.** Steady 50,000: 49,960 an hour, 464 req/s, in flight flat at ~4,600, 0 failures in 1.72 M requests, p95 212 ms, 1.79 CPU s per sync, copies within a point of each other. Ramp 50,000 → 70,000: 0 failures in 2.05 M requests, p95 214 ms; at the top ~66,000 completed an hour at 617 req/s, app 72–73%, database 59% (peak 61%), 119 connections, in flight still tracking the offer — **no knee below 70,000; the app would bind first, near ~90,000.** [Row 36 results](#row-36-results) |
 | 37 | S | **50,000 on more distinct users** — row 36's steady hour on a 25,000-user dataset | **held — not run 6 Nov; to run another day if required.** Its condition was not met either: row 36's database averaged 47% over the steady hour's minutes 12–56, against the ~50% threshold. The dataset is generated and staged (`datasets/pilot-day-180-25k.tar.gz`, 5.2 GiB; feeders `case4`/`case5-users-pilot-25k-nosuppush.csv`), and `chain-rows36-37.sh` carried the run before it was held. On the 10k dataset each user syncs ~4.5 times an hour, which keeps the database's working set warmer than 50,000 real users would. [Rows 32–37](#rows-32-37) |
 | 38 | — | **Fix the pull window, then re-measure one capacity point** — daily syncs download only what changed, as the app does; data regenerated with its reference date at the run date; row 31's steady pair or row 36's 50,000 hour repeated | **pending — do this before any new run that quotes absolute capacity or sync times.** Every realistic run so far downloaded each changed record type from 1900, so daily syncs pulled whole catchments (~8,400 records per field worker) and the capacity figures are cautious by an unknown margin. [`harness-pull-window.md`](harness-pull-window.md) |
-| 39 | — | **Deep pages on a heavy device** — fresh syncs of one user whose catchment holds 100,000+ records of one type, time per page against page number, on no fix, the `@Formula` fix and the reviewed fix | **done 13 Nov — the review's finding confirmed, and the reviewed fix removes it.** One District 1 user, three of its encounter types merged into one 122,964-record stream (~123 pages), two full syncs per jar. Deep-stream server time per page: 18.1 802 ms, `@Formula` **902 ms (+12%)**, reviewed **684 ms (−15%)**; on the 31-page streams `@Formula` saves 20% and the reviewed fix 30%. The formula's cost grows with depth (deep ÷ shallow 1.62 → 2.27); the reviewed fix's does not overtake the control. [Rows 29c and 39 results](#rows-29c-39-results) |
+| 39 | — | **Deep pages on a heavy device** — fresh syncs of one user whose catchment holds 100,000+ records of one type, time per page against page number, on no fix, the `@Formula` fix and the reviewed fix | **done 13 Nov — the review's finding confirmed, and the reviewed fix removes it.** One District 1 user, three of its encounter types merged into one 122,964-record stream (~123 pages), two full syncs per jar. Deep-stream server time per page: 18.1 802 ms, `@Formula` **902 ms (+12%)**, reviewed **684 ms (−15%)**; on the 31-page streams `@Formula` saves 20% and the reviewed fix 30%. Page by page (18 Nov, from New Relic): the formula's time per page grows **4.1 ms per page of depth, all of it database**, crossing above no fix near page 40; 18.1 and the reviewed fix stay flat. [Rows 29c and 39 results](#rows-29c-39-results) |
 
 #### Rows 21 and 22: removing `DummyInterceptor`
 
@@ -2238,22 +2238,45 @@ Server response time per page (Gatling, mean of the two syncs; each pair agreed 
 
 - **The review's finding is confirmed.** The `@Formula` fix saves on shallow streams and costs on the deep
   one: by ~123 pages it is 12% slower per page than no fix at all, and its slowest pages are the slowest
-  of any jar. Its cost grows with depth faster than offset paging's own (deep ÷ shallow 1.62 on 18.1,
-  2.27 on `@Formula`): the subselect runs for every skipped row as well as every returned one.
+  of any jar. Page by page (below), its time grows with depth and 18.1's does not: the subselect runs for
+  every skipped row as well as every returned one.
 - **The reviewed fix removes it.** It is faster than no fix at every depth measured — 30% on 31-page
   streams, 15% on the 123-page one — and its slowest page is the fastest of the three.
-- **Offset paging still costs on every build.** On 18.1 a deep-stream page averages 1.6× a shallow one,
-  rising from ~600 ms to ~1.1 s. avni-client#2096's slice endpoints remove the `COUNT` per page, not the
-  offset.
+- **A big stream costs more per page on every build, but not by depth.** On 18.1 a page of the 123-page
+  stream averages 1.6× a page of a 31-page one — *at every depth*: the page-by-page curve below is flat.
+  ~~Offset paging makes deep pages dearer~~ (said here until 18 Nov) is not what the data shows at this
+  depth. A per-page cost that scales with the stream's size rather than the page's position fits — the
+  `COUNT` each page runs over the whole stream is the candidate, and avni-client#2096's slice endpoints
+  remove it — but that attribution is not measured.
 - **Individuals are unchanged** by either fix (no parent to load); their spread is run-to-run noise.
 - **App CPU per full sync** (New Relic, over each sync's 45 minutes): 18.1 137–179 CPU s, reviewed
   92–107, `@Formula` 88–97. The formula takes the parent lookup off the app by handing it to the
   database as a subselect — which is exactly what makes its deep pages slower.
 
-**Caveats.** These are means over each stream, not a per-page curve: the reports give a stream's
-distribution, and the slowest page is the deepest only by inference. The page-by-page curve needs the
-per-request timings (Gatling's `simulation.log`, or New Relic's `Transaction` events once exported).
-The effect is smaller than the review's real-organisation case (page 100: 2.6 → 3.2–3.7 s, +23–42%) on
+**Page by page (analysed 18 Nov from the exported New Relic `Transaction` events).** One user per sync, so
+the `/encounter` requests inside each sync's deep-stream window (from its Gatling ticks), in time order,
+are its pages; the two at each end are dropped as possible neighbours (pages 3–121 kept). Mean of each
+jar's two syncs:
+
+| pages | 18.1 server / database | `@Formula` server / database | reviewed server / database |
+|---|---|---|---|
+| 3–20 | 827 / 560 ms | 677 / 521 ms | 664 / 496 ms |
+| 41–60 | 796 / 537 ms | 854 / 696 ms | 677 / 517 ms |
+| 81–100 | 800 / 547 ms | 1,020 / 862 ms | 694 / 535 ms |
+| 101–121 | 793 / 549 ms | **1,084 / 926 ms** | 695 / 538 ms |
+| **slope, per page of depth** | **−0.2 ms (flat)** | **+4.1 ms, all database** | **+0.3 ms (flat)** |
+| database statements per page | 29 | 19 | 20 |
+
+- **The `@Formula` cost is the depth term, and it is all database time.** It starts ~170 ms below no fix
+  (no hydrated parent per row) and **crosses above it near page 40** — about 40,000 records into one
+  record type — then keeps climbing. That is the review's mechanism, measured.
+- **The reviewed fix has no depth term**: flat, ~130 ms below 18.1 at every depth.
+- **Both fixes remove ~9 statements per page** — the per-row parent loads; the `@Formula` version's lookup
+  hides inside its one page query, which is why its statements do not rise with its cost.
+- **18.1 has no depth term either** at ~120 pages on this database. The earlier "deep ÷ shallow" figures
+  compare streams of different sizes, not pages at different depths, and are superseded by this table.
+
+**Caveat.** The effect is smaller than the review's real-organisation case (page 100: 2.6 → 3.2–3.7 s, +23–42%) on
 a 2-vCPU database holding far less than a production organisation. **Run notes:** five earlier row 39
 runs that morning are marked not measurements — four crashed at start-up (the feeder was copied to a
 path the harness does not read) and one partial sync ran on the unmerged data.
@@ -2297,11 +2320,25 @@ which carried the `@Formula` #1103. Both anchors with `UPLOAD_URL_BATCH=50`, eac
 - **The conclusion: the release as it ships matches row 30's candidate on both anchors** (D 1.75 against
   1.81; B equal on the same day), **so rows 31–36's capacity figures carry over** and row 31's steady
   pair is not repeated.
-- **What moved, unresolved:** B is now ~7% dearer for the same jar than on 29 Oct, and its run-to-run
-  spread is ~0.16 against row 27's ± 0.02. Row 30's B ran on harness `7205831`, every 16–17 Nov run on
-  `1ff23cc`; the intended difference is the unused `GATLING_HEAP` option, but nothing has ruled out the
-  harness's other commits in between. D, also measured across that harness change (1.81 → 1.75), did not
-  move. Any later comparison on B should pair runs on the same day and harness.
+- **What moved: the co-tenants' push volume, not the jar, the harness or the rig** (analysed 18 Nov from
+  the four runs' timeslices). Every run pulled the same: ~64,700 pull requests, identical by type within
+  0.3%, so the harness did not change what the client asks for. What differed is how much was pushed,
+  and CPU per sync follows it in all four runs regardless of jar:
+
+| anchor B run | CPU s per sync | program-encounter pushes | all pushes | DB statements per request |
+|---|---|---|---|---|
+| candidate, 29 Oct | 2.28 | 2,538 | 26,859 | 20.6 |
+| 18.3, 17 Nov | 2.40 | 2,739 | 27,496 | 22.6 |
+| candidate, 17 Nov | 2.45 | 3,010 | 26,957 | 22.2 |
+| 18.3, 16 Nov | 2.56 | 3,207 | 27,945 | 22.8 |
+
+  The customer cohort has no program data, so program encounters come from the co-tenants, and
+  `CO_TENANT_SEED` fixes *which* co-tenant users sync but not how much they push: push volumes and media
+  counts are drawn with an unseeded `ThreadLocalRandom`. A 26% swing in program-encounter pushes moves
+  B's CPU per sync by ~12%. **So B's spread is push-draw variance, and 29 Oct's 2.28 was a light draw** —
+  the "7% drift" is that, not a slower rig. D did not move because its co-tenant load is the same while
+  its customer load is 3.3× B's, so the co-tenant draw is a smaller share. Comparing jars on B needs
+  either several runs or a seeded push draw (a harness change, not yet made).
 
 **Run notes, 16 Nov.** The day's first reload aborted at 10:44 on `REINDEX encounter`. The ssh session
 holding the statement open dropped six minutes in; the database finished it at 11:00 with no error (its own
