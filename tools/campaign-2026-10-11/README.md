@@ -37,6 +37,7 @@ Local state they read and write lives beside them in `~/avni-campaign/` and is *
 | 29c, 30b, 39 (with the 18.1 control re-run) | `chain-rows-29c-30b-39.sh`; row 39's user is `row39-user.sql` (district 1 of `state-1`, generator-shaped uuids so a reload removes it), applied only when `row39-sql.approved` holds its sha256 | in the chain |
 | 29c, 39 (13 Nov, as run) | `chain-rows-29c-30b-39-resume.sh` (row 39 with the feeder path fixed), `-deep.sh` (deep pages first: `row39-merge-types.sql` merges three of District 1's encounter types into one 123-page stream, gated on `row39-merge.approved`), `-resume3.sh` (after the 19:27 credential expiry hung the deep chain) | in the chain |
 | 29c B, 30b (Monday 16 Nov) | `chain-monday-29cB-30b.sh` — stops the environment as soon as the last run's logs are archived; run ids recorded at launch, so write-ups do not need the injector | in the chain |
+| 30b B, run 2, and row 30's candidate on B (17 Nov) | `chain-30b-B-r2.sh` (18.3 on B again: 2.40), then `chain-30-B-r2.sh` (row 30's own jar on B the same day: 2.45 -- which settled that 18.3 is not dearer); each reloads, resizes the app host after the reload, and stops | in the chain |
 
 **Every `-resume` exists because its chain stopped part-way,** and the execution plan's provenance notes
 say why. The chains were never edited while running: bash reads a script by offset, so a running file is
